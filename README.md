@@ -13,7 +13,7 @@ shared/progress.js    progress store used by every level
 levels/
   01-smiley-paths/    Smiley Paths
   02-vector-pairs/    Vector Pairs
-  03-lines/           Lines
+  03-path-to-zero/    Path to Zero
 ```
 
 ## Add a level
@@ -30,6 +30,6 @@ levels/
 
 Open `index.html` in a browser, or `python3 -m http.server` in this folder.
 
-## Publish
+## Live
 
-Settings → Pages → Deploy from branch → `main` / root. The site will be at https://autumncolors.github.io/Web-game/
+https://web-game-cyan-eta.vercel.app (Vercel, from `main`).

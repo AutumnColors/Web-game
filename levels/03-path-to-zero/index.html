@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Path to Zero</title><style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#071322;color:#eaf2fc}*{box-sizing:border-box}body{margin:0 auto;padding:14px 10px 28px;max-width:680px}.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 12px}.score{font-weight:800;font-size:1.35rem;letter-spacing:.02em}.submit{border:0;border-radius:10px;background:#278ebf;color:white;padding:12px 25px;font-weight:750;font-size:1rem;cursor:pointer}.submit:disabled{opacity:.4}.grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.tile{min-width:0;aspect-ratio:1;border:1px solid #364b61;border-radius:8px;background:#13243a;padding:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation}.tile svg{width:100%;height:100%}.tile.chosen{outline:3px solid #fff3a0;outline-offset:-2px;background:#293b50}.tile.empty{background:#020509;border-color:#14202d;cursor:default}.actions{display:flex;align-items:center;gap:12px}.status{min-width:76px;min-height:1.5em;text-align:left;margin:0;font-weight:750}.status.correct{color:#6fe6a9}.status.incorrect{color:#ff9e90}
+.back{color:#a9bbcd;text-decoration:none;font-weight:700;padding:9px 12px;border-radius:10px;background:#ffffff12;white-space:nowrap}.back:hover{background:#ffffff22;color:#fff}
+</style></head><body><div class="top"><a class="back" href="../../">← Levels</a><span class="score" id="score">Score: 0</span><div class="actions"><div class="status" id="status" role="status" aria-live="polite"></div><button class="submit" id="submit">Submit</button></div></div><div class="grid" id="grid"></div><script src="../../shared/progress.js"></script>
+<script>
+const LEVEL_ID='path-to-zero';
+
+// Exact directed edges from the supplied 60-node tree.
+const childPairs={0:[1,2],1:[3,4],2:[5,6],3:[7,8],4:[9,10],5:[11,12],6:[13],7:[14,15],8:[16,17],9:[18,19],10:[20],11:[21],12:[22,23],13:[24,25],14:[26],15:[27],16:[28],17:[29],18:[30],19:[31,32],20:[33,34],21:[35,36],22:[37],24:[],25:[38,39],26:[40],27:[41],28:[42,43],29:[44],30:[45,46],34:[47],36:[48],37:[49],38:[50],40:[51],41:[52,53],44:[54],47:[55],48:[56],51:[57,58],54:[59]};
+const children=Array.from({length:60},(_,i)=>childPairs[i]||[]);
+const parent=Array(60).fill(-1);children.forEach((a,i)=>a.forEach(c=>{if(parent[c]!==-1)throw Error('Duplicate parent');parent[c]=i}));
+const leaves=children.map((a,i)=>a.length===0?i:null).filter(x=>x!==null);
+const palette=['#29b5ed','#f5a43b','#b77bf1','#40d4a2'];
+// 5-fold symmetric star geometry: 15 outer triangle sides + 5 full inner pentagram edges.
+const pt=(r,k,shift=0)=>{let t=-Math.PI/2+2*Math.PI*(k+shift)/5;return [50+r*Math.cos(t),50+r*Math.sin(t)]};
+// Each outer point triangle connects two inner joints and its outer tip.
+const joints=Array.from({length:5},(_,i)=>pt(19,i));
+const tips=Array.from({length:5},(_,i)=>pt(46,i));
+const edges=[];
+for(let i=0;i<5;i++){
+ const a=joints[(i+4)%5],b=joints[i],t=tips[i];
+ edges.push([a,t],[t,b],[a,b]);
+}
+for(let i=0;i<5;i++)edges.push([joints[i],joints[(i+2)%5]]);
+const leafEdge=new Map(leaves.map((id,i)=>[id,i]));
+const memo=new Map();function build(id){if(memo.has(id))return memo.get(id);let cs=children[id],result;
+ if(cs.length===0)result={mask:1<<leafEdge.get(id),color:0,depth:0};
+ else if(cs.length===1){let x=build(cs[0]);result={mask:x.mask,color:(x.color+1)%4,depth:x.depth+1}}
+ else {let a=build(cs[0]),b=build(cs[1]);result={mask:a.mask|b.mask,color:0,depth:0}}
+ memo.set(id,result);return result;
+}
+for(let i=0;i<60;i++)build(i);
+const signatures=new Map();for(let i=0;i<60;i++){let v=build(i),key=v.mask+':'+v.color;if(!signatures.has(key))signatures.set(key,[]);signatures.get(key).push(i)}
+const duplicates=[...signatures.values()].filter(a=>a.length>1);
+
+const grid=document.getElementById('grid'),status=document.getElementById('status');
+let chosen=new Set(),completed=new Set(),score=0;
+let order=Array.from({length:60},(_,i)=>i);
+for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}
+function active(id){const mask=build(id).mask;for(let e=0;e<20;e++)if((mask&(1<<e))&&!completed.has(e))return true;return false}
+function svgFor(id){const v=build(id);let s='<svg viewBox="0 0 100 100" aria-hidden="true">';for(let i=0;i<20;i++)if(v.mask&(1<<i)){const [[x1,y1],[x2,y2]]=edges[i];s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${palette[v.color]}" stroke-width="3.5" stroke-linecap="round"/>`;}return s+'</svg>'}
+function render(){grid.innerHTML='';for(const id of order){const on=active(id);const b=document.createElement('button');b.type='button';b.className='tile'+(chosen.has(id)?' chosen':'')+(on?'':' empty');b.innerHTML=on?svgFor(id):'';b.disabled=!on;b.setAttribute('aria-label',on?'Select figure':'Cleared figure');b.setAttribute('aria-pressed',chosen.has(id)?'true':'false');b.onclick=()=>{if(chosen.has(id))chosen.delete(id);else chosen.add(id);render()};grid.appendChild(b)}document.getElementById('score').textContent=`Score: ${score}`;document.getElementById('submit').disabled=chosen.size===0||score===20}
+function submit(){let match=-1;for(let e=0;e<20;e++){if(completed.has(e))continue;const chain=[];let id=leaves[e];while(id!==-1){if(active(id))chain.push(id);id=parent[id]};if(chain.length===chosen.size&&chain.every(id=>chosen.has(id))){match=e;break}}
+if(match<0){status.textContent='Incorrect';status.className='status incorrect';return}
+completed.add(match);score++;GameKit.best(LEVEL_ID,score);if(score===20)GameKit.complete(LEVEL_ID);chosen.clear();status.textContent='Correct';status.className='status correct';render()}
+document.getElementById('submit').onclick=submit;
+if(leaves.length!==20||build(0).mask!==(1<<20)-1)throw Error('Invalid tree: expected 20 leaves and 20 root edges');
+GameKit.played(LEVEL_ID);
+render();
+</script></body></html>

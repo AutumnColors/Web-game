@@ -13,9 +13,9 @@ window.LEVELS = [
     desc: 'Pair tiles that differ in all four coordinates.'
   },
   {
-    id: 'lines',
-    title: 'Lines',
-    path: 'levels/03-lines/',
-    desc: '3 blue or 5 orange in a straight line. Endless.'
+    id: 'path-to-zero',
+    title: 'Path to Zero',
+    path: 'levels/03-path-to-zero/',
+    desc: 'Trace each star edge back to the root. 20 paths.'
   }
 ];
