@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vector Pairs</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:dark;background:#10141d;color:#f5f7fb}*{box-sizing:border-box}body{margin:0;padding:16px;min-height:100vh}.app{max-width:980px;margin:auto}.toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}button{font:inherit;cursor:pointer}.action{background:#4c79f5;border:0;color:white;padding:11px 20px;border-radius:10px;font-weight:700}.secondary{background:#303949}.score{font-weight:700;font-variant-numeric:tabular-nums}.message{min-height:22px;font-weight:600;color:#aeb8cc}.board{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:clamp(3px,1vw,9px)}.tile{min-width:0;aspect-ratio:1;border:2px solid #343b4a;background:#232a38;border-radius:10px;display:grid;place-items:center;padding:5%;transition:background .12s,border-color .12s;touch-action:manipulation}.tile.selected{background:#294477;border-color:#8bb4ff;box-shadow:0 0 0 1px #8bb4ff}.piece{height:90%;width:90%;display:grid;place-items:center;line-height:1;border-style:solid;border-width:clamp(2px,.55vw,5px)}.circle{border-radius:50%}.square{border-radius:8%}.symbol{font-size:clamp(13px,3.5vw,35px);filter:drop-shadow(0 1px 1px #0005)}.tile.gone{background:#000;border-color:#000;cursor:default}.tile.gone .piece{display:none}@media(max-width:540px){body{padding:8px}.board{gap:3px}.tile{border-width:1px;border-radius:5px;padding:3%}.piece{width:98%;height:98%;border-width:2px}.symbol{font-size:clamp(12px,4.3vw,22px)}.toolbar{gap:8px}.action{padding:9px 13px}}
+.back{color:#a9bbcd;text-decoration:none;font-weight:700;padding:9px 12px;border-radius:10px;background:#ffffff12;white-space:nowrap}.back:hover{background:#ffffff22;color:#fff}
+</style>
+</head>
+<body><main class="app"><div class="toolbar"><a class="back" href="../../">← Levels</a><button class="action" id="submit">Submit</button><button class="action secondary" id="restart">New game</button><span class="score" id="score">0 points</span><span class="score" id="selectedCount">0 selected</span><span class="message" id="message" role="status" aria-live="polite"></span></div><div class="board" id="board" aria-label="Vector tile game"></div></main>
+<script src="../../shared/progress.js"></script>
+<script>
+(()=>{
+'use strict';
+const LEVEL_ID='vector-pairs';
+const colors=['#ffce32','#ff755e','#36b8ff','#a57aff','#64d183'];
+const symbols=['🌽','🙂','🍐'];
+const board=document.getElementById('board'),message=document.getElementById('message'),scoreEl=document.getElementById('score'),countEl=document.getElementById('selectedCount');
+let tiles=[],selected=new Set(),score=0;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function update(){countEl.textContent=`${selected.size} selected`;scoreEl.textContent=`${score} points`;GameKit.best(LEVEL_ID,score)}
+function render(){board.replaceChildren();tiles.forEach((t,i)=>{const b=document.createElement('button');b.type='button';b.className='tile'+(t.gone?' gone':'');b.disabled=t.gone;b.setAttribute('aria-pressed',String(selected.has(i)));b.setAttribute('aria-label',`Tile ${i+1}: ${t.shape?'circle':'square'}, ${t.border?'black':'white'} border, ${['corn','smiley','pear'][t.symbol]}, color ${t.color+1}`);if(!t.gone){const p=document.createElement('div');p.className='piece '+(t.shape?'circle':'square');p.style.background=colors[t.color];p.style.borderColor=t.border?'#080808':'#ffffff';const s=document.createElement('span');s.className='symbol';s.textContent=symbols[t.symbol];p.append(s);b.append(p)}if(selected.has(i))b.classList.add('selected');b.addEventListener('click',()=>{if(t.gone)return;if(selected.has(i))selected.delete(i);else if(selected.size<2)selected.add(i);else{message.textContent='Choose only two tiles.';return}message.textContent='';render();update()});board.append(b)})}
+function newGame(){tiles=[];for(let shape=0;shape<2;shape++)for(let border=0;border<2;border++)for(let symbol=0;symbol<3;symbol++)for(let color=0;color<5;color++)tiles.push({shape,border,symbol,color,gone:false});shuffle(tiles);selected.clear();score=0;message.textContent='';render();update()}
+document.getElementById('submit').addEventListener('click',()=>{if(selected.size!==2){message.textContent='Select exactly two tiles.';return}const [i,j]=[...selected],a=tiles[i],b=tiles[j];const valid=['shape','border','symbol','color'].every(k=>a[k]!==b[k]);if(valid){a.gone=true;b.gone=true;score+=2;message.textContent='Correct! Both tiles blacked out.'}else message.textContent='Incorrect — at least one coordinate matches.';selected.clear();render();update();if(tiles.every(t=>t.gone)){message.textContent='You cleared the board!';GameKit.complete(LEVEL_ID)}});
+document.getElementById('restart').addEventListener('click',newGame);
+GameKit.played(LEVEL_ID);
+newGame();
+})();
+</script></body></html>

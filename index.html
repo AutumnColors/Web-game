@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Games</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--card:#141e30;--card2:#1b2840;--line:#2a3a55;--text:#eef3fa;--muted:#93a4bd;--accent:#79d4ff;--done:#81e9a1}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#172a45 0%,var(--bg) 62%);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+main{max-width:720px;margin:0 auto;padding:32px 16px 56px}
+h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
+.sub{color:var(--muted);margin:0 0 28px}
+.levels{display:grid;gap:12px;list-style:none;padding:0;margin:0}
+.level{display:flex;align-items:center;gap:16px;padding:16px 18px;background:var(--card);border:2px solid var(--line);border-radius:16px;color:inherit;text-decoration:none;transition:transform .12s,border-color .12s,background .12s}
+.level:hover,.level:focus-visible{border-color:var(--accent);background:var(--card2);transform:translateY(-2px);outline:none}
+.num{flex:none;width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:1.2rem;background:#0e1626;border:2px solid var(--line);font-variant-numeric:tabular-nums}
+.level.done .num{border-color:var(--done);color:var(--done)}
+.info{min-width:0;flex:1}
+.title{font-weight:750;font-size:1.1rem}
+.desc{color:var(--muted);font-size:.92rem;margin-top:3px}
+.meta{flex:none;text-align:right;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.meta .ok{color:var(--done);font-weight:700}
+.foot{margin-top:28px;text-align:center}
+.reset{background:none;border:0;color:var(--muted);font:inherit;font-size:.85rem;cursor:pointer;text-decoration:underline}
+@media(max-width:480px){main{padding:22px 12px 40px}.level{gap:12px;padding:14px}.num{width:40px;height:40px;font-size:1rem}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Games</h1>
+  <p class="sub">Pick a level.</p>
+  <ol class="levels" id="levels"></ol>
+  <div class="foot"><button class="reset" id="reset" type="button">Reset progress</button></div>
+</main>
+<script src="shared/progress.js"></script>
+<script src="levels.js"></script>
+<script>
+'use strict';
+function render(){
+  const progress=GameKit.get();
+  const list=document.getElementById('levels');
+  list.replaceChildren();
+  LEVELS.forEach((lv,i)=>{
+    const p=progress[lv.id]||{};
+    const li=document.createElement('li');
+    const a=document.createElement('a');
+    a.className='level'+(p.completed?' done':'');
+    a.href=lv.path;
+    const meta=[];
+    if(p.completed)meta.push('<span class="ok">✓ Cleared</span>');
+    if(typeof p.best==='number')meta.push('Best: '+p.best);
+    else if(p.played)meta.push('Played');
+    a.innerHTML=`<span class="num">${i+1}</span><span class="info"><div class="title"></div><div class="desc"></div></span><span class="meta">${meta.join('<br>')}</span>`;
+    a.querySelector('.title').textContent=lv.title;
+    a.querySelector('.desc').textContent=lv.desc;
+    li.append(a);list.append(li);
+  });
+}
+document.getElementById('reset').addEventListener('click',()=>{
+  if(!confirm('Reset all progress?'))return;
+  try{localStorage.removeItem(GameKit.key)}catch{}
+  render();
+});
+// Re-render when returning via the browser back button (page restored from cache).
+window.addEventListener('pageshow',render);
+render();
+</script>
+</body>
+</html>
