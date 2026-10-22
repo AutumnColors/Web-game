@@ -1,0 +1,118 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M11 symmetry</title><style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#071322;color:#eaf2fc}*{box-sizing:border-box}
+body{margin:0 auto;padding:14px 12px 32px;max-width:560px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 8px}
+.back{color:#a9bbcd;text-decoration:none;font-weight:700;padding:9px 12px;border-radius:10px;background:#ffffff12;white-space:nowrap}.back:hover{background:#ffffff22;color:#fff}
+h1{font-size:1.35rem;margin:0;letter-spacing:.02em}
+.sub{color:#93a4bd;margin:4px 2px 6px;font-size:.92rem}
+svg{width:100%;max-width:420px;display:block;margin:0 auto;touch-action:manipulation;user-select:none}
+.status{min-height:3em;margin:6px 2px 4px;line-height:1.45}
+.status.ok{color:#6fe6a9}.status.bad{color:#ff9e90}
+.meter{color:#93a4bd;font-size:.9rem;margin:0 2px 14px;font-variant-numeric:tabular-nums}
+.meter b{color:#eaf2fc}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{border:0;border-radius:10px;background:#ffffff12;color:#eaf2fc;padding:11px 16px;font:inherit;font-weight:700;cursor:pointer}button:hover{background:#ffffff22}
+.primary{background:#278ebf;color:#fff}.primary:hover{background:#2f9fd4}
+.how{margin:22px 2px 0;color:#93a4bd;font-size:.9rem;line-height:1.55}
+.how p{margin:0 0 8px}
+.how b{color:#eaf2fc}
+</style></head><body>
+<div class="top"><a class="back" href="../../">← Home</a><h1>M11 symmetry</h1></div>
+<p class="sub">11 points, 66 blocks of 5, 7920 symmetries.</p>
+<svg id="sv" viewBox="0 0 320 320" role="img" aria-label="Eleven points on a circle forming the S(4,5,11) Steiner system"></svg>
+<div class="status" id="st" role="status" aria-live="polite">Tap any 4 dots.</div>
+<div class="meter">Blocks preserved: <b id="mt">66 / 66</b></div>
+<div class="btns">
+<button class="primary" id="bm" type="button">Random symmetry</button>
+<button id="bs" type="button">Random shuffle</button>
+<button id="br" type="button">Reset</button>
+</div>
+<div class="how">
+<p><b>The rule.</b> Every 4 points lie in exactly one block of 5. Tap 4 dots and the 5th lights up.</p>
+<p><b>The symmetry.</b> After picking 4 dots, tap any 4 spots as targets. Exactly one of the 7920 symmetries sends your dots there, and every block still lands on a block.</p>
+<p><b>The contrast.</b> A random shuffle of 11 points almost always breaks most of the 66 blocks. Only 7920 out of about 40 million shuffles keep them all. Those 7920 form the Mathieu group M11.</p>
+</div>
+<script>
+'use strict';
+const B=[[0,4,5,7,8],[0,5,6,9,10],[0,1,2,4,10],[0,1,3,6,8],[0,2,3,7,9],[1,3,4,5,9],[2,4,6,8,9],[2,3,5,8,10],[1,7,8,9,10],[1,2,5,6,7],[3,4,6,7,10],[2,4,5,6,10],[1,3,4,8,10],[1,3,6,7,9],[3,4,7,8,9],[2,4,7,8,10],[1,3,5,7,8],[0,3,5,6,7],[0,2,3,6,10],[0,1,4,8,9],[0,3,5,8,9],[0,2,5,6,8],[1,4,6,7,8],[2,3,4,9,10],[1,2,3,8,9],[3,5,7,9,10],[1,2,5,9,10],[1,2,6,8,10],[2,5,7,8,9],[5,6,7,8,10],[1,4,5,7,10],[1,3,5,6,10],[1,4,6,9,10],[1,2,3,4,6],[3,6,8,9,10],[1,2,4,7,9],[2,3,4,5,7],[2,6,7,9,10],[1,2,4,5,8],[4,5,6,7,9],[0,4,7,9,10],[0,1,2,3,5],[0,2,4,6,7],[0,2,4,5,9],[0,6,7,8,9],[0,1,5,8,10],[0,1,6,7,10],[0,1,4,5,6],[0,3,4,6,9],[0,2,5,7,10],[0,1,2,6,9],[0,2,8,9,10],[0,1,2,7,8],[0,3,4,5,10],[0,1,3,9,10],[1,2,3,7,10],[1,5,6,8,9],[3,4,5,6,8],[2,3,5,6,9],[2,3,6,7,8],[4,5,8,9,10],[0,2,3,4,8],[0,3,7,8,10],[0,1,5,7,9],[0,4,6,8,10],[0,1,3,4,7]];
+const K=a=>a.slice().sort((x,y)=>x-y).join(',');
+const C={};B.forEach(b=>{for(let i=0;i<5;i++)C[K(b.filter((_,j)=>j!==i))]=b[i];});
+const BS=new Set(B.map(K));
+function solve(src,tgt){
+  const g0=new Array(11).fill(-1);src.forEach((s,i)=>g0[s]=tgt[i]);let out=null;
+  function r(g){
+    g=g.slice();let ch=true;
+    while(ch){ch=false;const as=[];g.forEach((v,i)=>{if(v>=0)as.push(i);});
+      for(let a=0;a<as.length;a++)for(let b=a+1;b<as.length;b++)for(let c=b+1;c<as.length;c++)for(let d=c+1;d<as.length;d++){
+        const f=[as[a],as[b],as[c],as[d]];const q=C[K(f)],qi=C[K(f.map(x=>g[x]))];
+        if(g[q]<0){if(g.includes(qi))return;g[q]=qi;ch=true;}else if(g[q]!==qi)return;}}
+    const u=g.findIndex(x=>x<0);if(u<0){out=g;return;}
+    const used=new Set(g);for(let v=0;v<11&&!out;v++)if(!used.has(v)){const h=g.slice();h[u]=v;r(h);}
+  }
+  r(g0);return out;
+}
+const COL={dot:'#13243a',line:'#364b61',text:'#eaf2fc',sel:'#b77bf1',blk:'#40d4a2',bad:'#ff7b6b',ring:'#22344b'};
+const NS='http://www.w3.org/2000/svg',sv=document.getElementById('sv');
+const cx=160,cy=160,R=112;
+const XY=(s,rr=R)=>{const a=-Math.PI/2+s*2*Math.PI/11;return[cx+rr*Math.cos(a),cy+rr*Math.sin(a)];};
+const mk=(t,at)=>{const e=document.createElementNS(NS,t);for(const k in at)e.setAttribute(k,at[k]);sv.appendChild(e);return e;};
+mk('circle',{cx,cy,r:R,fill:'none',stroke:COL.ring,'stroke-width':1.5});
+const poly=mk('polygon',{points:'','fill-opacity':0.16,'stroke-width':2,'stroke-linejoin':'round'});
+const want=mk('circle',{r:20,fill:'none',stroke:COL.blk,'stroke-width':2,'stroke-dasharray':'4 3',opacity:0});
+const ghosts=[];for(let s=0;s<11;s++){const[x,y]=XY(s);const[tx,ty]=XY(s,R+31);
+  ghosts.push({c:mk('circle',{cx:x,cy:y,r:21,fill:'none',stroke:COL.sel,'stroke-width':1.5,'stroke-dasharray':'3 3',opacity:0}),
+  t:mk('text',{x:tx,y:ty+4,'text-anchor':'middle','font-size':12,'font-weight':700,fill:COL.sel,opacity:0})});}
+const dots=[];for(let l=0;l<11;l++){const c=mk('circle',{r:15,'stroke-width':1.2});const t=mk('text',{'text-anchor':'middle','font-size':13,'font-weight':700});t.textContent=l;
+  const o=mk('text',{'text-anchor':'middle','font-size':12,'font-weight':700,fill:COL.sel});dots.push({c,t,o});}
+const hit=[];for(let s=0;s<11;s++){const[x,y]=XY(s);hit.push(mk('circle',{cx:x,cy:y,r:24,fill:'transparent',style:'cursor:pointer'}));}
+let pos=[...Array(11).keys()],xy=pos.map(s=>XY(s)),sel=[],cmp=-1,tgt=[],done=false,busy=false,bad=false;
+const st=document.getElementById('st'),mt=document.getElementById('mt');
+const lab=s=>pos.indexOf(s);
+function setStatus(text,cls){st.textContent=text;st.className='status'+(cls?' '+cls:'');}
+function draw(){
+  dots.forEach((d,l)=>{const[x,y]=xy[l];const si=sel.indexOf(l);const isC=l===cmp;const on=si>=0||isC;
+    d.c.setAttribute('cx',x);d.c.setAttribute('cy',y);
+    d.c.setAttribute('fill',si>=0?COL.sel:isC?(bad?COL.bad:COL.blk):COL.dot);
+    d.c.setAttribute('stroke',on?'transparent':COL.line);
+    d.t.setAttribute('x',x);d.t.setAttribute('y',y+4.5);d.t.setAttribute('fill',on?'#071322':COL.text);
+    const r=Math.hypot(x-cx,y-cy)||1;d.o.setAttribute('x',cx+(x-cx)*(r+25)/r);d.o.setAttribute('y',cy+(y-cy)*(r+25)/r+4);
+    d.o.textContent=si>=0&&!done?si+1:'';});
+  const H=sel.length===4&&cmp>=0?[...sel,cmp]:[];
+  if(H.length){const P=H.map(l=>xy[l]).sort((a,b)=>Math.atan2(a[1]-cy,a[0]-cx)-Math.atan2(b[1]-cy,b[0]-cx));
+    const col=bad?COL.bad:COL.blk;poly.setAttribute('points',P.map(p=>p.join(',')).join(' '));poly.setAttribute('fill',col);poly.setAttribute('stroke',col);}
+  else poly.setAttribute('points','');
+  ghosts.forEach((g,s)=>{const i=tgt.indexOf(s);g.c.setAttribute('opacity',i>=0?1:0);g.t.setAttribute('opacity',i>=0?1:0);g.t.textContent=i>=0?i+1:'';});
+}
+const preserved=g=>B.filter(b=>BS.has(K(b.map(x=>g[x])))).length;
+function run(g,kind){
+  busy=true;want.setAttribute('opacity',0);bad=false;
+  const from=xy.map(p=>p.slice()),to=pos.map(s=>XY(g[s]));const t0=performance.now();
+  function f(now){const t=Math.min(1,(now-t0)/1000);const e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    xy=from.map((p,i)=>[p[0]+(to[i][0]-p[0])*e,p[1]+(to[i][1]-p[1])*e]);draw();
+    if(t<1)requestAnimationFrame(f);else{pos=pos.map(s=>g[s]);xy=pos.map(s=>XY(s));busy=false;tgt=[];finish(g,kind);}}
+  requestAnimationFrame(f);
+}
+function finish(g,kind){
+  mt.textContent=preserved(g)+' / 66';
+  if(sel.length===4&&cmp>=0){
+    const ok=BS.has(K([...sel,cmp].map(l=>pos[l])));
+    if(ok){bad=false;setStatus(kind==='t'?'The one symmetry out of 7920 that sends your 4 dots to those 4 spots. Your block landed on another block, and so did all 66.':kind==='m'?'A random M11 symmetry. Your block landed on another block, and so did all 66.':'This block survived by luck, but the shuffle wrecked most of the others.',kind==='s'?'':'ok');}
+    else{bad=true;const w=C[K(sel.map(l=>pos[l]))];const[x,y]=XY(w);want.setAttribute('cx',x);want.setAttribute('cy',y);want.setAttribute('opacity',1);
+      setStatus('Broken. Your first 4 dots now demand a 5th at the dashed spot, but your 5th dot landed elsewhere.','bad');}
+  }else setStatus(kind==='s'?'Shuffled. Most blocks no longer land on blocks.':'Moved by a symmetry. Every block landed on a block.',kind==='s'?'bad':'ok');
+  done=true;draw();
+}
+function msg(){setStatus(sel.length<4?'Tap '+(4-sel.length)+' more dot'+(sel.length===3?'':'s')+'.':tgt.length?'Target '+tgt.length+' of 4. Keep tapping spots.':'Those 4 dots force exactly one 5th: that is the Steiner rule. Now tap any 4 spots as targets, or use a button.');}
+function clearSel(){sel=[];cmp=-1;tgt=[];done=false;bad=false;want.setAttribute('opacity',0);}
+hit.forEach((h,s)=>h.addEventListener('click',()=>{
+  if(busy)return;if(done)clearSel();
+  if(sel.length<4){const l=lab(s);const i=sel.indexOf(l);if(i>=0)sel.splice(i,1);else sel.push(l);
+    cmp=sel.length===4?lab(C[K(sel.map(x=>pos[x]))]):-1;msg();draw();return;}
+  if(tgt.includes(s))tgt.splice(tgt.indexOf(s),1);else tgt.push(s);draw();
+  if(tgt.length===4)run(solve(sel.map(l=>pos[l]),tgt),'t');else msg();
+}));
+document.getElementById('bm').onclick=()=>{if(busy)return;const a=[...Array(11).keys()];for(let i=10;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}tgt=[];run(solve([0,1,2,3],a.slice(0,4)),'m');};
+document.getElementById('bs').onclick=()=>{if(busy)return;const p=[...Array(11).keys()];for(let i=10;i>0;i--){const j=Math.floor(Math.random()*(i+1));[p[i],p[j]]=[p[j],p[i]];}tgt=[];run(p,'s');};
+document.getElementById('br').onclick=()=>{if(busy)return;pos=[...Array(11).keys()];xy=pos.map(s=>XY(s));clearSel();mt.textContent='66 / 66';setStatus('Tap any 4 dots.');draw();};
+draw();
+</script></body></html>
