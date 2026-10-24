@@ -233,6 +233,40 @@ body.mode-size .tile.tits{ border-color: transparent; }
 .mrow .mo sup{ font-size: .8em; }
 .gap-li{ text-align: center; color: var(--muted); font-size: 12px; padding: 2px 0; }
 
+button.colhead{ appearance: none; border: 0; background: transparent; margin: 0; padding: 4px 0 6px; border-radius: 6px; cursor: pointer; font: inherit; }
+button.colhead:hover, button.colhead[aria-pressed="true"]{ background: var(--accent-soft); color: var(--accent); }
+button.colhead:hover .lab, button.colhead[aria-pressed="true"] .lab{ color: var(--accent); }
+button.colhead:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+button.slabel{ appearance: none; border: 0; background: transparent; margin: 0; border-radius: 6px; cursor: pointer; font: inherit; color: inherit; }
+button.slabel:hover, button.slabel[aria-pressed="true"]{ background: var(--accent-soft); }
+button.slabel:hover .t, button.slabel[aria-pressed="true"] .t{ color: var(--accent); }
+button.slabel:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+.famlink{ display: inline-block; margin: 10px 0 0; padding: 3px 11px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--accent); font-size: 12.5px; cursor: pointer; }
+.famlink:hover{ border-color: var(--accent); }
+.famlink:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+.dkbox{ margin: 14px 0; padding: 14px 10px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); display: grid; justify-items: center; gap: 8px; }
+.dkbox svg{ max-width: 100%; height: auto; overflow: visible; }
+.dkbox .cap{ margin: 0; font-size: 12px; line-height: 1.45; color: var(--ink-2); text-align: center; max-width: 42ch; }
+.dk .e{ stroke: var(--ink-2); stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.dk .d{ stroke: var(--ink-2); stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-dasharray: 0.1 5; }
+.dk .n{ fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; }
+.dk .l{ fill: var(--muted); font-family: var(--f-mono); font-size: 10px; }
+.dk .f{ stroke: var(--accent); stroke-width: 1.3; fill: none; stroke-dasharray: 3 2.6; }
+.dk .fa{ fill: var(--accent); }
+.bigglyph svg{ width: 150px; height: auto; color: var(--ink-2); }
+.bigglyph svg *{ vector-effect: non-scaling-stroke; }
+.bigglyph svg g[stroke]{ stroke-width: 1.6; }
+.kv .sub{ display: block; font-family: var(--f-ui); font-size: 11.5px; line-height: 1.4; color: var(--muted); margin-top: 2px; }
+.p-text{ margin: 0 0 14px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+.plist{ margin: 0 0 14px; padding-left: 1.15em; display: grid; gap: 6px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+.gchips{ display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
+.gchip{ display: grid; gap: 1px; justify-items: start; padding: 5px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); cursor: pointer; text-align: left; }
+.gchip:hover{ border-color: var(--accent); }
+.gchip:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+.gchip .gs{ font-family: var(--f-math); font-size: 15px; line-height: 1.15; }
+.gchip .ga{ font-family: var(--f-math); font-size: 11px; color: var(--muted); }
+.gchip .go{ font-family: var(--f-mono); font-size: 10.5px; color: var(--muted); }
+.gchip .go sup{ font-size: .8em; }
 .back{ display: inline-block; margin: 0 0 18px; padding: 7px 12px; border-radius: 9px; background: var(--accent-soft); color: var(--ink-2); font-weight: 600; font-size: 14px; text-decoration: none; }
 .back:hover{ color: var(--accent); }
 .back:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -705,6 +739,270 @@ function dynkin(kind) {
   return `<svg viewBox="0 0 48 18" aria-hidden="true" focusable="false"><g stroke="currentColor" stroke-width="1.1" stroke-linecap="round">${L.join('')}</g><g fill="currentColor">${C.join('')}</g></svg>`;
 }
 
+/* ---------- full Dynkin diagrams ---------- */
+// n = null draws the generic rank-n picture. Arrows on multiple edges point to the shorter root (Bourbaki labels).
+function dynk(kind, n) {
+  const S = 34, R = 5.5, N = [], E = [], F = [];
+  const add = (x, y, lab, lp = 'b') => { N.push({ x, y, lab, lp }); return N.length - 1; };
+  const chainOf = (labels, dotsAt = -1) => { const ids = labels.map((l, i) => add(i * S, 0, l)); for (let i = 1; i < ids.length; i++) E.push({ a: ids[i - 1], b: ids[i], k: i - 1 === dotsAt ? 'dots' : 1 }); return ids; };
+  const gen = n == null, seq = k => range(1, k).map(String);
+  let ids;
+  switch (kind) {
+    case 'A': case '2A': {
+      ids = gen ? chainOf(['1', '2', 'n−1', 'n'], 1) : chainOf(seq(n));
+      if (kind === '2A') { const k = ids.length; for (let i = 0; i < k - 1 - i; i++) F.push({ a: ids[i], b: ids[k - 1 - i] }); }
+      break;
+    }
+    case 'B': case 'C': {
+      ids = gen ? chainOf(['1', '2', 'n−1', 'n'], 1) : chainOf(seq(n));
+      const e = E[E.length - 1]; e.k = 2; e.to = kind === 'B' ? e.b : e.a;
+      break;
+    }
+    case 'D': case '2D': {
+      ids = gen ? chainOf(['1', '2', 'n−2'], 1) : chainOf(seq(n - 2));
+      const last = ids[ids.length - 1], lx = N[last].x, tw = kind === '2D';
+      const t = add(lx + S * 0.8, -S * 0.6, gen ? 'n−1' : String(n - 1), tw ? 't' : 'r');
+      const b = add(lx + S * 0.8, S * 0.6, gen ? 'n' : String(n), tw ? 'b' : 'r');
+      E.push({ a: last, b: t, k: 1 }, { a: last, b, k: 1 });
+      if (tw) F.push({ a: t, b, side: true });
+      break;
+    }
+    case 'G2': case '2G2': ids = chainOf(['1', '2']); E[0].k = 3; E[0].to = ids[0]; if (kind === '2G2') F.push({ a: ids[0], b: ids[1] }); break;
+    case '2B2': ids = chainOf(['1', '2']); E[0].k = 2; E[0].to = ids[1]; F.push({ a: ids[0], b: ids[1] }); break;
+    case 'F4': case '2F4': ids = chainOf(['1', '2', '3', '4']); E[1].k = 2; E[1].to = ids[2]; if (kind === '2F4') F.push({ a: ids[0], b: ids[3] }, { a: ids[1], b: ids[2] }); break;
+    case 'E6': case 'E7': case 'E8': case '2E6': {
+      const r = Number(kind.slice(-1));
+      ids = chainOf(['1', ...range(3, r).map(String)]);
+      const br = add(N[ids[2]].x, -S * 0.85, '2', 'r');
+      E.push({ a: ids[2], b: br, k: 1 });
+      if (kind === '2E6') F.push({ a: ids[0], b: ids[4] }, { a: ids[1], b: ids[3] });
+      break;
+    }
+    case '3D4': {
+      const c = add(0, 0, '2', 'b'), rr = S * 0.95;
+      [[-90, '1', 't'], [150, '3', 'l'], [30, '4', 'r']].forEach(([deg, lab, lp]) => { const t = deg * Math.PI / 180; E.push({ a: c, b: add(rr * Math.cos(t), rr * Math.sin(t), lab, lp), k: 1 }); });
+      F.push({ circle: true, r: rr });
+      break;
+    }
+  }
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  const grow = (x, y) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); };
+  const f2 = v => +v.toFixed(2);
+  const head = (x, y, dx, dy) => { const L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, px = -uy, py = ux, s = 4.4; return `<polygon class="fa" points="${f2(x)},${f2(y)} ${f2(x - ux * s + px * s * 0.55)},${f2(y - uy * s + py * s * 0.55)} ${f2(x - ux * s - px * s * 0.55)},${f2(y - uy * s - py * s * 0.55)}"/>`; };
+  const out = [];
+  for (const e of E) {
+    const A = N[e.a], Bn = N[e.b];
+    if (e.k === 'dots') { out.push(`<line class="d" x1="${f2(A.x + R + 4)}" y1="${A.y}" x2="${f2(Bn.x - R - 4)}" y2="${Bn.y}"/>`); continue; }
+    const dx = Bn.x - A.x, dy = Bn.y - A.y, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, px = -uy, py = ux;
+    for (const o of (e.k === 3 ? [-2.6, 0, 2.6] : e.k === 2 ? [-1.9, 1.9] : [0])) out.push(`<line class="e" x1="${f2(A.x + px * o)}" y1="${f2(A.y + py * o)}" x2="${f2(Bn.x + px * o)}" y2="${f2(Bn.y + py * o)}"/>`);
+    if (e.to != null) {
+      const sg = e.to === e.b ? 1 : -1, mx = (A.x + Bn.x) / 2, my = (A.y + Bn.y) / 2, w = e.k === 3 ? 6.5 : 5.5;
+      out.push(`<polyline class="e" points="${f2(mx - ux * sg * 3.5 + px * w)},${f2(my - uy * sg * 3.5 + py * w)} ${f2(mx + ux * sg * 3.5)},${f2(my + uy * sg * 3.5)} ${f2(mx - ux * sg * 3.5 - px * w)},${f2(my - uy * sg * 3.5 - py * w)}"/>`);
+    }
+  }
+  for (const f of F) {
+    if (f.circle) {
+      out.push(`<circle class="f" cx="0" cy="0" r="${f2(f.r)}"/>`);
+      for (const deg of [-30, 90, 210]) { const t = deg * Math.PI / 180; out.push(head(f.r * Math.cos(t), f.r * Math.sin(t), -Math.sin(t), Math.cos(t))); }
+      continue;
+    }
+    const A = N[f.a], Bn = N[f.b];
+    if (f.side) {
+      const xs = A.x + R + 3, cx = A.x + S * 0.75;
+      out.push(`<path class="f" d="M${f2(xs)} ${f2(A.y)} Q${f2(cx)} 0 ${f2(xs)} ${f2(Bn.y)}"/>`, head(xs, A.y, xs - cx, A.y), head(xs, Bn.y, xs - cx, Bn.y));
+      grow(A.x + S * 0.45, 0);
+      continue;
+    }
+    const yb = R + 19, depth = 8 + (Bn.x - A.x) / S * 5, mx = (A.x + Bn.x) / 2;
+    out.push(`<path class="f" d="M${f2(A.x)} ${yb} Q${f2(mx)} ${f2(yb + 2 * depth)} ${f2(Bn.x)} ${yb}"/>`, head(A.x, yb, A.x - mx, -2 * depth), head(Bn.x, yb, Bn.x - mx, -2 * depth));
+    grow(mx, yb + depth + 2);
+  }
+  for (const nd of N) { out.push(`<circle class="n" cx="${f2(nd.x)}" cy="${f2(nd.y)}" r="${R}"/>`); grow(nd.x - R, nd.y - R); grow(nd.x + R, nd.y + R); }
+  for (const nd of N) {
+    let lx = nd.x, ly = nd.y + R + 12, an = 'middle';
+    if (nd.lp === 'r') { lx = nd.x + R + 4; ly = nd.y + 3.5; an = 'start'; }
+    if (nd.lp === 'l') { lx = nd.x - R - 4; ly = nd.y + 3.5; an = 'end'; }
+    if (nd.lp === 't') ly = nd.y - R - 5;
+    const w = nd.lab.length * 6.2;
+    out.push(`<text class="l" x="${f2(lx)}" y="${f2(ly)}" text-anchor="${an}">${nd.lab}</text>`);
+    grow(an === 'start' ? lx + w : an === 'end' ? lx - w : lx - w / 2, ly - 9); grow(an === 'start' ? lx : an === 'end' ? lx : lx + w / 2, ly + 3);
+  }
+  const pad = 4, W = x1 - x0 + 2 * pad, H = y1 - y0 + 2 * pad;
+  return `<svg class="dk" viewBox="${f2(x0 - pad)} ${f2(y0 - pad)} ${f2(W)} ${f2(H)}" width="${Math.round(W * 1.15)}" height="${Math.round(H * 1.15)}" role="img" aria-label="Dynkin diagram">${out.join('')}</svg>`;
+}
+
+// Root-system data for one rank: degrees d (factors q^d − 1), positive roots N, Weyl group order, Lie algebra dimension.
+const BASE = { A: 'A', '2A': 'A', B: 'B', C: 'C', D: 'D', '2D': 'D', G2: 'G2', F4: 'F4', E6: 'E6', E7: 'E7', E8: 'E8', '2B2': 'B2', '2G2': 'G2', '2F4': 'F4', '3D4': 'D4', '2E6': 'E6' };
+function rankData(fid, n) {
+  const base = BASE[fid];
+  let deg;
+  switch (base) {
+    case 'A': deg = range(2, n + 1); break;
+    case 'B': case 'C': deg = range(1, n).map(i => 2 * i); break;
+    case 'D': deg = [...range(1, n - 1).map(i => 2 * i), n].sort((a, b) => a - b); break;
+    case 'D4': deg = [2, 4, 4, 6]; break;
+    case 'B2': deg = [2, 4]; break;
+    case 'G2': deg = [2, 6]; break;
+    case 'F4': deg = [2, 6, 8, 12]; break;
+    case 'E6': deg = [2, 5, 6, 8, 9, 12]; break;
+    case 'E7': deg = [2, 6, 8, 10, 12, 14, 18]; break;
+    case 'E8': deg = [2, 8, 12, 14, 18, 20, 24, 30]; break;
+  }
+  const W = deg.reduce((a, d) => a * B(d), 1n), Npos = deg.reduce((a, d) => a + d - 1, 0), dim = 2 * Npos + deg.length;
+  const sr = fid === '2B2' || fid === '2G2' || fid === '2F4';
+  const baseName = base === 'A' || base === 'D' ? `${base}_{${n}}` : `${base[0]}_{${base.slice(1)}}`;
+  return { deg, W, Npos, dim, sr, twisted: /^[23]/.test(fid), baseName, sizeExp: sr ? dim / 2 : dim };
+}
+
+const FINFO = {
+  Z: { title: 'Cyclic groups of prime order', alias: 'ℤ/pℤ',
+    what: 'The integers modulo a prime p, under addition. They are the only abelian simple groups, and the only simple groups that are solvable.',
+    rows: [['Members', 'one for every prime p, so infinitely many'], ['Order', 'p'], ['Smallest', 'Z_{2}, order 2']],
+    diagram: 'A cycle: one generator, applied p times, returns to the start.',
+    notes: ['A finite group is solvable exactly when every one of its building blocks is cyclic of prime order.', 'A group of prime order p is always cyclic, so for each prime there is exactly one simple group of that order.'] },
+  Alt: { title: 'Alternating groups', alias: 'even permutations',
+    what: 'The even permutations of n objects, half of the symmetric group S_{n}. For n ≥ 5 they are simple, which is the group-theoretic reason the general quintic equation has no solution in radicals.',
+    rows: [['Members', 'one for every n ≥ 5'], ['Order', 'n! / 2'], ['Smallest', 'A_{5}, order 60']],
+    diagram: 'Points being permuted. A_{n} keeps the permutations made of an even number of swaps.',
+    notes: ['A_{5} ≅ A_{1}(4) ≅ A_{1}(5), A_{6} ≅ A_{1}(9) and A_{8} ≅ A_{3}(2). These are the only places where an alternating group coincides with a group of Lie type.', 'A_{6} and A_{7} have exceptional covers (Schur multiplier of order 6), and S_{6} has an outer automorphism that no other S_{n} has.', 'Intuition, not a theorem: S_{n} behaves like A_{n−1}(q) at q = 1. The number of complete flags in a vector space of dimension n over the field with q elements becomes n! when you set q = 1.'] },
+  A: { title: 'Linear groups', alias: 'PSL_{n+1}(q), also written L_{n+1}(q)',
+    what: 'Invertible matrices of determinant 1 over a finite field, with the scalar matrices factored out. They are the most direct version of “the symmetries of a vector space”.',
+    ranks: 'n ≥ 1', field: 'any prime power q; q ≥ 4 when n = 1',
+    general: 'q^{n(n+1)/2} ∏_{i=1}^{n} (q^{i+1} − 1) / gcd(n+1, q − 1)',
+    N: 'n(n+1)/2', weyl: 'the symmetric group S_{n+1}, order (n+1)!', degrees: '2, 3, …, n+1', size: 'n(n+2)', sizeNote: 'n(n+2) is the dimension of the Lie algebra',
+    diagram: 'A plain chain. Neighbouring simple roots meet at 120°, non-neighbours at 90°, and all roots have the same length.',
+    history: 'Galois knew that PSL_{2}(p) is simple for primes p ≥ 5 (1832). Jordan (1870) and Dickson (1901) extended this to every dimension and every finite field.',
+    notes: ['A_{1}(4) ≅ A_{1}(5) ≅ A_{5}, A_{1}(9) ≅ A_{6} and A_{3}(2) ≅ A_{8}.', 'A_{1}(7) ≅ A_{2}(2) is the symmetry group of the Fano plane, of order 168.', 'A_{2}(4) has the same order as A_{8}, 20,160, but is a different group. Together with the B/C pairs below, this is the only way two simple groups can share an order.'] },
+  B: { title: 'Orthogonal groups, odd dimension', alias: 'Ω_{2n+1}(q), also written O_{2n+1}(q)',
+    what: 'Symmetries of a quadratic form in an odd number of dimensions, 2n + 1. Over the real numbers the compact version is the rotation group SO(2n + 1).',
+    ranks: 'n ≥ 2', field: 'any prime power q; q ≥ 3 when n = 2',
+    general: 'q^{n^{2}} ∏_{i=1}^{n} (q^{2i} − 1) / gcd(2, q − 1)',
+    N: 'n^{2}', weyl: 'the signed permutations of n things, order 2^{n} · n!', degrees: '2, 4, …, 2n', size: 'n(2n+1)', sizeNote: 'n(2n+1) is the dimension of the Lie algebra',
+    diagram: 'A chain ending in a double edge, where the two roots meet at 135°. The arrow points to the shorter root at the end.',
+    history: 'Studied over finite fields by Jordan and by Dickson (1901). Chevalley (1955) recovered them from the Lie algebra of type B_{n}.',
+    notes: ['B_{2}(2) ≅ S_{6}; its simple part B_{2}(2)′ is A_{6}.', 'B_{2}(3) ≅ ^{2}A_{3}(2^{2}), of order 25,920. It is the simple part of the Weyl group of E_{6}.', 'For even q, B_{n}(q) ≅ C_{n}(q). For odd q and n ≥ 3 they have the same order but are different groups.'] },
+  C: { title: 'Symplectic groups', alias: 'PSp_{2n}(q), also written S_{2n}(q)',
+    what: 'Matrices that preserve a nondegenerate alternating form, the structure behind phase space in classical mechanics, modulo ±1.',
+    ranks: 'n ≥ 3 here, because C_{2} = B_{2}', field: 'any prime power q',
+    general: 'q^{n^{2}} ∏_{i=1}^{n} (q^{2i} − 1) / gcd(2, q − 1)',
+    N: 'n^{2}', weyl: 'order 2^{n} · n!, the same as for B_{n}', degrees: '2, 4, …, 2n', size: 'n(2n+1)', sizeNote: 'n(2n+1) is the dimension of the Lie algebra',
+    diagram: 'The same shape as B_{n} with the arrow reversed: here the end root is the long one.',
+    history: 'Studied by Jordan and by Dickson. Chevalley (1955) recovered them from the Lie algebra of type C_{n}.',
+    notes: ['C_{n}(q) and B_{n}(q) always have the same order. They are isomorphic when q is even and different when q is odd (n ≥ 3). That gives infinitely many pairs of distinct simple groups with equal orders.', 'The Weyl group of E_{7} is 2 × C_{3}(2), so a classical simple group sits inside the symmetries of the E_{7} root system.'] },
+  D: { title: 'Orthogonal groups, even dimension, plus type', alias: 'PΩ^{+}_{2n}(q), also written O^{+}_{2n}(q)',
+    what: 'Symmetries of a quadratic form in 2n dimensions of the split kind, whose largest totally singular subspaces are as large as possible: n dimensions.',
+    ranks: 'n ≥ 4, because D_{3} = A_{3}', field: 'any prime power q',
+    general: 'q^{n(n−1)} (q^{n} − 1) ∏_{i=1}^{n−1} (q^{2i} − 1) / gcd(4, q^{n} − 1)',
+    N: 'n(n−1)', weyl: 'signed permutations with an even number of sign changes, order 2^{n−1} · n!', degrees: '2, 4, …, 2n−2, and n', size: 'n(2n−1)', sizeNote: 'n(2n−1) is the dimension of the Lie algebra',
+    diagram: 'A chain that forks at the end. The two fork nodes can be swapped, and for D_{4} all three outer nodes can be rotated.',
+    history: 'Studied by Jordan and by Dickson. Chevalley (1955) recovered them from the Lie algebra of type D_{n}.',
+    notes: ['Swapping the fork nodes gives the twisted family ^{2}D_{n}; rotating the three arms of D_{4} (triality) gives ^{3}D_{4}.', 'D_{4}(2) = PΩ^{+}_{8}(2) is the simple part of the Weyl group of E_{8}.'] },
+  '2A': { title: 'Unitary groups', alias: 'PSU_{n+1}(q), also written U_{n+1}(q)',
+    what: 'Matrices of determinant 1 that preserve a Hermitian form over the field with q^{2} elements, modulo scalars: a finite-field version of the unitary groups of quantum mechanics.',
+    ranks: 'n ≥ 2, because ^{2}A_{1} is just A_{1}', field: 'any prime power q; q ≥ 3 when n = 2',
+    general: 'q^{n(n+1)/2} ∏_{i=1}^{n} (q^{i+1} − (−1)^{i+1}) / gcd(n+1, q + 1)',
+    N: 'n(n+1)/2, as for A_{n}', weyl: null, degrees: '2, 3, …, n+1, as for A_{n}, but odd d gives a factor q^{d} + 1', degSub: false, size: 'n(n+2)', sizeNote: 'the dimension of the Lie algebra of A_{n}',
+    diagram: 'The A_{n} chain folded in half by its left–right flip. The dashed arcs join the nodes that the twist swaps.',
+    history: 'Studied by Jordan and by Dickson. Steinberg (1959) explained them as twisted versions of A_{n}.',
+    notes: ['^{2}A_{2}(2^{2}) has order 72 and is solvable.', '^{2}A_{2}(3^{2}) ≅ G_{2}(2)′ and ^{2}A_{3}(2^{2}) ≅ B_{2}(3).', 'Replacing q by −q in the order of A_{n}(q) gives the order of ^{2}A_{n}(q^{2}), up to sign. This pattern, part of what is called Ennola duality, runs through the whole theory.'] },
+  '2D': { title: 'Orthogonal groups, even dimension, minus type', alias: 'PΩ^{−}_{2n}(q), also written O^{−}_{2n}(q)',
+    what: 'Symmetries of a quadratic form in 2n dimensions of the non-split kind, whose largest totally singular subspaces have dimension n − 1.',
+    ranks: 'n ≥ 4, because ^{2}D_{3} = ^{2}A_{3}', field: 'any prime power q',
+    general: 'q^{n(n−1)} (q^{n} + 1) ∏_{i=1}^{n−1} (q^{2i} − 1) / gcd(4, q^{n} + 1)',
+    N: 'n(n−1), as for D_{n}', weyl: null, degrees: 'as for D_{n}, with q^{n} + 1 in place of q^{n} − 1', degSub: false, size: 'n(2n−1)', sizeNote: 'the dimension of the Lie algebra of D_{n}',
+    diagram: 'The D_{n} diagram with its two fork nodes swapped. Only one factor of the order changes sign.',
+    history: 'Studied by Dickson. Steinberg (1959) explained them as twisted versions of D_{n}.',
+    notes: ['Over a finite field, nondegenerate quadratic forms in an even dimension come in exactly two kinds, plus and minus. D_{n} and ^{2}D_{n} are their symmetry groups.'] },
+  G2: { title: 'Exceptional groups G₂', alias: 'automorphisms of the octonions',
+    what: 'The automorphisms of the octonions, the 8-dimensional non-associative number system, over the field with q elements.',
+    ranks: 'rank 2 only', field: 'any prime power q ≥ 3',
+    N: '6', weyl: 'dihedral of order 12, the symmetries of a hexagon', degrees: '2, 6', size: '14', sizeNote: 'the dimension of the Lie algebra',
+    diagram: 'Two nodes joined by a triple edge at 150°. The long roots are √3 times the short ones; the arrow points to the short root.',
+    history: 'Found over finite fields by Dickson (1905). Chevalley (1955) placed them in the general theory.',
+    notes: ['G_{2}(2) is not simple; its index-2 subgroup is ^{2}A_{2}(3^{2}).', 'G_{2}(4) sits in the Suzuki chain inside the sporadic group Suz, and J_{1} is a subgroup of G_{2}(11).', 'In characteristic 3 the long and short roots can be swapped, which is what makes the Ree groups ^{2}G_{2} possible.'] },
+  F4: { title: 'Exceptional groups F₄', alias: 'tied to the Albert algebra',
+    what: 'Closely tied to the Albert algebra, the 27-dimensional exceptional Jordan algebra of 3 × 3 Hermitian octonion matrices.',
+    ranks: 'rank 4 only', field: 'any prime power q',
+    N: '24', weyl: 'order 1,152', degrees: '2, 6, 8, 12', size: '52', sizeNote: 'the dimension of the Lie algebra',
+    diagram: 'A chain of four with a double edge in the middle: two long roots on one side, two short roots on the other.',
+    history: 'Constructed over finite fields by Chevalley (1955).',
+    notes: ['In characteristic 2 the diagram can be flipped end to end, swapping long and short roots. That symmetry produces the Ree groups ^{2}F_{4}.'] },
+  E6: { title: 'Exceptional groups E₆', alias: 'a cubic form in 27 dimensions',
+    what: 'Linear maps of a 27-dimensional space that preserve a particular cubic form, modulo scalars.',
+    ranks: 'rank 6 only', field: 'any prime power q',
+    N: '36', weyl: 'order 51,840, the symmetry group of the 27 lines on a cubic surface', degrees: '2, 5, 6, 8, 9, 12', size: '78', sizeNote: 'the dimension of the Lie algebra',
+    diagram: 'A chain of five with a branch from the middle node. Its left–right flip gives the twisted family ^{2}E_{6}.',
+    history: 'Dickson found these groups in 1901 through the 27 lines on a cubic surface. Chevalley (1955) placed them in the general theory.',
+    notes: ['The Weyl group has a simple subgroup of index 2: B_{2}(3) ≅ ^{2}A_{3}(2^{2}), of order 25,920.'] },
+  E7: { title: 'Exceptional groups E₇', alias: 'acts on 56 dimensions',
+    what: 'Acts on a 56-dimensional space, preserving both a quartic form and a symplectic form.',
+    ranks: 'rank 7 only', field: 'any prime power q',
+    N: '63', weyl: 'order 2,903,040, equal to 2 × C_{3}(2)', degrees: '2, 6, 8, 10, 12, 14, 18', size: '133', sizeNote: 'the dimension of the Lie algebra',
+    diagram: 'A chain of six with a branch from the third node.',
+    history: 'First constructed over finite fields by Chevalley (1955).',
+    notes: ['Its Weyl group is 2 × C_{3}(2), so the simple group C_{3}(2) of order 1,451,520 is built into the E_{7} root system.'] },
+  E8: { title: 'Exceptional groups E₈', alias: 'the largest exceptional family',
+    what: 'The largest exceptional family. Its smallest faithful representation is its own 248-dimensional Lie algebra.',
+    ranks: 'rank 8 only', field: 'any prime power q',
+    N: '120', weyl: 'order 696,729,600', degrees: '2, 8, 12, 14, 18, 20, 24, 30', size: '248', sizeNote: 'the dimension of the Lie algebra',
+    diagram: 'A chain of seven with a branch from the third node. Its roots generate the E_{8} lattice, the densest sphere packing in 8 dimensions.',
+    history: 'First constructed over finite fields by Chevalley (1955).',
+    notes: ['E_{8}(2) alone has order about 3.4 · 10^{74}.', 'The simple part of its Weyl group is D_{4}(2) = PΩ^{+}_{8}(2).', 'The sporadic Thompson group Th is a subgroup of E_{8}(3).'] },
+  '2B2': { title: 'Suzuki groups', alias: 'Sz(q), q = 2^{2m+1}',
+    what: 'Found by Michio Suzuki in 1960 while classifying doubly transitive groups. They are the only non-abelian simple groups whose order is not divisible by 3.',
+    ranks: 'twisted from B_{2}', field: 'q = 2^{2m+1} with m ≥ 1: 8, 32, 128, …',
+    N: '2, half of the 4 positive roots of B_{2}', Nlabel: 'Power of q', weyl: null, degrees: null, size: '5', sizeNote: 'half of 10, the dimension of B_{2}',
+    diagram: 'The two nodes of B_{2} look different, because one root is longer. In characteristic 2 a special map swaps them anyway; combined with a square root of the Frobenius map it gives these groups, which is why q must be an odd power of 2.',
+    history: 'Suzuki (1960). Ree soon explained them as twisted Chevalley groups.',
+    notes: ['The smallest is ^{2}B_{2}(8), of order 29,120.', '^{2}B_{2}(2) has order 20 and is solvable.'] },
+  '2G2': { title: 'Ree groups of type G₂', alias: 'R(q), q = 3^{2m+1}',
+    what: 'They exist only when q is an odd power of 3, using a symmetry of G_{2} that appears only in characteristic 3.',
+    ranks: 'twisted from G_{2}', field: 'q = 3^{2m+1} with m ≥ 1: 27, 243, …',
+    N: '3, half of the 6 positive roots of G_{2}', Nlabel: 'Power of q', weyl: null, degrees: null, size: '7', sizeNote: 'half of 14, the dimension of G_{2}',
+    diagram: 'In characteristic 3 the long and short roots of G_{2} can be swapped. Combined with a square root of the Frobenius map, that gives the Ree groups.',
+    history: 'Rimhak Ree (1960).',
+    notes: ['^{2}G_{2}(3) is not simple; its derived subgroup is A_{1}(8).', 'The smallest simple one is ^{2}G_{2}(27), of order 10,073,444,472.'] },
+  '2F4': { title: 'Ree groups of type F₄', alias: 'q = 2^{2m+1}',
+    what: 'They exist only when q is an odd power of 2, using a symmetry of F_{4} that appears only in characteristic 2.',
+    ranks: 'twisted from F_{4}', field: 'q = 2^{2m+1} with m ≥ 1: 8, 32, …',
+    N: '12, half of the 24 positive roots of F_{4}', Nlabel: 'Power of q', weyl: null, degrees: null, size: '26', sizeNote: 'half of 52, the dimension of F_{4}',
+    diagram: 'In characteristic 2 the F_{4} diagram can be flipped end to end, swapping long and short roots.',
+    history: 'Ree (1961).',
+    notes: ['^{2}F_{4}(2) is not simple. Its index-2 subgroup is the Tits group, which is listed with the sporadics.'] },
+  '3D4': { title: 'Steinberg triality groups', alias: 'twisted by triality',
+    what: 'Built from D_{4}(q^{3}) using triality, the order-3 rotation of the D_{4} diagram, together with the Frobenius map of the field with q^{3} elements.',
+    ranks: 'twisted from D_{4}', field: 'any prime power q',
+    N: '12, as for D_{4}', weyl: null, degrees: null, size: '28', sizeNote: 'the dimension of D_{4}',
+    diagram: 'D_{4} is the only connected Dynkin diagram with a symmetry of order 3: its three outer nodes can be rotated.',
+    history: 'Robert Steinberg (1959).',
+    notes: ['The smallest is ^{3}D_{4}(2^{3}), of order 211,341,312.'] },
+  '2E6': { title: 'Twisted E₆', alias: 'twisted by the flip of E₆',
+    what: 'Built from E_{6}(q^{2}) using the left–right flip of the E_{6} diagram, together with the Frobenius map of the field with q^{2} elements.',
+    ranks: 'twisted from E_{6}', field: 'any prime power q',
+    N: '36, as for E_{6}', weyl: null, degrees: 'as for E_{6}, with q^{9} + 1 and q^{5} + 1 in place of q^{9} − 1 and q^{5} − 1', degSub: false, size: '78', sizeNote: 'the dimension of E_{6}',
+    diagram: 'The E_{6} diagram folded by its flip: nodes 1 and 6 swap, 3 and 5 swap, and 2 and 4 stay put.',
+    history: 'Steinberg (1959).',
+    notes: ['Inside the Baby Monster, a transposition has centralizer 2.^{2}E_{6}(2):2.'] },
+};
+
+const GINFO = {
+  1: { title: 'Mathieu groups', eyebrow: 'Sporadic · 1st generation',
+    what: 'The first sporadic groups, found by Émile Mathieu in 1861 and 1873 as highly transitive permutation groups. All five live inside M_{24}, the symmetry group of the binary Golay code: a 12-dimensional code of length 24 that corrects up to 3 errors.',
+    notes: ['M_{11} and M_{23} are 4-transitive, and M_{12} and M_{24} are 5-transitive. Apart from symmetric and alternating groups, they are the only finite groups that are even 4-transitive.', 'The next sporadic group, J_{1}, was not found until 1965.'] },
+  2: { title: 'Leech lattice groups', eyebrow: 'Sporadic · 2nd generation',
+    what: 'Seven groups found in the late 1960s, all living inside Co_{1}, the symmetry group of the Leech lattice modulo ±1. The Leech lattice is the densest sphere packing in 24 dimensions; each sphere touches 196,560 others.',
+    notes: ['Co_{2} and Co_{3} fix single lattice vectors. HS, McL, Suz and J_{2} come from finer structures in the lattice.', 'That the Leech lattice is the densest packing in 24 dimensions was proved in 2016.'] },
+  3: { title: 'Monster groups', eyebrow: 'Sporadic · 3rd generation',
+    what: 'Eight groups tied to the Monster, the largest sporadic group. Most were found in the 1970s, several through Fischer’s 3-transposition method, and each appears inside the Monster, often as the centralizer of one of its elements.',
+    notes: ['With the first two generations they make up the 20-member happy family: every one is a quotient of a subgroup of the Monster.', 'The Monster’s smallest representation has dimension 196,883, and 196,883 + 1 is a coefficient of the j-function. Explaining that coincidence, monstrous moonshine, earned Richard Borcherds a Fields Medal in 1998.'] },
+  0: { title: 'Pariahs', eyebrow: 'Sporadic · outside the Monster',
+    what: 'Six sporadic groups that are not quotients of any subgroup of the Monster. They share no common construction; each was found and built on its own.',
+    notes: ['J_{1}, found in 1965, was the first sporadic group discovered after Mathieu.', 'Ly and J_{4} were first built by computer, through very large permutation and matrix representations.'] },
+  '-1': { title: 'Tits group', eyebrow: 'Edge case',
+    what: '^{2}F_{4}(2)′ is the index-2 subgroup of ^{2}F_{4}(2). The family ^{2}F_{4}(q) does not give a simple group at q = 2, and this subgroup is simple but fits no family pattern.',
+    notes: ['Some authors count it as the 27th sporadic group; others list it with the groups of Lie type.'] },
+};
+
 /* ---------- blocks ---------- */
 const BLOCKS = {
   cyc: { label: 'Cyclic', eyebrow: 'Abelian · cyclic of prime order' },
@@ -749,7 +1047,14 @@ const plain = s => s.replace(/[\^_]\{([^}]*)\}/g, '$1');
 // header row
 grid.appendChild(place(div('rlabel top', 'n'), 1, 1));
 const headers = [['Z', 'Z_{p}', 2], ['Alt', 'A_{n}', 3], ...FIDS.map(fid => [FAM[fid].glyph, FAM[fid].head, FAM[fid].col])];
-for (const [g, lab, col] of headers) grid.appendChild(place(div('colhead', `${dynkin(g)}<span class="lab">${m(lab)}</span>`), col, 1));
+function btn(cls, html) { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.innerHTML = html; return b; }
+for (const [g, lab, col] of headers) {
+  const key = g === 'Z' || g === 'Alt' ? g : FIDS.find(fid => FAM[fid].col === col);
+  const h = btn('colhead', `${dynkin(g)}<span class="lab">${m(lab)}</span>`);
+  h.dataset.fam = key; h.setAttribute('aria-pressed', 'false'); h.setAttribute('aria-label', `About the ${plain(lab)} family`);
+  h.addEventListener('click', () => openSpec({ type: 'fam', key }));
+  grid.appendChild(place(h, col, 1));
+}
 for (let r = 1; r <= 8; r++) grid.appendChild(place(div('rlabel', String(r)), 1, r + 1));
 
 PRIMES_TILE.forEach((p, i) => {
@@ -774,16 +1079,19 @@ for (const fid of FIDS) {
 for (const col of [2, 3, 4, 5, 6, 7, 8, 9]) grid.appendChild(place(div('cont', '⋮'), col, 10));
 
 const legend = place(div('legend', ''), 5, 2, 15); legend.id = 'legend'; grid.appendChild(legend);
-grid.appendChild(place(div('readme', 'Rows are Lie rank <i>n</i>. A Lie-type tile stands for a whole family, one group for each allowed field size <i>q</i>; its number is the order of the smallest member. The first two columns simply list their groups in order.'), 10, 4, 10));
+grid.appendChild(place(div('readme', 'Rows are Lie rank <i>n</i>; the first two columns simply list their groups in order. Each Lie-type tile covers every allowed field size <i>q</i> and shows its smallest order. Tap a column’s diagram for an overview of the whole family.'), 10, 4, 10));
 
 // sporadic block
-const sh = div('shead', '<h2>26 sporadic groups</h2><p>They belong to no family. Twenty of them live inside the Monster, the “happy family”; the six pariahs do not.</p>');
+const sh = div('shead', '<h2>26 sporadic groups</h2><p>They belong to no family. Twenty of them live inside the Monster, the “happy family”; the six pariahs do not. Tap a row name for an overview.</p>');
 spor.appendChild(sh);
 let srow = 2;
 for (const gen of [1, 2, 3, 0, -1]) {
   const list = SPOR.filter(s => s.gen === gen);
   const [t, u] = GEN[gen];
-  spor.appendChild(place(div('slabel', `<span class="t">${t}</span><span class="u">${u}</span>`), 1, srow, 3));
+  const sl = btn('slabel', `<span class="t">${t}</span><span class="u">${u}</span>`);
+  sl.dataset.gen = String(gen); sl.setAttribute('aria-pressed', 'false'); sl.setAttribute('aria-label', `About the ${t}`);
+  sl.addEventListener('click', () => openSpec({ type: 'gen', gen }));
+  spor.appendChild(place(sl, 1, srow, 3));
   list.forEach((s, i) => {
     const block = gen === 0 ? 'par' : gen === -1 ? 'tit' : 'spo';
     const el = tile(s.id, block, { type: 'spo', id: s.id }, s.sym, null, compact(s.order), s.order, `${s.name} ${plain(s.sym)}, order ${fmtInt(s.order)}`);
@@ -817,22 +1125,81 @@ const narrow = window.matchMedia('(max-width: 1399.98px)');
 let current = null;
 
 function tileIdFor(spec) {
+  if (spec.type === 'fam' || spec.type === 'gen') return null;
   if (spec.type === 'cyc') return PRIMES_TILE.includes(Number(spec.p)) && spec.p < 100n ? `Z${spec.p}` : null;
   if (spec.type === 'alt') return spec.n >= 5 && spec.n <= 12 ? `Alt${spec.n}` : null;
   if (spec.type === 'spo') return spec.id;
   const f = FAM[spec.fid]; if (f.rank) return spec.fid; return spec.n <= 8 ? spec.fid + spec.n : null;
 }
+const famBtn = key => `<button type="button" class="famlink" data-fam="${key}">About the ${m(key === 'Z' ? 'Z_{p}' : key === 'Alt' ? 'A_{n}' : FAM[key].head)} family →</button>`;
+const genBtn = gen => `<button type="button" class="famlink" data-gen="${gen}">About the ${GINFO[gen].title} →</button>`;
+function chipFor(id) { const t = TILES[id]; return `<button type="button" class="gchip" data-open="${id}"><span class="gs">${t.querySelector('.s').innerHTML}</span><span class="go">${t.querySelector('.o').innerHTML}</span></button>`; }
+function famTiles(key) {
+  if (key === 'Z') return PRIMES_TILE.map(p => `Z${p}`);
+  if (key === 'Alt') return range(5, 12).map(n => `Alt${n}`);
+  const f = FAM[key]; return f.rank ? [key] : range(f.nmin, 8).map(n => key + n);
+}
+const SR_CHAR = { '2B2': 2, '2G2': 3, '2F4': 2 };
+function diagCaption(fid, n, rd) {
+  const k = rd.deg.length;
+  let s = `${k} node${k > 1 ? 's' : ''}, one for each simple root.`;
+  if (rd.sr) s += ` The dashed arc swaps long and short roots, which is possible only in characteristic ${SR_CHAR[fid]}.`;
+  else if (fid === '3D4') s += ' The dashed circle is the order-3 triality rotation used for the twist.';
+  else if (rd.twisted) s += ' Dashed arcs join the nodes swapped by the twist.';
+  return s;
+}
+function rootRows(fid, n, rd) {
+  const sub = t => `<span class="sub">${m(t)}</span>`;
+  let h = rd.sr
+    ? `<dt>Power of q</dt><dd>${rd.Npos / 2}${sub(`half the ${rd.Npos} positive roots of ${rd.baseName}`)}</dd>`
+    : `<dt>Positive roots</dt><dd>${rd.Npos}${sub('the power of q in front of the order')}</dd>`;
+  if (!rd.twisted) h += `<dt>Degrees</dt><dd>${rd.deg.join(', ')}${sub('one factor (q^{d} − 1) for each degree d')}</dd><dt>Weyl group</dt><dd>order ${fmtInt(rd.W)}${sub('the product of the degrees')}</dd>`;
+  else if (!rd.sr && fid !== '3D4') h += `<dt>Degrees</dt><dd>${rd.deg.join(', ')}${sub(`as for ${rd.baseName}; the twist turns some factors into q^{d} + 1`)}</dd>`;
+  h += `<dt>Size</dt><dd>${m(`≈ q^{${rd.sizeExp}}`)}${sub(rd.sr ? `half the dimension of ${rd.baseName}` : `${rd.dim} is the dimension of the Lie algebra of ${rd.baseName}`)}</dd>`;
+  return h;
+}
+function renderFam(key) {
+  const I = FINFO[key], f = FAM[key], isLie = !!f;
+  const block = isLie ? f.block : key === 'Z' ? 'cyc' : 'alt';
+  const head = isLie ? f.head : key === 'Z' ? 'Z_{p}' : 'A_{n}';
+  const sub = t => (t ? `<span class="sub">${m(t)}</span>` : '');
+  let kv;
+  if (isLie) {
+    kv = `<dt>Ranks</dt><dd>${m(I.ranks)}</dd><dt>Field size</dt><dd>${m(I.field)}</dd>
+    <dt>Order</dt><dd class="formula">${f.rank ? formulaHTML(f, f.rank) : m(I.general)}</dd>
+    <dt>${I.Nlabel || 'Positive roots'}</dt><dd>${m(I.N)}${I.Nlabel ? '' : sub('the power of q in front of the order')}</dd>
+    ${I.weyl ? `<dt>Weyl group</dt><dd>${m(I.weyl)}</dd>` : ''}
+    ${I.degrees ? `<dt>Degrees</dt><dd>${m(I.degrees)}${I.degSub === false ? '' : sub('one factor (q^{d} − 1) for each degree d; their product is the order of the Weyl group')}</dd>` : ''}
+    <dt>Size</dt><dd>${m(`≈ q^{${I.size}}`)}${sub(I.sizeNote)}</dd>`;
+  } else kv = I.rows.map(([k, v]) => `<dt>${k}</dt><dd>${m(v)}</dd>`).join('');
+  const diag = isLie ? dynk(key, f.rank || null) : `<div class="bigglyph">${dynkin(key)}</div>`;
+  return `${eyebrow(block, 'whole family')}<h2 class="p-title">${m(head)}</h2><p class="p-alias">${m(I.title)} · ${m(I.alias)}</p>
+  <div class="dkbox">${diag}<p class="cap">${m(I.diagram)}</p></div>
+  <p class="p-desc">${m(I.what)}</p>
+  <dl class="kv">${kv}</dl>
+  ${I.history ? `<h3 class="p-h3">History</h3><p class="p-text">${m(I.history)}</p>` : ''}
+  <h3 class="p-h3">Worth knowing</h3><ul class="plist">${I.notes.map(x => `<li>${m(x)}</li>`).join('')}</ul>
+  <h3 class="p-h3">In the table</h3><div class="gchips">${famTiles(key).map(chipFor).join('')}</div>`;
+}
+function renderGen(gen) {
+  const I = GINFO[gen], list = SPOR.filter(s => s.gen === gen);
+  const block = gen === 0 ? 'par' : gen === -1 ? 'tit' : 'spo';
+  return `<p class="p-eyebrow"><span class="sw k-${block}"></span>${I.eyebrow}</p><h2 class="p-title">${m(I.title)}</h2><p class="p-alias">${list.length} group${list.length > 1 ? 's' : ''}</p>
+  <p class="p-desc">${m(I.what)}</p>
+  <h3 class="p-h3">Members</h3><div class="gchips">${list.map(s => chipFor(s.id)).join('')}</div>
+  <h3 class="p-h3">Worth knowing</h3><ul class="plist">${I.notes.map(x => `<li>${m(x)}</li>`).join('')}</ul>`;
+}
 function eyebrow(block, extra) { return `<p class="p-eyebrow"><span class="sw k-${block}"></span>${BLOCKS[block].eyebrow}${extra ? ' · ' + extra : ''}</p>`; }
 function orderRow(o) { return `<dt>Order</dt><dd><span class="num">${fmtInt(o)}</span><span class="digits">${o.toString().length} digit${o.toString().length > 1 ? 's' : ''}</span></dd>`; }
 
 function renderCyc(p) {
-  return `${eyebrow('cyc')}<h2 class="p-title">${m(`Z_{${p}}`)}</h2><p class="p-alias">integers modulo ${p}</p>
+  return `${eyebrow('cyc')}<h2 class="p-title">${m(`Z_{${p}}`)}</h2><p class="p-alias">integers modulo ${p}</p>${famBtn('Z')}
   <p class="p-desc">A group of prime order has no subgroups except itself and the trivial group, so it cannot be broken down further. These are the only abelian simple groups, and the only simple groups that are solvable.</p>
   <dl class="kv">${orderRow(p)}<dt>Factors</dt><dd class="fact">${p}</dd><dt>Family</dt><dd>${m('One group for every prime p. There are infinitely many.')}</dd></dl>`;
 }
 function renderAlt(n) {
   const o = altOrder(n);
-  return `${eyebrow('alt')}<h2 class="p-title">${m(`A_{${n}}`)}</h2><p class="p-alias">even permutations of ${n} objects</p>
+  return `${eyebrow('alt')}<h2 class="p-title">${m(`A_{${n}}`)}</h2><p class="p-alias">even permutations of ${n} objects</p>${famBtn('Alt')}
   <p class="p-desc">${m(ALT_NOTES[n] || `The even permutations of ${n} objects, half of the symmetric group S_{${n}}. Every A_{n} with n ≥ 5 is simple.`)}</p>
   <dl class="kv"><dt>Formula</dt><dd class="formula">${m('n! / 2')}</dd>${orderRow(o)}<dt>Factors</dt><dd class="fact">${fmtFactor(altFactor(n))}</dd></dl>`;
 }
@@ -841,7 +1208,7 @@ function renderSpo(id) {
   const block = s.gen === 0 ? 'par' : s.gen === -1 ? 'tit' : 'spo';
   const extra = s.gen > 0 ? `${GEN[s.gen][0]}, ${GEN[s.gen][1]}` : null;
   const map = new Map(); for (const [p, e] of Object.entries(s.f)) addF(map, B(p), e);
-  return `${eyebrow(block, extra)}<h2 class="p-title">${m(s.sym)}</h2><p class="p-alias">${s.name}</p>
+  return `${eyebrow(block, extra)}<h2 class="p-title">${m(s.sym)}</h2><p class="p-alias">${s.name}</p>${genBtn(s.gen)}
   <p class="p-desc">${m(s.note)}</p>
   <dl class="kv">${orderRow(s.order)}<dt>Factors</dt><dd class="fact">${fmtFactor(map)}</dd>
   <dt>Found</dt><dd>${s.year}, by ${s.by}</dd>
@@ -857,11 +1224,13 @@ function renderLie(fid, n, selQ) {
   const qs = String(sel.q);
   const fac = lieFactor(fid, n, sel.q);
   const iso = isoNote(fid, n, sel.q);
+  const rd = rankData(fid, n);
   const row = x => `<li><button type="button" class="mrow${x.q === sel.q ? ' on' : ''}" data-q="${x.q}" aria-pressed="${x.q === sel.q}"><span class="mq">q = ${x.q}</span><span class="ms">${m(f.sym(n, String(x.q)))}</span><span class="mo">${compact(x.order)}</span></button></li>`;
-  return `${eyebrow(f.block, `rank ${n}`)}<h2 class="p-title">${m(f.sym(n, 'q'))}</h2>${f.alias ? `<p class="p-alias">${m(f.alias(n, 'q'))}</p>` : ''}
+  return `${eyebrow(f.block, `rank ${n}`)}<h2 class="p-title">${m(f.sym(n, 'q'))}</h2>${f.alias ? `<p class="p-alias">${m(f.alias(n, 'q'))}</p>` : ''}${famBtn(fid)}
+  <div class="dkbox">${dynk(fid, n)}<p class="cap">${m(diagCaption(fid, n, rd))}</p></div>
   <p class="p-desc">${m(f.desc(n))}</p>
   <dl class="kv"><dt>Order</dt><dd class="formula">${formulaHTML(f, n)}</dd><dt>Field size</dt><dd>${m(f.qText)}</dd>
-  ${ex ? `<dt>Left out</dt><dd>${m(ex)}</dd>` : ''}${note ? `<dt>Note</dt><dd>${m(note)}</dd>` : ''}</dl>
+  ${ex ? `<dt>Left out</dt><dd>${m(ex)}</dd>` : ''}${note ? `<dt>Note</dt><dd>${m(note)}</dd>` : ''}${rootRows(fid, n, rd)}</dl>
   <section class="card" aria-label="Selected member"><p class="card-h">${m(f.sym(n, qs))}${f.alias ? ` <span class="al">= ${m(f.alias(n, qs))}</span>` : ''}</p>
   <dl class="kv">${orderRow(sel.order)}<dt>Factors</dt><dd class="fact">${fmtFactor(fac)}</dd></dl>${iso ? `<p class="iso">${m(iso)}</p>` : ''}</section>
   <h3 class="p-h3">Members by field size</h3>
@@ -874,8 +1243,13 @@ function openSpec(spec, opts = {}) {
   if (spec.type === 'cyc') html = renderCyc(spec.p);
   else if (spec.type === 'alt') html = renderAlt(spec.n);
   else if (spec.type === 'spo') html = renderSpo(spec.id);
+  else if (spec.type === 'fam') html = renderFam(spec.key);
+  else if (spec.type === 'gen') html = renderGen(spec.gen);
   else html = renderLie(spec.fid, spec.n, spec.q ?? null);
   pbody.innerHTML = html;
+  for (const b of pbody.querySelectorAll('[data-fam]')) b.addEventListener('click', () => openSpec({ type: 'fam', key: b.dataset.fam }));
+  for (const b of pbody.querySelectorAll('[data-gen]')) b.addEventListener('click', () => openSpec({ type: 'gen', gen: Number(b.dataset.gen) }));
+  for (const b of pbody.querySelectorAll('[data-open]')) b.addEventListener('click', () => openSpec(SPEC_BY_ID[b.dataset.open]));
   if (spec.type === 'lie') {
     for (const b of pbody.querySelectorAll('.mrow')) b.addEventListener('click', () => {
       const q = B(b.dataset.q); openSpec({ type: 'lie', fid: spec.fid, n: spec.n, q }, { keepScroll: true });
@@ -884,6 +1258,8 @@ function openSpec(spec, opts = {}) {
   }
   const id = tileIdFor(spec);
   for (const t of Object.values(TILES)) t.setAttribute('aria-pressed', String(t.dataset.id === id));
+  for (const h of document.querySelectorAll('button.colhead')) h.setAttribute('aria-pressed', String(spec.type === 'fam' && h.dataset.fam === spec.key));
+  for (const h of document.querySelectorAll('button.slabel')) h.setAttribute('aria-pressed', String(spec.type === 'gen' && Number(h.dataset.gen) === spec.gen));
   if (!opts.keepScroll) panel.scrollTop = 0;
   if (opts.open !== false && narrow.matches) panel.classList.add('open');
 }
@@ -960,6 +1336,8 @@ for (const p of PRIMES_TILE) SPEC_BY_ID[`Z${p}`] = { type: 'cyc', p: B(p) };
 for (let n = 5; n <= 12; n++) SPEC_BY_ID[`Alt${n}`] = { type: 'alt', n };
 for (const fid of FIDS) { const f = FAM[fid]; if (f.rank) SPEC_BY_ID[fid] = { type: 'lie', fid, n: f.rank }; else for (let n = f.nmin; n <= 8; n++) SPEC_BY_ID[fid + n] = { type: 'lie', fid, n }; }
 for (const s of SPOR) SPEC_BY_ID[s.id] = { type: 'spo', id: s.id };
+for (const key of ['Z', 'Alt', ...FIDS]) SPEC_BY_ID[`fam-${key}`] = { type: 'fam', key };
+for (const [g, k] of [[1, '1'], [2, '2'], [3, '3'], [0, 'pariahs'], [-1, 'tits']]) SPEC_BY_ID[`gen-${k}`] = { type: 'gen', gen: g };
 if (startId && SPEC_BY_ID[startId]) openSpec(SPEC_BY_ID[startId]);
 else openSpec({ type: 'alt', n: 5 }, { open: false });
 </script>
