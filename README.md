@@ -17,6 +17,7 @@ levels/
   03-path-to-zero/    Path to Zero
 explore/
   m11/                M11 symmetry (S(4,5,11) and the Mathieu group M11)
+  simple-groups/      Periodic table of finite simple groups (families by Lie rank, sporadics, order lookup)
 ```
 
 ## Add a level

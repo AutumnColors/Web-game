@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Periodic Table of Finite Simple Groups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Single dark theme to match the Web-game app.
+   Layout: the chemist's periodic table re-cut along Lie theory. Columns are the 18 infinite families, each headed by its Dynkin diagram; rows are Lie rank; the 26 sporadics sit detached below like the f-block. The detail panel docks right on wide screens and rises as a sheet on narrow ones. */
+:root{
+  --bg: oklch(0.185 0.018 265);
+  --surface: oklch(0.228 0.020 265);
+  --ink: oklch(0.935 0.012 260);
+  --ink-2: oklch(0.83 0.016 260);
+  --muted: oklch(0.70 0.020 260);
+  --line: oklch(0.335 0.022 265);
+  --accent: oklch(0.770 0.125 270);
+  --accent-soft: oklch(0.770 0.125 270 / 0.16);
+  --on-accent: oklch(0.20 0.03 268);
+  --shadow: oklch(0 0 0 / 0.45);
+  --c-cyc: oklch(0.330 0.014 255);
+  --c-alt: oklch(0.375 0.060 78);
+  --c-cla: oklch(0.355 0.065 245);
+  --c-clt: oklch(0.360 0.055 195);
+  --c-exc: oklch(0.355 0.070 300);
+  --c-ext: oklch(0.360 0.070 345);
+  --c-spo: oklch(0.375 0.070 45);
+  --c-par: oklch(0.345 0.090 22);
+  --ramp-lo: oklch(0.300 0.030 250);
+  --ramp-hi: oklch(0.820 0.110 285);
+  --ramp-ink: oklch(0.190 0.020 265);
+  --f-math: "STIX Two Text", "STIX Two Math", "Cambria Math", Cambria, "Times New Roman", serif;
+  --f-ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+
+*{ box-sizing: border-box; }
+body{ margin: 0; }
+body{
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-ui); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-top: calc(20px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+}
+.wrap{ max-width: 1460px; margin: 0 auto; }
+button{ font: inherit; color: inherit; }
+sup, sub{ font-size: .68em; line-height: 0; position: relative; vertical-align: baseline; }
+sup{ top: -.52em; } sub{ top: .26em; }
+i{ font-style: italic; }
+
+/* ---------- header ---------- */
+.top{ display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px 56px; align-items: end; margin-bottom: 26px; }
+@media (min-width: 960px){ .top{ grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); } }
+.eyebrow{ margin: 0 0 10px; font-size: 12px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+h1{ margin: 0 0 14px; font-family: var(--f-math); font-weight: 500; font-size: clamp(31px, 4.3vw, 50px); line-height: 1.04; letter-spacing: -.012em; text-wrap: balance; }
+.lede{ margin: 0; max-width: 62ch; color: var(--ink-2); }
+.lede strong{ color: var(--ink); font-weight: 600; }
+
+.lookup{ background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
+.lookup label{ font-family: var(--f-math); font-size: 19px; line-height: 1.2; }
+.lookup .row{ display: flex; gap: 8px; min-width: 0; }
+.lookup input{
+  flex: 1; min-width: 0; font-family: var(--f-mono); font-size: 16px; padding: 9px 12px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.lookup input:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn{ border: 0; border-radius: 8px; padding: 9px 16px; background: var(--accent); color: var(--on-accent); font-weight: 600; cursor: pointer; }
+.btn:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+.chips{ display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.chip{ border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 2px 10px; font-family: var(--f-mono); font-size: 12px; cursor: pointer; color: var(--ink-2); }
+.chip:hover{ border-color: var(--accent); color: var(--accent); }
+.chip:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+.result{ font-size: 14px; min-width: 0; }
+.result:empty{ display: none; }
+.result p{ margin: 0 0 6px; }
+.result .num{ font-family: var(--f-mono); font-size: 13px; word-break: break-all; }
+.r-list{ list-style: none; margin: 4px 0 6px; padding: 0; display: grid; gap: 4px; }
+.r-list li{ font-family: var(--f-math); font-size: 17px; line-height: 1.35; }
+.r-list .eq{ color: var(--muted); padding: 0 .2em; }
+.r-list .al{ color: var(--ink-2); font-size: 15px; }
+.glink{ border: 0; background: none; padding: 0; cursor: pointer; color: var(--accent); font-family: var(--f-math); font-size: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.glink:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+.r-foot{ color: var(--muted); font-size: 12.5px; }
+.r-err{ color: var(--ink-2); }
+
+/* ---------- toolbar ---------- */
+.toolbar{ display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; margin-bottom: 12px; }
+.seg{ display: inline-flex; border: 1px solid var(--line); border-radius: 9px; padding: 2px; background: var(--surface); }
+.seg button{ border: 0; background: transparent; padding: 5px 12px; border-radius: 7px; font-size: 13px; cursor: pointer; color: var(--ink-2); }
+.seg button[aria-checked="true"]{ background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.seg button:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+.hint{ margin: 0; font-size: 13px; color: var(--muted); }
+@media (min-width: 1100px){ .narrow-only{ display: none; } }
+
+/* ---------- table ---------- */
+.layout{ display: block; }
+.tablewrap{ overflow-x: auto; min-width: 0; padding: 2px 2px 10px; -webkit-overflow-scrolling: touch; }
+.grid{ display: grid; grid-template-columns: 24px repeat(18, 52px); gap: 3px; width: max-content; }
+#grid{ grid-template-rows: auto repeat(8, 56px) 16px; }
+#spor{ margin-top: 26px; grid-auto-rows: 56px; }
+
+.colhead{ display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; padding-bottom: 6px; color: var(--ink-2); }
+.colhead svg{ width: 46px; height: 18px; overflow: visible; }
+.colhead .lab{ font-family: var(--f-math); font-size: 11.5px; line-height: 1.1; white-space: nowrap; color: var(--muted); }
+.rlabel{ display: flex; align-items: center; justify-content: center; font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
+.rlabel.top{ align-items: flex-end; padding-bottom: 8px; font-family: var(--f-math); font-style: italic; font-size: 13px; }
+.cont{ display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; line-height: 1; }
+
+.tile{
+  appearance: none; border: 0; margin: 0; border-radius: 6px;
+  background: var(--fill); color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  padding: 3px 2px; cursor: pointer; min-width: 0; overflow: hidden;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.tile:hover{ transform: translateY(-1px); box-shadow: 0 3px 8px var(--shadow); }
+.tile:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+.tile[aria-pressed="true"]{ box-shadow: 0 0 0 2px var(--accent); }
+.tile.hit{ box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); animation: ping 1.4s ease-out 2; }
+@keyframes ping{ 0%{ box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); } 60%{ box-shadow: 0 0 0 2px var(--bg), 0 0 0 9px var(--accent-soft); } 100%{ box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); } }
+.tile .s{ font-family: var(--f-math); font-size: 15px; line-height: 1.1; white-space: nowrap; }
+.tile .s.sm{ font-size: 13px; }
+.tile .a{ font-family: var(--f-math); font-size: 10px; line-height: 1.1; white-space: nowrap; opacity: .78; }
+.tile .o{ font-family: var(--f-mono); font-size: 8.5px; line-height: 1.15; white-space: nowrap; opacity: .82; font-variant-numeric: tabular-nums; }
+.tile .o sup{ font-size: .8em; top: -.45em; }
+.tile.tits{ background: transparent; border: 1.5px dashed color-mix(in oklch, var(--ink) 40%, transparent); }
+
+.k-cyc{ --fill: var(--c-cyc); } .k-alt{ --fill: var(--c-alt); } .k-cla{ --fill: var(--c-cla); } .k-clt{ --fill: var(--c-clt); }
+.k-exc{ --fill: var(--c-exc); } .k-ext{ --fill: var(--c-ext); } .k-spo{ --fill: var(--c-spo); } .k-par{ --fill: var(--c-par); }
+.k-tit{ --fill: transparent; }
+
+body.mode-size .tile{ background: color-mix(in oklch, var(--ramp-lo), var(--ramp-hi) calc(var(--t, 0) * 100%)); }
+body.mode-size .tile.inv{ color: var(--ramp-ink); }
+body.mode-size .tile.tits{ border-color: transparent; }
+
+.legend{ grid-column: 5 / span 15; grid-row: 2; display: flex; flex-wrap: wrap; align-content: center; gap: 5px 14px; padding: 0 10px; font-size: 11.5px; color: var(--ink-2); }
+.legend .it{ display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sw{ width: 11px; height: 11px; border-radius: 3px; background: var(--fill); flex: none; display: inline-block; }
+.sw.k-tit{ border: 1.3px dashed color-mix(in oklch, var(--ink) 45%, transparent); }
+.ramp{ display: grid; gap: 3px; width: min(100%, 360px); }
+.ramp .bar{ height: 10px; border-radius: 3px; background: linear-gradient(90deg, var(--ramp-lo), var(--ramp-hi)); }
+.ramp .ticks{ position: relative; height: 13px; font-family: var(--f-mono); font-size: 10px; color: var(--muted); }
+.ramp .ticks span{ position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.ramp .ticks span:first-child{ transform: none; }
+.ramp .cap{ font-size: 11px; color: var(--muted); }
+
+.readme{ grid-column: 10 / span 10; grid-row: 4; align-self: center; padding: 0 10px; font-size: 11.5px; line-height: 1.4; color: var(--muted); max-width: 60ch; }
+
+.slabel{ grid-column: 1 / span 3; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; text-align: right; padding-right: 10px; }
+.slabel .t{ font-family: var(--f-math); font-size: 14px; line-height: 1.15; color: var(--ink); }
+.slabel .u{ font-size: 10.5px; color: var(--muted); }
+.shead{ grid-column: 4 / span 16; grid-row: 1; align-self: end; padding-bottom: 6px; }
+.shead h2{ margin: 0; font-family: var(--f-math); font-weight: 500; font-size: 21px; line-height: 1.2; }
+.shead p{ margin: 2px 0 0; font-size: 12.5px; color: var(--muted); max-width: 70ch; }
+#spor{ grid-template-rows: auto; }
+
+/* ---------- panel ---------- */
+.panel{ background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
+.close{ display: none; }
+@media (min-width: 1400px){
+  .layout{ display: grid; grid-template-columns: minmax(0, 1fr) 336px; gap: 24px; align-items: start; }
+  .panel{ position: sticky; top: max(16px, env(safe-area-inset-top, 0px)); max-height: calc(100vh - 32px); overflow: auto; }
+}
+@media (max-width: 1399.98px){
+  .panel{
+    position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; margin: 0;
+    max-height: 74vh; overflow: auto; border-radius: 16px 16px 0 0; border-bottom: 0;
+    padding-top: 14px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -10px 34px var(--shadow);
+    transform: translateY(105%); visibility: hidden;
+    transition: transform .26s ease, visibility 0s linear .26s;
+  }
+  .panel.open{ transform: none; visibility: visible; transition: transform .26s ease, visibility 0s; }
+  .close{
+    display: grid; place-items: center; position: sticky; top: 0; float: right; margin: -4px -4px 0 8px;
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface);
+    font-size: 20px; line-height: 1; cursor: pointer; color: var(--ink-2);
+  }
+  .close:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+}
+@media (min-width: 720px) and (max-width: 1399.98px){
+  .panel{
+    left: auto; width: 410px;
+    right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    border-radius: 14px; border-bottom: 1px solid var(--line);
+    padding: 16px 18px 18px;
+    max-height: min(78vh, 760px);
+  }
+}
+
+.p-eyebrow{ margin: 0 0 8px; display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.p-title{ margin: 0; font-family: var(--f-math); font-weight: 500; font-size: 32px; line-height: 1.1; }
+.p-alias{ margin: 2px 0 0; font-family: var(--f-math); font-size: 17px; color: var(--ink-2); }
+.p-desc{ margin: 12px 0 14px; font-size: 14px; line-height: 1.5; }
+.kv{ display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 7px 12px; margin: 0 0 14px; font-size: 13.5px; }
+.kv dt{ color: var(--muted); font-size: 12px; padding-top: 2px; }
+.kv dd{ margin: 0; min-width: 0; }
+.nw{ white-space: nowrap; }
+.formula{ font-family: var(--f-math); font-size: 15.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.num{ font-family: var(--f-mono); font-size: 12.5px; word-break: break-all; font-variant-numeric: tabular-nums; }
+.digits{ display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.fact{ font-family: var(--f-math); font-size: 15.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.fact .cmp{ font-family: var(--f-ui); font-size: 12px; color: var(--muted); }
+.card{ border: 1px solid var(--line); border-radius: 10px; padding: 12px 12px 4px; margin: 0 0 16px; background: var(--bg); }
+.card-h{ font-family: var(--f-math); font-size: 21px; line-height: 1.2; margin: 0 0 10px; }
+.card-h .al{ color: var(--ink-2); font-size: 16px; }
+.card .kv{ grid-template-columns: 64px minmax(0, 1fr); margin-bottom: 8px; }
+.iso{ margin: 0 0 10px; font-size: 13px; color: var(--ink-2); }
+.p-h3{ margin: 0 0 6px; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.mlist{ list-style: none; margin: 0; padding: 0; display: grid; }
+.mrow{
+  width: 100%; display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 8px; align-items: baseline;
+  border: 0; border-top: 1px solid var(--line); background: transparent; padding: 6px 6px; text-align: left; cursor: pointer; border-radius: 0;
+}
+.mlist li:first-child .mrow{ border-top: 0; }
+.mrow:hover{ background: var(--accent-soft); }
+.mrow.on{ background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.mrow:focus-visible{ outline: 2px solid var(--accent); outline-offset: -2px; }
+.mrow .mq{ font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrow .ms{ font-family: var(--f-math); font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mrow .mo{ font-family: var(--f-mono); font-size: 11.5px; color: var(--ink-2); white-space: nowrap; }
+.mrow .mo sup{ font-size: .8em; }
+.gap-li{ text-align: center; color: var(--muted); font-size: 12px; padding: 2px 0; }
+
+.back{ display: inline-block; margin: 0 0 18px; padding: 7px 12px; border-radius: 9px; background: var(--accent-soft); color: var(--ink-2); font-weight: 600; font-size: 14px; text-decoration: none; }
+.back:hover{ color: var(--accent); }
+.back:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+.p-link{ color: var(--accent); }
+footer{ margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); display: grid; gap: 6px; max-width: 92ch; }
+footer p{ margin: 0; }
+
+@media (prefers-reduced-motion: reduce){
+  .tile, .panel{ transition: none !important; }
+  .tile.hit{ animation: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../../">← Home</a>
+  <header class="top">
+    <div>
+      <p class="eyebrow">Classification of finite simple groups</p>
+      <h1>Periodic Table of Finite Simple Groups</h1>
+      <p class="lede">Every finite group is assembled from simple groups, the way molecules are assembled from atoms. Each group's list of building blocks is unique (the Jordan–Hölder theorem), and the classification theorem, whose proof was completed in 2004, says this page holds all of them: <strong>18 infinite families and 26 sporadic groups</strong>.</p>
+    </div>
+    <form class="lookup" id="lookup" autocomplete="off" novalidate>
+      <label for="order">Is there a simple group of order …</label>
+      <div class="row">
+        <input id="order" name="order" inputmode="numeric" placeholder="20160" spellcheck="false" aria-describedby="result">
+        <button class="btn" type="submit">Check</button>
+      </div>
+      <div class="chips"><span>Try</span>
+        <button class="chip" type="button" data-n="60">60</button>
+        <button class="chip" type="button" data-n="168">168</button>
+        <button class="chip" type="button" data-n="20160">20160</button>
+        <button class="chip" type="button" data-n="29120">29120</button>
+        <button class="chip" type="button" data-n="1000000">1000000</button>
+        <button class="chip" type="button" data-n="2^46*3^20*5^9*7^6*11^2*13^3*17*19*23*29*31*41*47*59*71">Monster</button>
+      </div>
+      <div id="result" class="result" aria-live="polite"></div>
+    </form>
+  </header>
+
+  <div class="toolbar">
+    <div class="seg" role="radiogroup" aria-label="Tile colour">
+      <button type="button" role="radio" aria-checked="true" data-mode="family" id="mode-family">Color by family</button>
+      <button type="button" role="radio" aria-checked="false" data-mode="size" id="mode-size">Color by size</button>
+    </div>
+    <p class="hint">Tap any tile for its order, factorization and members. <span class="narrow-only">The table scrolls sideways.</span></p>
+  </div>
+
+  <div class="layout">
+    <div class="tablewrap" id="scroller">
+      <div class="grid" id="grid" role="group" aria-label="Infinite families by Lie rank"></div>
+      <div class="grid" id="spor" role="group" aria-label="Sporadic groups"></div>
+    </div>
+    <aside class="panel" id="panel" aria-label="Group details">
+      <button class="close" id="close" type="button" aria-label="Close details">×</button>
+      <div id="pbody"></div>
+    </aside>
+  </div>
+
+  <footer>
+    <p>Notation: A<sub>n</sub>(q) = PSL<sub>n+1</sub>(q), B<sub>n</sub>(q) = Ω<sub>2n+1</sub>(q), C<sub>n</sub>(q) = PSp<sub>2n</sub>(q), D<sub>n</sub>(q) = PΩ<sub>2n</sub><sup>+</sup>(q), <sup>2</sup>A<sub>n</sub>(q<sup>2</sup>) = PSU<sub>n+1</sub>(q), <sup>2</sup>D<sub>n</sub>(q<sup>2</sup>) = PΩ<sub>2n</sub><sup>−</sup>(q). Here q is a prime power. Twisted families sit in the row of their untwisted diagram's rank.</p>
+    <p>Every order, factorization and lookup is computed exactly in your browser with big-integer arithmetic. The lookup checks every family at every rank and field size, so a "no" is a theorem, not a guess.</p>
+  </footer>
+</div>
+
+<script>
+/*MATH-START*/
+const B = BigInt;
+const SMALL = (() => { const N = 10000, s = new Uint8Array(N + 1), out = []; for (let i = 2; i <= N; i++) { if (!s[i]) { out.push(i); for (let j = i * i; j <= N; j += i) s[j] = 1; } } return out; })();
+const range = (a, b) => { const r = []; for (let i = a; i <= b; i++) r.push(i); return r; };
+const gcd = (a, b) => { a = a < 0n ? -a : a; b = b < 0n ? -b : b; while (b) { [a, b] = [b, a % b]; } return a; };
+function divisors(n) { const d = []; for (let i = 1; i * i <= n; i++) if (n % i === 0) { d.push(i); if (i * i !== n) d.push(n / i); } return d.sort((x, y) => x - y); }
+function mobius(n) { let r = 1; for (let p = 2; p * p <= n; p++) { if (n % p === 0) { n /= p; if (n % p === 0) return 0; r = -r; } } if (n > 1) r = -r; return r; }
+function modpow(b, e, m) { let r = 1n; b %= m; while (e > 0n) { if (e & 1n) r = r * b % m; b = b * b % m; e >>= 1n; } return r; }
+const MR13 = [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n, 41n];
+const MR_EXTRA = [43n, 47n, 53n, 59n, 61n, 67n, 71n, 73n, 79n, 83n, 89n, 97n, 101n, 103n, 107n];
+const MR_LIMIT = 3317044064679887385961981n; /* 13 prime bases are deterministic below this */
+function isPrime(n) {
+  if (n < 2n) return false;
+  for (const p of MR13) { if (n === p) return true; if (n % p === 0n) return false; }
+  let d = n - 1n, s = 0; while ((d & 1n) === 0n) { d >>= 1n; s++; }
+  const bases = n < MR_LIMIT ? MR13 : MR13.concat(MR_EXTRA);
+  outer: for (const a of bases) {
+    let x = modpow(a, d, n);
+    if (x === 1n || x === n - 1n) continue;
+    for (let r = 1; r < s; r++) { x = x * x % n; if (x === n - 1n) continue outer; }
+    return false;
+  }
+  return true;
+}
+function iroot(n, k) {
+  if (k === 1) return n;
+  let lo = 1n, hi = 1n << B(Math.ceil(n.toString(2).length / k) + 1);
+  while (lo < hi) { const mid = (lo + hi + 1n) >> 1n; if (mid ** B(k) <= n) lo = mid; else hi = mid - 1n; }
+  return lo;
+}
+function primePower(q) {
+  if (q < 2n) return null;
+  const bits = q.toString(2).length;
+  for (let k = 1; k <= bits; k++) { const r = iroot(q, k); if (r < 2n) break; if (r ** B(k) === q && isPrime(r)) return { p: r, k }; }
+  return null;
+}
+function rho(n, budget) {
+  if (n % 2n === 0n) return 2n;
+  for (let c = 1n; c < 16n; c++) {
+    const f = v => (v * v + c) % n;
+    let y = 2n, r = 1, q = 1n, g = 1n, x = 0n, ys = 0n, used = 0;
+    while (g === 1n) {
+      x = y; for (let i = 0; i < r; i++) y = f(y);
+      let k = 0;
+      while (k < r && g === 1n) {
+        ys = y; const lim = Math.min(64, r - k);
+        for (let i = 0; i < lim; i++) { y = f(y); q = q * (x > y ? x - y : y - x) % n; }
+        g = gcd(q, n); k += lim; used += lim;
+      }
+      r *= 2;
+      if (used > budget.left) { budget.left = 0; return null; }
+    }
+    budget.left -= used;
+    if (g === n) { g = 1n; let guard = 0; while (g === 1n && guard++ < 200000) { ys = f(ys); g = gcd(x > ys ? x - ys : ys - x, n); } }
+    if (g !== n && g !== 1n) return g;
+  }
+  return null;
+}
+function addF(map, p, e, unf) { const k = p.toString(); const o = map.get(k); if (o) o.e += e; else map.set(k, { p, e, unf: !!unf }); }
+function factorInto(n, map, budget) {
+  if (n <= 1n) return;
+  for (const p of SMALL) { const P = B(p); if (P * P > n) break; if (n % P === 0n) { let e = 0; while (n % P === 0n) { n /= P; e++; } addF(map, P, e); } }
+  const rec = m => {
+    if (m === 1n) return;
+    if (isPrime(m)) { addF(map, m, 1); return; }
+    for (let k = 2; k <= 6; k++) { const r = iroot(m, k); if (r ** B(k) === m) { const sub = new Map(); rec2(r, sub); for (const [, o] of sub) addF(map, o.p, o.e * k, o.unf); if (sub.incomplete) map.incomplete = true; return; } }
+    const d = budget.left > 0 ? rho(m, budget) : null;
+    if (d === null) { addF(map, m, 1, true); map.incomplete = true; return; }
+    rec(d); rec(m / d);
+  };
+  const rec2 = (m, sub) => { factorInto(m, sub, budget); };
+  if (n > 1n) rec(n);
+}
+function factor(n, budgetIters = 300000) { const map = new Map(); factorInto(n, map, { left: budgetIters }); return map; }
+function cyclo(d, q) { let num = 1n, den = 1n; for (const e of divisors(d)) { const mu = mobius(d / e); if (mu === 1) num *= q ** B(e) - 1n; else if (mu === -1) den *= q ** B(e) - 1n; } return num / den; }
+
+const Mt = k => [k, -1], Pt = k => [k, 1];
+const anyQ = q => primePower(q) !== null;
+const oddPow = base => q => { const pp = primePower(q); return !!pp && pp.p === base && pp.k % 2 === 1 && pp.k >= 3; };
+const qGenOdd = base => function* () { for (let k = 3; ; k += 2) yield base ** B(k); };
+function* qGenAll() { for (let q = 2n; ; q++) if (primePower(q)) yield q; }
+const one = () => 1n, none = () => false, nul = () => null;
+
+const FAM = {
+  A: { block: 'cla', nmin: 1, col: 4, head: 'A_{n}(q)', glyph: 'A',
+    N: n => n * (n + 1) / 2, terms: n => range(1, n).map(i => Mt(i + 1)),
+    g: (n, q) => gcd(B(n + 1), q - 1n), gText: n => `gcd(${n + 1}, q − 1)`, ds: n => divisors(n + 1),
+    sym: (n, x) => `A_{${n}}(${x})`, alias: (n, x) => `PSL_{${n + 1}}(${x})`,
+    desc: n => `Invertible ${n + 1} × ${n + 1} matrices of determinant 1 over the field with q elements, with the scalar matrices factored out.`,
+    qText: 'any prime power', qok: anyQ, excl: (n, q) => n === 1 && q <= 3n,
+    exclText: n => n === 1 ? 'A_{1}(2) ≅ S_{3} and A_{1}(3) ≅ A_{4} are solvable, so q starts at 4.' : null, note: nul },
+  B: { block: 'cla', nmin: 2, col: 5, head: 'B_{n}(q)', glyph: 'B',
+    N: n => n * n, terms: n => range(1, n).map(i => Mt(2 * i)),
+    g: (n, q) => gcd(2n, q - 1n), gText: () => 'gcd(2, q − 1)', ds: () => [1, 2],
+    sym: (n, x) => `B_{${n}}(${x})`, alias: (n, x) => `Ω_{${2 * n + 1}}(${x})`,
+    desc: n => `Symmetries of a nondegenerate quadratic form in ${2 * n + 1} dimensions (its commutator subgroup Ω).`,
+    qText: 'any prime power', qok: anyQ, excl: (n, q) => n === 2 && q === 2n,
+    exclText: n => n === 2 ? 'B_{2}(2) ≅ S_{6} is not simple; its index-2 subgroup is A_{6}.' : null,
+    note: n => n >= 3 ? `For even q, B_{${n}}(q) ≅ C_{${n}}(q). For odd q the two have the same order but are different groups.` : 'B_{2}(q) = C_{2}(q), which is why the C column starts at rank 3.' },
+  C: { block: 'cla', nmin: 3, col: 6, head: 'C_{n}(q)', glyph: 'C',
+    N: n => n * n, terms: n => range(1, n).map(i => Mt(2 * i)),
+    g: (n, q) => gcd(2n, q - 1n), gText: () => 'gcd(2, q − 1)', ds: () => [1, 2],
+    sym: (n, x) => `C_{${n}}(${x})`, alias: (n, x) => `PSp_{${2 * n}}(${x})`,
+    desc: n => `Matrices that preserve a nondegenerate alternating form in ${2 * n} dimensions, modulo ±1.`,
+    qText: 'any prime power', qok: anyQ, excl: none, exclText: nul,
+    note: n => `For even q, C_{${n}}(q) ≅ B_{${n}}(q), so only odd q gives new groups. C_{2} = B_{2}, so this column starts at rank 3.` },
+  D: { block: 'cla', nmin: 4, col: 7, head: 'D_{n}(q)', glyph: 'D',
+    N: n => n * (n - 1), terms: n => [Mt(n), ...range(1, n - 1).map(i => Mt(2 * i))],
+    g: (n, q) => gcd(4n, q ** B(n) - 1n), gText: n => `gcd(4, q^{${n}} − 1)`, ds: () => [1, 2, 4],
+    sym: (n, x) => `D_{${n}}(${x})`, alias: (n, x) => `PΩ^{+}_{${2 * n}}(${x})`,
+    desc: n => `Symmetries of a plus-type quadratic form in ${2 * n} dimensions, whose largest totally singular subspaces have dimension ${n}.`,
+    qText: 'any prime power', qok: anyQ, excl: none, exclText: nul, note: () => 'D_{3} = A_{3}, so this column starts at rank 4.' },
+  '2A': { block: 'clt', nmin: 2, col: 8, head: '^{2}A_{n}(q^{2})', glyph: '2A',
+    N: n => n * (n + 1) / 2, terms: n => range(1, n).map(i => (i + 1) % 2 === 0 ? Mt(i + 1) : Pt(i + 1)),
+    g: (n, q) => gcd(B(n + 1), q + 1n), gText: n => `gcd(${n + 1}, q + 1)`, ds: n => divisors(n + 1),
+    sym: (n, x) => `^{2}A_{${n}}(${x}^{2})`, alias: (n, x) => `PSU_{${n + 1}}(${x})`,
+    desc: n => `Matrices of determinant 1 that preserve a Hermitian form in ${n + 1} dimensions over the field with q^{2} elements, modulo scalars.`,
+    qText: 'any prime power', qok: anyQ, excl: (n, q) => n === 2 && q === 2n,
+    exclText: n => n === 2 ? '^{2}A_{2}(2^{2}) = PSU_{3}(2) has order 72 and is solvable.' : null,
+    note: () => 'The twisted form of A_{n}, made with the left–right flip of its Dynkin diagram.' },
+  '2D': { block: 'clt', nmin: 4, col: 9, head: '^{2}D_{n}(q^{2})', glyph: '2D',
+    N: n => n * (n - 1), terms: n => [Pt(n), ...range(1, n - 1).map(i => Mt(2 * i))],
+    g: (n, q) => gcd(4n, q ** B(n) + 1n), gText: n => `gcd(4, q^{${n}} + 1)`, ds: () => [1, 2, 4],
+    sym: (n, x) => `^{2}D_{${n}}(${x}^{2})`, alias: (n, x) => `PΩ^{−}_{${2 * n}}(${x})`,
+    desc: n => `Symmetries of a minus-type quadratic form in ${2 * n} dimensions, whose largest totally singular subspaces have dimension ${n - 1}.`,
+    qText: 'any prime power', qok: anyQ, excl: none, exclText: nul,
+    note: () => 'The twisted form of D_{n}, made by swapping the two fork nodes. ^{2}D_{3} = ^{2}A_{3}, so this column starts at rank 4.' },
+  G2: { block: 'exc', rank: 2, col: 10, head: 'G_{2}(q)', glyph: 'G2',
+    N: () => 6, terms: () => [Mt(6), Mt(2)], g: one, gText: nul, ds: () => [1],
+    sym: (n, x) => `G_{2}(${x})`, alias: null, sub: 'q ≥ 3',
+    desc: () => 'Automorphisms of the octonions over the field with q elements. G_{2} is the smallest exceptional root system.',
+    qText: 'any prime power except 2', qok: anyQ, excl: (n, q) => q === 2n,
+    exclText: () => 'G_{2}(2) is not simple; its index-2 subgroup is ^{2}A_{2}(3^{2}) = PSU_{3}(3).', note: nul },
+  F4: { block: 'exc', rank: 4, col: 11, head: 'F_{4}(q)', glyph: 'F4',
+    N: () => 24, terms: () => [Mt(12), Mt(8), Mt(6), Mt(2)], g: one, gText: nul, ds: () => [1],
+    sym: (n, x) => `F_{4}(${x})`, alias: null, sub: null,
+    desc: () => 'Closely tied to the Albert algebra, the 27-dimensional exceptional Jordan algebra of 3 × 3 octonion matrices.',
+    qText: 'any prime power', qok: anyQ, excl: none, exclText: nul, note: nul },
+  E6: { block: 'exc', rank: 6, col: 12, head: 'E_{6}(q)', glyph: 'E6',
+    N: () => 36, terms: () => [12, 9, 8, 6, 5, 2].map(Mt), g: (n, q) => gcd(3n, q - 1n), gText: () => 'gcd(3, q − 1)', ds: () => [1, 3],
+    sym: (n, x) => `E_{6}(${x})`, alias: null, sub: null,
+    desc: () => 'Linear maps of a 27-dimensional space that preserve a particular cubic form, modulo scalars.',
+    qText: 'any prime power', qok: anyQ, excl: none, exclText: nul, note: nul },
+  E7: { block: 'exc', rank: 7, col: 13, head: 'E_{7}(q)', glyph: 'E7',
+    N: () => 63, terms: () => [18, 14, 12, 10, 8, 6, 2].map(Mt), g: (n, q) => gcd(2n, q - 1n), gText: () => 'gcd(2, q − 1)', ds: () => [1, 2],
+    sym: (n, x) => `E_{7}(${x})`, alias: null, sub: null,
+    desc: () => 'Acts on a 56-dimensional space, preserving both a quartic form and a symplectic form.',
+    qText: 'any prime power', qok: anyQ, excl: none, exclText: nul, note: nul },
+  E8: { block: 'exc', rank: 8, col: 14, head: 'E_{8}(q)', glyph: 'E8',
+    N: () => 120, terms: () => [30, 24, 20, 18, 14, 12, 8, 2].map(Mt), g: one, gText: nul, ds: () => [1],
+    sym: (n, x) => `E_{8}(${x})`, alias: null, sub: null,
+    desc: () => 'The largest exceptional family. Its smallest faithful representation is its own 248-dimensional Lie algebra.',
+    qText: 'any prime power', qok: anyQ, excl: none, exclText: nul, note: nul },
+  '2B2': { block: 'ext', rank: 2, col: 15, head: '^{2}B_{2}(q)', glyph: '2B2',
+    N: () => 2, terms: () => [Pt(2), Mt(1)], g: one, gText: nul, ds: () => [1],
+    sym: (n, x) => `^{2}B_{2}(${x})`, alias: (n, x) => `Sz(${x})`,
+    desc: () => 'The Suzuki groups, found by Michio Suzuki in 1960. They are the only non-abelian simple groups whose order is not divisible by 3.',
+    qText: 'q = 2^{2m+1} with m ≥ 1', qok: oddPow(2n), qgen: qGenOdd(2n), excl: none,
+    exclText: () => '^{2}B_{2}(2) has order 20 and is solvable.', note: nul },
+  '2G2': { block: 'ext', rank: 2, col: 16, head: '^{2}G_{2}(q)', glyph: '2G2',
+    N: () => 3, terms: () => [Pt(3), Mt(1)], g: one, gText: nul, ds: () => [1],
+    sym: (n, x) => `^{2}G_{2}(${x})`, alias: (n, x) => `R(${x})`,
+    desc: () => 'Ree groups of type G_{2}, found by Rimhak Ree in 1960. They exist only when q is an odd power of 3.',
+    qText: 'q = 3^{2m+1} with m ≥ 1', qok: oddPow(3n), qgen: qGenOdd(3n), excl: none,
+    exclText: () => '^{2}G_{2}(3) is not simple; its derived subgroup is A_{1}(8) = PSL_{2}(8).', note: nul },
+  '2F4': { block: 'ext', rank: 4, col: 17, head: '^{2}F_{4}(q)', glyph: '2F4',
+    N: () => 12, terms: () => [Pt(6), Mt(4), Pt(3), Mt(1)], g: one, gText: nul, ds: () => [1],
+    sym: (n, x) => `^{2}F_{4}(${x})`, alias: null, sub: 'q = 2^{2m+1}',
+    desc: () => 'Ree groups of type F_{4}, found by Ree in 1961. They exist only when q is an odd power of 2.',
+    qText: 'q = 2^{2m+1} with m ≥ 1', qok: oddPow(2n), qgen: qGenOdd(2n), excl: none,
+    exclText: () => '^{2}F_{4}(2) is not simple. Its index-2 subgroup, the Tits group, is listed with the sporadics.', note: nul },
+  '3D4': { block: 'ext', rank: 4, col: 18, head: '^{3}D_{4}(q^{3})', glyph: '3D4',
+    N: () => 12, terms: () => [['T'], Mt(6), Mt(2)], g: one, gText: nul, ds: () => [1],
+    sym: (n, x) => `^{3}D_{4}(${x}^{3})`, alias: null, sub: null,
+    desc: () => 'Twisted by triality, the order-3 symmetry of the D_{4} diagram that no other connected Dynkin diagram has. Found by Robert Steinberg in 1959.',
+    qText: 'any prime power', qok: anyQ, excl: none, exclText: nul, note: nul },
+  '2E6': { block: 'ext', rank: 6, col: 19, head: '^{2}E_{6}(q^{2})', glyph: '2E6',
+    N: () => 36, terms: () => [Mt(12), Pt(9), Mt(8), Mt(6), Pt(5), Mt(2)], g: (n, q) => gcd(3n, q + 1n), gText: () => 'gcd(3, q + 1)', ds: () => [1, 3],
+    sym: (n, x) => `^{2}E_{6}(${x}^{2})`, alias: null, sub: null,
+    desc: () => 'The twisted form of E_{6}, made with the left–right flip of its diagram. Found by Steinberg in 1959.',
+    qText: 'any prime power', qok: anyQ, excl: none, exclText: nul, note: nul },
+};
+const FIDS = Object.keys(FAM);
+
+function num(f, n, q) {
+  let r = q ** B(f.N(n));
+  for (const t of f.terms(n)) r *= t[0] === 'T' ? q ** 8n + q ** 4n + 1n : q ** B(t[0]) + (t[1] > 0 ? 1n : -1n);
+  return r;
+}
+function lieOrder(fid, n, q) { const f = FAM[fid]; return num(f, n, q) / f.g(n, q); }
+const memCache = new Map();
+function member(fid, n, q) { return { fid, n, q, order: lieOrder(fid, n, q) }; }
+function members(fid, n, count = 8) {
+  const key = fid + ':' + n; if (memCache.has(key)) return memCache.get(key);
+  const f = FAM[fid], out = [];
+  for (const q of (f.qgen || qGenAll)()) { if (f.excl(n, q)) continue; out.push(member(fid, n, q)); if (out.length >= count) break; }
+  memCache.set(key, out); return out;
+}
+function cycloExps(f, n) {
+  const ex = new Map(); const add = (d, e) => ex.set(d, (ex.get(d) || 0) + e);
+  for (const t of f.terms(n)) {
+    if (t[0] === 'T') { for (const d of divisors(12)) add(d, 1); for (const d of divisors(4)) add(d, -1); }
+    else if (t[1] < 0) { for (const d of divisors(t[0])) add(d, 1); }
+    else { for (const d of divisors(2 * t[0])) if (t[0] % d !== 0) add(d, 1); }
+  }
+  return ex;
+}
+function lieFactor(fid, n, q) {
+  const f = FAM[fid], map = new Map(), budget = { left: 400000 };
+  const pp = primePower(q); addF(map, pp.p, pp.k * f.N(n));
+  for (const [d, e] of cycloExps(f, n)) {
+    if (!e) continue;
+    const sub = new Map(); factorInto(cyclo(d, q), sub, budget);
+    for (const [, o] of sub) addF(map, o.p, o.e * e, o.unf);
+    if (sub.incomplete) map.incomplete = true;
+  }
+  const g = f.g(n, q);
+  if (g > 1n) { const sub = factor(g); for (const [, o] of sub) addF(map, o.p, -o.e); }
+  for (const [k, o] of map) if (o.e === 0) map.delete(k);
+  return map;
+}
+function altOrder(n) { let r = 1n; for (let i = 3; i <= n; i++) r *= B(i); return r; }
+function altFactor(n) { const map = new Map(); for (const p of SMALL) { if (p > n) break; let e = 0, pk = p; while (pk <= n) { e += Math.floor(n / pk); pk *= p; } if (p === 2) e -= 1; if (e > 0) addF(map, B(p), e); } return map; }
+
+const SPOR = [
+  { id: 'M11', sym: 'M_{11}', name: 'Mathieu group', gen: 1, f: { 2: 4, 3: 2, 5: 1, 11: 1 }, year: '1861', by: 'Émile Mathieu', rep: 10,
+    note: 'The smallest sporadic group. It acts sharply 4-transitively on 11 points: any 4 points can be sent to any other 4, in exactly one way.' },
+  { id: 'M12', sym: 'M_{12}', name: 'Mathieu group', gen: 1, f: { 2: 6, 3: 3, 5: 1, 11: 1 }, year: '1861', by: 'Émile Mathieu', rep: 11,
+    note: 'Acts sharply 5-transitively on 12 points.' },
+  { id: 'M22', sym: 'M_{22}', name: 'Mathieu group', gen: 1, f: { 2: 7, 3: 2, 5: 1, 7: 1, 11: 1 }, year: '1873', by: 'Émile Mathieu', rep: 21,
+    note: 'Acts 3-transitively on 22 points. Its Schur multiplier, cyclic of order 12, is the largest of any sporadic group.' },
+  { id: 'M23', sym: 'M_{23}', name: 'Mathieu group', gen: 1, f: { 2: 7, 3: 2, 5: 1, 7: 1, 11: 1, 23: 1 }, year: '1873', by: 'Émile Mathieu', rep: 22,
+    note: 'Acts 4-transitively on 23 points; it is the stabilizer of one point in M_{24}.' },
+  { id: 'M24', sym: 'M_{24}', name: 'Mathieu group', gen: 1, f: { 2: 10, 3: 3, 5: 1, 7: 1, 11: 1, 23: 1 }, year: '1873', by: 'Émile Mathieu', rep: 23,
+    note: 'The symmetry group of the extended binary Golay code. Acts 5-transitively on 24 points.' },
+  { id: 'Co1', sym: 'Co_{1}', name: 'Conway group', gen: 2, f: { 2: 21, 3: 9, 5: 4, 7: 2, 11: 1, 13: 1, 23: 1 }, year: '1969', by: 'John Conway', rep: 276,
+    note: 'The symmetry group of the 24-dimensional Leech lattice, modulo ±1.' },
+  { id: 'Co2', sym: 'Co_{2}', name: 'Conway group', gen: 2, f: { 2: 18, 3: 6, 5: 3, 7: 1, 11: 1, 23: 1 }, year: '1969', by: 'John Conway', rep: 23,
+    note: 'The stabilizer of a shortest (type 2) vector of the Leech lattice.' },
+  { id: 'Co3', sym: 'Co_{3}', name: 'Conway group', gen: 2, f: { 2: 10, 3: 7, 5: 3, 7: 1, 11: 1, 23: 1 }, year: '1969', by: 'John Conway', rep: 23,
+    note: 'The stabilizer of a type 3 vector of the Leech lattice.' },
+  { id: 'HS', sym: 'HS', name: 'Higman–Sims group', gen: 2, f: { 2: 9, 3: 2, 5: 3, 7: 1, 11: 1 }, year: '1968', by: 'Donald Higman and Charles Sims', rep: 22,
+    note: 'An index-2 subgroup of the symmetry group of the 100-vertex Higman–Sims graph.' },
+  { id: 'McL', sym: 'McL', name: 'McLaughlin group', gen: 2, f: { 2: 7, 3: 6, 5: 3, 7: 1, 11: 1 }, year: '1969', by: 'Jack McLaughlin', rep: 22,
+    note: 'An index-2 subgroup of the symmetry group of the 275-vertex McLaughlin graph.' },
+  { id: 'Suz', sym: 'Suz', name: 'Suzuki sporadic group', gen: 2, f: { 2: 13, 3: 7, 5: 2, 7: 1, 11: 1, 13: 1 }, year: '1969', by: 'Michio Suzuki', rep: 143,
+    note: 'Acts on a rank-3 graph with 1782 vertices. It tops the Suzuki chain A_{1}(7) < ^{2}A_{2}(3^{2}) < J_{2} < G_{2}(4) < Suz. Not to be confused with the Suzuki family ^{2}B_{2}(q).' },
+  { id: 'J2', sym: 'J_{2}', name: 'Hall–Janko group', gen: 2, f: { 2: 7, 3: 3, 5: 2, 7: 1 }, year: '1968', by: 'Zvonimir Janko; built by Marshall Hall and David Wales', rep: 14,
+    note: 'Acts on a 100-vertex rank-3 graph, and sits in the middle of the Suzuki chain.' },
+  { id: 'He', sym: 'He', name: 'Held group', gen: 3, f: { 2: 10, 3: 3, 5: 2, 7: 3, 17: 1 }, year: '1969', by: 'Dieter Held', rep: 51,
+    note: 'Found by studying groups in which an involution has the same centralizer as one in M_{24}.' },
+  { id: 'HN', sym: 'HN', name: 'Harada–Norton group', gen: 3, f: { 2: 14, 3: 6, 5: 6, 7: 1, 11: 1, 19: 1 }, year: '1976', by: 'Koichiro Harada and Simon Norton', rep: 133,
+    note: 'Inside the Monster, the centralizer of an element of order 5 (class 5A) is 5 × HN.' },
+  { id: 'Th', sym: 'Th', name: 'Thompson group', gen: 3, f: { 2: 15, 3: 10, 5: 3, 7: 2, 13: 1, 19: 1, 31: 1 }, year: '1976', by: 'John Thompson', rep: 248,
+    note: 'Its 248-dimensional representation matches the Lie algebra of E_{8}, and it embeds in E_{8}(3). Inside the Monster, a 3C element has centralizer 3 × Th.' },
+  { id: 'Fi22', sym: 'Fi_{22}', name: 'Fischer group', gen: 3, f: { 2: 17, 3: 9, 5: 2, 7: 1, 11: 1, 13: 1 }, year: '1971', by: 'Bernd Fischer', rep: 78,
+    note: 'Generated by 3-transpositions: a class of involutions in which the product of any two has order 1, 2 or 3.' },
+  { id: 'Fi23', sym: 'Fi_{23}', name: 'Fischer group', gen: 3, f: { 2: 18, 3: 13, 5: 2, 7: 1, 11: 1, 13: 1, 17: 1, 23: 1 }, year: '1971', by: 'Bernd Fischer', rep: 782,
+    note: 'Another of Fischer’s 3-transposition groups.' },
+  { id: 'Fi24', sym: 'Fi_{24}′', name: 'Fischer group', gen: 3, f: { 2: 21, 3: 16, 5: 2, 7: 3, 11: 1, 13: 1, 17: 1, 23: 1, 29: 1 }, year: '1971', by: 'Bernd Fischer', rep: 8671,
+    note: 'The index-2 subgroup of the 3-transposition group Fi_{24}. Inside the Monster, a 3A element has centralizer 3.Fi_{24}′.' },
+  { id: 'B', sym: 'B', name: 'Baby Monster', gen: 3, f: { 2: 41, 3: 13, 5: 6, 7: 2, 11: 1, 13: 1, 17: 1, 19: 1, 23: 1, 31: 1, 47: 1 }, year: '1973', by: 'Bernd Fischer', rep: 4371,
+    note: 'The second-largest sporadic group. Inside the Monster, a 2A involution has centralizer 2.B.' },
+  { id: 'M', sym: 'M', name: 'Monster', gen: 3, f: { 2: 46, 3: 20, 5: 9, 7: 6, 11: 2, 13: 3, 17: 1, 19: 1, 23: 1, 29: 1, 31: 1, 41: 1, 47: 1, 59: 1, 71: 1 }, year: '1973 (predicted), 1982 (built)', by: 'Bernd Fischer and Robert Griess; constructed by Griess', rep: 196883,
+    note: 'The largest sporadic group. Twenty of the 26 sporadics, itself included, are quotients of its subgroups. Its smallest representation, 196,883, is one less than 196,884, a coefficient of the j-function; that coincidence started the study of monstrous moonshine.' },
+  { id: 'J1', sym: 'J_{1}', name: 'Janko group', gen: 0, f: { 2: 3, 3: 1, 5: 1, 7: 1, 11: 1, 19: 1 }, year: '1965', by: 'Zvonimir Janko', rep: 56,
+    note: 'The first new sporadic group in nearly a century after Mathieu. It is a subgroup of G_{2}(11).' },
+  { id: 'J3', sym: 'J_{3}', name: 'Janko group', gen: 0, f: { 2: 7, 3: 5, 5: 1, 17: 1, 19: 1 }, year: '1968', by: 'Zvonimir Janko; built by Graham Higman and John McKay', rep: 85,
+    note: 'A pariah: it is not a quotient of any subgroup of the Monster.' },
+  { id: 'J4', sym: 'J_{4}', name: 'Janko group', gen: 0, f: { 2: 21, 3: 3, 5: 1, 7: 1, 11: 3, 23: 1, 29: 1, 31: 1, 37: 1, 43: 1 }, year: '1976', by: 'Zvonimir Janko', rep: 1333,
+    note: 'First constructed through a 112-dimensional representation over the field with 2 elements.' },
+  { id: 'ON', sym: 'O′N', name: 'O’Nan group', gen: 0, f: { 2: 9, 3: 4, 5: 1, 7: 3, 11: 1, 19: 1, 31: 1 }, year: '1976', by: 'Michael O’Nan', rep: 10944,
+    note: 'A pariah. Its Schur multiplier is cyclic of order 3.' },
+  { id: 'Ru', sym: 'Ru', name: 'Rudvalis group', gen: 0, f: { 2: 14, 3: 3, 5: 3, 7: 1, 13: 1, 29: 1 }, year: '1972', by: 'Arunas Rudvalis', rep: 378,
+    note: 'Acts as a rank-3 permutation group on 4060 points.' },
+  { id: 'Ly', sym: 'Ly', name: 'Lyons group', gen: 0, f: { 2: 8, 3: 7, 5: 6, 7: 1, 11: 1, 31: 1, 37: 1, 67: 1 }, year: '1972', by: 'Richard Lyons', rep: 2480,
+    note: 'First built by Charles Sims on a computer, as permutations of 8,835,156 points. Its smallest matrix representation over a finite field is 111-dimensional, over the field with 5 elements.' },
+  { id: 'Tits', sym: '^{2}F_{4}(2)′', name: 'Tits group', gen: -1, f: { 2: 11, 3: 3, 5: 2, 13: 1 }, year: '1964', by: 'Jacques Tits', rep: 26,
+    note: 'The index-2 subgroup of ^{2}F_{4}(2), which is not simple itself. It does not fit the ^{2}F_{4}(q) pattern, so it is sometimes counted as a 27th sporadic group.' },
+];
+for (const s of SPOR) { s.order = 1n; for (const [p, e] of Object.entries(s.f)) s.order *= B(p) ** B(e); }
+const SPOR_BY = Object.fromEntries(SPOR.map(s => [s.id, s]));
+
+const ISO = {
+  'A:1:4': 'Isomorphic to the alternating group A_{5} and to A_{1}(5).',
+  'A:1:5': 'Isomorphic to the alternating group A_{5} and to A_{1}(4).',
+  'A:1:7': 'Isomorphic to A_{2}(2) = PSL_{3}(2), the symmetry group of the Fano plane.',
+  'A:1:8': 'Isomorphic to ^{2}G_{2}(3)′, the derived subgroup of the smallest Ree group.',
+  'A:1:9': 'Isomorphic to the alternating group A_{6} and to B_{2}(2)′.',
+  'A:2:2': 'Isomorphic to A_{1}(7) = PSL_{2}(7). The symmetry group of the Fano plane.',
+  'A:2:4': 'Same order as A_{8} ≅ A_{3}(2), but a different group. This is one of only two ways two simple groups can share an order.',
+  'A:3:2': 'Isomorphic to the alternating group A_{8}. Same order as A_{2}(4), which is a different group.',
+  'B:2:3': 'Isomorphic to ^{2}A_{3}(2^{2}) = PSU_{4}(2).',
+  '2A:3:2': 'Isomorphic to B_{2}(3) = PSp_{4}(3).',
+  '2A:2:3': 'Isomorphic to G_{2}(2)′, the derived subgroup of G_{2}(2).',
+};
+function isoNote(fid, n, q) {
+  const k = `${fid}:${n}:${q}`; if (ISO[k]) return ISO[k];
+  if (fid === 'C') return q % 2n === 0n ? `Isomorphic to B_{${n}}(${q}), because q is even.` : `Same order as B_{${n}}(${q}), but a different group.`;
+  if (fid === 'B' && n >= 3) return q % 2n === 0n ? `Isomorphic to C_{${n}}(${q}), because q is even.` : `Same order as C_{${n}}(${q}), but a different group.`;
+  return null;
+}
+const CANON = { 'A:1:4': 'alt5', 'A:1:5': 'alt5', 'Alt:5': 'alt5', 'A:1:7': 'l27', 'A:2:2': 'l27', 'A:1:9': 'alt6', 'Alt:6': 'alt6', 'A:3:2': 'alt8', 'Alt:8': 'alt8', 'B:2:3': 'u42', '2A:3:2': 'u42' };
+function canon(r) { if (CANON[r.key]) return CANON[r.key]; if (r.kind === 'lie' && r.fid === 'C' && r.q % 2n === 0n) return `B:${r.n}:${r.q}`; return r.key; }
+
+function solveQ(f, n, T) {
+  if (num(f, n, 2n) > T) return null;
+  let hi = 2n; while (num(f, n, hi) < T) hi *= 2n;
+  let lo = hi / 2n; if (lo < 2n) lo = 2n;
+  while (lo < hi) { const mid = (lo + hi) >> 1n; if (num(f, n, mid) < T) lo = mid + 1n; else hi = mid; }
+  return num(f, n, lo) === T ? lo : null;
+}
+function lookup(N) {
+  const res = [];
+  if (N < 2n) return res;
+  if (isPrime(N)) res.push({ kind: 'cyc', p: N, key: `Z:${N}` });
+  let fct = 60n;
+  for (let n = 5; ; n++) { if (n > 5) fct *= B(n); if (fct > N) break; if (fct === N) res.push({ kind: 'alt', n, key: `Alt:${n}` }); }
+  for (const fid of FIDS) {
+    const f = FAM[fid];
+    for (let n = f.rank || f.nmin; ; n++) {
+      if (!f.rank) { const maxd = Math.max(...f.ds(n)); if (num(f, n, 2n) / B(maxd) > N) break; }
+      for (const d of f.ds(n)) {
+        const q = solveQ(f, n, N * B(d));
+        if (q === null || !f.qok(q) || f.excl(n, q) || f.g(n, q) !== B(d)) continue;
+        res.push({ kind: 'lie', fid, n, q, key: `${fid}:${n}:${q}` });
+      }
+      if (f.rank) break;
+    }
+  }
+  for (const s of SPOR) if (s.order === N) res.push({ kind: 'spo', id: s.id, key: `S:${s.id}` });
+  return res;
+}
+/*MATH-END*/
+
+/* ---------- formatting ---------- */
+function m(s) {
+  if (s == null) return '';
+  s = String(s).replace(/(?<![A-Za-zΩ])([qnpm])(?![A-Za-z])/g, '<i>$1</i>');
+  s = s.replace(/\^\{([^}]*)\}_\{([^}]*)\}/g, '<sub>$2</sub><sup>$1</sup>');
+  s = s.replace(/\^\{([^}]*)\}/g, '<sup>$1</sup>').replace(/_\{([^}]*)\}/g, '<sub>$1</sub>');
+  return s;
+}
+const fmtInt = b => b.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+function sci(b, sig = 2) {
+  const s = b.toString(); let e = s.length - 1;
+  let lead = Number(s.slice(0, sig + 1).padEnd(sig + 1, '0'));
+  let r = Math.round(lead / 10);
+  if (r >= 10 ** sig) { r = Math.round(r / 10); e += 1; }
+  const ds = String(r); const mant = sig > 1 ? ds[0] + '.' + ds.slice(1) : ds;
+  return `${mant}·10<sup>${e}</sup>`;
+}
+const compact = b => b < 1000000n ? fmtInt(b) : sci(b);
+function log10B(b) { const s = b.toString(); return s.length - 1 + Math.log10(Number('0.' + s.slice(0, 15)) * 10); }
+function fmtFactor(map) {
+  const items = [...map.values()].filter(o => o.e !== 0).sort((a, b) => (a.p < b.p ? -1 : a.p > b.p ? 1 : 0));
+  return items.map(o => o.unf
+    ? `<span class="cmp">(${o.p.toString().length}-digit composite${o.e > 1 ? `, power ${o.e}` : ''})</span>`
+    : `${o.p}${o.e > 1 ? `<sup>${o.e}</sup>` : ''}`).join(' · ');
+}
+function formulaHTML(f, n) {
+  const parts = [`q^{${f.N(n)}}`];
+  for (const t of f.terms(n)) parts.push(t[0] === 'T' ? '(q^{8} + q^{4} + 1)' : `(q${t[0] > 1 ? `^{${t[0]}}` : ''} ${t[1] < 0 ? '−' : '+'} 1)`);
+  const gt = f.gText ? f.gText(n) : null;
+  return parts.map(x => `<span class="nw">${m(x)}</span>`).join('<wbr>') + (gt ? ` <span class="nw">/ ${m(gt)}</span>` : '');
+}
+
+/* ---------- Dynkin glyphs ---------- */
+function dynkin(kind) {
+  const L = [], C = [];
+  const ln = (a, b, c, d) => L.push(`<line x1="${a}" y1="${b}" x2="${c}" y2="${d}"/>`);
+  const dt = (x, y) => C.push(`<circle cx="${x}" cy="${y}" r="2"/>`);
+  const dash = (a, c, y) => L.push(`<line x1="${a}" y1="${y}" x2="${c}" y2="${y}" stroke-dasharray="0.4 2.6"/>`);
+  const multi = (a, c, y, k, dir) => {
+    (k === 2 ? [-1.3, 1.3] : [-2, 0, 2]).forEach(o => ln(a, y + o, c, y + o));
+    const mx = (a + c) / 2; L.push(`<polyline fill="none" points="${mx - 2.2 * dir},${y - 3.4} ${mx + 1.8 * dir},${y} ${mx - 2.2 * dir},${y + 3.4}"/>`);
+  };
+  const fold = (a, c, y, h) => L.push(`<path fill="none" stroke-dasharray="1.6 1.5" d="M${a} ${y} Q${(a + c) / 2} ${y + h} ${c} ${y}"/>`);
+  const chain = (xs, y) => { xs.forEach((x, i) => { if (i) ln(xs[i - 1], y, x, y); dt(x, y); }); };
+  const A = y => { chain([6, 16, 26], y); dash(26, 42, y); dt(42, y); };
+  const F4 = y => { dt(6, y); dt(18, y); dt(30, y); dt(42, y); ln(6, y, 18, y); multi(18, 30, y, 2, 1); ln(30, y, 42, y); };
+  const E = (xs, y, bx, by) => { chain(xs, y); ln(bx, y, bx, by); dt(bx, by); };
+  const D = () => { chain([6, 16], 9); dash(16, 30, 9); dt(30, 9); ln(30, 9, 40, 3); ln(30, 9, 40, 15); dt(40, 3); dt(40, 15); };
+  switch (kind) {
+    case 'Z': { L.push('<circle cx="24" cy="9" r="6.5" fill="none"/>'); for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + k * 2 * Math.PI / 5; dt((24 + 6.5 * Math.cos(a)).toFixed(2), (9 + 6.5 * Math.sin(a)).toFixed(2)); } break; }
+    case 'Alt': { ln(14, 3, 24, 15); ln(24, 3, 34, 15); ln(34, 3, 14, 15); [14, 24, 34].forEach(x => { dt(x, 3); dt(x, 15); }); break; }
+    case 'A': A(9); break;
+    case 'B': chain([6, 16], 9); dash(16, 32, 9); dt(32, 9); dt(42, 9); multi(32, 42, 9, 2, 1); break;
+    case 'C': chain([6, 16], 9); dash(16, 32, 9); dt(32, 9); dt(42, 9); multi(32, 42, 9, 2, -1); break;
+    case 'D': D(); break;
+    case '2A': A(5); fold(6, 42, 8, 16); break;
+    case '2D': D(); L.push('<path fill="none" stroke-dasharray="1.6 1.5" d="M43.5 4.5 Q48.5 9 43.5 13.5"/>'); break;
+    case 'G2': dt(14, 9); dt(34, 9); multi(14, 34, 9, 3, 1); break;
+    case 'F4': F4(9); break;
+    case 'E6': E([6, 15, 24, 33, 42], 13, 24, 4); break;
+    case 'E7': E([4, 12, 20, 28, 36, 44], 13, 20, 4); break;
+    case 'E8': E([3, 10, 17, 24, 31, 38, 45], 13, 17, 4); break;
+    case '2B2': dt(16, 6); dt(32, 6); multi(16, 32, 6, 2, 1); fold(16, 32, 9.5, 13); break;
+    case '2G2': dt(16, 6); dt(32, 6); multi(16, 32, 6, 3, 1); fold(16, 32, 10, 13); break;
+    case '2F4': F4(5); fold(6, 42, 8, 16); break;
+    case '3D4': { const cx = 24, cy = 9.5, r = 7; L.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke-dasharray="1.6 1.5"/>`); [-90, 30, 150].forEach(a => { const t = a * Math.PI / 180, x = (cx + r * Math.cos(t)).toFixed(2), y = (cy + r * Math.sin(t)).toFixed(2); ln(cx, cy, x, y); dt(x, y); }); dt(cx, cy); break; }
+    case '2E6': E([6, 15, 24, 33, 42], 9, 24, 2); fold(6, 42, 11.5, 12); break;
+  }
+  return `<svg viewBox="0 0 48 18" aria-hidden="true" focusable="false"><g stroke="currentColor" stroke-width="1.1" stroke-linecap="round">${L.join('')}</g><g fill="currentColor">${C.join('')}</g></svg>`;
+}
+
+/* ---------- blocks ---------- */
+const BLOCKS = {
+  cyc: { label: 'Cyclic', eyebrow: 'Abelian · cyclic of prime order' },
+  alt: { label: 'Alternating', eyebrow: 'Alternating groups' },
+  cla: { label: 'Classical', eyebrow: 'Lie type · classical' },
+  clt: { label: 'Classical, twisted', eyebrow: 'Lie type · classical, twisted' },
+  exc: { label: 'Exceptional', eyebrow: 'Lie type · exceptional' },
+  ext: { label: 'Exceptional, twisted', eyebrow: 'Lie type · exceptional, twisted' },
+  spo: { label: 'Sporadic', eyebrow: 'Sporadic' },
+  par: { label: 'Pariah', eyebrow: 'Sporadic · pariah' },
+  tit: { label: 'Tits group', eyebrow: 'Edge case' },
+};
+const GEN = { 1: ['Mathieu', '1st generation'], 2: ['Leech lattice', '2nd generation'], 3: ['Monster', '3rd generation'], 0: ['Pariahs', 'outside the Monster'], '-1': ['Tits group', 'edge case'] };
+const PRIMES_TILE = [2, 3, 5, 7, 11, 13, 17, 19];
+const ALT_NOTES = {
+  5: 'The rotations of the icosahedron, and the smallest non-abelian simple group. Isomorphic to A_{1}(4) and A_{1}(5).',
+  6: 'Isomorphic to A_{1}(9) and B_{2}(2)′. S_{6} is the only symmetric group with an outer automorphism.',
+  7: 'Like A_{6}, its Schur multiplier has order 6; every other A_{n} has multiplier of order 2.',
+  8: 'Isomorphic to A_{3}(2) = PSL_{4}(2). It has the same order, 20,160, as A_{2}(4) = PSL_{3}(4), which is a different group.',
+};
+
+/* ---------- build the table ---------- */
+const grid = document.getElementById('grid'), spor = document.getElementById('spor');
+const TILES = {};
+function place(el, col, row, span = 1) { el.style.gridColumn = `${col} / span ${span}`; el.style.gridRow = String(row); return el; }
+function div(cls, html) { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; return d; }
+function tile(id, block, spec, symMk, subMk, ordMk, minOrder, aria) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = `tile k-${block}${block === 'tit' ? ' tits' : ''}`; b.dataset.id = id;
+  const long = symMk.length > 18 || /\^\{[23]\}.*\^\{/.test(symMk);
+  b.innerHTML = `<span class="s${long ? ' sm' : ''}">${m(symMk)}</span>${subMk ? `<span class="a">${m(subMk)}</span>` : ''}<span class="o">${ordMk}</span>`;
+  const t = Math.min(1, Math.max(0, log10B(minOrder) / 75));
+  b.style.setProperty('--t', t.toFixed(4));
+  if (t > 0.5) b.classList.add('inv');
+  b.setAttribute('aria-pressed', 'false');
+  b.setAttribute('aria-label', aria);
+  b.addEventListener('click', () => openSpec(spec, { fromTile: true }));
+  TILES[id] = b; return b;
+}
+const plain = s => s.replace(/[\^_]\{([^}]*)\}/g, '$1');
+
+// header row
+grid.appendChild(place(div('rlabel top', 'n'), 1, 1));
+const headers = [['Z', 'Z_{p}', 2], ['Alt', 'A_{n}', 3], ...FIDS.map(fid => [FAM[fid].glyph, FAM[fid].head, FAM[fid].col])];
+for (const [g, lab, col] of headers) grid.appendChild(place(div('colhead', `${dynkin(g)}<span class="lab">${m(lab)}</span>`), col, 1));
+for (let r = 1; r <= 8; r++) grid.appendChild(place(div('rlabel', String(r)), 1, r + 1));
+
+PRIMES_TILE.forEach((p, i) => {
+  const P = B(p);
+  grid.appendChild(place(tile(`Z${p}`, 'cyc', { type: 'cyc', p: P }, `Z_{${p}}`, null, String(p), P, `Cyclic group of order ${p}`), 2, i + 2));
+});
+for (let n = 5; n <= 12; n++) {
+  const o = altOrder(n);
+  grid.appendChild(place(tile(`Alt${n}`, 'alt', { type: 'alt', n }, `A_{${n}}`, null, compact(o), o, `Alternating group A${n}, order ${fmtInt(o)}`), 3, n - 3));
+}
+for (const fid of FIDS) {
+  const f = FAM[fid];
+  const ranks = f.rank ? [f.rank] : range(f.nmin, 8);
+  for (const n of ranks) {
+    const mem = members(fid, n, 8);
+    const mn = mem.reduce((a, b) => (b.order < a.order ? b : a)).order;
+    const sub = f.alias ? f.alias(n, 'q') : f.sub;
+    const id = f.rank ? fid : fid + n;
+    grid.appendChild(place(tile(id, f.block, { type: 'lie', fid, n }, f.sym(n, 'q'), sub, '≥' + compact(mn), mn, `${plain(f.sym(n, 'q'))}, smallest order ${fmtInt(mn)}`), f.col, n + 1));
+  }
+}
+for (const col of [2, 3, 4, 5, 6, 7, 8, 9]) grid.appendChild(place(div('cont', '⋮'), col, 10));
+
+const legend = place(div('legend', ''), 5, 2, 15); legend.id = 'legend'; grid.appendChild(legend);
+grid.appendChild(place(div('readme', 'Rows are Lie rank <i>n</i>. A Lie-type tile stands for a whole family, one group for each allowed field size <i>q</i>; its number is the order of the smallest member. The first two columns simply list their groups in order.'), 10, 4, 10));
+
+// sporadic block
+const sh = div('shead', '<h2>26 sporadic groups</h2><p>They belong to no family. Twenty of them live inside the Monster, the “happy family”; the six pariahs do not.</p>');
+spor.appendChild(sh);
+let srow = 2;
+for (const gen of [1, 2, 3, 0, -1]) {
+  const list = SPOR.filter(s => s.gen === gen);
+  const [t, u] = GEN[gen];
+  spor.appendChild(place(div('slabel', `<span class="t">${t}</span><span class="u">${u}</span>`), 1, srow, 3));
+  list.forEach((s, i) => {
+    const block = gen === 0 ? 'par' : gen === -1 ? 'tit' : 'spo';
+    const el = tile(s.id, block, { type: 'spo', id: s.id }, s.sym, null, compact(s.order), s.order, `${s.name} ${plain(s.sym)}, order ${fmtInt(s.order)}`);
+    spor.appendChild(place(el, 4 + i, srow));
+  });
+  srow++;
+}
+
+/* ---------- legend & color mode ---------- */
+function renderLegend(mode) {
+  if (mode === 'size') {
+    const ticks = [0, 20, 40, 60].map(v => `<span style="left:${(v / 75 * 100).toFixed(2)}%">10<sup>${v}</sup></span>`).join('');
+    legend.innerHTML = `<div class="ramp"><div class="bar"></div><div class="ticks">${ticks}</div><div class="cap">Order of the smallest member, log scale. E<sub>8</sub>(2) tops out near 10<sup>74</sup>.</div></div>`;
+  } else {
+    legend.innerHTML = Object.entries(BLOCKS).map(([k, v]) => `<span class="it"><span class="sw k-${k}"></span>${v.label}</span>`).join('');
+  }
+}
+function setMode(mode) {
+  document.body.classList.toggle('mode-size', mode === 'size');
+  for (const b of document.querySelectorAll('.seg button')) b.setAttribute('aria-checked', String(b.dataset.mode === mode));
+  renderLegend(mode);
+  try { localStorage.setItem('fsg-mode', mode); } catch (e) {}
+}
+for (const b of document.querySelectorAll('.seg button')) b.addEventListener('click', () => setMode(b.dataset.mode));
+let savedMode = 'family'; try { savedMode = localStorage.getItem('fsg-mode') || 'family'; } catch (e) {}
+setMode(savedMode === 'size' ? 'size' : 'family');
+
+/* ---------- panel ---------- */
+const panel = document.getElementById('panel'), pbody = document.getElementById('pbody');
+const narrow = window.matchMedia('(max-width: 1399.98px)');
+let current = null;
+
+function tileIdFor(spec) {
+  if (spec.type === 'cyc') return PRIMES_TILE.includes(Number(spec.p)) && spec.p < 100n ? `Z${spec.p}` : null;
+  if (spec.type === 'alt') return spec.n >= 5 && spec.n <= 12 ? `Alt${spec.n}` : null;
+  if (spec.type === 'spo') return spec.id;
+  const f = FAM[spec.fid]; if (f.rank) return spec.fid; return spec.n <= 8 ? spec.fid + spec.n : null;
+}
+function eyebrow(block, extra) { return `<p class="p-eyebrow"><span class="sw k-${block}"></span>${BLOCKS[block].eyebrow}${extra ? ' · ' + extra : ''}</p>`; }
+function orderRow(o) { return `<dt>Order</dt><dd><span class="num">${fmtInt(o)}</span><span class="digits">${o.toString().length} digit${o.toString().length > 1 ? 's' : ''}</span></dd>`; }
+
+function renderCyc(p) {
+  return `${eyebrow('cyc')}<h2 class="p-title">${m(`Z_{${p}}`)}</h2><p class="p-alias">integers modulo ${p}</p>
+  <p class="p-desc">A group of prime order has no subgroups except itself and the trivial group, so it cannot be broken down further. These are the only abelian simple groups, and the only simple groups that are solvable.</p>
+  <dl class="kv">${orderRow(p)}<dt>Factors</dt><dd class="fact">${p}</dd><dt>Family</dt><dd>${m('One group for every prime p. There are infinitely many.')}</dd></dl>`;
+}
+function renderAlt(n) {
+  const o = altOrder(n);
+  return `${eyebrow('alt')}<h2 class="p-title">${m(`A_{${n}}`)}</h2><p class="p-alias">even permutations of ${n} objects</p>
+  <p class="p-desc">${m(ALT_NOTES[n] || `The even permutations of ${n} objects, half of the symmetric group S_{${n}}. Every A_{n} with n ≥ 5 is simple.`)}</p>
+  <dl class="kv"><dt>Formula</dt><dd class="formula">${m('n! / 2')}</dd>${orderRow(o)}<dt>Factors</dt><dd class="fact">${fmtFactor(altFactor(n))}</dd></dl>`;
+}
+function renderSpo(id) {
+  const s = SPOR_BY[id];
+  const block = s.gen === 0 ? 'par' : s.gen === -1 ? 'tit' : 'spo';
+  const extra = s.gen > 0 ? `${GEN[s.gen][0]}, ${GEN[s.gen][1]}` : null;
+  const map = new Map(); for (const [p, e] of Object.entries(s.f)) addF(map, B(p), e);
+  return `${eyebrow(block, extra)}<h2 class="p-title">${m(s.sym)}</h2><p class="p-alias">${s.name}</p>
+  <p class="p-desc">${m(s.note)}</p>
+  <dl class="kv">${orderRow(s.order)}<dt>Factors</dt><dd class="fact">${fmtFactor(map)}</dd>
+  <dt>Found</dt><dd>${s.year}, by ${s.by}</dd>
+  <dt>Smallest rep.</dt><dd><span class="num">${fmtInt(B(s.rep))}</span><span class="digits">dimension of its smallest nontrivial complex representation</span></dd></dl>${id === 'M11' ? `<p class="iso"><a class="p-link" href="../m11/">Play with ${m('M_{11}')} acting on 11 points →</a></p>` : ''}`;
+}
+function renderLie(fid, n, selQ) {
+  const f = FAM[fid];
+  const mem = members(fid, n, 8);
+  let extra = null;
+  if (selQ != null && !mem.some(x => x.q === selQ)) extra = member(fid, n, selQ);
+  const sel = selQ != null ? (mem.find(x => x.q === selQ) || extra) : mem.reduce((a, b) => (b.order < a.order ? b : a));
+  const ex = f.exclText(n), note = f.note(n);
+  const qs = String(sel.q);
+  const fac = lieFactor(fid, n, sel.q);
+  const iso = isoNote(fid, n, sel.q);
+  const row = x => `<li><button type="button" class="mrow${x.q === sel.q ? ' on' : ''}" data-q="${x.q}" aria-pressed="${x.q === sel.q}"><span class="mq">q = ${x.q}</span><span class="ms">${m(f.sym(n, String(x.q)))}</span><span class="mo">${compact(x.order)}</span></button></li>`;
+  return `${eyebrow(f.block, `rank ${n}`)}<h2 class="p-title">${m(f.sym(n, 'q'))}</h2>${f.alias ? `<p class="p-alias">${m(f.alias(n, 'q'))}</p>` : ''}
+  <p class="p-desc">${m(f.desc(n))}</p>
+  <dl class="kv"><dt>Order</dt><dd class="formula">${formulaHTML(f, n)}</dd><dt>Field size</dt><dd>${m(f.qText)}</dd>
+  ${ex ? `<dt>Left out</dt><dd>${m(ex)}</dd>` : ''}${note ? `<dt>Note</dt><dd>${m(note)}</dd>` : ''}</dl>
+  <section class="card" aria-label="Selected member"><p class="card-h">${m(f.sym(n, qs))}${f.alias ? ` <span class="al">= ${m(f.alias(n, qs))}</span>` : ''}</p>
+  <dl class="kv">${orderRow(sel.order)}<dt>Factors</dt><dd class="fact">${fmtFactor(fac)}</dd></dl>${iso ? `<p class="iso">${m(iso)}</p>` : ''}</section>
+  <h3 class="p-h3">Members by field size</h3>
+  <ol class="mlist">${mem.map(row).join('')}${extra ? `<li class="gap-li">⋯</li>${row(extra)}` : ''}</ol>`;
+}
+
+function openSpec(spec, opts = {}) {
+  current = spec;
+  let html;
+  if (spec.type === 'cyc') html = renderCyc(spec.p);
+  else if (spec.type === 'alt') html = renderAlt(spec.n);
+  else if (spec.type === 'spo') html = renderSpo(spec.id);
+  else html = renderLie(spec.fid, spec.n, spec.q ?? null);
+  pbody.innerHTML = html;
+  if (spec.type === 'lie') {
+    for (const b of pbody.querySelectorAll('.mrow')) b.addEventListener('click', () => {
+      const q = B(b.dataset.q); openSpec({ type: 'lie', fid: spec.fid, n: spec.n, q }, { keepScroll: true });
+      const again = pbody.querySelector(`.mrow[data-q="${q}"]`); if (again) again.focus({ preventScroll: true });
+    });
+  }
+  const id = tileIdFor(spec);
+  for (const t of Object.values(TILES)) t.setAttribute('aria-pressed', String(t.dataset.id === id));
+  if (!opts.keepScroll) panel.scrollTop = 0;
+  if (opts.open !== false && narrow.matches) panel.classList.add('open');
+}
+function closePanel() { panel.classList.remove('open'); }
+document.getElementById('close').addEventListener('click', closePanel);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+
+/* ---------- lookup ---------- */
+const form = document.getElementById('lookup'), input = document.getElementById('order'), out = document.getElementById('result');
+function parseN(raw) {
+  const s = raw.replace(/[\s,_']/g, '').replace(/[×·]/g, '*').replace(/\*\*/g, '^');
+  if (!s) return null;
+  if (!/^\d+(\^\d+)?(\*\d+(\^\d+)?)*$/.test(s)) throw new Error('Enter a whole number such as 20160, or a product of powers such as 2^6*3^3*5*7.');
+  let N = 1n;
+  for (const part of s.split('*')) { const [a, e] = part.split('^'); const E = e ? Number(e) : 1; if (E > 4000) throw new Error('That exponent is too large to check.'); N *= B(a) ** B(E); }
+  if (N.toString().length > 400) throw new Error('Numbers up to 400 digits can be checked.');
+  return N;
+}
+function recLabel(r) {
+  if (r.kind === 'cyc') return { spec: { type: 'cyc', p: r.p }, mk: `Z_{${r.p}}`, al: null };
+  if (r.kind === 'alt') return { spec: { type: 'alt', n: r.n }, mk: `A_{${r.n}}`, al: null };
+  if (r.kind === 'spo') { const s = SPOR_BY[r.id]; return { spec: { type: 'spo', id: r.id }, mk: s.sym, al: s.name }; }
+  const f = FAM[r.fid]; return { spec: { type: 'lie', fid: r.fid, n: r.n, q: r.q }, mk: f.sym(r.n, String(r.q)), al: f.alias ? f.alias(r.n, String(r.q)) : null };
+}
+let lastSpecs = [];
+function runLookup(raw) {
+  for (const t of document.querySelectorAll('.tile.hit')) t.classList.remove('hit');
+  let N;
+  try { N = parseN(raw); } catch (e) { out.innerHTML = `<p class="r-err">${e.message}</p>`; return; }
+  if (N === null) { out.innerHTML = ''; return; }
+  const res = lookup(N);
+  const Ns = `<span class="num">${fmtInt(N)}</span>`;
+  if (!res.length) {
+    let why;
+    if (N === 1n) why = 'The trivial group has order 1, and by convention it is not called simple.';
+    else if (N % 2n === 1n) why = 'This number is odd and not prime. By the Feit–Thompson theorem (1963) every group of odd order is solvable, so the only simple groups of odd order are the cyclic ones of prime order.';
+    else {
+      const fm = N < 10n ** 40n ? factor(N, 150000) : null;
+      if (fm && !fm.incomplete && fm.size <= 2) why = 'At most two different primes divide this number. By Burnside’s p<sup>a</sup>q<sup>b</sup> theorem every group of such an order is solvable, so none is simple unless it has prime order.';
+      else why = 'Every family was checked at every rank and field size, along with all 26 sporadic groups and the Tits group.';
+    }
+    out.innerHTML = `<p>No simple group has order ${Ns}.</p><p class="r-foot">${why}</p>`;
+    return;
+  }
+  const classes = new Map();
+  for (const r of res) { const k = canon(r); if (!classes.has(k)) classes.set(k, []); classes.get(k).push(r); }
+  lastSpecs = [];
+  const lis = [...classes.values()].map(group => '<li>' + group.map(r => {
+    const L = recLabel(r); const i = lastSpecs.push(L.spec) - 1;
+    return `<button type="button" class="glink" data-i="${i}">${m(L.mk)}</button>${L.al ? ` <span class="al">(${m(L.al)})</span>` : ''}`;
+  }).join('<span class="eq">≅</span>') + '</li>').join('');
+  const k = classes.size;
+  const head = k === 1
+    ? ([...classes.values()][0].length > 1 ? `${Ns} is the order of exactly one simple group, which goes by several names:` : `${Ns} is the order of exactly one simple group:`)
+    : `${Ns} is the order of ${k} different simple groups:`;
+  const foot = k > 1 ? '<p class="r-foot">By a theorem of Artin and later work, the only orders shared by non-isomorphic simple groups are 20,160 and the orders of B<sub>n</sub>(q) and C<sub>n</sub>(q) for odd q and n ≥ 3.</p>' : '';
+  out.innerHTML = `<p>${head}</p><ul class="r-list">${lis}</ul>${foot}`;
+  for (const b of out.querySelectorAll('.glink')) b.addEventListener('click', () => openSpec(lastSpecs[Number(b.dataset.i)]));
+  let first = null;
+  for (const spec of lastSpecs) { const id = tileIdFor(spec); if (id && TILES[id]) { TILES[id].classList.add('hit'); first = first || TILES[id]; } }
+  if (first) {
+    const sc = document.getElementById('scroller');
+    const x = first.offsetLeft - sc.clientWidth / 2 + first.offsetWidth / 2;
+    if (sc.scrollWidth > sc.clientWidth) sc.scrollTo({ left: Math.max(0, x), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+}
+form.addEventListener('submit', e => { e.preventDefault(); runLookup(input.value); });
+for (const c of document.querySelectorAll('.chip')) c.addEventListener('click', () => { input.value = c.dataset.n; runLookup(c.dataset.n); });
+
+/* ---------- initial state ---------- */
+const startId = (location.hash || '').slice(1);
+const SPEC_BY_ID = {};
+for (const p of PRIMES_TILE) SPEC_BY_ID[`Z${p}`] = { type: 'cyc', p: B(p) };
+for (let n = 5; n <= 12; n++) SPEC_BY_ID[`Alt${n}`] = { type: 'alt', n };
+for (const fid of FIDS) { const f = FAM[fid]; if (f.rank) SPEC_BY_ID[fid] = { type: 'lie', fid, n: f.rank }; else for (let n = f.nmin; n <= 8; n++) SPEC_BY_ID[fid + n] = { type: 'lie', fid, n }; }
+for (const s of SPOR) SPEC_BY_ID[s.id] = { type: 'spo', id: s.id };
+if (startId && SPEC_BY_ID[startId]) openSpec(SPEC_BY_ID[startId]);
+else openSpec({ type: 'alt', n: 5 }, { open: false });
+</script>
+</body>
+</html>
