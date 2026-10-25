@@ -13,5 +13,12 @@ window.EXPLORE = [
     title: 'Periodic table of finite simple groups',
     path: 'explore/simple-groups/',
     desc: '18 infinite families and 26 sporadic groups. Exact orders, factorizations, and a lookup for any order.'
+  },
+  {
+    id: 'rainbow',
+    badge: 'RGB',
+    title: 'Rainbow vectors',
+    path: 'explore/rainbow/',
+    desc: 'Every wavelength as an RGB vector. See what falls outside the cube, then rebuild the rainbow from k vectors.'
   }
 ];
