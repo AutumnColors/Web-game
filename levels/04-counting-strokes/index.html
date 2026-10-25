@@ -1,0 +1,646 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Counting Strokes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one-screen app — header with score + stroke chip, a fixed board fitted to the stage, toolbar pinned to the bottom. Deliberately dark (night graph paper) so pale stroke colors glow. */
+:root{
+  --bg:#141a22; --paper:#18202b; --fg:#e9eef4; --muted:#8b9aac; --chip:#1f2935; --line:#33414f;
+  --accent:#8fd3ff; --hit:#ff5d5d; --gain:#7ef0b8; --zen:#c7a6ff; --gold:#ffd84a; --apple:#ff6b5e;
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--mono);overflow:hidden;
+  display:flex;flex-direction:column;-webkit-user-select:none;user-select:none}
+header{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;
+  padding-block:10px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
+  border-bottom:1px solid var(--line)}
+h1{font-family:var(--display);font-weight:800;font-size:1.2rem;letter-spacing:-.01em;margin:0 auto 0 0;white-space:nowrap}
+.chip{display:flex;align-items:center;gap:8px;background:var(--chip);border:1px solid var(--line);
+  border-radius:999px;padding:5px 12px 5px 6px;font-size:.78rem;font-variant-numeric:tabular-nums}
+.chip .sw{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#10161d;font-weight:700;font-size:.76rem;flex:none}
+.chip .prog{color:var(--muted)}
+.chip .live{font-weight:700;color:var(--gain)}
+.chip .live.bad{color:var(--hit)}
+.chip .live.top{color:var(--gold)}
+.chip .par{color:var(--gold)}
+.chip .par.dead{color:var(--hit)}
+.chip .par .ap{color:var(--apple)}
+.score{display:flex;gap:14px;align-items:baseline;font-variant-numeric:tabular-nums}
+.score div{display:flex;flex-direction:column;line-height:1.05}
+.score span{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.score b{font-family:var(--display);font-weight:800;font-size:1.35rem}
+.score .over b{color:var(--hit)}
+.score .zen b{color:var(--zen)}
+#stage{position:relative;flex:1;min-height:0;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block;cursor:crosshair}
+.note{position:absolute;left:50%;top:12px;transform:translateX(-50%);
+  background:color-mix(in oklab, var(--bg) 90%, transparent);border:1px solid var(--line);border-radius:12px;
+  padding:8px 14px;font-size:.74rem;line-height:1.5;color:var(--muted);width:max-content;max-width:calc(100% - 32px);text-align:left}
+#hint{pointer-events:none}
+#hint b{color:var(--fg);font-weight:700}
+#over{border-color:var(--hit);color:var(--fg);display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;text-align:center}
+#over strong{font-family:var(--display);font-weight:800;color:var(--hit);font-size:.95rem}
+#over small{color:var(--muted);font-size:.72rem}
+#toast{top:auto;bottom:12px;pointer-events:none;transition:opacity .3s;text-align:center}
+.pop{position:absolute;pointer-events:none;font-family:var(--display);font-weight:800;font-size:1.3rem;white-space:nowrap;
+  transform:translate(-50%,-50%);animation:pop 1.4s ease-out forwards;text-shadow:0 2px 8px #000a}
+.pop.big{font-size:1.7rem}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-30%) scale(.7)}15%{opacity:1;transform:translate(-50%,-60%) scale(1.1)}100%{opacity:0;transform:translate(-50%,-170%) scale(1)}}
+@media (prefers-reduced-motion: reduce){.pop{animation:fade 1.4s linear forwards}@keyframes fade{0%,70%{opacity:1}100%{opacity:0}}}
+footer{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;
+  padding-block:10px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
+  border-top:1px solid var(--line)}
+button{font:inherit;font-size:.8rem;color:var(--fg);background:var(--chip);border:1px solid var(--line);
+  border-radius:10px;padding:8px 14px;cursor:pointer;min-width:40px}
+button:hover{background:#273342}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.armed{background:var(--hit);color:#10161d;border-color:var(--hit)}
+#over button{background:var(--hit);color:#10161d;border-color:var(--hit);font-weight:700}
+*{box-sizing:border-box}
+body{margin:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);font-size:14px}
+.back{color:#a9bbcd;text-decoration:none;font-weight:700;font-size:.8rem;padding:7px 11px;border-radius:10px;background:#ffffff12;white-space:nowrap}.back:hover{background:#ffffff22;color:#fff}
+</style></head><body>
+
+<header>
+  <a class="back" href="../../">← Levels</a>
+  <h1>Counting Strokes</h1>
+  <div class="score">
+    <div id="scoreBox"><span id="scoreLbl">Score</span><b id="scoreVal">0</b></div>
+    <div class="zen" id="zenBox" hidden><span>Zen</span><b id="zenVal">0</b></div>
+    <div><span>Best</span><b id="bestVal">0</b></div>
+  </div>
+  <div class="chip"><span class="sw" id="sw">2</span><span><b id="chipTitle">Stroke 2</b> <span class="prog" id="prog"></span> <span class="live" id="live"></span> <span class="par" id="par"></span></span></div>
+</header>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div class="note" id="hint">
+    Stroke N is exactly <b>N steps</b> along the grid. Every step one edge from an earlier line scores <b>+1</b>.<br>
+    Match the board's <b>max</b> and the stroke scores <b>×2</b>. Pass through an <b>apple</b> for <b>×2</b>; match the best apple path too for <b>×4</b>.<br>
+    Landing on a line, a bomb, or your own path ends the scored game.<br>
+    Apples appear for strokes 5, 10 and 15 onward. From 11, old strokes clear. From 15, a bomb lands after each stroke.
+  </div>
+  <div class="note" id="over" hidden><span><strong id="overTitle">Collision</strong> <small id="overSub"></small></span><button id="newGame2">New game</button></div>
+  <div class="note" id="toast" hidden></div>
+</div>
+<footer>
+  <button id="undo">Undo</button>
+  <button id="clear">New game</button>
+</footer>
+
+<script src="../../shared/progress.js"></script>
+<script>
+const LEVEL_ID = 'counting-strokes';
+(() => {
+const PALETTE = ['#8fd3ff','#ffd84a','#ff8a7a','#7ef0b8','#c7a6ff','#ffb35c','#ff9ad5','#c8f26b','#6be6e6','#f2c6a0'];
+const colorFor = n => PALETTE[(n - 2) % PALETTE.length];
+const HIT = '#ff5d5d', GOLD = '#ffd84a', APPLE = '#ff6b5e', ZEN = '#c7a6ff';
+const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+const START_N = 2, CLEAR_FROM = 11, BOMB_FROM = 15, PAR_BUDGET_MS = 2500;
+const appleFor = n => n === 5 || n === 10 || n >= 15;      // strokes that get a fresh apple on the board
+const key = p => p.x + ',' + p.y;
+
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const stage = document.getElementById('stage');
+const $ = id => document.getElementById(id);
+let W = 0, H = 0, dpr = 1, cell = 30, ox = 0, oy = 0;
+
+let S = { board: null, strokes: [], bombs: [], apples: [], current: null };
+const hot = window.claude?.hot;
+const KEY = 'counting-strokes-v3', BEST_KEY = 'counting-strokes-best3';
+let best = 0;
+
+function load(data) {
+  const ok = d => d && d.board && Array.isArray(d.strokes) && d.strokes.every(st => st.mode !== 'free') && (d.startN == null || d.startN === START_N);
+  if (ok(data)) S = Object.assign(S, data, { apples: data.apples || [] });
+  else { try { const raw = JSON.parse(localStorage.getItem(KEY)); if (ok(raw)) S = Object.assign(S, raw); } catch (e) {} }
+  try { best = +localStorage.getItem(BEST_KEY) || 0; } catch (e) { best = 0; }
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+hot?.snapshot?.(() => S);
+
+const nextN = () => START_N + S.strokes.length;
+const inBoard = p => p.x >= 0 && p.y >= 0 && p.x <= S.board.w - 1 && p.y <= S.board.h - 1;
+const toScr = p => ({ x: p.x * cell + ox, y: p.y * cell + oy });
+const toGrid = (x, y) => ({ x: (x - ox) / cell, y: (y - oy) / cell });
+const clampG = p => ({ x: Math.max(0, Math.min(S.board.w - 1, p.x)), y: Math.max(0, Math.min(S.board.h - 1, p.y)) });
+
+/* ---------- rules ----------
+   Points: one per grid edge joining a node of the new stroke to a node of an earlier stroke.
+   Apple: a stroke through an apple eats it and scores ×2.
+   Perfect: ×2 more when the stroke matches the best possible score — the board's max for a stroke
+   without an apple, the best path through an apple for a stroke that eats one (so apple + perfect = ×4).
+   Collision: a node on an earlier line, a bomb, or the stroke's own path ends the scored game.
+   Clearing (N ≥ 11): finishing stroke N removes the oldest whole strokes adding up to at most N−1.
+   Bombs (N ≥ 15): finishing stroke N drops a bomb on a free vertex near it. */
+function scoreGrid(pts, occ, bombs) {
+  const own = new Set(), collide = [];
+  let n = 0;
+  for (const p of pts) {
+    const k = key(p);
+    if (occ.has(k) || own.has(k) || (bombs && bombs.has(k))) collide.push(p);
+    own.add(k);
+    for (const [dx, dy] of DIRS) if (occ.has((p.x + dx) + ',' + (p.y + dy))) n++;
+  }
+  return { pts: n, collide };
+}
+function contactsOf(pts, occ) {
+  const out = [];
+  for (const p of pts) for (const [dx, dy] of DIRS) { const q = { x: p.x + dx, y: p.y + dy }; if (occ.has(key(q))) out.push([p, q]); }
+  return out;
+}
+const visibleNodes = (st, c) => c >= st.n ? [] : c === 0 ? st.pts : st.pts.slice(c + 1);
+function removeOldest(cut, upto, count) {
+  for (let j = 0; j < upto; j++) {
+    const n = S.strokes[j].n;
+    if (cut[j] >= n) continue;
+    if (n > count) break;            // the next oldest stroke would overshoot: round down
+    cut[j] = n; count -= n;
+  }
+  return cut;
+}
+const cutSum = c => c.reduce((a, b) => a + b, 0);
+function occOf(cut, upto) {
+  const occ = new Set();
+  for (let j = 0; j < upto; j++) for (const p of visibleNodes(S.strokes[j], cut[j])) occ.add(key(p));
+  return occ;
+}
+const liveBombs = () => S.bombs.filter(b => b.after < S.strokes.length);
+const bombSet = upto => new Set(liveBombs().filter(b => b.after < upto).map(key));
+function multOf(base, ate, par) {
+  let mult = ate ? 2 : 1, perfect = false;
+  if (par) { const m = ate ? par.maxA : par.max; perfect = m > 0 && base >= m; }
+  if (perfect) mult *= 2;
+  return { mult, perfect };
+}
+
+let EV = null;
+function evaluate() {
+  const res = [], cut = S.strokes.map(() => 0), eaten = new Map();
+  let ranked = true, score = 0, zen = 0, overAt = -1;
+  const activeApples = i => S.apples.filter(a => a.after < i && !(eaten.has(a) && eaten.get(a) < i));
+  S.strokes.forEach((st, i) => {
+    const r = scoreGrid(st.pts, occOf(cut, i), bombSet(i));
+    const nodes = new Set(st.pts.map(key));
+    const ate = activeApples(i).filter(a => nodes.has(key(a)));
+    ate.forEach(a => eaten.set(a, i));
+    Object.assign(r, multOf(r.pts, ate.length > 0, st.par));
+    r.ate = ate.length > 0;
+    r.gained = r.collide.length ? 0 : r.pts * r.mult;
+    res.push(r);
+    if (ranked) { if (r.collide.length) { ranked = false; overAt = i; } else score += r.gained; }
+    zen += r.collide.length ? r.pts : r.gained;
+    if (st.n >= CLEAR_FROM) removeOldest(cut, i, st.n - 1);
+  });
+  const occ = occOf(cut, S.strokes.length);
+  const nn = S.current ? S.current.n : nextN();
+  const next = nn >= CLEAR_FROM ? removeOldest(cut.slice(), S.strokes.length, nn - 1) : cut;
+  EV = { occ, res, cut, doom: S.current ? next : cut, nextClear: cutSum(next) - cutSum(cut),
+         bombs: bombSet(S.strokes.length), apples: activeApples(S.strokes.length), ranked, score, zen, overAt };
+  if (score > best) { best = score; try { localStorage.setItem(BEST_KEY, best); } catch (e) {} }
+  if (score > 0) window.GameKit?.best(LEVEL_ID, score);
+  return EV;
+}
+
+/* ---------- best possible score (background worker) ----------
+   A path's points are the sum, over its nodes, of how many old tiles touch that node, so the max is a
+   heaviest simple path of exactly N edges on free vertices. Depth-first search with a bound: inner nodes
+   touch at most 2 old tiles, the end at most 3, and a node d steps from the nearest scoring vertex wastes
+   d−1 steps getting there. The apple search adds one constraint: the path must reach an apple in time. */
+const WORKER_SRC = `
+onmessage = e => {
+  const { w, h, occ, bombs, apples, N, id, budget } = e.data;
+  const T = w * h, isOcc = new Uint8Array(T), blocked = new Uint8Array(T), isApple = new Uint8Array(T);
+  for (const i of occ) { isOcc[i] = 1; blocked[i] = 1; }
+  for (const i of bombs) blocked[i] = 1;
+  for (const i of apples) isApple[i] = 1;
+  const nb = []; for (let i = 0; i < T; i++) { const x = i % w, y = (i - x) / w, a = [];
+    if (x > 0) a.push(i - 1); if (x < w - 1) a.push(i + 1); if (y > 0) a.push(i - w); if (y < h - 1) a.push(i + w); nb.push(a); }
+  const c = new Int8Array(T);
+  for (let i = 0; i < T; i++) if (!blocked[i]) for (const j of nb[i]) c[i] += isOcc[j];
+  const INF = 1e9;
+  const bfs = src => { const d = new Int32Array(T).fill(INF), q = [];
+    for (let i = 0; i < T; i++) if (!blocked[i] && src(i)) { d[i] = 0; q.push(i); }
+    for (let k = 0; k < q.length; k++) for (const j of nb[q[k]]) if (!blocked[j] && d[j] === INF) { d[j] = d[q[k]] + 1; q.push(j); }
+    return d; };
+  const dist = bfs(i => c[i] > 0), distA = bfs(i => isApple[i]);
+  const capped = []; for (let i = 0; i < T; i++) if (!blocked[i] && c[i] > 0) capped.push(Math.min(2, c[i]));
+  capped.sort((a, b) => b - a);
+  const P = [0]; for (let k = 0; k < Math.max(N + 2, capped.length + 1); k++) P.push(P[k] + (capped[k] || 0));
+  const ub = (sum, left, d) => { if (left <= 0) return sum; const m = Math.max(0, left - Math.max(0, d - 1)); return sum + P[Math.min(m, P.length - 1)] + (m > 0 ? 1 : 0); };
+  const nbs = nb.map(a => a.filter(j => !blocked[j]).sort((x, y) => (c[y] - c[x]) || (dist[x] - dist[y])));
+  const t0 = Date.now();
+  const out = { id, max: -1, path: null, maxA: -1, pathA: null, exact: true, exactA: true, done: false };
+
+  function search(needApple, deadline) {
+    const vis = new Uint8Array(T), path = new Int32Array(N + 1);
+    let best = -1, bestPath = null, calls = 0, aborted = false;
+    function dfs(u, depth, sum, ate) {
+      if ((++calls & 4095) === 0 && Date.now() > deadline) { aborted = true; return; }
+      if (depth === N) {
+        if ((!needApple || ate) && sum > best) {
+          best = sum; bestPath = Array.from(path);
+          if (needApple) { out.maxA = best; out.pathA = bestPath; } else { out.max = best; out.path = bestPath; }
+          postMessage(out);
+        }
+        return;
+      }
+      const left = N - depth - 1;
+      for (const v of nbs[u]) {
+        if (vis[v]) continue;
+        const ate2 = ate || isApple[v] === 1;
+        if (needApple && !ate2 && distA[v] > left) continue;
+        const s2 = sum + c[v];
+        if (best >= 0 && ub(s2, left, dist[v]) <= best) continue;
+        vis[v] = 1; path[depth + 1] = v; dfs(v, depth + 1, s2, ate2); vis[v] = 0;
+        if (aborted) return;
+      }
+    }
+    const starts = []; for (let i = 0; i < T; i++) if (!blocked[i] && (!needApple || distA[i] <= N)) starts.push(i);
+    starts.sort((a, b) => needApple ? (distA[a] - distA[b]) || (dist[a] - dist[b]) : (dist[a] - dist[b]) || (c[b] - c[a]));
+    for (const s of starts) {
+      if (best >= 0 && ub(c[s], N, dist[s]) <= best) continue;
+      vis[s] = 1; path[0] = s; dfs(s, 0, c[s], isApple[s] === 1); vis[s] = 0;
+      if (aborted) break;
+    }
+    return !aborted;
+  }
+  out.exact = search(false, t0 + budget);
+  if (apples.length) out.exactA = search(true, Date.now() + budget);
+  out.done = true;
+  postMessage(out);
+};`;
+let workerURL = null, worker = null, parSeq = 0;
+let par = null;            // { n, max, path, maxA, pathA, done, exact, exactA, id }
+let ghost = null;          // best path shown after a stroke that missed it
+function stopPar() { if (worker) { worker.terminate(); worker = null; } }
+function startPar() {
+  stopPar();
+  if (!S.board) return;
+  const n = nextN(), id = ++parSeq, ev = evaluate(), hasApple = ev.apples.length > 0;
+  par = { n, id, max: null, path: null, maxA: hasApple ? null : -1, pathA: null, done: false, exact: false, exactA: false, hasApple };
+  const idx = p => p.y * S.board.w + p.x;
+  const sIdx = s => { const [x, y] = s.split(',').map(Number); return idx({ x, y }); };
+  const msg = { w: S.board.w, h: S.board.h, occ: [...ev.occ].map(sIdx), bombs: [...ev.bombs].map(sIdx), apples: ev.apples.map(idx), N: n, id, budget: PAR_BUDGET_MS };
+  try {
+    if (!workerURL) workerURL = URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' }));
+    worker = new Worker(workerURL);
+    worker.onmessage = e => {
+      const d = e.data; if (!par || d.id !== par.id) return;
+      Object.assign(par, { max: d.max, path: d.path, done: d.done, exact: d.exact, exactA: d.exactA });
+      if (hasApple) { par.maxA = d.maxA; par.pathA = d.pathA; }
+      if (d.done) stopPar();
+      ui();
+    };
+    worker.onerror = () => { par.done = true; stopPar(); ui(); };
+    worker.postMessage(msg);
+  } catch (e) { par.done = true; }
+}
+const pathPts = p => p ? p.map(i => ({ x: i % S.board.w, y: Math.floor(i / S.board.w) })) : null;
+
+/* ---------- layout ---------- */
+function fit() {
+  const r = stage.getBoundingClientRect();
+  W = r.width; H = r.height; dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  if (!S.board) return;
+  const pad = 22;
+  cell = Math.max(8, Math.min((W - pad * 2) / (S.board.w - 1), (H - pad * 2) / (S.board.h - 1), 56));
+  ox = (W - cell * (S.board.w - 1)) / 2; oy = (H - cell * (S.board.h - 1)) / 2;
+  draw();
+}
+const liveScore = () => S.current ? scoreGrid(S.current.pts, EV.occ, EV.bombs) : null;
+const liveAte = () => S.current ? EV.apples.some(a => S.current.pts.some(p => p.x === a.x && p.y === a.y)) : false;
+
+/* ---------- drawing ---------- */
+const markR = () => Math.max(6, Math.min(14, cell * 0.32));
+function drawBoard() {
+  const w = S.board.w, h = S.board.h, a = toScr({ x: 0, y: 0 }), b = toScr({ x: w - 1, y: h - 1 });
+  ctx.fillStyle = '#141a22'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#18202b'; ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+  ctx.lineWidth = 1;
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.strokeStyle = pass ? '#2f3c4d' : '#222c38';
+    ctx.beginPath();
+    for (let i = 1; i < w - 1; i++) { if ((i % 5 === 0) !== !!pass) continue; const x = Math.round(a.x + i * cell) + .5; ctx.moveTo(x, a.y); ctx.lineTo(x, b.y); }
+    for (let j = 1; j < h - 1; j++) { if ((j % 5 === 0) !== !!pass) continue; const y = Math.round(a.y + j * cell) + .5; ctx.moveTo(a.x, y); ctx.lineTo(b.x, y); }
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#4a5a6d'; ctx.lineWidth = 1.5;          // board edge: its vertices are playable
+  ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+}
+function drawBombs() {
+  const r = Math.max(5, Math.min(11, cell * 0.26));
+  for (const b of liveBombs()) {
+    const m = toScr(b);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(m.x, m.y + r * .12, r, 0, 7);
+    ctx.fillStyle = '#0b0f14'; ctx.fill(); ctx.lineWidth = 1.8; ctx.strokeStyle = HIT; ctx.stroke();
+    ctx.beginPath(); ctx.arc(m.x - r * .3, m.y - r * .2, r * .22, 0, 7); ctx.fillStyle = '#3a4656'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(m.x + r * .5, m.y - r * .7);
+    ctx.quadraticCurveTo(m.x + r * .9, m.y - r * 1.35, m.x + r * 1.25, m.y - r * 1.2);
+    ctx.strokeStyle = '#c9b48a'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(m.x + r * 1.3, m.y - r * 1.25, r * .32, 0, 7); ctx.fillStyle = '#ffb35c'; ctx.fill();
+    ctx.restore();
+  }
+}
+function drawApples() {
+  const r = Math.max(5, Math.min(11, cell * 0.27));
+  const onPath = new Set(S.current ? S.current.pts.map(key) : []);
+  for (const a of EV.apples) {
+    const m = toScr(a), hit = onPath.has(key(a));
+    ctx.save();
+    if (hit) { ctx.beginPath(); ctx.arc(m.x, m.y, r * 1.7, 0, 7); ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.stroke(); }
+    ctx.beginPath();                                                     // two-lobed apple body
+    ctx.moveTo(m.x, m.y - r * .55);
+    ctx.bezierCurveTo(m.x - r * 1.25, m.y - r * 1.15, m.x - r * 1.3, m.y + r * .9, m.x, m.y + r);
+    ctx.bezierCurveTo(m.x + r * 1.3, m.y + r * .9, m.x + r * 1.25, m.y - r * 1.15, m.x, m.y - r * .55);
+    ctx.fillStyle = APPLE; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = '#141a22'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(m.x, m.y - r * .5); ctx.lineTo(m.x + r * .15, m.y - r * 1.1);
+    ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 1.5; ctx.stroke();       // stem
+    ctx.beginPath(); ctx.ellipse(m.x + r * .5, m.y - r * 1.0, r * .42, r * .2, -.5, 0, 7);
+    ctx.fillStyle = '#7ec96a'; ctx.fill();                                // leaf
+    ctx.beginPath(); ctx.arc(m.x - r * .4, m.y - r * .1, r * .18, 0, 7); ctx.fillStyle = '#ffffff55'; ctx.fill();
+    ctx.restore();
+  }
+}
+function freeVertices(ev, extraBlocked) {
+  const out = [];
+  for (let x = 0; x < S.board.w; x++) for (let y = 0; y < S.board.h; y++) {
+    const k = x + ',' + y;
+    if (!ev.occ.has(k) && !ev.bombs.has(k) && !extraBlocked.has(k)) out.push({ x, y });
+  }
+  return out;
+}
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function placeBomb(lastStroke) {
+  const ev = evaluate(), cands = freeVertices(ev, new Set(ev.apples.map(key)));
+  const near = cands.filter(c => lastStroke.pts.some(p => Math.abs(p.x - c.x) + Math.abs(p.y - c.y) <= 3));
+  const pool = near.length ? near : cands;
+  if (pool.length) S.bombs = S.bombs.concat([{ ...pick(pool), after: S.strokes.length - 1 }]);
+}
+function placeApple() {
+  // a free vertex within 5 steps of the tiles on the board, so it is worth a detour
+  const ev = evaluate(), cands = freeVertices(ev, new Set(ev.apples.map(key)));
+  const tiles = [...ev.occ].map(s => s.split(',').map(Number));
+  const near = tiles.length ? cands.filter(c => tiles.some(([x, y]) => Math.abs(x - c.x) + Math.abs(y - c.y) <= 5)) : cands;
+  const pool = near.length ? near : cands;
+  if (pool.length) S.apples = S.apples.concat([{ ...pick(pool), after: S.strokes.length - 1 }]);
+}
+function drawContacts(pts, col) {
+  ctx.save(); ctx.setLineDash([2, 3]); ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.globalAlpha = .75;
+  ctx.beginPath();
+  for (const [a, b] of contactsOf(pts, EV.occ)) { const p = toScr(a), q = toScr(b); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); }
+  ctx.stroke(); ctx.restore();
+}
+function drawHits(list) {
+  const rr = markR() * 1.35;
+  ctx.save(); ctx.strokeStyle = HIT; ctx.lineWidth = 3;
+  for (const h of list) {
+    const p = toScr(h);
+    ctx.beginPath(); ctx.arc(p.x, p.y, rr, 0, 7); ctx.stroke();
+    const d = rr * .55;
+    ctx.beginPath(); ctx.moveTo(p.x - d, p.y - d); ctx.lineTo(p.x + d, p.y + d); ctx.moveTo(p.x + d, p.y - d); ctx.lineTo(p.x - d, p.y + d); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawGhost(g) {
+  const pts = g.map(toScr);
+  ctx.save(); ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.setLineDash([6, 5]); ctx.globalAlpha = .8; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (const p of pts.slice(1)) ctx.lineTo(p.x, p.y); ctx.stroke();
+  ctx.setLineDash([]); ctx.fillStyle = GOLD;
+  for (const p of pts) { ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+function drawStroke(st, c, d, alpha) {
+  if (d > c) { drawLayer(st, c, alpha * .28); if (d < st.n) drawLayer(st, d, alpha); }
+  else drawLayer(st, c, alpha);
+}
+function drawLayer(st, c, alpha) {
+  if (c >= st.n) return;
+  const col = colorFor(st.n), pts = (c === 0 ? st.pts : st.pts.slice(c + 1)).map(toScr);
+  if (!pts.length) return;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = col; ctx.lineWidth = Math.max(2.5, Math.min(4, cell * 0.09));
+  ctx.globalAlpha = alpha;
+  ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.stroke();
+  const r = markR();
+  if (c === 0) {
+    ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, r * .45, 0, 7);
+    ctx.fillStyle = '#18202b'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.stroke();
+  }
+  const label = String(st.n);
+  const fs = r * (label.length > 2 ? .82 : label.length > 1 ? 1.0 : 1.15);
+  ctx.font = `700 ${fs}px "IBM Plex Mono", ui-monospace, monospace`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const p of pts.slice(c === 0 ? 1 : 0)) {
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7);
+    ctx.fillStyle = col; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#141a22'; ctx.stroke();
+    ctx.fillStyle = '#10161d'; ctx.fillText(label, p.x, p.y + fs * .05);
+  }
+  ctx.globalAlpha = 1;
+}
+function draw() {
+  if (!S.board || !W) return;
+  evaluate();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawBoard();
+  S.strokes.forEach((st, i) => drawStroke(st, EV.cut[i], EV.doom[i], EV.overAt >= 0 && i > EV.overAt ? .55 : .92));
+  drawBombs();
+  drawApples();
+  if (EV.overAt >= 0) drawHits(EV.res[EV.overAt].collide);
+  if (ghost && !S.current) drawGhost(ghost);
+  if (S.current) {
+    const r = liveScore();
+    drawContacts(S.current.pts, colorFor(S.current.n));
+    drawLayer(S.current, 0, EV.ranked ? 1 : .55);
+    drawHits(r.collide);
+    const e = toScr(S.current.pts[S.current.pts.length - 1]);
+    ctx.beginPath(); ctx.arc(e.x, e.y, Math.max(12, cell * .5), 0, 7);
+    ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5; ctx.strokeStyle = colorFor(S.current.n); ctx.stroke(); ctx.setLineDash([]);
+  }
+  ui();
+}
+
+/* ---------- UI ---------- */
+function ui() {
+  if (!EV) return;
+  const n = S.current ? S.current.n : nextN();
+  $('sw').style.background = colorFor(n); $('sw').textContent = n;
+  $('chipTitle').textContent = 'Stroke ' + n;
+  $('prog').textContent = (S.current ? `${S.current.pts.length - 1}/${n}` : `${n} steps`)
+    + (n >= CLEAR_FROM ? ` · clears ${EV.nextClear}` : '') + (n >= BOMB_FROM ? ' · +1 bomb' : '');
+  const live = $('live'); live.classList.remove('bad', 'top');
+  if (S.current) {
+    const r = liveScore(), ate = liveAte();
+    if (r.collide.length) { live.textContent = '✕ collision'; live.classList.add('bad'); }
+    else {
+      const m = par && par.n === n ? multOf(r.pts, ate, par) : { mult: ate ? 2 : 1, perfect: false };
+      live.textContent = '+' + r.pts + (m.mult > 1 ? ' ×' + m.mult : '');
+      if (m.perfect) live.classList.add('top');
+    }
+  } else live.textContent = '';
+  const pe = $('par'); pe.classList.remove('dead');
+  if (!par || par.n !== n) pe.textContent = '';
+  else if (par.done && par.max < 0) { pe.textContent = 'no safe path'; pe.classList.add('dead'); }
+  else {
+    const fmt = (v, exact) => v == null || v < 0 ? '…' : (par.done && exact ? '' : '≥') + v;
+    pe.innerHTML = 'max ' + fmt(par.max, par.exact)
+      + (par.hasApple ? ` · <span class="ap">apple ${par.done && par.maxA < 0 ? 'out of reach' : fmt(par.maxA, par.exactA)}</span>` : '');
+  }
+
+  const over = !EV.ranked;
+  $('scoreLbl').textContent = over ? 'Final' : 'Score';
+  $('scoreBox').classList.toggle('over', over);
+  $('scoreVal').textContent = EV.score;
+  $('zenBox').hidden = !over;
+  $('zenVal').textContent = EV.zen;
+  $('bestVal').textContent = best;
+  $('over').hidden = !over;
+  if (over) {
+    $('overTitle').textContent = `Collision on stroke ${S.strokes[EV.overAt].n}`;
+    $('overSub').textContent = `Final score ${EV.score}. Keep drawing for Zen.`;
+  }
+  $('hint').hidden = S.strokes.length > 0 || !!S.current || over;
+  $('undo').disabled = !S.current && !(over && S.strokes.length - 1 > EV.overAt);
+}
+let toastT = null;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.hidden = false; t.style.opacity = 1;
+  clearTimeout(toastT); toastT = setTimeout(() => { t.style.opacity = 0; setTimeout(() => t.hidden = true, 300); }, 3000);
+}
+function popAt(p, text, color, big) {
+  const s = toScr(p), el = document.createElement('div');
+  el.className = 'pop' + (big ? ' big' : ''); el.textContent = text; el.style.color = color;
+  el.style.left = Math.max(90, Math.min(W - 90, s.x)) + 'px'; el.style.top = s.y + 'px';
+  stage.appendChild(el); setTimeout(() => el.remove(), 1500);
+}
+
+/* ---------- stroke building ---------- */
+function finish() {
+  const st = S.current, wasRanked = EV.ranked, cutBefore = cutSum(EV.cut);
+  if (par && par.n === st.n && par.max != null)
+    st.par = { max: par.max, maxA: par.maxA == null ? -1 : par.maxA, exact: par.done && par.exact };
+  const myPar = par && par.n === st.n ? par : null;
+  stopPar();
+  S.strokes.push(st); S.current = null; gesture.done = true;
+  const ev = evaluate(), r = ev.res[ev.res.length - 1];
+  const cleared = cutSum(ev.cut) - cutBefore;
+  if (st.n >= BOMB_FROM) placeBomb(st);
+  if (appleFor(st.n + 1)) placeApple();
+  save();
+  const end = st.pts[st.pts.length - 1];
+  ghost = null;
+  const msgs = [];
+  if (r.collide.length) popAt(r.collide[0], wasRanked ? 'Collision!' : '✕', HIT);
+  else {
+    const label = r.ate && r.perfect ? `Apple + Perfect ×4  +${r.gained}` : r.perfect ? `Perfect ×2  +${r.gained}` : r.ate ? `Apple ×2  +${r.gained}` : '+' + r.gained;
+    popAt(end, label, !wasRanked ? ZEN : r.perfect ? GOLD : r.ate ? APPLE : '#7ef0b8', r.perfect || r.ate);
+    const target = st.par ? (r.ate ? st.par.maxA : st.par.max) : -1;
+    if (!r.perfect && target > r.pts && myPar) {
+      ghost = pathPts(r.ate ? myPar.pathA : myPar.path);
+      msgs.push(`${r.ate ? 'Best apple path' : 'Max'} was +${target} (gold dashes)`);
+    }
+  }
+  if (st.n >= CLEAR_FROM) msgs.push(cleared ? `Cleared ${cleared} old tiles` : 'Nothing to clear');
+  if (st.n >= BOMB_FROM) msgs.push('A bomb dropped');
+  if (appleFor(st.n + 1)) msgs.push('An apple appeared');
+  if (msgs.length) toast(msgs.join(' · '));
+  startPar();
+}
+function feedGrid(p) {
+  const st = S.current;
+  for (let guard = 0; guard < 200; guard++) {
+    const last = st.pts[st.pts.length - 1];
+    const dx = p.x - last.x, dy = p.y - last.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 0.62) break;
+    const step = Math.abs(dx) >= Math.abs(dy) ? { x: last.x + Math.sign(dx), y: last.y } : { x: last.x, y: last.y + Math.sign(dy) };
+    if (!inBoard(step)) break;
+    const prev = st.pts[st.pts.length - 2];
+    if (prev && prev.x === step.x && prev.y === step.y) { st.pts.pop(); continue; } // walking back erases a step
+    st.pts.push(step);
+    if (st.pts.length - 1 >= st.n) { finish(); break; }
+  }
+}
+
+/* ---------- pointer ---------- */
+let gesture = { id: null, done: false };
+cv.addEventListener('pointerdown', e => {
+  if (gesture.id != null || !S.board) return;
+  cv.setPointerCapture(e.pointerId);
+  gesture = { id: e.pointerId, done: false };
+  ghost = null;
+  const g = toGrid(e.offsetX, e.offsetY);
+  if (S.current) {
+    const end = S.current.pts[S.current.pts.length - 1];
+    if (Math.hypot(g.x - end.x, g.y - end.y) < 0.9) { draw(); return; }
+    S.current = null;
+  }
+  const c = clampG(g);
+  S.current = { n: nextN(), pts: [{ x: Math.round(c.x), y: Math.round(c.y) }] };
+  draw();
+});
+cv.addEventListener('pointermove', e => {
+  if (e.pointerId !== gesture.id || gesture.done || !S.current) return;
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+  const r = cv.getBoundingClientRect();
+  for (const ev of (evs.length ? evs : [e])) {
+    if (!S.current) break;
+    feedGrid(toGrid(ev.clientX - r.left, ev.clientY - r.top));
+  }
+  draw();
+});
+function endPointer(e) {
+  if (e.pointerId !== gesture.id) return;
+  gesture = { id: null, done: false };
+  if (S.current && S.current.pts.length < 2) S.current = null;
+  draw(); save();
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ---------- controls ---------- */
+function newGame() {
+  const r = stage.getBoundingClientRect();
+  S.board = r.width > r.height ? { w: 17, h: 12 } : { w: 12, h: 17 };
+  S.strokes = []; S.bombs = []; S.apples = []; S.current = null; ghost = null;
+  fit(); save(); startPar();
+}
+$('undo').onclick = () => {
+  if (S.current) { S.current = null; draw(); save(); return; }
+  if (!EV.ranked && S.strokes.length - 1 > EV.overAt) {
+    S.strokes.pop(); ghost = null;
+    S.bombs = S.bombs.filter(b => b.after < S.strokes.length);
+    S.apples = S.apples.filter(a => a.after < S.strokes.length);
+    draw(); save(); startPar();
+  }
+};
+let armTimer = null;
+$('clear').onclick = () => {
+  const b = $('clear');
+  if (!S.strokes.length && !S.current) { newGame(); return; }
+  if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'Tap to confirm'; clearTimeout(armTimer);
+    armTimer = setTimeout(() => { b.classList.remove('armed'); b.textContent = 'New game'; }, 2500); return; }
+  clearTimeout(armTimer); b.classList.remove('armed'); b.textContent = 'New game';
+  newGame();
+};
+$('newGame2').onclick = newGame;
+window.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); $('undo').click(); } });
+
+function start(data) {
+  window.GameKit?.played(LEVEL_ID);
+  load(data);
+  new ResizeObserver(fit).observe(stage);
+  if (!S.board) newGame(); else { fit(); startPar(); }
+}
+hot?.ready ? hot.ready(start) : start(hot?.data ?? {});
+})();
+</script>
+</body></html>

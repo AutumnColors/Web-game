@@ -17,5 +17,11 @@ window.LEVELS = [
     title: 'Path to Zero',
     path: 'levels/03-path-to-zero/',
     desc: 'Trace each star edge back to the root. 20 paths.'
+  },
+  {
+    id: 'counting-strokes',
+    title: 'Counting Strokes',
+    path: 'levels/04-counting-strokes/',
+    desc: 'Stroke N is N steps. Hug old lines, eat apples, dodge bombs.'
   }
 ];
