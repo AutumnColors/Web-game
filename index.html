@@ -21,7 +21,6 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
 .level.done .num{border-color:var(--done);color:var(--done)}
 .info{min-width:0;flex:1}
 .title{font-weight:750;font-size:1.1rem}
-.desc{color:var(--muted);font-size:.92rem;margin-top:3px}
 .meta{flex:none;text-align:right;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .meta .ok{color:var(--done);font-weight:700}
 .foot{margin-top:28px;text-align:center}
@@ -44,15 +43,14 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
 <script src="explore.js"></script>
 <script>
 'use strict';
-function card(href,badge,badgeClass,title,desc,metaHtml,extraClass){
+function card(href,badge,badgeClass,title,metaHtml,extraClass){
   const li=document.createElement('li');
   const a=document.createElement('a');
   a.className='level'+(extraClass||'');
   a.href=href;
-  a.innerHTML=`<span class="num${badgeClass}"></span><span class="info"><div class="title"></div><div class="desc"></div></span><span class="meta">${metaHtml}</span>`;
+  a.innerHTML=`<span class="num${badgeClass}"></span><span class="info"><div class="title"></div></span><span class="meta">${metaHtml}</span>`;
   a.querySelector('.num').textContent=badge;
   a.querySelector('.title').textContent=title;
-  a.querySelector('.desc').textContent=desc;
   li.append(a);return li;
 }
 function render(){
@@ -65,11 +63,11 @@ function render(){
     if(p.completed)meta.push('<span class="ok">✓ Cleared</span>');
     if(typeof p.best==='number')meta.push('Best: '+p.best);
     else if(p.played)meta.push('Played');
-    list.append(card(lv.path,String(i+1),'',lv.title,lv.desc,meta.join('<br>'),p.completed?' done':''));
+    list.append(card(lv.path,String(i+1),'',lv.title,meta.join('<br>'),p.completed?' done':''));
   });
   const ex=document.getElementById('explore');
   ex.replaceChildren();
-  (window.EXPLORE||[]).forEach(e=>ex.append(card(e.path,e.badge||'?',' badge',e.title,e.desc,'','')));
+  (window.EXPLORE||[]).forEach(e=>ex.append(card(e.path,e.badge||'?',' badge',e.title,'','')));
 }
 document.getElementById('reset').addEventListener('click',()=>{
   if(!confirm('Reset all progress?'))return;
