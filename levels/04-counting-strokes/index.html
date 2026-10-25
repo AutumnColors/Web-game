@@ -39,6 +39,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;displa
 .note{position:absolute;left:50%;top:12px;transform:translateX(-50%);
   background:color-mix(in oklab, var(--bg) 90%, transparent);border:1px solid var(--line);border-radius:12px;
   padding:8px 14px;font-size:.74rem;line-height:1.5;color:var(--muted);width:max-content;max-width:calc(100% - 32px);text-align:left}
+[hidden]{display:none!important}
 #hint{pointer-events:none}
 #hint b{color:var(--fg);font-weight:700}
 #over{border-color:var(--hit);color:var(--fg);display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;text-align:center}
@@ -79,8 +80,8 @@ body{margin:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-a
   <canvas id="cv"></canvas>
   <div class="note" id="hint">
     Stroke N is exactly <b>N steps</b> along the grid. Every step one edge from an earlier line scores <b>+1</b>.<br>
-    Match the board's <b>max</b> and the stroke scores <b>×2</b>. Pass through an <b>apple</b> for <b>×2</b>; match the best apple path too for <b>×4</b>.<br>
-    Landing on a line, a bomb, or your own path ends the scored game.<br>
+    An <b>apple</b> on your path adds <b>+5</b>. Hit the board's <b>max</b> exactly and the stroke scores <b>×2</b> (Perfect).<br>
+    Landing on a line, a bomb, or your own path ends the scored game, and so does a board with no legal stroke left.<br>
     Apples appear for strokes 5, 10 and 15 onward. From 11, old strokes clear. From 15, a bomb lands after each stroke.
   </div>
   <div class="note" id="over" hidden><span><strong id="overTitle">Collision</strong> <small id="overSub"></small></span><button id="newGame2">New game</button></div>
@@ -99,7 +100,7 @@ const PALETTE = ['#8fd3ff','#ffd84a','#ff8a7a','#7ef0b8','#c7a6ff','#ffb35c','#f
 const colorFor = n => PALETTE[(n - 2) % PALETTE.length];
 const HIT = '#ff5d5d', GOLD = '#ffd84a', APPLE = '#ff6b5e', ZEN = '#c7a6ff';
 const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
-const START_N = 2, CLEAR_FROM = 11, BOMB_FROM = 15, PAR_BUDGET_MS = 2500;
+const START_N = 2, CLEAR_FROM = 11, BOMB_FROM = 15, PAR_BUDGET_MS = 2500, APPLE_BONUS = 5;
 const appleFor = n => n === 5 || n === 10 || n >= 15;      // strokes that get a fresh apple on the board
 const key = p => p.x + ',' + p.y;
 
@@ -108,7 +109,7 @@ const stage = document.getElementById('stage');
 const $ = id => document.getElementById(id);
 let W = 0, H = 0, dpr = 1, cell = 30, ox = 0, oy = 0;
 
-let S = { board: null, strokes: [], bombs: [], apples: [], current: null };
+let S = { board: null, strokes: [], bombs: [], apples: [], current: null, endedAt: null };
 const hot = window.claude?.hot;
 const KEY = 'counting-strokes-v3', BEST_KEY = 'counting-strokes-best3';
 let best = 0;
@@ -130,9 +131,9 @@ const clampG = p => ({ x: Math.max(0, Math.min(S.board.w - 1, p.x)), y: Math.max
 
 /* ---------- rules ----------
    Points: one per grid edge joining a node of the new stroke to a node of an earlier stroke.
-   Apple: a stroke through an apple eats it and scores ×2.
-   Perfect: ×2 more when the stroke matches the best possible score — the board's max for a stroke
-   without an apple, the best path through an apple for a stroke that eats one (so apple + perfect = ×4).
+   Apple: a stroke through an apple eats it and adds +5. At most one apple is on the board.
+   Perfect: ×2 when the stroke's total (points + apple bonus) equals the best total any legal stroke could get.
+   No moves: if no legal stroke of length N exists, the scored game ends.
    Collision: a node on an earlier line, a bomb, or the stroke's own path ends the scored game.
    Clearing (N ≥ 11): finishing stroke N removes the oldest whole strokes adding up to at most N−1.
    Bombs (N ≥ 15): finishing stroke N drops a bomb on a free vertex near it. */
@@ -170,36 +171,40 @@ function occOf(cut, upto) {
 }
 const liveBombs = () => S.bombs.filter(b => b.after < S.strokes.length);
 const bombSet = upto => new Set(liveBombs().filter(b => b.after < upto).map(key));
-function multOf(base, ate, par) {
-  let mult = ate ? 2 : 1, perfect = false;
-  if (par) { const m = ate ? par.maxA : par.max; perfect = m > 0 && base >= m; }
-  if (perfect) mult *= 2;
-  return { mult, perfect };
+// best total for a stroke: plain best, or best path through an apple plus the bonus
+const bestOf = p => Math.max(p.max ?? -1, (p.maxA ?? -1) >= 0 ? p.maxA + APPLE_BONUS : -1);
+function totalOf(base, ate, par) {
+  const total = base + (ate ? APPLE_BONUS : 0);
+  const target = par && par.max != null ? bestOf(par) : -1;
+  const perfect = target > 0 && total >= target;
+  return { total, perfect, gained: perfect ? total * 2 : total };
 }
 
 let EV = null;
 function evaluate() {
   const res = [], cut = S.strokes.map(() => 0), eaten = new Map();
-  let ranked = true, score = 0, zen = 0, overAt = -1;
+  let ranked = true, score = 0, zen = 0, overAt = -1, reason = null;
   const activeApples = i => S.apples.filter(a => a.after < i && !(eaten.has(a) && eaten.get(a) < i));
   S.strokes.forEach((st, i) => {
+    if (ranked && S.endedAt != null && i >= S.endedAt) { ranked = false; overAt = i - 1; reason = 'stuck'; }
     const r = scoreGrid(st.pts, occOf(cut, i), bombSet(i));
     const nodes = new Set(st.pts.map(key));
     const ate = activeApples(i).filter(a => nodes.has(key(a)));
     ate.forEach(a => eaten.set(a, i));
-    Object.assign(r, multOf(r.pts, ate.length > 0, st.par));
     r.ate = ate.length > 0;
-    r.gained = r.collide.length ? 0 : r.pts * r.mult;
+    Object.assign(r, totalOf(r.pts, r.ate, st.par));
+    if (r.collide.length) { r.gained = 0; r.perfect = false; }
     res.push(r);
-    if (ranked) { if (r.collide.length) { ranked = false; overAt = i; } else score += r.gained; }
+    if (ranked) { if (r.collide.length) { ranked = false; overAt = i; reason = 'hit'; } else score += r.gained; }
     zen += r.collide.length ? r.pts : r.gained;
     if (st.n >= CLEAR_FROM) removeOldest(cut, i, st.n - 1);
   });
+  if (ranked && S.endedAt != null && S.endedAt <= S.strokes.length) { ranked = false; overAt = S.endedAt - 1; reason = 'stuck'; }
   const occ = occOf(cut, S.strokes.length);
   const nn = S.current ? S.current.n : nextN();
   const next = nn >= CLEAR_FROM ? removeOldest(cut.slice(), S.strokes.length, nn - 1) : cut;
   EV = { occ, res, cut, doom: S.current ? next : cut, nextClear: cutSum(next) - cutSum(cut),
-         bombs: bombSet(S.strokes.length), apples: activeApples(S.strokes.length), ranked, score, zen, overAt };
+         bombs: bombSet(S.strokes.length), apples: activeApples(S.strokes.length), ranked, score, zen, overAt, reason };
   if (score > best) { best = score; try { localStorage.setItem(BEST_KEY, best); } catch (e) {} }
   if (score > 0) window.GameKit?.best(LEVEL_ID, score);
   return EV;
@@ -292,7 +297,11 @@ function startPar() {
       const d = e.data; if (!par || d.id !== par.id) return;
       Object.assign(par, { max: d.max, path: d.path, done: d.done, exact: d.exact, exactA: d.exactA });
       if (hasApple) { par.maxA = d.maxA; par.pathA = d.pathA; }
-      if (d.done) stopPar();
+      if (d.done) {
+        stopPar();
+        // a proven-empty search means no legal stroke exists: the scored game is over
+        if (d.exact && d.max < 0 && EV && EV.ranked && par.n === nextN()) { S.current = null; S.endedAt = S.strokes.length; save(); draw(); return; }
+      }
       ui();
     };
     worker.onerror = () => { par.done = true; stopPar(); ui(); };
@@ -454,7 +463,7 @@ function draw() {
   S.strokes.forEach((st, i) => drawStroke(st, EV.cut[i], EV.doom[i], EV.overAt >= 0 && i > EV.overAt ? .55 : .92));
   drawBombs();
   drawApples();
-  if (EV.overAt >= 0) drawHits(EV.res[EV.overAt].collide);
+  if (EV.reason === 'hit') drawHits(EV.res[EV.overAt].collide);
   if (ghost && !S.current) drawGhost(ghost);
   if (S.current) {
     const r = liveScore();
@@ -481,8 +490,8 @@ function ui() {
     const r = liveScore(), ate = liveAte();
     if (r.collide.length) { live.textContent = '✕ collision'; live.classList.add('bad'); }
     else {
-      const m = par && par.n === n ? multOf(r.pts, ate, par) : { mult: ate ? 2 : 1, perfect: false };
-      live.textContent = '+' + r.pts + (m.mult > 1 ? ' ×' + m.mult : '');
+      const m = totalOf(r.pts, ate, par && par.n === n ? par : null);
+      live.textContent = '+' + r.pts + (ate ? ' +' + APPLE_BONUS + ' apple' : '') + (m.perfect ? ' ×2' : '');
       if (m.perfect) live.classList.add('top');
     }
   } else live.textContent = '';
@@ -490,9 +499,9 @@ function ui() {
   if (!par || par.n !== n) pe.textContent = '';
   else if (par.done && par.max < 0) { pe.textContent = 'no safe path'; pe.classList.add('dead'); }
   else {
-    const fmt = (v, exact) => v == null || v < 0 ? '…' : (par.done && exact ? '' : '≥') + v;
-    pe.innerHTML = 'max ' + fmt(par.max, par.exact)
-      + (par.hasApple ? ` · <span class="ap">apple ${par.done && par.maxA < 0 ? 'out of reach' : fmt(par.maxA, par.exactA)}</span>` : '');
+    const b = par.max == null ? -1 : bestOf(par), viaApple = par.maxA != null && par.maxA >= 0 && par.maxA + APPLE_BONUS > (par.max ?? -1);
+    pe.innerHTML = b < 0 ? 'max …' : 'max ' + (par.done && par.exact && par.exactA ? '' : '≥') + b + (par.done ? '' : '…')
+      + (viaApple ? ' <span class="ap">via apple</span>' : '');
   }
 
   const over = !EV.ranked;
@@ -504,8 +513,8 @@ function ui() {
   $('bestVal').textContent = best;
   $('over').hidden = !over;
   if (over) {
-    $('overTitle').textContent = `Collision on stroke ${S.strokes[EV.overAt].n}`;
-    $('overSub').textContent = `Final score ${EV.score}. Keep drawing for Zen.`;
+    $('overTitle').textContent = EV.reason === 'stuck' ? 'Game over · no more moves' : `Collision on stroke ${S.strokes[EV.overAt].n}`;
+    $('overSub').textContent = EV.reason === 'stuck' ? `Final score ${EV.score}.` : `Final score ${EV.score}. Keep drawing for Zen.`;
   }
   $('hint').hidden = S.strokes.length > 0 || !!S.current || over;
   $('undo').disabled = !S.current && !(over && S.strokes.length - 1 > EV.overAt);
@@ -526,31 +535,33 @@ function popAt(p, text, color, big) {
 function finish() {
   const st = S.current, wasRanked = EV.ranked, cutBefore = cutSum(EV.cut);
   if (par && par.n === st.n && par.max != null)
-    st.par = { max: par.max, maxA: par.maxA == null ? -1 : par.maxA, exact: par.done && par.exact };
+    st.par = { max: par.max, maxA: par.maxA == null ? -1 : par.maxA, exact: par.done && par.exact && par.exactA };
   const myPar = par && par.n === st.n ? par : null;
   stopPar();
   S.strokes.push(st); S.current = null; gesture.done = true;
   const ev = evaluate(), r = ev.res[ev.res.length - 1];
   const cleared = cutSum(ev.cut) - cutBefore;
   if (st.n >= BOMB_FROM) placeBomb(st);
-  if (appleFor(st.n + 1)) placeApple();
+  const newApple = appleFor(st.n + 1) && !evaluate().apples.length;   // never more than one apple on the board
+  if (newApple) placeApple();
   save();
   const end = st.pts[st.pts.length - 1];
   ghost = null;
   const msgs = [];
   if (r.collide.length) popAt(r.collide[0], wasRanked ? 'Collision!' : '✕', HIT);
   else {
-    const label = r.ate && r.perfect ? `Apple + Perfect ×4  +${r.gained}` : r.perfect ? `Perfect ×2  +${r.gained}` : r.ate ? `Apple ×2  +${r.gained}` : '+' + r.gained;
+    const label = r.perfect ? `Perfect ×2  +${r.gained}` : r.ate ? `Apple +${APPLE_BONUS}  +${r.gained}` : '+' + r.gained;
     popAt(end, label, !wasRanked ? ZEN : r.perfect ? GOLD : r.ate ? APPLE : '#7ef0b8', r.perfect || r.ate);
-    const target = st.par ? (r.ate ? st.par.maxA : st.par.max) : -1;
-    if (!r.perfect && target > r.pts && myPar) {
-      ghost = pathPts(r.ate ? myPar.pathA : myPar.path);
-      msgs.push(`${r.ate ? 'Best apple path' : 'Max'} was +${target} (gold dashes)`);
+    const target = st.par ? bestOf(st.par) : -1;
+    if (!r.perfect && target > r.total && myPar) {
+      const viaApple = (myPar.maxA ?? -1) >= 0 && myPar.maxA + APPLE_BONUS > myPar.max;
+      ghost = pathPts(viaApple ? myPar.pathA : myPar.path);
+      msgs.push(`Max was +${target}${viaApple ? ' via the apple' : ''} (gold dashes)`);
     }
   }
   if (st.n >= CLEAR_FROM) msgs.push(cleared ? `Cleared ${cleared} old tiles` : 'Nothing to clear');
   if (st.n >= BOMB_FROM) msgs.push('A bomb dropped');
-  if (appleFor(st.n + 1)) msgs.push('An apple appeared');
+  if (newApple) msgs.push('An apple appeared');
   if (msgs.length) toast(msgs.join(' · '));
   startPar();
 }
@@ -610,7 +621,7 @@ cv.addEventListener('contextmenu', e => e.preventDefault());
 function newGame() {
   const r = stage.getBoundingClientRect();
   S.board = r.width > r.height ? { w: 17, h: 12 } : { w: 12, h: 17 };
-  S.strokes = []; S.bombs = []; S.apples = []; S.current = null; ghost = null;
+  S.strokes = []; S.bombs = []; S.apples = []; S.current = null; S.endedAt = null; ghost = null;
   fit(); save(); startPar();
 }
 $('undo').onclick = () => {
