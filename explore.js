@@ -20,5 +20,12 @@ window.EXPLORE = [
     title: 'Rainbow vectors',
     path: 'explore/rainbow/',
     desc: 'Every wavelength as an RGB vector. See what falls outside the cube, then rebuild the rainbow from k vectors.'
+  },
+  {
+    id: 'constants',
+    badge: '1/α',
+    title: 'Scale of Constants',
+    path: 'explore/constants/',
+    desc: 'π, e, φ and the Standard Model\'s free parameters on one zoomable ruler. Run the force strengths up to the Planck scale.'
   }
 ];

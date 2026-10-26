@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Scale of Constants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Single dark theme to match the Web-game app.
+   Layout: one instrument panel — a pannable ruler on top, the reading (card + index) below, set-aside items at the bottom */
+:root{
+  --bg:#0D1215; --panel:#151C20; --ink:#E3EAEC; --muted:#93A1A6; --line:#2C373C;
+  --accent:#8E9BFF; --warm:#EAA54B; --rose:#F07AAE; --tint:#1E2440; --sunk:#0F1518;
+  --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+.stack{display:flex;flex-direction:column;gap:28px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 64px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+.back{align-self:flex-start;display:inline-block;padding:7px 12px;border-radius:9px;background:var(--tint);color:var(--ink);font-weight:500;font-size:14px;text-decoration:none}
+.back:hover{color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:600;font-size:clamp(26px,6vw,40px);letter-spacing:-.01em;margin:0;line-height:1.12;text-wrap:balance}
+.lede{color:var(--muted);margin:10px 0 0;max-width:60ch}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{font:500 14px var(--f-body);border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:10px 16px;border-radius:999px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tab:focus-visible,.btn:focus-visible,.chip:focus-visible,.row:focus-visible,.hrow:focus-visible,.back:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
+@media (max-width:520px){.panel{padding:18px 16px}}
+.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.group{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{font:500 14px var(--f-body);border:1px solid var(--line);background:transparent;color:var(--ink);min-width:42px;height:40px;padding:0 14px;border-radius:10px;cursor:pointer}
+.btn[aria-pressed="true"]{background:var(--tint);border-color:var(--accent);color:var(--accent)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.chip{font:400 13px var(--f-body);border:1px dashed var(--line);background:transparent;color:var(--muted);padding:7px 13px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{border-style:solid;border-color:var(--ink);color:var(--ink)}
+.ruler{margin-top:20px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;overflow:hidden}
+.ruler:active{cursor:grabbing}
+.ruler svg{display:block;width:100%}
+.hint{font-size:13px;color:var(--muted);margin-top:14px;display:flex;justify-content:space-between;gap:12px 16px;flex-wrap:wrap}
+.legend{display:flex;gap:16px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:760px){.grid{grid-template-columns:minmax(0,1fr);gap:24px}}
+.card{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card .top{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.sym{font-family:var(--f-display);font-weight:500;font-size:48px;line-height:1;color:var(--accent)}
+.nm{font-weight:500;font-size:18px;line-height:1.3}
+.val{font-family:var(--f-mono);font-size:15px;overflow-wrap:anywhere;margin-top:4px}
+.pill{display:inline-block;font:500 11px var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1px solid currentColor}
+.p-alg,.p-meas{color:var(--accent)} .p-tr{color:var(--ink)} .p-open,.p-est,.p-bound{color:var(--warm)}
+.formula{font-family:var(--f-mono);font-size:14px;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:12px 14px;overflow-x:auto;white-space:nowrap}
+.note{margin:0;max-width:60ch}
+.lbl{font:500 11px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.ratio{border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:8px}
+.ratio .big{font-family:var(--f-mono);font-size:18px;font-variant-numeric:tabular-nums}
+.list{display:flex;flex-direction:column;max-height:520px;overflow-y:auto;min-width:0;margin-top:10px}
+@media (max-width:760px){.list{max-height:none;overflow:visible}}
+.row{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:12px;align-items:baseline;padding:12px 8px;border-bottom:1px solid var(--line);cursor:pointer;background:transparent;border-left:0;border-right:0;border-top:0;text-align:left;color:var(--ink);font:inherit}
+.row:last-child{border-bottom:0}
+.row:hover{background:var(--sunk)}
+.row[aria-current="true"]{background:var(--tint);border-radius:8px}
+.row .s{font-family:var(--f-display);font-size:15px}
+.row .n{font-size:14px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .v{font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums}
+.offline{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted);margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.aside{display:flex;flex-direction:column;gap:22px}
+.aside h2{font-family:var(--f-display);font-weight:500;font-size:18px;margin:0}
+.aside .intro{margin:8px 0 0;color:var(--muted);max-width:60ch;font-size:15px}
+.hgroup{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:18px}
+.hhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.hhead .t{font-weight:500;font-size:16px}
+.hhead .d{color:var(--muted);font-size:14px;margin-top:2px;max-width:56ch}
+.hrow{display:grid;grid-template-columns:64px minmax(0,1fr);gap:4px 12px;padding:12px 10px;border-radius:10px;cursor:pointer;background:var(--sunk);border:1px solid var(--line);text-align:left;color:var(--ink);font:inherit;width:100%}
+.hrow:hover{border-color:var(--muted)}
+.hrow .s{font-family:var(--f-display);font-size:15px;grid-row:span 2}
+.hrow .n{font-size:14px;font-weight:500;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.hrow .n span{font-family:var(--f-mono);font-weight:400;font-size:13px;color:var(--muted)}
+.hrow .e{font-size:14px;color:var(--muted);line-height:1.5}
+.hlist{display:flex;flex-direction:column;gap:8px}
+.plot{margin-top:16px}
+.plot svg{display:block;width:100%;height:auto}
+.slider{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+input[type=range]{width:100%;accent-color:var(--accent);height:28px}
+.readout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:520px){.readout{grid-template-columns:minmax(0,1fr)}}
+.ro{border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.ro .k{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.ro .x{font-family:var(--f-mono);font-size:19px;font-variant-numeric:tabular-nums}
+.ro .y{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.swatch{width:18px;height:0;border-top:3px solid}
+.facts{display:flex;flex-direction:column;gap:12px;font-size:15px}
+.facts b{font-weight:500}
+footer{font-size:13px;color:var(--muted);max-width:68ch;line-height:1.6}
+@media (prefers-reduced-motion:no-preference){.card{animation:fade .25s ease}@keyframes fade{from{opacity:.4}to{opacity:1}}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <a class="back" href="../../">← Home</a>
+  <header>
+    <h1>Scale of Constants</h1>
+    <p class="lede">The numbers mathematics and physics are built on, placed on one ruler. Drag to pan, pinch or scroll to zoom, tap any mark to read it.</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button class="tab" role="tab" id="tab-math" data-view="math">Math constants</button>
+    <button class="tab" role="tab" id="tab-sm" data-view="sm">Standard Model</button>
+    <button class="tab" role="tab" id="tab-run" data-view="run">Running couplings</button>
+  </nav>
+
+  <section id="rulerView" class="stack">
+    <div class="panel">
+      <div class="toolbar">
+        <div class="group" id="scaleGroup">
+          <button class="btn" id="btnLin" aria-pressed="true">Linear</button>
+          <button class="btn" id="btnLog" aria-pressed="false">Log</button>
+        </div>
+        <div class="group">
+          <button class="btn" id="zoomOut" aria-label="Zoom out">−</button>
+          <button class="btn" id="zoomIn" aria-label="Zoom in">+</button>
+          <button class="btn" id="fit">Fit all</button>
+        </div>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="ruler" id="ruler" aria-label="Number ruler"><svg id="rsvg" role="img" aria-label="Constants on a ruler"></svg></div>
+      <div class="hint"><div class="legend" id="legend"></div><span id="rangeTxt"></span></div>
+      <div class="offline" id="offline"></div>
+    </div>
+
+    <div class="grid">
+      <article class="panel card" id="card" aria-live="polite"></article>
+      <div class="panel" style="min-width:0">
+        <div class="lbl">Index, smallest to largest</div>
+        <div class="list" id="list"></div>
+      </div>
+    </div>
+
+    <div class="panel aside" id="aside" hidden></div>
+  </section>
+
+  <section id="runView" class="stack" hidden>
+    <div class="panel">
+      <div class="toolbar">
+        <div class="lbl">Inverse coupling 1/α vs energy, one-loop</div>
+        <div class="group">
+          <button class="btn" id="btnSM" aria-pressed="true">Standard Model</button>
+          <button class="btn" id="btnSUSY" aria-pressed="false">+ supersymmetry above 1 TeV</button>
+        </div>
+      </div>
+      <div class="plot" id="plot"></div>
+      <div class="slider">
+        <label class="lbl" for="mu">Energy scale μ</label>
+        <input type="range" id="mu" min="1.96" max="19.09" step="0.01" value="2">
+      </div>
+      <div class="readout" id="readout" style="margin-top:20px"></div>
+    </div>
+    <div class="panel facts" id="runFacts"></div>
+  </section>
+
+  <footer>Values rounded to the precision useful on a ruler. Quark masses follow the PDG convention (MS-bar, top is the pole mass); masses appear as Higgs couplings y = √2·m/v with v = 246.22 GeV. Neutrino masses assume the lightest is near zero. Running uses one-loop equations only, which is enough to see the shape but not the fine detail.</footer>
+</div>
+
+<script>
+const TAU=2*Math.PI;
+const MATH=[
+ {id:"zero",sym:"0",name:"Zero",v:0,txt:"0",st:"alg",def:"Additive identity: adding it changes nothing.",f:"x + 0 = x",note:"With 1, e, π and i it appears in Euler's identity, e^(iπ) + 1 = 0."},
+ {id:"omega",sym:"Ω",name:"Omega constant",v:0.5671432904,txt:"0.5671432904…",st:"tr",def:"The number that solves Ω·e^Ω = 1.",f:"Ω = W(1)   (Lambert W function)",note:"Repeat x → e^(−x) from any starting number and you converge to Ω."},
+ {id:"gamma",sym:"γ",name:"Euler–Mascheroni constant",v:0.5772156649,txt:"0.5772156649…",st:"open",def:"The gap between the harmonic series and the natural log, in the limit.",f:"γ = lim (1 + 1/2 + … + 1/n − ln n)",note:"Not even proven irrational. If it were a fraction, its denominator would need more than 240,000 digits."},
+ {id:"ln2",sym:"ln 2",name:"Natural log of 2",v:0.6931471806,txt:"0.6931471806…",st:"tr",def:"The power you raise e to in order to get 2.",f:"ln 2 = 1 − 1/2 + 1/3 − 1/4 + …",note:"Anything decaying at rate λ halves in time ln 2 / λ. Every half-life in physics contains it."},
+ {id:"dottie",sym:"D",name:"Dottie number",v:0.7390851332,txt:"0.7390851332…",st:"tr",def:"The only real solution of cos x = x, in radians.",f:"D = cos(cos(cos(…)))",note:"Put any number into a calculator in radian mode and press cos repeatedly. You end up here."},
+ {id:"catalan",sym:"G",name:"Catalan's constant",v:0.9159655942,txt:"0.9159655942…",st:"open",def:"An alternating sum over the odd squares.",f:"G = 1 − 1/9 + 1/25 − 1/49 + …",note:"Unknown whether it is irrational. It appears when counting domino tilings of large boards."},
+ {id:"one",sym:"1",name:"One",v:1,txt:"1",st:"alg",def:"Multiplicative identity.",f:"x · 1 = x",note:"The natural centre of a log scale, since log 1 = 0. Switch to Log and watch the constants spread around it."},
+ {id:"apery",sym:"ζ(3)",name:"Apéry's constant",v:1.2020569032,txt:"1.2020569032…",st:"open",def:"The sum of the reciprocal cubes.",f:"ζ(3) = 1 + 1/8 + 1/27 + 1/64 + …",note:"Apéry proved it irrational in 1978; transcendence is open. It appears in the photon density of blackbody radiation."},
+ {id:"conway",sym:"λ",name:"Conway's constant",v:1.3035772690,txt:"1.3035772690…",st:"alg",def:"Growth rate of the look-and-say sequence 1, 11, 21, 1211, 111221, …",f:"largest real root of a degree-71 polynomial",note:"Each term of look-and-say is about 30% longer than the one before."},
+ {id:"plastic",sym:"ρ",name:"Plastic ratio",v:1.3247179572,txt:"1.3247179572…",st:"alg",def:"The real solution of x³ = x + 1.",f:"ρ = ∛((9+√69)/18) + ∛((9−√69)/18)",note:"It does for the Padovan sequence what φ does for Fibonacci."},
+ {id:"sqrt2",sym:"√2",name:"Square root of 2",v:1.4142135624,txt:"1.4142135624…",st:"alg",def:"The diagonal of a unit square.",f:"x² = 2",note:"The first number shown to be irrational. A4 paper uses this ratio so that folding it in half keeps the shape."},
+ {id:"phi",sym:"φ",name:"Golden ratio",v:1.6180339887,txt:"1.6180339887…",st:"alg",def:"Whole is to larger part as larger part is to smaller part.",f:"φ = (1 + √5)/2,   φ² = φ + 1",note:"Its continued fraction is all 1s, which makes it the hardest number to approximate by fractions."},
+ {id:"sqrt3",sym:"√3",name:"Square root of 3",v:1.7320508076,txt:"1.7320508076…",st:"alg",def:"The long diagonal of a unit cube.",f:"x² = 3",note:"Also twice the height of an equilateral triangle with side 1."},
+ {id:"silver",sym:"δₛ",name:"Silver ratio",v:2.4142135624,txt:"2.4142135624…",st:"alg",def:"1 + √2, the next ratio after the golden one.",f:"x² = 2x + 1",note:"Continued fraction [2; 2, 2, …], the pattern after φ's [1; 1, 1, …]."},
+ {id:"falpha",sym:"α",name:"Feigenbaum α",v:2.5029078750,txt:"2.5029078750…",st:"open",def:"How much each new fork narrows as a system doubles its period on the way to chaos.",f:"defined as a limit of the period-doubling cascade",note:"Universal: the same for every smooth one-hump map. Not even proven irrational."},
+ {id:"khinchin",sym:"K₀",name:"Khinchin's constant",v:2.6854520011,txt:"2.6854520011…",st:"open",def:"The geometric mean of continued-fraction terms, for almost every real number.",f:"K₀ = lim (a₁·a₂·…·aₙ)^(1/n)",note:"Holds for almost all reals, yet nobody has proved it for any famous constant such as π."},
+ {id:"e",sym:"e",name:"Euler's number",v:2.7182818285,txt:"2.7182818285…",st:"tr",def:"The base where a quantity grows at a rate equal to its own size.",f:"e = 1 + 1/1! + 1/2! + 1/3! + …",note:"Hermite proved it transcendental in 1873, the first natural constant shown to be."},
+ {id:"pi",sym:"π",name:"Pi",v:3.1415926536,txt:"3.1415926536…",st:"tr",def:"Circumference divided by diameter.",f:"π = 4·(1 − 1/3 + 1/5 − 1/7 + …)",note:"Lindemann proved it transcendental in 1882, which made squaring the circle impossible."},
+ {id:"fdelta",sym:"δ",name:"Feigenbaum δ",v:4.6692016091,txt:"4.6692016091…",st:"open",def:"The rate at which period doublings crowd together on the way to chaos.",f:"δ = lim (rₙ − rₙ₋₁) / (rₙ₊₁ − rₙ)",note:"Measured in dripping taps, fluid convection and electronic circuits. Not proven irrational."},
+ {id:"tau",sym:"τ",name:"Tau",v:TAU,txt:"6.2831853072…",st:"tr",def:"A full turn in radians, 2π.",f:"τ = 2π = circumference / radius",note:"Measuring from the radius instead of the diameter moves the circle constant from 3.14 to 6.28. The choice is a convention."}
+];
+const I_CARD={id:"i",sym:"i",name:"Imaginary unit",txt:"√−1,   |i| = 1",st:"alg",def:"The number whose square is −1. It sits on a perpendicular axis, so no real ruler can hold it.",f:"i² = −1,   e^(iπ) + 1 = 0",note:"Multiplying by i rotates a number by 90°. That turns e, π and i into one statement about rotation."};
+
+const Y=Math.SQRT2/246.22;
+const SM=[
+ {id:"alpha",sym:"α",name:"Fine-structure constant",g:"forces",v:0.0072973526,txt:"1/137.036 at low energy",st:"meas",def:"The strength of electromagnetism.",f:"α = e² / (4π ε₀ ħ c)",note:"Not really constant: at the Z-boson energy it is about 1/128. See Running couplings."},
+ {id:"alphas",sym:"αₛ",name:"Strong coupling",g:"forces",v:0.1180,txt:"0.1180 at the Z mass",st:"meas",def:"The strength of the force between quarks and gluons.",f:"αₛ = g₃² / 4π",note:"Grows at low energy, which keeps quarks confined. Shrinks at high energy: asymptotic freedom, Nobel Prize 2004."},
+ {id:"sw",sym:"sin²θw",name:"Weak mixing angle",g:"forces",v:0.2312,txt:"0.2312 at the Z mass",st:"meas",def:"Sets how one electroweak force splits into electromagnetism and the weak force.",f:"sin²θw = g′² / (g² + g′²)",note:"The simplest grand unified theories predict exactly 3/8 at unification. Running down to our energies brings it near 0.23."},
+ {id:"thetaqcd",sym:"θ̄",name:"Strong CP phase",g:"forces",v:1e-10,txt:"< 10⁻¹⁰",st:"bound",def:"An allowed term in the strong force that would treat matter and its mirror image differently.",f:"limited by the neutron's electric dipole moment",note:"Nothing in the Standard Model forces it to be small. This is the strong CP problem; the axion is the leading proposed fix."},
+ {id:"top",sym:"t",name:"Top quark",g:"quarks",v:172.6*Y,txt:"172.6 GeV",st:"meas",def:"Higgs coupling of the top quark.",f:"y = √2 · m / v",note:"The only fermion coupling close to 1. The top decays before it can bind into hadrons."},
+ {id:"bottom",sym:"b",name:"Bottom quark",g:"quarks",v:4.18*Y,txt:"4.18 GeV",st:"meas",def:"Higgs coupling of the bottom quark.",f:"y = √2 · m / v",note:"The Higgs decays to bottom quarks more often than to anything else."},
+ {id:"charm",sym:"c",name:"Charm quark",g:"quarks",v:1.27*Y,txt:"1.27 GeV",st:"meas",def:"Higgs coupling of the charm quark.",f:"y = √2 · m / v",note:"Predicted in 1970 to explain missing decays; found in 1974."},
+ {id:"strange",sym:"s",name:"Strange quark",g:"quarks",v:0.0935*Y,txt:"93.5 MeV",st:"meas",def:"Higgs coupling of the strange quark.",f:"y = √2 · m / v",note:"Lands almost exactly on the muon. Nobody knows whether that is meaningful."},
+ {id:"down",sym:"d",name:"Down quark",g:"quarks",v:0.00467*Y,txt:"4.67 MeV",st:"meas",def:"Higgs coupling of the down quark.",f:"y = √2 · m / v",note:"Heavier than the up quark, which is why the neutron outweighs the proton and free neutrons decay."},
+ {id:"up",sym:"u",name:"Up quark",g:"quarks",v:0.00216*Y,txt:"2.16 MeV",st:"meas",def:"Higgs coupling of the up quark.",f:"y = √2 · m / v",note:"Quark masses supply only about 1% of the proton's mass. The rest is strong-force energy."},
+ {id:"tau",sym:"τ",name:"Tau lepton",g:"leptons",v:1.77686*Y,txt:"1.777 GeV",st:"meas",def:"Higgs coupling of the tau.",f:"y = √2 · m / v",note:"The only lepton heavy enough to decay into hadrons."},
+ {id:"muon",sym:"μ",name:"Muon",g:"leptons",v:0.1056584*Y,txt:"105.66 MeV",st:"meas",def:"Higgs coupling of the muon.",f:"y = √2 · m / v",note:"About 207 times the electron. Its magnetic moment (g−2) is one of the most precise tests in physics."},
+ {id:"electron",sym:"e",name:"Electron",g:"leptons",v:0.000510999*Y,txt:"0.511 MeV",st:"meas",def:"Higgs coupling of the electron.",f:"y = √2 · m / v",note:"This tiny number sets the size of atoms, and so all of chemistry."},
+ {id:"ckm12",sym:"θ₁₂",name:"Cabibbo angle (quarks)",g:"mixing",v:0.2250,txt:"sin θ₁₂ = 0.2250",st:"meas",def:"How strongly the first two quark generations mix in weak decays.",f:"element of the CKM matrix",note:"The largest quark mixing, found by Cabibbo in 1963."},
+ {id:"ckm23",sym:"θ₂₃",name:"Quark mixing 2–3",g:"mixing",v:0.0418,txt:"sin θ₂₃ = 0.0418",st:"meas",def:"Mixing between the second and third quark generations.",f:"element of the CKM matrix",note:"Quark mixing gets smaller the further apart the generations are."},
+ {id:"ckm13",sym:"θ₁₃",name:"Quark mixing 1–3",g:"mixing",v:0.00369,txt:"sin θ₁₃ = 0.00369",st:"meas",def:"Mixing between the first and third quark generations.",f:"element of the CKM matrix",note:"The smallest of the three, roughly the square of the others."},
+ {id:"ckmd",sym:"δ",name:"Quark CP phase",g:"mixing",v:1.14,txt:"1.14 rad",st:"meas",def:"The phase that lets quarks treat matter and antimatter differently.",f:"phase of the CKM matrix",note:"The only established source of matter–antimatter asymmetry, and far too weak to explain why the universe is made of matter."},
+ {id:"pmns12",sym:"θ₁₂ν",name:"Solar neutrino angle",g:"neutrinos",v:0.554,txt:"sin²θ₁₂ = 0.307",st:"meas",def:"Mixing behind solar neutrino oscillations.",f:"element of the PMNS matrix",note:"Neutrino mixing is large, quark mixing is small. Nobody knows why they differ so much."},
+ {id:"pmns23",sym:"θ₂₃ν",name:"Atmospheric neutrino angle",g:"neutrinos",v:0.742,txt:"sin²θ₂₃ ≈ 0.55",st:"est",def:"Mixing behind atmospheric neutrino oscillations.",f:"element of the PMNS matrix",note:"Close to the maximum possible, 45°. Which side of 45° it falls on is still open."},
+ {id:"pmns13",sym:"θ₁₃ν",name:"Reactor neutrino angle",g:"neutrinos",v:0.148,txt:"sin²θ₁₃ = 0.0220",st:"meas",def:"The smallest neutrino mixing angle.",f:"element of the PMNS matrix",note:"Measured in 2012 by reactor experiments in China and Korea."},
+ {id:"pmnsd",sym:"δν",name:"Neutrino CP phase",g:"neutrinos",v:3.8,txt:"≈ 3.8 rad (uncertain)",st:"est",def:"The matter–antimatter phase in neutrino mixing.",f:"phase of the PMNS matrix",note:"Hints of large CP violation, not yet established. Experiments now under construction aim to settle it."},
+ {id:"nu3",sym:"ν₃",name:"Heaviest neutrino",g:"neutrinos",v:0.050e-9*Y,txt:"≈ 0.050 eV",st:"est",def:"Coupling the heaviest neutrino would need if its mass came from the Higgs.",f:"y = √2 · m / v",note:"Experiments measure only mass differences. The absolute scale is still unknown."},
+ {id:"nu2",sym:"ν₂",name:"Middle neutrino",g:"neutrinos",v:0.0086e-9*Y,txt:"≈ 0.0086 eV",st:"est",def:"Same idea for the middle neutrino mass.",f:"y = √2 · m / v",note:"About seven orders of magnitude below the electron. The leading explanation, the seesaw, ties this to a very heavy partner particle."},
+ {id:"nu1",sym:"ν₁",name:"Lightest neutrino",g:"neutrinos",v:0.03e-9*Y,txt:"0 to about 0.03 eV",st:"bound",def:"The lightest neutrino mass, as a Higgs coupling.",f:"upper limit from cosmology",note:"Could be exactly zero. Cosmology limits the sum of all three masses."},
+ {id:"lambda",sym:"λ",name:"Higgs self-coupling",g:"higgs",v:0.129,txt:"from m_H = 125.1 GeV",st:"meas",def:"How strongly the Higgs field interacts with itself.",f:"λ = m_H² / (2v²)",note:"Its value places our universe near the edge between a stable and a long-lived metastable vacuum."},
+ {id:"vmpl",sym:"v/M_Pl",name:"Electroweak / Planck ratio",g:"higgs",v:246.22/1.2209e19,txt:"246 GeV / 1.22×10¹⁹ GeV",st:"meas",def:"The Higgs scale compared to the gravity scale.",f:"v / M_Pl",note:"Why gravity is so much weaker than the other forces. This is the hierarchy problem."},
+ {id:"cc",sym:"Λ",name:"Cosmological constant",g:"gravity",v:1e-122,txt:"≈ 10⁻¹²² in Planck units",st:"meas",def:"The energy density of empty space, driving the accelerating expansion.",f:"ρ_Λ / M_Pl⁴",note:"Naive quantum estimates miss it by about 120 orders of magnitude. Press Fit all to find it."}
+];
+const GROUPS={forces:"Forces",quarks:"Quarks",leptons:"Leptons",mixing:"Quark mixing",neutrinos:"Neutrinos",higgs:"Higgs",gravity:"Gravity"};
+const MSTAT={alg:"Algebraic",tr:"Transcendental",open:"Status unknown"};
+const GDESC={
+  alg:"Roots of polynomial equations with whole-number coefficients, like x² = 2.",
+  tr:"Proven not to be the root of any such equation. Proofs are hard; only a few famous constants have one.",
+  open:"Nobody has proved which kind these are. For several, even irrationality is open.",
+  forces:"How strong each force is, plus the strong-force CP phase.",
+  quarks:"The six quark masses, written as their coupling to the Higgs field.",
+  leptons:"Electron, muon and tau masses, as Higgs couplings.",
+  mixing:"How quarks of different generations turn into each other in weak decays.",
+  neutrinos:"Neutrino masses and mixing angles. The least well-measured corner of the model.",
+  higgs:"The Higgs field's self-coupling and its scale compared to gravity.",
+  gravity:"The energy of empty space, measured in Planck units."
+};
+const PSTAT={meas:"Measured",est:"Estimate",bound:"Upper limit"};
+
+const views={
+  math:{data:MATH,scale:"lin",lo:-0.25,hi:7,sel:"pi",ref:null,off:new Set(),key:"st",labels:MSTAT},
+  sm:{data:SM,scale:"log",lo:-18,hi:1,sel:"alpha",ref:null,off:new Set(),key:"g",labels:GROUPS}
+};
+let cur="math";
+
+const $=s=>document.querySelector(s);
+const svgNS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent,text){const e=document.createElementNS(svgNS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e}
+function sup(n){const m={"-":"⁻","0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹"};return String(n).split("").map(c=>m[c]||c).join("")}
+function sci(x,d=3){if(x===0)return"0";const e=Math.floor(Math.log10(Math.abs(x)));if(e>=-3&&e<=4)return(+x.toPrecision(d)).toString();const m=x/Math.pow(10,e);return(+m.toPrecision(d))+"×10"+sup(e)}
+function niceStep(raw){const p=Math.pow(10,Math.floor(Math.log10(raw)));const f=raw/p;return(f<1.5?1:f<3.5?2:f<7.5?5:10)*p}
+function tOf(d,v){return v.scale==="log"?Math.log10(d.v):d.v}
+function visible(v){return v.data.filter(d=>!v.off.has(d[v.key])&&!(v.scale==="log"&&d.v<=0))}
+function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+
+function styleFor(d){
+  const s=d.st;
+  if(s==="alg"||s==="meas")return{fill:"var(--accent)",stroke:"var(--accent)",shape:"c"};
+  if(s==="tr")return{fill:"var(--ink)",stroke:"var(--ink)",shape:"s"};
+  return{fill:"var(--panel)",stroke:"var(--warm)",shape:"c"};
+}
+function drawMark(g,d,x,y,r){
+  const s=styleFor(d);
+  if(s.shape==="s")el("rect",{x:x-r,y:y-r,width:2*r,height:2*r,fill:s.fill,stroke:s.stroke,"stroke-width":1.5,transform:`rotate(45 ${x} ${y})`},g);
+  else el("circle",{cx:x,cy:y,r:r,fill:s.fill,stroke:s.stroke,"stroke-width":1.8},g);
+  if(d.st==="bound")el("path",{d:`M${x-r-2} ${y} l-12 0 m5 -4 l-5 4 l5 4`,fill:"none",stroke:"var(--warm)","stroke-width":1.5,"stroke-linecap":"round"},g);
+}
+
+function renderRuler(){
+  const v=views[cur];const svg=$("#rsvg");svg.innerHTML="";
+  const W=$("#ruler").clientWidth||360;const pad=18;const inner=W-2*pad;
+  const X=t=>pad+(t-v.lo)/(v.hi-v.lo)*inner;
+  const items=visible(v).map(d=>({d,x:X(tOf(d,v))})).filter(o=>o.x>-20&&o.x<W+20).sort((a,b)=>a.x-b.x);
+  const laneEnd=[];const LH=32;const MAXL=9;
+  items.forEach(o=>{const w=Math.max(22,o.d.sym.length*9.5+16);o.w=w;let lx=Math.min(Math.max(o.x,w/2+2),W-w/2-2);
+    let lane=0;while(lane<laneEnd.length&&laneEnd[lane]>lx-w/2)lane++;if(lane>=MAXL)lane=MAXL-1;laneEnd[lane]=lx+w/2+8;o.lane=lane;o.lx=lx});
+  const nl=Math.max(1,laneEnd.length);const axisY=24+nl*LH+16;const H=axisY+54;
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);svg.setAttribute("height",H);
+  // ticks
+  const span=v.hi-v.lo;const tg=el("g",{},svg);
+  if(v.scale==="lin"){const st=niceStep(span/Math.max(3,W/80));for(let t=Math.ceil(v.lo/st)*st;t<=v.hi+1e-9;t+=st){const x=X(t);
+      el("line",{x1:x,x2:x,y1:axisY,y2:axisY+7,stroke:"var(--muted)","stroke-width":1},tg);
+      el("text",{x,y:axisY+26,"text-anchor":"middle","font-size":12,"font-family":"IBM Plex Mono, monospace",fill:"var(--muted)"},tg,(+t.toPrecision(6)).toString());
+      const st2=st/5;for(let k=1;k<5;k++){const xx=X(t+k*st2);if(xx<pad||xx>W-pad)continue;el("line",{x1:xx,x2:xx,y1:axisY,y2:axisY+3,stroke:"var(--line)","stroke-width":1},tg)}}}
+  else{const st=Math.max(1,Math.round(niceStep(span/Math.max(3,W/70))));for(let n=Math.ceil(v.lo/st)*st;n<=v.hi+1e-9;n+=st){const x=X(n);
+      el("line",{x1:x,x2:x,y1:axisY,y2:axisY+7,stroke:"var(--muted)","stroke-width":1},tg);
+      el("text",{x,y:axisY+26,"text-anchor":"middle","font-size":12,"font-family":"IBM Plex Mono, monospace",fill:"var(--muted)"},tg,n===0?"1":n===1?"10":"10"+sup(n));
+      if(st===1&&span<12){for(let k=2;k<10;k++){const xx=X(n+Math.log10(k));if(xx<pad||xx>W-pad)continue;el("line",{x1:xx,x2:xx,y1:axisY,y2:axisY+3,stroke:"var(--line)","stroke-width":1},tg)}}}}
+  el("line",{x1:0,x2:W,y1:axisY,y2:axisY,stroke:"var(--ink)","stroke-width":1.2},svg);
+  // ref & selection bands
+  const ref=v.data.find(d=>d.id===v.ref);
+  // marks
+  items.forEach(o=>{const d=o.d;const ly=axisY-24-o.lane*LH;const g=el("g",{"data-id":d.id,style:"cursor:pointer"},svg);
+    const sel=d.id===v.sel,isRef=ref&&d.id===ref.id;
+    el("line",{x1:o.x,y1:axisY-6,x2:o.lx,y2:ly+7,stroke:sel?"var(--accent)":"var(--line)","stroke-width":sel?1.4:1},g);
+    if(sel||isRef)el("rect",{x:o.lx-o.w/2,y:ly-13,width:o.w,height:24,rx:6,fill:sel?"var(--tint)":"none",stroke:isRef?"var(--warm)":"var(--accent)","stroke-width":1,"stroke-dasharray":isRef&&!sel?"3 2":"none"},g);
+    el("text",{x:o.lx,y:ly+4,"text-anchor":"middle","font-size":14,"font-family":"Unbounded, Arial Black, sans-serif",fill:sel?"var(--accent)":"var(--ink)"},g,d.sym);
+    el("rect",{x:o.lx-o.w/2,y:ly-14,width:o.w,height:axisY-ly+22,fill:"transparent"},g);
+    drawMark(g,d,o.x,axisY,sel?5.5:4.2)});
+  // off-screen counters
+  const all=visible(v);const left=all.filter(d=>X(tOf(d,v))<-20).length,right=all.filter(d=>X(tOf(d,v))>W+20).length;
+  if(left)el("text",{x:4,y:axisY+46,"font-size":11,fill:"var(--warm)"},svg,`◀ ${left} more`);
+  if(right)el("text",{x:W-4,y:axisY+46,"text-anchor":"end","font-size":11,fill:"var(--warm)"},svg,`${right} more ▶`);
+  const fmt=t=>v.scale==="log"?"10"+sup(Math.round(t)):(+t.toPrecision(3)).toString();
+  $("#rangeTxt").textContent=`Showing ${fmt(v.lo)} to ${fmt(v.hi)}${v.scale==="log"?` · ${Math.round(v.hi-v.lo)} orders of magnitude`:""}`;
+}
+
+function renderChrome(){
+  const v=views[cur];
+  $("#btnLin").setAttribute("aria-pressed",v.scale==="lin");$("#btnLog").setAttribute("aria-pressed",v.scale==="log");
+  $("#btnLin").disabled=cur==="sm";$("#btnLin").style.opacity=cur==="sm"?.4:1;
+  const chips=$("#chips");chips.innerHTML="";
+  Object.entries(v.labels).forEach(([k,lab])=>{const b=document.createElement("button");b.className="chip";b.textContent=lab;b.setAttribute("aria-pressed",!v.off.has(k));
+    b.onclick=()=>{v.off.has(k)?v.off.delete(k):v.off.add(k);renderAll()};chips.appendChild(b)});
+  const lg=$("#legend");
+  const sw=(st,txt)=>{const d={st};const s=styleFor(d);const svg=`<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">${s.shape==="s"?`<rect x="3.5" y="3.5" width="7" height="7" transform="rotate(45 7 7)" fill="${s.fill}" stroke="${s.stroke}" stroke-width="1.5"/>`:`<circle cx="7" cy="7" r="4.5" fill="${s.fill}" stroke="${s.stroke}" stroke-width="1.8"/>`}</svg>`;return`<span>${svg}${txt}</span>`};
+  lg.innerHTML=cur==="math"?sw("alg","algebraic")+sw("tr","transcendental")+sw("open","unknown"):sw("meas","measured")+sw("est","estimate")+sw("bound","upper limit");
+  const off=$("#offline");
+  if(cur==="math"){off.innerHTML=`<span>Off this line:</span><button class="btn" id="btnI">i  (imaginary unit)</button>${v.scale==="log"?"<span>0 has no logarithm, so it is hidden on the log scale.</span>":""}`;
+    $("#btnI").onclick=()=>{v.sel="i";renderAll()}}
+  else off.innerHTML=`<span>Masses are shown as Higgs couplings, so every point is a pure number.</span>`;
+}
+
+function renderCard(){
+  const v=views[cur];if(v.sel!=="i"){const cs=v.data.find(x=>x.id===v.sel);if(!cs||v.off.has(cs[v.key])){const vis=visible(v);if(vis.length)v.sel=vis[0].id}}const d=v.sel==="i"?I_CARD:v.data.find(x=>x.id===v.sel);const c=$("#card");if(!d){c.innerHTML="";return}
+  const labs=cur==="math"?MSTAT:PSTAT;const pc={alg:"p-alg",tr:"p-tr",open:"p-open",meas:"p-meas",est:"p-est",bound:"p-bound"}[d.st];
+  const ref=v.data.find(x=>x.id===v.ref);
+  let ratio="";
+  if(d.v!=null&&d.id!=="i"){
+    if(ref&&ref.id!==d.id){const r=d.v/ref.v;const ok=ref.v!==0&&d.v!==0;
+      ratio=`<div class="ratio"><div class="lbl">Compared with ${ref.sym} (${ref.name})</div>${ok?`<div class="big">${d.sym} / ${ref.sym} = ${sci(r,5)}</div><div style="color:var(--muted);font-size:13px">${Math.abs(Math.log10(r)).toFixed(2)} orders of magnitude apart${cur==="math"?` · difference ${sci(d.v-ref.v,5)}`:""}</div>`:`<div style="color:var(--muted)">Ratio undefined with zero. Difference: ${sci(d.v-ref.v,5)}</div>`}<div><button class="btn" id="clrRef">Clear reference</button></div></div>`}
+    else ratio=`<div class="ratio"><div><button class="btn" id="setRef">${ref&&ref.id===d.id?"This is the reference":"Compare others to this"}</button></div></div>`}
+  c.innerHTML=`<div class="top"><span class="sym">${d.sym}</span><div><div class="nm">${d.name}</div><div class="val">${d.txt}${cur==="sm"&&d.v!=null?`<span style="color:var(--muted)"> · on ruler ${sci(d.v,3)}</span>`:""}</div></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="pill ${pc}">${d.id==="i"?"Algebraic, not real":labs[d.st]}</span>${d.g?`<span class="lbl">${GROUPS[d.g]}</span>`:""}</div>
+    <p class="note">${d.def}</p><div class="formula">${d.f}</div><p class="note" style="color:var(--muted)">${d.note}</p>${ratio}`;
+  const sr=$("#setRef");if(sr)sr.onclick=()=>{v.ref=d.id;renderAll()};
+  const cr=$("#clrRef");if(cr)cr.onclick=()=>{v.ref=null;renderAll()};
+}
+
+function renderList(){
+  const v=views[cur];const L=$("#list");L.innerHTML="";
+  [...v.data].filter(d=>!v.off.has(d[v.key])).sort((a,b)=>a.v-b.v).forEach(d=>{const b=document.createElement("button");b.className="row";b.setAttribute("aria-current",d.id===v.sel);
+    b.innerHTML=`<span class="s">${d.sym}</span><span class="n">${d.name}</span><span class="v">${cur==="math"?d.v.toFixed(4):sci(d.v,3)}</span>`;
+    b.onclick=()=>select(d.id,true);L.appendChild(b)});
+}
+
+function select(id,pan){const v=views[cur];v.sel=id;const d=v.data.find(x=>x.id===id);
+  if(pan&&d&&!(v.scale==="log"&&d.v<=0)){const t=tOf(d,v);if(t<v.lo||t>v.hi){const s=v.hi-v.lo;v.lo=t-s/2;v.hi=t+s/2}}
+  renderAll()}
+
+function fitAll(){const v=views[cur];const ts=visible(v).map(d=>tOf(d,v));if(!ts.length)return;let a=Math.min(...ts),b=Math.max(...ts);const m=Math.max((b-a)*0.06,v.scale==="log"?0.3:0.1);v.lo=a-m;v.hi=b+m;renderRuler()}
+function zoomAt(px,f){const v=views[cur];const W=$("#ruler").clientWidth;const pad=18,inner=W-2*pad;const fr=Math.min(1,Math.max(0,(px-pad)/inner));const t0=v.lo+fr*(v.hi-v.lo);
+  let span=(v.hi-v.lo)*f;const mn=v.scale==="log"?0.05:0.003,mx=v.scale==="log"?140:60;span=Math.min(mx,Math.max(mn,span));v.lo=t0-fr*span;v.hi=v.lo+span;renderRuler()}
+
+function renderAside(){
+  const v=views[cur];const box=$("#aside");
+  const groups=Object.keys(v.labels).filter(k=>v.off.has(k)).map(k=>({k,title:v.labels[k],desc:GDESC[k],items:v.data.filter(d=>d[v.key]===k),reason:"filter"}));
+  if(v.scale==="log"){const z=v.data.filter(d=>d.v<=0&&!v.off.has(d[v.key]));if(z.length)groups.push({k:"_log",title:"Not on a log scale",desc:"Zero has no logarithm, so it cannot sit on this ruler. Switch to Linear to see it.",items:z,reason:"log"})}
+  const n=groups.reduce((a,g)=>a+g.items.length,0);
+  if(!n){box.hidden=true;box.innerHTML="";return}
+  box.hidden=false;
+  box.innerHTML=`<div><h2>Set aside (${n})</h2><p class="intro">These are hidden from the ruler and the index by the filters above. Tap an item to bring its group back and open it, or use Show to restore a whole group.</p></div>`+
+    groups.map(g=>`<div class="hgroup"><div class="hhead"><div><div class="t">${g.title}</div><div class="d">${g.desc}</div></div>${g.reason==="filter"?`<button class="btn" data-show="${g.k}">Show ${g.items.length}</button>`:`<button class="btn" data-lin="1">Switch to Linear</button>`}</div>
+      <div class="hlist">${[...g.items].sort((a,b)=>a.v-b.v).map(d=>`<button class="hrow" data-id="${d.id}" data-g="${g.k}"><span class="s">${d.sym}</span><span class="n">${d.name}<span>${cur==="math"?d.txt:d.txt}</span></span><span class="e">${d.def}</span></button>`).join("")}</div></div>`).join("");
+  box.querySelectorAll("[data-show]").forEach(b=>b.onclick=()=>{v.off.delete(b.dataset.show);renderAll()});
+  box.querySelectorAll("[data-lin]").forEach(b=>b.onclick=()=>$("#btnLin").click());
+  box.querySelectorAll(".hrow").forEach(b=>b.onclick=()=>{const g=b.dataset.g;if(g==="_log"){$("#btnLin").click();select(b.dataset.id,true)}else{v.off.delete(g);select(b.dataset.id,true)}window.scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"})});
+}
+function renderAll(){renderChrome();renderCard();renderRuler();renderList();renderAside()}
+
+// pointer handling
+(()=>{const r=$("#ruler");const pts=new Map();let start=null,moved=0,pinch=null;
+  r.addEventListener("pointerdown",e=>{r.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=0;
+    if(pts.size===1){const v=views[cur];start={x:e.clientX,lo:v.lo,hi:v.hi,target:e.target}}
+    if(pts.size===2){const [a,b]=[...pts.values()];const v=views[cur];pinch={d:Math.abs(a.x-b.x)||1,lo:v.lo,hi:v.hi,cx:(a.x+b.x)/2}}});
+  r.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});const v=views[cur];const W=r.clientWidth,inner=W-36;
+    if(pts.size===2&&pinch){const [a,b]=[...pts.values()];const d=Math.abs(a.x-b.x)||1;const rect=r.getBoundingClientRect();const px=pinch.cx-rect.left;const fr=Math.min(1,Math.max(0,(px-18)/inner));
+      const t0=pinch.lo+fr*(pinch.hi-pinch.lo);let span=(pinch.hi-pinch.lo)*pinch.d/d;const mn=v.scale==="log"?0.05:0.003,mx=v.scale==="log"?140:60;span=Math.min(mx,Math.max(mn,span));v.lo=t0-fr*span;v.hi=v.lo+span;moved=99;renderRuler();return}
+    if(start){const dx=e.clientX-start.x;moved=Math.max(moved,Math.abs(dx));if(moved<4)return;const dt=-dx/inner*(start.hi-start.lo);v.lo=start.lo+dt;v.hi=start.hi+dt;renderRuler()}});
+  const end=e=>{if(!pts.has(e.pointerId))return;pts.delete(e.pointerId);
+    if(pts.size===0){if(moved<4&&start){const g=start.target.closest&&start.target.closest("g[data-id]");if(g)select(g.getAttribute("data-id"),false)}start=null;pinch=null}
+    else if(pts.size===1){const [p]=[...pts.values()];const v=views[cur];start={x:p.x,lo:v.lo,hi:v.hi,target:r};pinch=null}};
+  r.addEventListener("pointerup",end);r.addEventListener("pointercancel",end);
+  r.addEventListener("wheel",e=>{e.preventDefault();const rect=r.getBoundingClientRect();zoomAt(e.clientX-rect.left,Math.exp(e.deltaY*0.0015))},{passive:false});
+})();
+
+$("#zoomIn").onclick=()=>zoomAt($("#ruler").clientWidth/2,0.6);
+$("#zoomOut").onclick=()=>zoomAt($("#ruler").clientWidth/2,1/0.6);
+$("#fit").onclick=fitAll;
+$("#btnLin").onclick=()=>{const v=views[cur];if(v.scale==="lin")return;v.scale="lin";v.lo=-0.25;v.hi=7;if(v.sel==="zero")v.sel="pi";renderAll()};
+$("#btnLog").onclick=()=>{const v=views[cur];if(v.scale==="log")return;v.scale="log";v.lo=-0.45;v.hi=0.95;if(v.sel==="zero")v.sel="one";renderAll()};
+
+// ---------- running couplings ----------
+const MZ=91.1876, LZ=Math.log10(MZ);
+const INV0=[0.6*(1-0.2312)*127.95, 0.2312*127.95, 1/0.1180];
+const B_SM=[41/10,-19/6,-7], B_SUSY=[33/5,1,-3];
+const LINES=[{n:"α₁",full:"U(1) hypercharge",c:"var(--accent)",dash:""},{n:"α₂",full:"SU(2) weak",c:"var(--warm)",dash:"7 5"},{n:"α₃",full:"SU(3) strong",c:"var(--rose)",dash:"2 4"}];
+let susy=false;
+function invAt(i,l){const ln=x=>x*Math.LN10;if(!susy||l<=3)return INV0[i]-B_SM[i]/TAU*ln(l-LZ);
+  const at3=INV0[i]-B_SM[i]/TAU*ln(3-LZ);return at3-B_SUSY[i]/TAU*ln(l-3)}
+function crossings(){const out=[];const pairs=[[0,1],[0,2],[1,2]];pairs.forEach(([a,b])=>{let prev=null;for(let l=LZ;l<=19.1;l+=0.005){const d=invAt(a,l)-invAt(b,l);if(prev!==null&&Math.sign(d)!==Math.sign(prev)){out.push({a,b,l});break}prev=d}});return out}
+const MARKS=[{l:LZ,t:"Z boson"},{l:Math.log10(13600),t:"LHC"},{l:16,t:"GUT"},{l:Math.log10(1.22e19),t:"Planck"}];
+function renderPlot(){
+  const W=640,H=340,ml=40,mr=14,mt=26,mb=34;const X=l=>ml+(l-2)/(19.2-2)*(W-ml-mr);const Yv=y=>mt+(1-y/65)*(H-mt-mb);
+  const host=$("#plot");host.innerHTML="";const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Inverse gauge couplings versus energy"},host);
+  for(let y=0;y<=60;y+=10){el("line",{x1:ml,x2:W-mr,y1:Yv(y),y2:Yv(y),stroke:"var(--line)","stroke-width":1},svg);el("text",{x:ml-6,y:Yv(y)+4,"text-anchor":"end","font-size":11,"font-family":"IBM Plex Mono, monospace",fill:"var(--muted)"},svg,y)}
+  for(let l=3;l<=19;l+=2){el("text",{x:X(l),y:H-12,"text-anchor":"middle","font-size":11,"font-family":"IBM Plex Mono, monospace",fill:"var(--muted)"},svg,"10"+sup(l))}
+  el("text",{x:W-mr,y:H-0,"text-anchor":"end","font-size":11,fill:"var(--muted)"},svg,"GeV");
+  MARKS.forEach((m,k)=>{el("line",{x1:X(m.l),x2:X(m.l),y1:mt-6,y2:H-mb,stroke:"var(--muted)","stroke-width":1,"stroke-dasharray":"2 3",opacity:.6},svg);el("text",{x:X(m.l)+(k===3?-3:3),y:mt-10,"text-anchor":k===3?"end":"start","font-size":11,fill:"var(--muted)"},svg,m.t)});
+  if(susy)el("rect",{x:X(3),y:mt,width:X(19.2)-X(3),height:H-mt-mb,fill:"var(--tint)",opacity:.5},svg);
+  LINES.forEach((L,i)=>{let d="";for(let l=LZ;l<=19.2;l+=0.05){d+=(d?"L":"M")+X(l).toFixed(1)+" "+Yv(invAt(i,l)).toFixed(1)}
+    el("path",{d,fill:"none",stroke:L.c,"stroke-width":2.4,"stroke-dasharray":L.dash,"stroke-linecap":"round"},svg);
+    const yEnd=invAt(i,19.2);el("text",{x:X(19.2)-4,y:Yv(yEnd)+(i===1?14:-7),"text-anchor":"end","font-size":12,"font-weight":500,fill:L.c},svg,L.n)});
+  crossings().forEach(c=>el("circle",{cx:X(c.l),cy:Yv(invAt(c.a,c.l)),r:3.5,fill:"var(--panel)",stroke:"var(--ink)","stroke-width":1.3},svg));
+  const l=+$("#mu").value;el("line",{x1:X(l),x2:X(l),y1:mt,y2:H-mb,stroke:"var(--ink)","stroke-width":1.2},svg);
+  LINES.forEach((L,i)=>el("circle",{cx:X(l),cy:Yv(invAt(i,l)),r:4.5,fill:L.c},svg));
+}
+function energyTxt(l){const g=Math.pow(10,l);if(g<1e3)return g.toFixed(0)+" GeV";if(g<1e6)return(g/1e3).toPrecision(3)+" TeV";return"10"+sup(l.toFixed(1)).replace("⁻","")+" GeV"}
+function renderReadout(){
+  const l=+$("#mu").value;const vals=LINES.map((_,i)=>invAt(i,l));const spread=Math.max(...vals)-Math.min(...vals);
+  $("#readout").innerHTML=LINES.map((L,i)=>`<div class="ro"><div class="k"><span class="swatch" style="border-color:${L.c};border-top-style:${L.dash?(i===1?"dashed":"dotted"):"solid"}"></span>${L.n} · ${L.full}</div><div class="x">1/α = ${vals[i].toFixed(2)}</div><div class="y">α = ${(1/vals[i]).toFixed(5)}</div></div>`).join("");
+  const cs=crossings();
+  $("#runFacts").innerHTML=`<div><b>At ${energyTxt(l)}:</b> the three inverse couplings span ${spread.toFixed(2)} units. ${spread<0.6?"They practically meet here.":spread<3?"Close, but not a single point.":""}</div>
+   <div><b>Pairwise meetings:</b> ${cs.map(c=>`${LINES[c.a].n} = ${LINES[c.b].n} at 10${sup(c.l.toFixed(1))} GeV`).join(" · ")||"none in range"}.</div>
+   <div style="color:var(--muted)">${susy?"With supersymmetric partners switched on above 1 TeV, the slopes change and the three lines cross close to one point near 2×10¹⁶ GeV. That near-perfect meeting was once a main argument for supersymmetry; the LHC has not found those partners so far.":"In the plain Standard Model the three lines form a triangle between about 10¹³ and 10¹⁷ GeV instead of a single point. Turn on supersymmetry to see what changes."}</div>
+   <div style="color:var(--muted)">α₁ uses the grand-unified normalisation (5/3 factor), which is what makes the comparison meaningful. The electromagnetic α you know, 1/137, is a mix of α₁ and α₂ at low energy.</div>`;
+  renderPlot();
+}
+$("#mu").addEventListener("input",renderReadout);
+$("#btnSM").onclick=()=>{susy=false;$("#btnSM").setAttribute("aria-pressed",true);$("#btnSUSY").setAttribute("aria-pressed",false);renderReadout()};
+$("#btnSUSY").onclick=()=>{susy=true;$("#btnSM").setAttribute("aria-pressed",false);$("#btnSUSY").setAttribute("aria-pressed",true);renderReadout()};
+
+// ---------- view switching ----------
+function setView(name){
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.view===name));
+  $("#rulerView").hidden=name==="run";$("#runView").hidden=name!=="run";
+  if(name!=="run"){cur=name;renderAll()}else renderReadout();
+  try{localStorage.setItem("soc-view",name)}catch(e){}
+}
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setView(t.dataset.view));
+window.addEventListener("resize",()=>{if(!$("#rulerView").hidden)renderRuler()});
+let start="math";const h=(location.hash||"").slice(1);if(["math","sm","run"].includes(h))start=h;else{try{const s=localStorage.getItem("soc-view");if(s)start=s}catch(e){}}
+setView(start);
+</script>
+
+</body>
+</html>

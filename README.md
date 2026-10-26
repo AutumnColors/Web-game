@@ -19,6 +19,7 @@ explore/
   m11/                M11 symmetry (S(4,5,11) and the Mathieu group M11)
   simple-groups/      Periodic table of finite simple groups (families by Lie rank, sporadics, order lookup)
   rainbow/            Rainbow vectors (spectrum → RGB, gamut loss, metrics, rebuild from k vectors)
+  constants/          Scale of Constants (math constants and Standard Model parameters on one ruler, running couplings)
 ```
 
 ## Add a level
