@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vector Cube</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Single dark theme to match the Web-game app.
+   Layout: a 3D stage beside (desktop) or above (phone) an instrument panel that reads the model's raw vectors. */
+:root {
+  --bg: #0f1115; --stage: #14171c; --panel: #181b21; --ink: #e8eaef; --muted: #9aa1ae;
+  --line: #2a2f38; --chip: #20242b; --ok: #4ade80; --bad: #fb923c;
+  --font-ui: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+body{margin:0}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-top: max(16px, env(safe-area-inset-top, 0px)); padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); box-sizing: border-box;
+}
+.app { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; height: 100%; }
+.stage {
+  position: relative; border-radius: 14px; overflow: hidden; min-height: 0;
+  background: radial-gradient(circle at 50% 45%, var(--panel), var(--stage) 70%);
+  border: 1px solid var(--line);
+}
+#cv { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#cv:active { cursor: grabbing; }
+.hint {
+  position: absolute; left: 14px; bottom: 12px; font-size: 12px; color: var(--muted);
+  pointer-events: none; letter-spacing: .02em;
+}
+.panel { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; min-height: 0; padding-bottom: 8px; }
+.back{display:inline-block;margin-bottom:10px;padding:7px 12px;border-radius:9px;background:var(--chip);border:1px solid var(--line);color:var(--ink);font-weight:600;font-size:14px;text-decoration:none}
+.back:hover{border-color:var(--ink)}
+.back:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.01em; text-wrap: balance; }
+.lede { margin: 4px 0 0; color: var(--muted); line-height: 1.45; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.mono { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+
+/* Turn pad */
+.pad-wrap { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.pad { display: grid; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(3, 52px); gap: 6px; }
+.pad button, .actions button {
+  font: inherit; color: var(--ink); background: var(--chip); border: 1px solid var(--line);
+  border-radius: 10px; cursor: pointer;
+}
+.pad button { font-size: 20px; line-height: 1; }
+.pad button:hover:not(:disabled), .actions button:hover:not(:disabled) { border-color: var(--ink); }
+.pad button:active:not(:disabled) { transform: scale(.96); }
+.pad button:disabled, .actions button:disabled { opacity: .4; cursor: default; }
+.pad .center {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: 10px; color: var(--muted); text-align: center; line-height: 1.25;
+}
+button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.mapping { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+.mapping b { color: var(--ink); font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.actions button { padding: 8px 12px; font-size: 13px; font-weight: 500; }
+
+/* Selected cubie */
+.sel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.sel-pos { font-size: 18px; font-weight: 600; }
+.tag { font-size: 12px; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; padding: 0 0 6px; }
+td { padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; vertical-align: middle; }
+td.r, th.r { text-align: right; }
+.sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+.cname { color: var(--muted); font-size: 12px; }
+.ok { color: var(--ok); font-weight: 600; }
+.bad { color: var(--bad); font-weight: 600; }
+.sum { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.sum span.v { color: var(--ink); }
+
+/* Status */
+.status { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 13px; align-items: baseline; }
+.status .k { color: var(--muted); }
+.pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.note { font-size: 12.5px; color: var(--muted); line-height: 1.45; margin: 0; }
+
+.rule { font-size: 13px; line-height: 1.5; }
+.rule code { font-family: var(--font-data); font-size: 12.5px; }
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; }
+.log li { font-family: var(--font-data); font-size: 11.5px; background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; }
+.log .empty { background: none; border: 0; padding: 0; font-family: var(--font-ui); color: var(--muted); font-size: 12.5px; }
+
+@media (max-width: 820px) {
+  html, body { height: auto; }
+  .app { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .stage { height: min(92vw, 56vh); }
+  .panel { overflow: visible; }
+}
+@media (prefers-reduced-motion: reduce) { .pad button:active:not(:disabled) { transform: none; } }
+</style>
+
+</head>
+<body>
+<main class="app">
+  <section class="stage" aria-label="3D cube">
+    <canvas id="cv"></canvas>
+    <div class="hint">Drag to rotate the view · tap a cubie to select it</div>
+  </section>
+
+  <aside class="panel">
+    <header>
+      <a class="back" href="../../">← Home</a>
+      <h1>Vector Cube</h1>
+      <p class="lede">54 stickers, each stored as three vectors: position <span class="mono">p</span>, facing direction <span class="mono">n</span>, color <span class="mono">c</span>. Every turn is one rule.</p>
+    </header>
+
+    <div class="card">
+      <div class="label">Turn the selected cubie's layer</div>
+      <div class="pad-wrap">
+        <div class="pad" role="group" aria-label="Turn controls">
+          <button id="b-ccw" title="Counter-clockwise (Q)" aria-label="Turn facing layer counter-clockwise">↺</button>
+          <button id="b-up" title="Up (↑)" aria-label="Turn vertical layer up">↑</button>
+          <button id="b-cw" title="Clockwise (E)" aria-label="Turn facing layer clockwise">↻</button>
+          <button id="b-left" title="Left (←)" aria-label="Turn horizontal layer left">←</button>
+          <div class="center"><span>selected</span><span class="mono" id="pad-pos">—</span></div>
+          <button id="b-right" title="Right (→)" aria-label="Turn horizontal layer right">→</button>
+          <span></span>
+          <button id="b-down" title="Down (↓)" aria-label="Turn vertical layer down">↓</button>
+          <span></span>
+        </div>
+        <div class="mapping" id="mapping"></div>
+      </div>
+      <div class="actions">
+        <button id="b-undo">Undo</button>
+        <button id="b-scramble">Scramble</button>
+        <button id="b-reset">Reset</button>
+        <button id="b-demo">Twist two corners</button>
+      </div>
+    </div>
+
+    <div class="card" id="sel-card">
+      <div class="sel-head">
+        <span class="sel-pos mono" id="sel-pos">—</span>
+        <span class="tag" id="sel-type"></span>
+      </div>
+      <table>
+        <thead><tr><th>Facing n</th><th>Color c</th><th class="r">n · c</th></tr></thead>
+        <tbody id="sel-rows"></tbody>
+      </table>
+      <div class="sum" id="sel-sum"></div>
+    </div>
+
+    <div class="card">
+      <div class="label">Whole cube</div>
+      <div class="status">
+        <span class="k">Sticker model: aligned stickers</span><span class="mono" id="st-aligned">54 / 54</span>
+        <span class="k">Sticker model says</span><span id="st-new"></span>
+        <span class="k">Old package model (Σc per position) says</span><span id="st-old"></span>
+      </div>
+      <p class="note" id="st-note"></p>
+    </div>
+
+    <div class="card">
+      <div class="label">The turn rule</div>
+      <div class="rule">Pick an axis, a layer <code>k ∈ {−1, 0, 1}</code> and a quarter turn <code>R</code>. For every sticker with <code>p[axis] = k</code>: <code>p → Rp</code>, <code>n → Rn</code>, <code>c</code> stays.</div>
+      <div class="rule mono" style="color:var(--muted)">R_x: (x,y,z) → (x, −z, y)<br>R_y: (x,y,z) → (z, y, −x)<br>R_z: (x,y,z) → (−y, x, z)</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Moves</div>
+      <ul class="log" id="log"><li class="empty">No moves yet.</li></ul>
+    </div>
+  </aside>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// MODEL START
+const AXES = ['x', 'y', 'z'];
+
+// Quarter turn of a vector about an axis. dir = +1 is +90° (right-hand rule), -1 is -90°.
+function rot(v, axis, dir) {
+  const [x, y, z] = v;
+  let r;
+  if (axis === 0) r = dir > 0 ? [x, -z, y] : [x, z, -y];
+  else if (axis === 1) r = dir > 0 ? [z, y, -x] : [-z, y, x];
+  else r = dir > 0 ? [-y, x, z] : [y, -x, z];
+  return r.map(a => a + 0); // turn -0 into 0
+}
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const eq = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+
+// Solved cube: one sticker per nonzero coordinate of each position; its color equals its facing direction.
+function solvedStickers() {
+  const s = [];
+  for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let z = -1; z <= 1; z++) {
+    const p = [x, y, z];
+    for (let i = 0; i < 3; i++) if (p[i] !== 0) {
+      const n = [0, 0, 0]; n[i] = p[i];
+      s.push({ p: [...p], n: [...n], c: [...n] });
+    }
+  }
+  return s;
+}
+
+// THE rule: every sticker in the layer gets its position and facing rotated; color never changes.
+function applyTurn(stickers, axis, k, dir) {
+  for (const s of stickers) if (s.p[axis] === k) {
+    s.p = rot(s.p, axis, dir);
+    s.n = rot(s.n, axis, dir);
+  }
+}
+
+function analyze(stickers) {
+  const aligned = stickers.filter(s => dot(s.n, s.c) === 1).length;
+  const byPos = new Map();
+  for (const s of stickers) {
+    const key = s.p.join(',');
+    if (!byPos.has(key)) byPos.set(key, { p: s.p, list: [] });
+    byPos.get(key).list.push(s);
+  }
+  let oldSolved = true;
+  for (const { p, list } of byPos.values()) {
+    const sum = list.reduce((acc, s) => add(acc, s.c), [0, 0, 0]);
+    if (!eq(sum, p)) oldSolved = false; // package vector = Σc must equal the position it sits in
+  }
+  return { aligned, total: stickers.length, oldSolved, newSolved: aligned === stickers.length };
+}
+// MODEL END
+</script>
+<script>
+(() => {
+  // ---------- colors: +axis is R/G/B, −axis is the anti-color (CMY) ----------
+  const COLOR = {
+    '1,0,0':  { hex: 0xe3262f, css: '#e3262f', name: 'red' },
+    '-1,0,0': { hex: 0x12b9c4, css: '#12b9c4', name: 'anti-red (cyan)' },
+    '0,1,0':  { hex: 0x1fa24b, css: '#1fa24b', name: 'green' },
+    '0,-1,0': { hex: 0xd8288c, css: '#d8288c', name: 'anti-green (magenta)' },
+    '0,0,1':  { hex: 0x2556d6, css: '#2556d6', name: 'blue' },
+    '0,0,-1': { hex: 0xf2c30f, css: '#f2c30f', name: 'anti-blue (yellow)' },
+  };
+  const DIRNAME = { '1,0,0': '+x', '-1,0,0': '−x', '0,1,0': '+y', '0,-1,0': '−y', '0,0,1': '+z', '0,0,-1': '−z' };
+  const fmt = v => '(' + v.map(a => a < 0 ? '−' + (-a) : String(a)).join(', ') + ')';
+
+  // ---------- state ----------
+  let model = solvedStickers();
+  let selected = [1, 1, 1];
+  const history = [];
+  const queue = [];
+  let busy = false;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- three.js scene ----------
+  const canvas = document.getElementById('cv');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+  camera.up.set(0, 0, 1); // z is up, matching the model
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+  const key = new THREE.DirectionalLight(0xffffff, 0.55); key.position.set(4, 3, 8); scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.25); fill.position.set(-6, -4, -2); scene.add(fill);
+
+  const bodyGeo = new THREE.BoxGeometry(0.95, 0.95, 0.95);
+  const stickerGeo = new THREE.PlaneGeometry(0.8, 0.8);
+  const bodies = []; // fixed positions; every non-core position always holds some cubie
+  for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let z = -1; z <= 1; z++) {
+    if (!x && !y && !z) continue;
+    const m = new THREE.Mesh(bodyGeo, new THREE.MeshStandardMaterial({ color: 0x1a1c21, roughness: 0.7 }));
+    m.userData.home = [x, y, z];
+    m.position.set(x, y, z);
+    scene.add(m); bodies.push(m);
+  }
+  const stickerMeshes = model.map((s, i) => {
+    const c = COLOR[s.c.join(',')];
+    const m = new THREE.Mesh(stickerGeo, new THREE.MeshStandardMaterial({ color: c.hex, roughness: 0.45, emissive: c.hex, emissiveIntensity: 0.12, side: THREE.DoubleSide }));
+    m.userData.idx = i;
+    scene.add(m);
+    return m;
+  });
+  const outline = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(1.04, 1.04, 1.04)),
+    new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true, opacity: 0.95 })
+  );
+  outline.renderOrder = 10;
+  scene.add(outline);
+
+  const Z = new THREE.Vector3(0, 0, 1);
+  function syncMeshes() {
+    model.forEach((s, i) => {
+      const m = stickerMeshes[i];
+      m.position.set(s.p[0] + s.n[0] * 0.48, s.p[1] + s.n[1] * 0.48, s.p[2] + s.n[2] * 0.48);
+      m.quaternion.setFromUnitVectors(Z, new THREE.Vector3(...s.n));
+    });
+    for (const b of bodies) {
+      b.position.set(...b.userData.home); b.rotation.set(0, 0, 0);
+      const isSel = selected && eq(b.userData.home, selected);
+      b.material.emissive.setHex(isSel ? 0x6b707c : 0x000000);
+    }
+    outline.visible = !!selected;
+    if (selected) { outline.position.set(...selected); outline.rotation.set(0, 0, 0); }
+  }
+
+  // ---------- camera orbit ----------
+  let theta = Math.PI / 4, phi = 0.56;
+  const RADIUS = 11;
+  function placeCamera() {
+    camera.position.set(RADIUS * Math.cos(phi) * Math.cos(theta), RADIUS * Math.cos(phi) * Math.sin(theta), RADIUS * Math.sin(phi));
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+  }
+  function resize() {
+    const r = canvas.parentElement.getBoundingClientRect();
+    renderer.setSize(r.width, r.height, false);
+    camera.aspect = r.width / Math.max(r.height, 1);
+    camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(canvas.parentElement);
+
+  // Which cube axis each screen direction turns, given the current view.
+  function layerMap() {
+    const r = new THREE.Vector3(), u = new THREE.Vector3(), b = new THREE.Vector3();
+    camera.matrixWorld.extractBasis(r, u, b);
+    const comp = v => [v.x, v.y, v.z];
+    const uu = comp(u), rr = comp(r), bb = comp(b);
+    const pick = (vec, avail) => avail.reduce((best, a) => Math.abs(vec[a]) > Math.abs(vec[best]) ? a : best, avail[0]);
+    const hAxis = pick(uu, [0, 1, 2]);
+    const vAxis = pick(rr, [0, 1, 2].filter(a => a !== hAxis));
+    const fAxis = [0, 1, 2].find(a => a !== hAxis && a !== vAxis);
+    const sgn = x => (x < 0 ? -1 : 1);
+    return {
+      h: { axis: hAxis, s: sgn(uu[hAxis]) },  // left/right: spin about screen-up
+      v: { axis: vAxis, s: sgn(rr[vAxis]) },  // up/down: spin about screen-right
+      f: { axis: fAxis, s: sgn(bb[fAxis]) },  // cw/ccw: spin about the view direction
+    };
+  }
+  function moveFor(kind) {
+    if (!selected) return null;
+    const L = layerMap();
+    const make = (g, dir) => ({ axis: g.axis, k: selected[g.axis], dir });
+    switch (kind) {
+      case 'right': return make(L.h, L.h.s);
+      case 'left': return make(L.h, -L.h.s);
+      case 'up': return make(L.v, -L.v.s);
+      case 'down': return make(L.v, L.v.s);
+      case 'cw': return make(L.f, -L.f.s);
+      case 'ccw': return make(L.f, L.f.s);
+    }
+  }
+
+  // ---------- turning with animation ----------
+  const pivot = new THREE.Object3D(); scene.add(pivot);
+  function animateTurn(m, done) {
+    const inLayer = obj => obj && Math.round(obj.position.getComponent(m.axis)) === m.k;
+    const movers = [...bodies.filter(inLayer), ...stickerMeshes.filter((_, i) => model[i].p[m.axis] === m.k)];
+    if (selected && selected[m.axis] === m.k) movers.push(outline);
+    pivot.rotation.set(0, 0, 0);
+    movers.forEach(o => pivot.attach(o));
+    const dur = reduceMotion ? 0 : (m.fast ? 110 : 280);
+    const t0 = performance.now();
+    const step = now => {
+      const t = dur ? Math.min(1, (now - t0) / dur) : 1;
+      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      pivot.rotation[AXES[m.axis]] = m.dir * e * Math.PI / 2;
+      if (t < 1) requestAnimationFrame(step);
+      else { movers.forEach(o => scene.attach(o)); pivot.rotation.set(0, 0, 0); done(); }
+    };
+    requestAnimationFrame(step);
+  }
+  function commit(m) {
+    applyTurn(model, m.axis, m.k, m.dir);
+    if (selected && selected[m.axis] === m.k) selected = rot(selected, m.axis, m.dir); // follow the same cubie
+    if (!m.undo) history.push(m);
+    syncMeshes(); render();
+  }
+  function enqueue(m) { if (!m) return; queue.push(m); if (!busy) next(); }
+  function next() {
+    const m = queue.shift();
+    if (!m) { busy = false; if (onIdle) { const f = onIdle; onIdle = null; f(); } render(); return; }
+    busy = true; render();
+    if (m.reset) { model = solvedStickers(); history.length = 0; syncMeshes(); next(); return; }
+    animateTurn(m, () => { commit(m); next(); });
+  }
+  let onIdle = null;
+
+  // ---------- UI ----------
+  const $ = id => document.getElementById(id);
+  const moveLabel = m => `${AXES[m.axis]} = ${m.k < 0 ? '−1' : m.k} · ${m.dir > 0 ? '+90°' : '−90°'}`;
+
+  function render() {
+    const has = !!selected;
+    for (const id of ['b-up', 'b-down', 'b-left', 'b-right', 'b-cw', 'b-ccw']) $(id).disabled = !has || busy;
+    $('b-undo').disabled = busy || history.length === 0;
+    for (const id of ['b-scramble', 'b-reset', 'b-demo']) $(id).disabled = busy;
+    $('pad-pos').textContent = has ? selected.map(a => a < 0 ? '−' : a ? '+' : '0').join('') : '—';
+
+    // mapping of the pad to layers
+    if (has) {
+      const L = layerMap();
+      const lay = g => `${AXES[g.axis]} = ${selected[g.axis] < 0 ? '−1' : selected[g.axis]}`;
+      $('mapping').innerHTML = `<span>← → turns layer <b class="mono">${lay(L.h)}</b></span><span>↑ ↓ turns layer <b class="mono">${lay(L.v)}</b></span><span>↺ ↻ turns layer <b class="mono">${lay(L.f)}</b></span>`;
+    } else $('mapping').innerHTML = '<span>Select a cubie to turn its layers.</span>';
+
+    // selected cubie
+    if (has) {
+      const mine = model.filter(s => eq(s.p, selected));
+      const nz = selected.filter(a => a !== 0).length;
+      $('sel-pos').textContent = fmt(selected);
+      $('sel-type').textContent = ['core', 'center', 'edge', 'corner'][nz] + ` · ${mine.length} sticker${mine.length === 1 ? '' : 's'}`;
+      mine.sort((a, b) => Math.abs(b.n[0]) - Math.abs(a.n[0]) || Math.abs(b.n[1]) - Math.abs(a.n[1]));
+      $('sel-rows').innerHTML = mine.map(s => {
+        const c = COLOR[s.c.join(',')], d = dot(s.n, s.c);
+        return `<tr><td class="mono">${DIRNAME[s.n.join(',')]} <span class="cname">${fmt(s.n)}</span></td>` +
+          `<td><span class="sw" style="background:${c.css}"></span><span class="mono">${fmt(s.c)}</span><br><span class="cname">${c.name}</span></td>` +
+          `<td class="r mono ${d === 1 ? 'ok' : 'bad'}">${d < 0 ? '−' + (-d) : d} ${d === 1 ? '✓' : '✗'}</td></tr>`;
+      }).join('');
+      const sum = mine.reduce((acc, s) => add(acc, s.c), [0, 0, 0]);
+      const home = eq(sum, selected);
+      const oriented = mine.every(s => dot(s.n, s.c) === 1);
+      $('sel-sum').innerHTML =
+        `<span>Package vector Σc = <span class="v mono">${fmt(sum)}</span>, so this cubie belongs at <span class="v mono">${fmt(sum)}</span>.</span>` +
+        `<span>${home ? '<span class="ok">In its home position.</span>' : '<span class="bad">Not in its home position.</span>'} ${home ? (oriented ? '<span class="ok">Correctly oriented.</span>' : '<span class="bad">Home, but twisted. Only the stickers show this.</span>') : ''}</span>`;
+    }
+
+    // whole-cube status
+    const a = analyze(model);
+    $('st-aligned').textContent = `${a.aligned} / ${a.total}`;
+    $('st-new').innerHTML = a.newSolved ? '<span class="pill ok">Solved</span>' : '<span class="pill bad">Not solved</span>';
+    $('st-old').innerHTML = a.oldSolved ? '<span class="pill ok">Solved</span>' : '<span class="pill bad">Not solved</span>';
+    $('st-note').textContent = (a.oldSolved && !a.newSolved)
+      ? 'The two models disagree. Every cubie is in its home position, so the package vectors look solved, but some are twisted in place. This is the case one vector per position cannot see.'
+      : 'The old model checks only whether each position holds the right set of colors. The sticker model also checks which way each color faces.';
+
+    // log
+    $('log').innerHTML = history.length
+      ? history.map(m => `<li>${moveLabel(m)}</li>`).join('')
+      : '<li class="empty">No moves yet.</li>';
+    $('log').scrollTop = $('log').scrollHeight;
+  }
+
+  // buttons + keys
+  const turn = kind => { if (!busy) enqueue(moveFor(kind)); };
+  $('b-up').onclick = () => turn('up');
+  $('b-down').onclick = () => turn('down');
+  $('b-left').onclick = () => turn('left');
+  $('b-right').onclick = () => turn('right');
+  $('b-cw').onclick = () => turn('cw');
+  $('b-ccw').onclick = () => turn('ccw');
+  $('b-undo').onclick = () => {
+    if (busy || !history.length) return;
+    const m = history.pop();
+    enqueue({ axis: m.axis, k: m.k, dir: -m.dir, undo: true });
+  };
+  $('b-reset').onclick = () => { if (!busy) enqueue({ reset: true }); };
+  $('b-scramble').onclick = () => {
+    if (busy) return;
+    for (let i = 0; i < 20; i++) enqueue({ axis: Math.floor(Math.random() * 3), k: [-1, 1][Math.floor(Math.random() * 2)], dir: Math.random() < 0.5 ? 1 : -1, fast: true });
+  };
+  // Classic two-corner twist: (R' D' R D)×2, U, (R' D' R D)×4, U'
+  $('b-demo').onclick = () => {
+    if (busy) return;
+    const R = d => ({ axis: 0, k: 1, dir: -d, fast: true });   // R face, clockwise seen from +x
+    const D = d => ({ axis: 2, k: -1, dir: d, fast: true });   // D face, clockwise seen from −z
+    const U = d => ({ axis: 2, k: 1, dir: -d, fast: true });   // U face, clockwise seen from +z
+    const sexy = () => [R(-1), D(-1), R(1), D(1)];
+    const seq = [{ reset: true }];
+    for (let i = 0; i < 2; i++) seq.push(...sexy());
+    seq.push(U(1));
+    for (let i = 0; i < 4; i++) seq.push(...sexy());
+    seq.push(U(-1));
+    seq.forEach(enqueue);
+    onIdle = () => { selected = TWIST_SELECT; syncMeshes(); };
+  };
+  const TWIST_SELECT = [1, 1, 1];
+
+  window.addEventListener('keydown', e => {
+    if (e.target.closest && e.target.closest('input, textarea')) return;
+    const k = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', q: 'ccw', Q: 'ccw', e: 'cw', E: 'cw' }[e.key];
+    if (k) { e.preventDefault(); turn(k); }
+  });
+
+  // pointer: drag orbits, tap selects
+  const ray = new THREE.Raycaster();
+  let down = null;
+  canvas.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: false }; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointermove', e => {
+    if (!down) return;
+    if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) down.moved = true;
+    if (down.moved) {
+      theta -= (e.clientX - down.lx) * 0.009;
+      phi = Math.max(-1.45, Math.min(1.45, phi + (e.clientY - down.ly) * 0.009));
+      placeCamera(); render();
+    }
+    down.lx = e.clientX; down.ly = e.clientY;
+  });
+  canvas.addEventListener('pointerup', e => {
+    if (down && !down.moved && !busy) {
+      const r = canvas.getBoundingClientRect();
+      ray.setFromCamera({ x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 }, camera);
+      const hit = ray.intersectObjects([...bodies, ...stickerMeshes])[0];
+      if (hit) {
+        const o = hit.object;
+        selected = o.userData.home ? [...o.userData.home] : [...model[o.userData.idx].p];
+      } else selected = null;
+      syncMeshes(); render();
+    }
+    down = null;
+  });
+
+  (function loop() { renderer.render(scene, camera); requestAnimationFrame(loop); })();
+  placeCamera(); resize(); syncMeshes(); render();
+})();
+</script>
+
+</body>
+</html>

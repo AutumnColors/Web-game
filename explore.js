@@ -27,5 +27,12 @@ window.EXPLORE = [
     title: 'Scale of Constants',
     path: 'explore/constants/',
     desc: 'π, e, φ and the Standard Model\'s free parameters on one zoomable ruler. Run the force strengths up to the Planck scale.'
+  },
+  {
+    id: 'rubiks-cube',
+    badge: '3³',
+    title: 'Vector Cube',
+    path: 'explore/rubiks-cube/',
+    desc: 'A Rubik\'s cube as 54 stickers, each a position, facing and color vector. One rotation rule turns every layer.'
   }
 ];
