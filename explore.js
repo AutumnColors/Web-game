@@ -12,7 +12,7 @@ window.EXPLORE = [
     badge: 'FSG',
     title: 'Periodic table of finite simple groups',
     path: 'explore/simple-groups/',
-    desc: '18 infinite families and 26 sporadic groups. Exact orders, factorizations, and a lookup for any order.'
+    desc: '18 infinite families and 26 sporadic groups. Exact orders, factorizations, a lookup for any order, and character tables up to the Monster.'
   },
   {
     id: 'rainbow',

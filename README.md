@@ -17,10 +17,13 @@ levels/
   03-path-to-zero/    Path to Zero
 explore/
   m11/                M11 symmetry (S(4,5,11) and the Mathieu group M11)
-  simple-groups/      Periodic table of finite simple groups (families by Lie rank, sporadics, order lookup)
+  simple-groups/      Periodic table of finite simple groups (families by Lie rank, sporadics, order lookup, character tables)
+    chartables/       Character tables (A5, A6, 26 sporadics, Tits) as JSON, from the GAP Character Table Library
   rainbow/            Rainbow vectors (spectrum → RGB, gamut loss, metrics, rebuild from k vectors)
   constants/          Scale of Constants (math constants and Standard Model parameters on one ruler, running couplings)
   rubiks-cube/        Vector Cube (Rubik's cube as 54 position/facing/color sticker vectors, one rotation rule)
+tools/
+  chartable_convert.py  Regenerates explore/simple-groups/chartables from CTblLib data files
 ```
 
 ## Add a level
