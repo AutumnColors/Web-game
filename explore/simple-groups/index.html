@@ -274,6 +274,47 @@ button.slabel:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1
 footer{ margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); display: grid; gap: 6px; max-width: 92ch; }
 footer p{ margin: 0; }
 
+/* ---------- character table viewer ---------- */
+.ctbtn{ display: inline-flex; align-items: center; gap: 7px; margin: 0 0 16px; padding: 8px 14px; border: 1px solid var(--accent); border-radius: 9px; background: var(--accent-soft); color: var(--ink); font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.ctbtn:hover{ background: oklch(0.770 0.125 270 / 0.26); }
+.ctbtn:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+.ctbtn .g{ font-family: var(--f-mono); font-size: 12px; color: var(--accent); font-weight: 500; }
+.ctv{ position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--bg); }
+.ctv[hidden]{ display: none; }
+.ctv-top{ display: flex; align-items: center; gap: 12px; padding: calc(10px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); }
+.ctv-top h2{ margin: 0; font-family: var(--f-math); font-weight: 500; font-size: 24px; line-height: 1.1; }
+.ctv-top .sub{ margin: 1px 0 0; font-size: 12px; color: var(--muted); }
+.ctv-top .x{ margin-left: auto; flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); font-size: 20px; line-height: 1; color: var(--ink-2); cursor: pointer; }
+.ctv-top .x:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+.ctv-scroll{ flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.ct{ border-collapse: separate; border-spacing: 0; font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ct th, .ct td{ padding: 4px 8px; white-space: nowrap; text-align: right; border-bottom: 1px solid oklch(0.335 0.022 265 / 0.45); cursor: pointer; }
+.ct thead th{ position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--line); vertical-align: bottom; font-weight: 500; }
+.ct thead th .cn{ display: block; color: var(--ink); font-size: 12.5px; }
+.ct thead th .cc{ display: block; color: var(--muted); font-size: 10.5px; }
+.ct thead th .cc sup, .ct td sup{ font-size: .78em; }
+.ct .rh{ position: sticky; left: 0; z-index: 1; background: var(--bg); text-align: left; border-right: 1px solid var(--line); color: var(--ink-2); font-weight: 400; }
+.ct thead .rh{ z-index: 3; background: var(--surface); color: var(--muted); font-size: 10.5px; text-align: left; }
+.ct .rh .ind{ display: inline-block; width: 1.3em; margin-left: 6px; text-align: center; color: var(--muted); }
+.ct td.z{ color: oklch(0.70 0.020 260 / 0.55); }
+.ct td .ir{ color: var(--accent); }
+.ct tr.sel td, .ct tr.sel .rh{ background: var(--accent-soft); }
+.ct tr.sel .rh{ background: oklch(0.300 0.050 268); color: var(--ink); }
+.ct td.cur{ outline: 2px solid var(--accent); outline-offset: -2px; }
+.ctv-info{ flex: none; min-height: 58px; padding: 9px max(16px, env(safe-area-inset-right, 0px)) 9px max(16px, env(safe-area-inset-left, 0px)); border-top: 1px solid var(--line); background: var(--surface); font-size: 13px; line-height: 1.45; color: var(--ink-2); }
+.ctv-info b{ color: var(--ink); font-weight: 600; }
+.ctv-info .num{ color: var(--ink); }
+.ctv-info .hint{ color: var(--muted); }
+.ctv-key{ flex: none; max-height: 36vh; overflow: auto; padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: var(--surface); font-size: 12.5px; color: var(--ink-2); }
+.ctv-key summary{ cursor: pointer; padding: 8px 0; color: var(--accent); font-size: 12.5px; }
+.ctv-key summary:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+.ctv-key dl{ display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 0 0 10px; }
+.ctv-key dt{ font-family: var(--f-mono); color: var(--accent); }
+.ctv-key dd{ margin: 0; font-family: var(--f-math); font-size: 14px; overflow-wrap: anywhere; }
+.ctv-key dd .ap{ font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); margin-left: 6px; }
+.ctv-key p{ margin: 0 0 8px; }
+.ctv-msg{ padding: 24px 16px; color: var(--muted); font-size: 14px; max-width: 60ch; }
+
 @media (prefers-reduced-motion: reduce){
   .tile, .panel{ transition: none !important; }
   .tile.hit{ animation: none; }
@@ -330,6 +371,13 @@ footer p{ margin: 0; }
     <p>Notation: A<sub>n</sub>(q) = PSL<sub>n+1</sub>(q), B<sub>n</sub>(q) = Ω<sub>2n+1</sub>(q), C<sub>n</sub>(q) = PSp<sub>2n</sub>(q), D<sub>n</sub>(q) = PΩ<sub>2n</sub><sup>+</sup>(q), <sup>2</sup>A<sub>n</sub>(q<sup>2</sup>) = PSU<sub>n+1</sub>(q), <sup>2</sup>D<sub>n</sub>(q<sup>2</sup>) = PΩ<sub>2n</sub><sup>−</sup>(q). Here q is a prime power. Twisted families sit in the row of their untwisted diagram's rank.</p>
     <p>Every order, factorization and lookup is computed exactly in your browser with big-integer arithmetic. The lookup checks every family at every rank and field size, so a "no" is a theorem, not a guess.</p>
   </footer>
+
+<div class="ctv" id="ctv" role="dialog" aria-modal="true" aria-labelledby="ctv-title" hidden>
+  <div class="ctv-top"><div><h2 id="ctv-title"></h2><p class="sub" id="ctv-sub"></p></div><button class="x" id="ctv-x" type="button" aria-label="Close character table">×</button></div>
+  <div class="ctv-scroll" id="ctv-scroll"></div>
+  <div class="ctv-info" id="ctv-info" aria-live="polite"></div>
+  <details class="ctv-key" id="ctv-key"><summary>Key: symbols and irrationalities</summary><div id="ctv-keybody"></div></details>
+</div>
 </div>
 
 <script>
@@ -1192,16 +1240,17 @@ function renderGen(gen) {
 function eyebrow(block, extra) { return `<p class="p-eyebrow"><span class="sw k-${block}"></span>${BLOCKS[block].eyebrow}${extra ? ' · ' + extra : ''}</p>`; }
 function orderRow(o) { return `<dt>Order</dt><dd><span class="num">${fmtInt(o)}</span><span class="digits">${o.toString().length} digit${o.toString().length > 1 ? 's' : ''}</span></dd>`; }
 
+const ctBtn = (id, sym, k) => `<button type="button" class="ctbtn" data-ct="${id}" data-sym="${sym}">Character table${k ? ` <span class="g">${k}×${k}</span>` : ''}</button>`;
 function renderCyc(p) {
   return `${eyebrow('cyc')}<h2 class="p-title">${m(`Z_{${p}}`)}</h2><p class="p-alias">integers modulo ${p}</p>${famBtn('Z')}
   <p class="p-desc">A group of prime order has no subgroups except itself and the trivial group, so it cannot be broken down further. These are the only abelian simple groups, and the only simple groups that are solvable.</p>
-  <dl class="kv">${orderRow(p)}<dt>Factors</dt><dd class="fact">${p}</dd><dt>Family</dt><dd>${m('One group for every prime p. There are infinitely many.')}</dd></dl>`;
+  <dl class="kv">${orderRow(p)}<dt>Factors</dt><dd class="fact">${p}</dd><dt>Family</dt><dd>${m('One group for every prime p. There are infinitely many.')}</dd></dl>${ctBtn('Z' + p, `Z_{${p}}`, Number(p) <= CT_MAXP ? Number(p) : 0)}`;
 }
 function renderAlt(n) {
   const o = altOrder(n);
   return `${eyebrow('alt')}<h2 class="p-title">${m(`A_{${n}}`)}</h2><p class="p-alias">even permutations of ${n} objects</p>${famBtn('Alt')}
   <p class="p-desc">${m(ALT_NOTES[n] || `The even permutations of ${n} objects, half of the symmetric group S_{${n}}. Every A_{n} with n ≥ 5 is simple.`)}</p>
-  <dl class="kv"><dt>Formula</dt><dd class="formula">${m('n! / 2')}</dd>${orderRow(o)}<dt>Factors</dt><dd class="fact">${fmtFactor(altFactor(n))}</dd></dl>`;
+  <dl class="kv"><dt>Formula</dt><dd class="formula">${m('n! / 2')}</dd>${orderRow(o)}<dt>Factors</dt><dd class="fact">${fmtFactor(altFactor(n))}</dd></dl>${CT_K['alt' + n] ? ctBtn('alt' + n, `A_{${n}}`, CT_K['alt' + n]) : ''}`;
 }
 function renderSpo(id) {
   const s = SPOR_BY[id];
@@ -1212,7 +1261,7 @@ function renderSpo(id) {
   <p class="p-desc">${m(s.note)}</p>
   <dl class="kv">${orderRow(s.order)}<dt>Factors</dt><dd class="fact">${fmtFactor(map)}</dd>
   <dt>Found</dt><dd>${s.year}, by ${s.by}</dd>
-  <dt>Smallest rep.</dt><dd><span class="num">${fmtInt(B(s.rep))}</span><span class="digits">dimension of its smallest nontrivial complex representation</span></dd></dl>${id === 'M11' ? `<p class="iso"><a class="p-link" href="../m11/">Play with ${m('M_{11}')} acting on 11 points →</a></p>` : ''}`;
+  <dt>Smallest rep.</dt><dd><span class="num">${fmtInt(B(s.rep))}</span><span class="digits">dimension of its smallest nontrivial complex representation</span></dd></dl>${ctBtn(id, s.sym, CT_K[id])}${id === 'M11' ? `<p class="iso"><a class="p-link" href="../m11/">Play with ${m('M_{11}')} acting on 11 points →</a></p>` : ''}`;
 }
 function renderLie(fid, n, selQ) {
   const f = FAM[fid];
@@ -1232,7 +1281,7 @@ function renderLie(fid, n, selQ) {
   <dl class="kv"><dt>Order</dt><dd class="formula">${formulaHTML(f, n)}</dd><dt>Field size</dt><dd>${m(f.qText)}</dd>
   ${ex ? `<dt>Left out</dt><dd>${m(ex)}</dd>` : ''}${note ? `<dt>Note</dt><dd>${m(note)}</dd>` : ''}${rootRows(fid, n, rd)}</dl>
   <section class="card" aria-label="Selected member"><p class="card-h">${m(f.sym(n, qs))}${f.alias ? ` <span class="al">= ${m(f.alias(n, qs))}</span>` : ''}</p>
-  <dl class="kv">${orderRow(sel.order)}<dt>Factors</dt><dd class="fact">${fmtFactor(fac)}</dd></dl>${iso ? `<p class="iso">${m(iso)}</p>` : ''}</section>
+  <dl class="kv">${orderRow(sel.order)}<dt>Factors</dt><dd class="fact">${fmtFactor(fac)}</dd></dl>${iso ? `<p class="iso">${m(iso)}</p>` : ''}${CT_K[CANON[`${fid}:${n}:${sel.q}`]] ? ctBtn(CANON[`${fid}:${n}:${sel.q}`], f.sym(n, qs), CT_K[CANON[`${fid}:${n}:${sel.q}`]]) : ''}</section>
   <h3 class="p-h3">Members by field size</h3>
   <ol class="mlist">${mem.map(row).join('')}${extra ? `<li class="gap-li">⋯</li>${row(extra)}` : ''}</ol>`;
 }
@@ -1250,6 +1299,7 @@ function openSpec(spec, opts = {}) {
   for (const b of pbody.querySelectorAll('[data-fam]')) b.addEventListener('click', () => openSpec({ type: 'fam', key: b.dataset.fam }));
   for (const b of pbody.querySelectorAll('[data-gen]')) b.addEventListener('click', () => openSpec({ type: 'gen', gen: Number(b.dataset.gen) }));
   for (const b of pbody.querySelectorAll('[data-open]')) b.addEventListener('click', () => openSpec(SPEC_BY_ID[b.dataset.open]));
+  for (const b of pbody.querySelectorAll('[data-ct]')) b.addEventListener('click', () => openCT(b.dataset.ct, b.dataset.sym, b));
   if (spec.type === 'lie') {
     for (const b of pbody.querySelectorAll('.mrow')) b.addEventListener('click', () => {
       const q = B(b.dataset.q); openSpec({ type: 'lie', fid: spec.fid, n: spec.n, q }, { keepScroll: true });
@@ -1265,7 +1315,147 @@ function openSpec(spec, opts = {}) {
 }
 function closePanel() { panel.classList.remove('open'); }
 document.getElementById('close').addEventListener('click', closePanel);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (!ctv.hidden) closeCT(); else closePanel(); } });
+
+/* ---------- character table viewer ----------
+   Tables live in chartables/<id>.json, converted once from the GAP Character Table Library (ATLAS data).
+   Each file: classes [{name, cent, pw:[[p, class index of the p-th power]]}], ind (Frobenius–Schur), chars (ints, big ints as strings,
+   or ATLAS irrationality labels), labels {label: [re, im]}, bases [{name, def, re, im}]. Z_p is generated here instead. */
+const CT_K = { alt5: 5, alt6: 7, M11: 10, M12: 15, J1: 15, M22: 12, J2: 21, M23: 17, Tits: 22, HS: 24, J3: 21, M24: 26, McL: 24, He: 33, Ru: 36, Suz: 43, ON: 30, Co3: 42, Co2: 60, Fi22: 65, HN: 54, Ly: 53, Th: 48, Fi23: 98, Co1: 101, J4: 62, Fi24: 108, B: 184, M: 194 };
+const CT_MAXP = 61;
+const CT_CACHE = new Map();
+const ctv = document.getElementById('ctv'), ctScroll = document.getElementById('ctv-scroll'), ctInfo = document.getElementById('ctv-info');
+const ctKey = document.getElementById('ctv-keybody'), ctColStyle = document.createElement('style');
+document.head.appendChild(ctColStyle);
+let ctData = null, ctReturn = null, ctSel = null;
+const isBigStr = x => typeof x === 'string' && /^-?\d+$/.test(x);
+const neg = s => s.replace(/^-/, '−');
+function ctCell(x) {
+  if (typeof x === 'number' || isBigStr(x)) {
+    const b = B(x);
+    if (b === 0n) return { cls: 'z', html: '.' };
+    const a = b < 0n ? -b : b;
+    return { cls: '', html: (b < 0n ? '−' : '') + (a < 1000000n ? a.toString() : sci(a)) };
+  }
+  if (x && x.zeta != null) return { cls: '', html: x.zeta === 0 ? '1' : `<span class="ir">ζ${x.zeta > 1 ? `<sup>${x.zeta}</sup>` : ''}</span>` };
+  return { cls: '', html: `<span class="ir">${x}</span>` };
+}
+function cplx(re, im) {
+  const f = v => (Math.abs(v) < 5e-7 ? 0 : v).toFixed(4).replace('-', '−');
+  if (Math.abs(im) < 5e-7) return f(re);
+  if (Math.abs(re) < 5e-7) return `${f(im)}i`;
+  return `${f(re)} ${im < 0 ? '−' : '+'} ${f(Math.abs(im))}i`;
+}
+function genCyclic(p) {
+  const classes = [], chars = [], ind = [];
+  for (let k = 0; k < p; k++) classes.push({ name: k === 0 ? '1' : k === 1 ? 'g' : `g^${k}`, cent: String(p), pw: k ? [[p, 0]] : [] });
+  for (let j = 0; j < p; j++) { chars.push(Array.from({ length: p }, (_, k) => ({ zeta: (j * k) % p }))); ind.push(j === 0 || p === 2 ? '+' : 'o'); }
+  return { id: 'Z' + p, order: String(p), classes, chars, ind, cyclic: p, labels: {}, bases: [] };
+}
+async function loadCT(id) {
+  if (CT_CACHE.has(id)) return CT_CACHE.get(id);
+  let d;
+  if (/^Z\d+$/.test(id)) d = genCyclic(Number(id.slice(1)));
+  else { const r = await fetch(`chartables/${id}.json`); if (!r.ok) throw new Error(r.status); d = await r.json(); }
+  CT_CACHE.set(id, d); return d;
+}
+function ctHead(d) {
+  return d.classes.map((c, i) => {
+    const nm = d.cyclic ? (c.name.startsWith('g^') ? `g<sup>${c.name.slice(2)}</sup>` : c.name) : c.name;
+    return `<th scope="col" data-c="${i}"><span class="cn">${nm}</span><span class="cc">${compact(B(c.cent))}</span></th>`;
+  }).join('');
+}
+function renderCT(d) {
+  const rows = d.chars.map((r, i) => `<tr data-r="${i}"><th scope="row" class="rh">χ<sub>${i + 1}</sub><span class="ind">${d.ind[i]}</span></th>${r.map((x, c) => { const v = ctCell(x); return `<td data-c="${c}"${v.cls ? ` class="${v.cls}"` : ''}>${v.html}</td>`; }).join('')}</tr>`).join('');
+  ctScroll.innerHTML = `<table class="ct"><thead><tr><th class="rh" scope="col">class<br>|C(g)|</th>${ctHead(d)}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+function ctKeyHTML(d) {
+  let h = '';
+  if (d.cyclic) h += `<dl><dt>ζ</dt><dd>e<sup>2πi/${d.cyclic}</sup>, a primitive ${d.cyclic}th root of unity<span class="ap">χ<sub>j</sub>(g<sup>k</sup>) = ζ<sup>jk</sup></span></dd></dl>`;
+  if (d.bases.length) h += `<dl>${d.bases.map(b => `<dt>${b.name}</dt><dd>${m(b.def)}<span class="ap">≈ ${cplx(b.re, b.im)}</span></dd>`).join('')}</dl>
+    ${ctStarNote(d)}<p>Tap any cell for its numeric value.</p>`;
+  h += `<p>Rows are the irreducible characters χ<sub>1</sub>, χ<sub>2</sub>, …; the first column is each one's degree. Columns are conjugacy classes, named by element order and letter in ATLAS order, with the centralizer order |C(g)| underneath. A dot means 0.</p>
+    <p>The symbol after χ is the Frobenius–Schur indicator: <b>+</b> the representation can be written over the reals, <b>o</b> the character takes non-real values, <b>−</b> real character but quaternionic representation.</p>`;
+  if (!d.cyclic) h += `<p>Data: GAP Character Table Library (Thomas Breuer), reproducing the ATLAS of Finite Groups (Conway, Curtis, Norton, Parker, Wilson, 1985), converted to JSON and checked: every row has norm 1 and the squared degrees sum to the group order.</p>`;
+  return h;
+}
+function ctStarNote(d) {
+  const labs = Object.keys(d.labels), out = [];
+  const q = labs.map(l => l.match(/([bri]\d*)\*(?!\d)/)).find(Boolean);
+  if (q) { const b = d.bases.find(x => x.name === q[1]); const rad = b && b.def.match(/i?√\d+|√−1/); out.push(`<span class="num">${q[1]}*</span> is the Galois conjugate of <span class="num">${q[1]}</span>${rad ? `: it swaps ${rad[0]} for −${rad[0]}` : ''}`); }
+  const k = labs.map(l => l.match(/([a-z]\d+)\*(\d+)/)).find(Boolean);
+  if (k) out.push(`<span class="num">${k[1]}*${k[2]}</span> is <span class="num">${k[1]}</span> with every ζ replaced by ζ<sup>${k[2]}</sup>`);
+  return out.length ? `<p>Stars mark Galois conjugates, as in the ATLAS. ${out.join('; ')}.</p>` : '';
+}
+function ctDefaultInfo(d) {
+  const k = d.classes.length;
+  return `<span class="hint">${k} classes, so ${k} irreducible characters. Tap a cell, a class or a character for details.</span>`;
+}
+function selectCT(r, c) {
+  const d = ctData; if (!d) return;
+  for (const t of ctScroll.querySelectorAll('tr.sel')) t.classList.remove('sel');
+  for (const t of ctScroll.querySelectorAll('td.cur')) t.classList.remove('cur');
+  ctColStyle.textContent = c != null ? `.ct tr > :nth-child(${c + 2}){ background: var(--accent-soft); }` : '';
+  if (r != null) { const tr = ctScroll.querySelector(`tr[data-r="${r}"]`); if (tr) tr.classList.add('sel'); }
+  if (r != null && c != null) { const td = ctScroll.querySelector(`tr[data-r="${r}"] td[data-c="${c}"]`); if (td) td.classList.add('cur'); }
+  const cls = c != null ? d.classes[c] : null;
+  const clsName = cls ? (d.cyclic ? (cls.name.startsWith('g^') ? `g<sup>${cls.name.slice(2)}</sup>` : cls.name) : cls.name) : '';
+  if (r != null && c != null) {
+    const x = d.chars[r][c];
+    let v;
+    if (typeof x === 'number' || isBigStr(x)) v = `<span class="num">${neg(fmtInt(B(x)))}</span>`;
+    else if (x && x.zeta != null) { const t = 2 * Math.PI * x.zeta / d.cyclic; v = `${x.zeta ? `ζ<sup>${x.zeta}</sup> ≈ ` : ''}<span class="num">${cplx(Math.cos(t), Math.sin(t))}</span>`; }
+    else { const [re, im] = d.labels[x]; v = `<span class="num">${x}</span> ≈ <span class="num">${cplx(re, im)}</span>`; }
+    ctInfo.innerHTML = `<b>χ<sub>${r + 1}</sub>(${clsName})</b> = ${v}`;
+  } else if (c != null) {
+    const ord = B(d.order), cent = B(cls.cent);
+    const pw = cls.pw.map(([p, j]) => `${clsName}<sup>${p}</sup> = ${d.cyclic ? '1' : d.classes[j].name}`).join(', ');
+    ctInfo.innerHTML = `<b>Class ${clsName}</b> · centralizer order <span class="num">${fmtInt(cent)}</span> · class size <span class="num">${fmtInt(ord / cent)}</span>${pw ? ` · powers: ${pw}` : ''}`;
+  } else if (r != null) {
+    const deg = d.chars[r][0], ind = { '+': 'real representation', 'o': 'non-real character', '−': 'quaternionic representation' }[d.ind[r]];
+    const dg = typeof deg === 'object' ? 1n : B(deg);
+    ctInfo.innerHTML = `<b>χ<sub>${r + 1}</sub></b> · degree <span class="num">${fmtInt(dg)}</span> · indicator ${d.ind[r]} (${ind})`;
+  } else ctInfo.innerHTML = ctDefaultInfo(d);
+  ctSel = { r, c };
+}
+ctScroll.addEventListener('click', e => {
+  const cell = e.target.closest('td, th'); if (!cell || !ctData) return;
+  const tr = cell.parentElement;
+  const r = tr.dataset.r != null ? Number(tr.dataset.r) : null;
+  const c = cell.dataset.c != null ? Number(cell.dataset.c) : null;
+  if (ctSel && ctSel.r === r && ctSel.c === c) return selectCT(null, null);
+  selectCT(r, c);
+});
+async function openCT(id, sym, trigger) {
+  ctReturn = trigger || null;
+  document.getElementById('ctv-title').innerHTML = m(sym);
+  document.getElementById('ctv-sub').textContent = 'Character table';
+  ctScroll.innerHTML = '<p class="ctv-msg">Loading…</p>'; ctInfo.innerHTML = ''; ctKey.innerHTML = ''; ctColStyle.textContent = '';
+  ctData = null; ctSel = null;
+  ctv.hidden = false; document.body.style.overflow = 'hidden';
+  document.getElementById('ctv-x').focus();
+  if (/^Z\d+$/.test(id) && Number(id.slice(1)) > CT_MAXP) {
+    const p = id.slice(1);
+    ctScroll.innerHTML = `<p class="ctv-msg">${m(`Z_{${p}}`)} has ${p} classes, so its table is ${p} × ${p}. Too large to be worth drawing, but it is one line: with ζ = e<sup>2πi/${p}</sup> and g a generator, χ<sub>j</sub>(g<sup>k</sup>) = ζ<sup>jk</sup> for j, k = 0, …, ${p - 1}. Every character has degree 1, because the group is abelian.</p>`;
+    return;
+  }
+  try {
+    const d = await loadCT(id);
+    if (ctv.hidden) return;
+    ctData = d;
+    const k = d.classes.length;
+    const od = B(d.order); document.getElementById('ctv-sub').innerHTML = `Character table · ${k} × ${k} · order ${od < 10n ** 15n ? fmtInt(od) : sci(od, 3)}`;
+    renderCT(d); ctKey.innerHTML = ctKeyHTML(d); selectCT(null, null);
+    ctScroll.scrollTo(0, 0);
+  } catch (err) {
+    ctScroll.innerHTML = '<p class="ctv-msg">The table could not be loaded. Check your connection and try again.</p>';
+  }
+}
+function closeCT() {
+  ctv.hidden = true; document.body.style.overflow = ''; ctColStyle.textContent = '';
+  if (ctReturn && document.body.contains(ctReturn)) ctReturn.focus();
+}
+document.getElementById('ctv-x').addEventListener('click', closeCT);
 
 /* ---------- lookup ---------- */
 const form = document.getElementById('lookup'), input = document.getElementById('order'), out = document.getElementById('result');
