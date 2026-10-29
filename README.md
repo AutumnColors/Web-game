@@ -20,6 +20,7 @@ explore/
   simple-groups/      Periodic table of finite simple groups (families by Lie rank, sporadics, order lookup)
   rainbow/            Rainbow vectors (spectrum → RGB, gamut loss, metrics, rebuild from k vectors)
   constants/          Scale of Constants (math constants and Standard Model parameters on one ruler, running couplings)
+  rubiks-cube/        Vector Cube (Rubik's cube as 54 position/facing/color sticker vectors, one rotation rule)
 ```
 
 ## Add a level
