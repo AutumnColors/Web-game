@@ -23,5 +23,11 @@ window.LEVELS = [
     title: 'Counting Strokes',
     path: 'levels/04-counting-strokes/',
     desc: 'Stroke N is N steps. Hug old lines, eat apples, dodge bombs.'
+  },
+  {
+    id: 'minesweeper',
+    title: 'Minesweeper',
+    path: 'levels/05-minesweeper/',
+    desc: 'Classic 16×16 field, then a round one. More rule-bending levels to come.'
   }
 ];

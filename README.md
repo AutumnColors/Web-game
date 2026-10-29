@@ -15,6 +15,8 @@ levels/
   01-smiley-paths/    Smiley Paths
   02-vector-pairs/    Vector Pairs
   03-path-to-zero/    Path to Zero
+  04-counting-strokes/ Counting Strokes
+  05-minesweeper/     Minesweeper (own level list inside: Classic 16×16, Circle)
 explore/
   m11/                M11 symmetry (S(4,5,11) and the Mathieu group M11)
   simple-groups/      Periodic table of finite simple groups (families by Lie rank, sporadics, order lookup, character tables)
@@ -35,6 +37,10 @@ tools/
    - `GameKit.best(id, score)` when the score changes
    - `GameKit.complete(id)` when the level is won
 4. Add an entry to `levels.js` with the same `id`.
+
+### Minesweeper sub-levels
+
+Minesweeper keeps its own level list in the `LEVELS` array at the top of the script in `levels/05-minesweeper/index.html`. Each entry sets `rows`, `cols`, `mines` and an optional `shape` (`square` or `disc`; add new shapes to `SHAPES`). It reports `complete` to the main page once every sub-level has been won.
 
 ## Add an explore page
 
