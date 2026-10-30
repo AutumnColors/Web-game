@@ -10,6 +10,7 @@ Plain static HTML — no build step. Progress (played / best score / cleared) is
 index.html            landing page (levels + explore)
 levels.js             level registry
 explore.js            explore registry (interactive math, no score)
+j1.js                 J1 viewer registry (views of the Janko group J1)
 shared/progress.js    progress store used by every level
 levels/
   01-smiley-paths/    Smiley Paths
@@ -24,8 +25,11 @@ explore/
   rainbow/            Rainbow vectors (spectrum → RGB, gamut loss, metrics, rebuild from k vectors)
   constants/          Scale of Constants (math constants and Standard Model parameters on one ruler, running couplings)
   rubiks-cube/        Vector Cube (Rubik's cube as 54 position/facing/color sticker vectors, one rotation rule)
+j1/
+  livingstone/        Livingstone graph (266 vertices, built from J1; spin, re-root, random symmetries)
 tools/
   chartable_convert.py  Regenerates explore/simple-groups/chartables from CTblLib data files
+  j1/build_action.py  Rebuilds J1's 266-point action from Janko's 7×7 matrices over F11 (the generators in j1/livingstone)
 ```
 
 ## Add a level
@@ -46,6 +50,11 @@ Minesweeper keeps its own level list in the `LEVELS` array at the top of the scr
 
 1. Create `explore/name/index.html` (self-contained, back link to `../../`).
 2. Add an entry to `explore.js` with a short `badge` (up to ~3 characters).
+
+## Add a J1 view
+
+1. Create `j1/name/index.html` (self-contained, back link to `../../`).
+2. Add an entry to `j1.js`.
 
 ## Run locally
 

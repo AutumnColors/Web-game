@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Livingstone Graph Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one instrument column — canvas as the hero, controls docked beneath, reference notes after */
+:root{
+  --bg:#EEF1F5; --panel:#FFFFFF; --ink:#18202E; --muted:#5B6578; --rule:#D5DBE5;
+  --accent:#3A4FD6; --l0:#18202E; --l1:#5B3FD0; --l2:#2F7BD8; --l3:#16A39A; --l4:#E08A1E;
+  --edge:24,32,46;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Instrument Sans",ui-sans-serif,system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E131B; --panel:#161D28; --ink:#E6EAF2; --muted:#93A0B5; --rule:#273142;
+  --accent:#8C9BFF; --l0:#F2F4F8; --l1:#A08BFF; --l2:#5FA8FF; --l3:#3FD1C4; --l4:#FFB24D;
+  --edge:220,228,245; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E131B; --panel:#161D28; --ink:#E6EAF2; --muted:#93A0B5; --rule:#273142;
+  --accent:#8C9BFF; --l0:#F2F4F8; --l1:#A08BFF; --l2:#5FA8FF; --l3:#3FD1C4; --l4:#FFB24D;
+  --edge:220,228,245; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);margin:0}
+.back{font:13px var(--f-mono);color:var(--muted);text-decoration:none}
+.back:hover{color:var(--accent)}
+.wrap{max-width:760px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+h1{font:700 clamp(26px,6vw,38px)/1.05 var(--f-display);letter-spacing:-.02em;margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:4px 0 0;font-size:14px}
+.stats{display:flex;flex-wrap:wrap;gap:6px 14px;font:12px/1.4 var(--f-mono);color:var(--muted)}
+.stats b{color:var(--ink);font-weight:500}
+.stage{position:relative;background:var(--panel);border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+canvas{display:block;width:100%;aspect-ratio:1/1;touch-action:manipulation;cursor:pointer}
+.hud{position:absolute;left:12px;top:10px;font:11px/1.5 var(--f-mono);color:var(--muted);pointer-events:none}
+.farnote{position:absolute;right:12px;top:10px;font:11px/1.3 var(--f-mono);color:var(--l4);text-align:right;pointer-events:none;max-width:40%}
+.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+button{font:500 14px/1.2 var(--f-body);color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:12px 12px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:2px}
+button small{font:11px/1.3 var(--f-mono);color:var(--muted)}
+button:hover{border-color:var(--accent)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{border-color:var(--accent)}
+.info{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:14px 16px;min-height:96px;font-size:14px}
+.info .k{font:12px var(--f-mono);color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.path{font:13px/1.6 var(--f-mono);overflow-wrap:anywhere}
+.split{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{font:12px var(--f-mono);padding:3px 8px;border-radius:999px;border:1px solid var(--rule)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font:12px var(--f-mono);color:var(--muted)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
+section h2{font:600 13px var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:6px 0 8px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;font:13px var(--f-mono);font-variant-numeric:tabular-nums;width:100%;min-width:320px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--rule);text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:400}
+.notes p{margin:0 0 10px;max-width:65ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../../">← Back</a>
+  <header>
+    <h1>The Livingstone graph</h1>
+    <p class="sub">The 266-point world that the Janko group J1 acts on. Every vertex, every edge, and every move below is computed from J1 itself.</p>
+  </header>
+  <div class="stats"><span><b>266</b> vertices</span><span><b>1,463</b> edges</span><span>valency <b>11</b></span><span>diameter <b>4</b></span><span>|Aut| = |J1| = <b>175,560</b></span></div>
+
+  <div class="stage">
+    <canvas id="cv" aria-label="Livingstone graph drawn around a root vertex, with distance layers as rings"></canvas>
+    <div class="hud" id="hud">root 0 · spins 0/11</div>
+    <div class="farnote" id="farnote">far vertex fixed by the spin</div>
+  </div>
+
+  <div class="legend" aria-label="Distance layers from the root">
+    <span><i class="dot" style="background:var(--l0)"></i>root · 1</span>
+    <span><i class="dot" style="background:var(--l1)"></i>d=1 · 11</span>
+    <span><i class="dot" style="background:var(--l2)"></i>d=2 · 110</span>
+    <span><i class="dot" style="background:var(--l3)"></i>d=3 · 132</span>
+    <span><i class="dot" style="background:var(--l4)"></i>d=4 · 12</span>
+  </div>
+
+  <div class="controls">
+    <button id="bSpin" class="primary">Spin<small>order-11 symmetry fixing the root</small></button>
+    <button id="bRand">Random symmetry<small>scramble, then watch it land</small></button>
+    <button id="bRoot">Make selected the root<small>tap a vertex first</small></button>
+    <button id="bReset">Reset<small>back to vertex 0</small></button>
+  </div>
+
+  <div class="info" id="info" aria-live="polite"></div>
+
+  <section>
+    <h2>What every vertex sees</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Distance</th><th>Vertices</th><th>Back</th><th>Same</th><th>Forward</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>1</td><td>0</td><td>0</td><td>11</td></tr>
+        <tr><td>1</td><td>11</td><td>1</td><td>0</td><td>10</td></tr>
+        <tr><td>2</td><td>110</td><td>1</td><td>4</td><td>6</td></tr>
+        <tr><td>3</td><td>132</td><td>5</td><td>5</td><td>1</td></tr>
+        <tr><td>4</td><td>12</td><td>11</td><td>0</td><td>0</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="notes">
+    <h2>How to read it</h2>
+    <p>Each vertex has 11 neighbours, split into back (closer to the root), same distance, and forward. These counts depend only on the distance, never on which vertex you pick or which vertex is the root. That is distance-transitivity, and the table above holds for every one of the 266 choices.</p>
+    <p>Every button applies an element of J1. The dots fly to new places, but the drawing they land in is the same drawing, because a symmetry sends edges to edges. Spin uses an element of order 11 that fixes the root. Press it 11 times and every vertex is back home. It also fixes exactly one of the 12 far vertices, drawn in the corner.</p>
+    <p>Construction: J1 generated by Janko's two 7×7 matrices over 𝔽₁₁ (orders 7 and 5), acting on 1,540 projective points, then on the 266 conjugates of a PSL(2,11) subgroup. The graph is the orbital of valency 11. Layer sizes and neighbour counts were verified by search, not assumed.</p>
+  </section>
+</div>
+
+<script>
+function buildGraph(GY,GZ,C0){
+  const N=266;
+  const par=new Int32Array(N*N).map((_,i)=>i);
+  const f=x=>{let r=x;while(par[r]!==r)r=par[r];while(par[x]!==r){const n=par[x];par[x]=r;x=n}return r};
+  for(const g of [GY,GZ])for(let a=0;a<N;a++)for(let b=0;b<N;b++){const ra=f(a*N+b),rb=f(g[a]*N+g[b]);if(ra!==rb)par[rb]=ra}
+  const sub={};for(let b=0;b<N;b++){const k=f(b);(sub[k]=sub[k]||[]).push(b)}
+  const key=+Object.keys(sub).find(k=>sub[k].length===11);
+  const adj=[];for(let a=0;a<N;a++){adj.push([]);for(let b=0;b<N;b++)if(a!==b&&f(a*N+b)===key)adj[a].push(b)}
+  const d=new Array(N).fill(-1);d[0]=0;{const q=[0];while(q.length){const u=q.shift();for(const w of adj[u])if(d[w]<0){d[w]=d[u]+1;q.push(w)}}}
+  const T=2*Math.PI/11,TAU=2*Math.PI,mod=(x,m)=>((x%m)+m)%m;
+  const cp=(v,k)=>{k=mod(k,11);for(let i=0;i<k;i++)v=C0[v];return v};
+  const ang={0:0};
+  const L1=[];for(let v=0;v<N;v++)if(d[v]===1)L1.push(v);const v0=L1[0];
+  for(let k=0;k<11;k++)ang[cp(v0,k)]=k*T;
+  let far=-1;for(let v=0;v<N;v++)if(d[v]===4&&C0[v]===v)far=v;
+  const cmean=vs=>{let s=0,c=0;for(const v of vs){s+=Math.sin(ang[v]);c+=Math.cos(ang[v])}return mod(Math.atan2(s,c),TAU)};
+  let order2=adj[v0].filter(w=>d[w]===2);
+  const place2=()=>order2.forEach((w,j)=>{for(let k=0;k<11;k++)ang[cp(w,k)]=k*T+(j-4.5)/10*T*0.9});
+  let reps3=[];{const seen=new Set();for(let v=0;v<N;v++)if(d[v]===3&&!seen.has(v)){reps3.push(v);for(let k=0;k<11;k++)seen.add(cp(v,k))}}
+  const place3=()=>{
+    const raw=reps3.map(r=>{const a=cmean(adj[r].filter(w=>d[w]===2));const k=Math.floor(a/T);return [a-k*T,cp(r,-k)]});
+    raw.sort((x,y)=>x[0]-y[0]||x[1]-y[1]);reps3=raw.map(x=>x[1]);
+    reps3.forEach((r,j)=>{for(let k=0;k<11;k++)ang[cp(r,k)]=k*T+(j+0.5)/12*T-T/2});
+  };
+  place2();place3();
+  for(let it=0;it<8;it++){
+    const rel=w=>mod(cmean(adj[w].filter(x=>d[x]===3))+Math.PI,TAU)-Math.PI;
+    const keyed=order2.map((w,i)=>[rel(w),i,w]);keyed.sort((x,y)=>x[0]-y[0]||x[1]-y[1]);order2=keyed.map(x=>x[2]);
+    place2();place3();
+  }
+  let rep4=-1;for(let v=0;v<N;v++)if(d[v]===4&&v!==far){rep4=v;break}
+  {const a=cmean(adj[rep4].filter(w=>d[w]===3));for(let k=0;k<11;k++)ang[cp(rep4,k)]=a+k*T}
+  const R=[0,0.2,0.5,0.78,0.97];
+  const pos=[];for(let v=0;v<N;v++){if(v===far){pos.push([0.93,-0.93]);continue}const a=ang[v]-Math.PI/2;pos.push([R[d[v]]*Math.cos(a),R[d[v]]*Math.sin(a)])}
+  return {adj,pos,far};
+}
+const D={"gy":[1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,46,48,50,52,54,56,58,60,61,63,59,65,67,69,30,71,68,74,76,78,80,82,83,85,87,89,51,91,92,94,47,96,98,99,2,101,103,105,0,108,84,111,86,114,95,117,119,121,123,125,126,128,129,130,132,134,124,136,138,140,142,143,57,145,28,147,149,135,113,153,90,55,156,157,150,158,146,26,161,162,163,6,164,165,167,36,170,172,173,175,97,159,72,179,180,181,182,184,144,186,188,190,192,44,195,196,198,199,197,194,20,203,189,206,133,42,154,207,10,210,211,213,177,53,32,216,218,12,220,14,66,221,222,223,104,100,49,18,226,224,116,160,193,227,214,40,228,229,110,231,232,233,215,115,235,236,16,4,237,201,148,230,241,212,242,106,208,245,24,204,38,247,168,127,22,200,137,209,62,81,202,225,249,141,250,251,252,131,88,174,205,255,120,256,171,219,191,257,166,217,8,107,176,152,178,258,234,240,155,169,239,259,260,139,77,75,261,112,243,248,79,262,185,93,118,263,254,73,246,238,264,70,102,265,187,64,253,34,122,183,151,109,244],"gz":[2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,37,47,49,51,53,55,57,59,0,62,64,25,66,68,70,1,72,73,75,77,79,81,41,84,86,88,48,90,56,93,91,95,97,89,69,100,102,104,106,107,109,110,112,113,115,116,118,120,122,124,3,127,82,63,131,133,135,87,137,139,141,46,144,92,146,9,148,150,151,152,154,155,29,5,153,96,159,160,145,117,132,114,149,31,166,168,169,171,19,174,176,177,178,7,52,129,140,183,185,111,187,189,191,193,194,136,197,179,200,201,202,21,204,205,198,207,208,206,209,196,156,212,175,13,214,215,217,94,219,11,67,190,181,33,224,65,157,225,71,108,138,161,123,221,130,80,134,220,230,105,211,121,234,227,15,158,128,218,78,238,239,240,125,50,184,17,243,244,54,99,165,246,142,195,237,103,39,199,60,248,245,192,61,242,247,210,228,35,167,253,254,170,83,241,216,23,101,27,163,250,223,143,126,188,147,45,231,257,251,162,232,172,173,235,252,74,85,258,236,260,180,98,263,58,186,43,255,256,203,264,119,262,222,76,259,182,229,261,226,265,233,164,213,249],"c0":[0,80,56,156,223,53,28,215,175,240,167,101,90,7,225,145,233,51,150,262,245,218,4,249,260,105,146,177,44,203,39,259,214,140,121,11,232,205,176,65,264,96,263,110,133,161,228,91,265,35,18,226,84,169,153,186,92,42,118,37,147,130,141,198,6,248,61,40,41,188,243,115,13,143,216,235,193,64,99,220,192,21,98,258,247,71,152,255,50,57,29,173,73,164,124,109,159,108,48,189,10,104,94,68,67,168,9,142,63,83,77,126,219,113,184,34,171,38,162,160,155,134,20,191,238,172,75,47,5,229,174,120,151,222,234,70,244,202,135,185,103,74,154,27,224,209,187,246,194,253,166,55,88,137,237,59,15,148,100,46,254,79,131,52,236,208,89,16,252,129,181,43,204,256,157,241,123,180,231,190,14,213,221,81,76,165,196,251,182,127,139,206,106,85,97,72,1,2,66,78,119,58,170,95,22,210,207,26,93,82,201,257,87,136,179,149,158,125,195,54,102,261,116,200,163,197,24,138,178,19,62,33,17,230,114,69,32,30,212,242,132,107,128,144,112,49,12,227,8,199,239,117,36,183,217,45,23,111,60,3,25,211,250,86,122,31]};
+const N=266, GY=D.gy, GZ=D.gz, C0=D.c0;
+const {adj,pos:S,far:FAR}=buildGraph(GY,GZ,C0);
+const comp=(A,B)=>A.map(x=>B[x]);           // apply A then B
+const inv=A=>{const r=new Array(N);A.forEach((x,i)=>r[x]=i);return r};
+const ID=[...Array(N).keys()];
+// transversal: T[s] maps slot 0 to slot s
+const T=new Array(N);T[0]=ID;{const q=[0];while(q.length){const u=q.shift();for(const g of [GY,GZ]){const w=g[u];if(!T[w]){T[w]=comp(T[u],g);q.push(w)}}}}
+// slot layers (distance from slot 0)
+const SL=new Array(N).fill(-1);SL[0]=0;{const q=[0];while(q.length){const u=q.shift();for(const w of adj[u])if(SL[w]<0){SL[w]=SL[u]+1;q.push(w)}}}
+const edges=[];for(let a=0;a<N;a++)for(const b of adj[a])if(a<b)edges.push([a,b]);
+
+let sigma=ID.slice();   // vertex -> slot (always an automorphism)
+let spins=0, sel=-1, moves=0;
+let cur=ID.map(v=>S[v].slice()), from=null, to=null, t0=0, dur=1100, colFrom=null;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+let W=0,scale=0,dpr=1;
+function size(){dpr=window.devicePixelRatio||1;W=cv.clientWidth;cv.width=W*dpr;cv.height=W*dpr;scale=W/2/1.06;draw()}
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let C={};function readColors(){C={l:[css('--l0'),css('--l1'),css('--l2'),css('--l3'),css('--l4')],edge:css('--edge'),accent:css('--accent'),panel:css('--panel'),ink:css('--ink')}}
+const px=p=>[W/2+p[0]*scale,W/2+p[1]*scale];
+
+function rootVertex(){return sigma.indexOf(0)}
+function layerOf(v){return SL[sigma[v]]}
+
+function draw(){
+  if(!W)return;
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,W);
+  ctx.lineWidth=0.6;
+  for(const [a,b] of edges){
+    const la=layerOf(a),lb=layerOf(b);
+    const isFar=sigma[a]===FAR||sigma[b]===FAR;
+    let al=la===lb?0.07:0.16; if(isFar)al=0.05;
+    ctx.strokeStyle=`rgba(${C.edge},${al})`;
+    const p=px(cur[a]),q=px(cur[b]);ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(q[0],q[1]);ctx.stroke();
+  }
+  let pathSet=null;
+  if(sel>=0){
+    ctx.lineWidth=1.6;ctx.strokeStyle=C.accent;
+    const p=px(cur[sel]);
+    for(const w of adj[sel]){const q=px(cur[w]);ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(q[0],q[1]);ctx.stroke()}
+    const path=shortestPath(rootVertex(),sel);pathSet=new Set(path);
+    ctx.lineWidth=3;ctx.strokeStyle=C.ink;ctx.globalAlpha=.55;
+    for(let i=0;i+1<path.length;i++){const a=px(cur[path[i]]),b=px(cur[path[i+1]]);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
+    ctx.globalAlpha=1;
+  }
+  const nb=sel>=0?new Set(adj[sel]):null;
+  for(let v=0;v<N;v++){
+    const L=colFrom?colFrom[v]:layerOf(v);
+    const p=px(cur[v]);let r=L===0?6:L===1?4.2:L===4?4.2:2.9;
+    if(nb&&nb.has(v))r+=1.4; if(v===sel)r+=3;
+    ctx.beginPath();ctx.arc(p[0],p[1],r,0,7);ctx.fillStyle=C.l[L];ctx.fill();
+    if(v===sel||(nb&&nb.has(v))){ctx.lineWidth=1.5;ctx.strokeStyle=C.panel;ctx.stroke()}
+  }
+}
+function shortestPath(a,b){const par=new Array(N).fill(-1);par[a]=a;const q=[a];while(q.length){const u=q.shift();if(u===b)break;for(const w of adj[u])if(par[w]<0){par[w]=u;q.push(w)}}const p=[b];while(p[p.length-1]!==a)p.push(par[p[p.length-1]]);return p.reverse()}
+
+function polar(p){return [Math.hypot(p[0],p[1]),Math.atan2(p[1],p[0])]}
+function animateTo(newSigma){
+  colFrom=ID.map(v=>layerOf(v));
+  from=cur.map(p=>p.slice());sigma=newSigma;to=ID.map(v=>S[sigma[v]]);
+  if(reduce){cur=to.map(p=>p.slice());colFrom=null;update();return}
+  t0=performance.now();requestAnimationFrame(step);update(true);
+}
+function step(now){
+  let k=Math.min(1,(now-t0)/dur);const e=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
+  for(let v=0;v<N;v++){
+    const [r1,a1]=polar(from[v]),[r2,a2]=polar(to[v]);
+    let da=a2-a1;while(da>Math.PI)da-=2*Math.PI;while(da<-Math.PI)da+=2*Math.PI;
+    const a1u=r1<1e-6?a2:a1, dau=r1<1e-6?0:(r2<1e-6?0:da);
+    const r=r1+(r2-r1)*e,a=a1u+dau*e;cur[v]=[r*Math.cos(a),r*Math.sin(a)];
+  }
+  if(k>.82)colFrom=null;
+  draw();
+  if(k<1)requestAnimationFrame(step);else{cur=to.map(p=>p.slice());colFrom=null;draw()}
+}
+function travel(sg){let s=0;for(let v=0;v<N;v++){const a=S[sigma[v]],b=S[sg[v]];s+=Math.hypot(a[0]-b[0],a[1]-b[1])}return s}
+
+document.getElementById('bSpin').onclick=()=>{spins=(spins+1)%11;moves++;animateTo(sigma.map(s=>C0[s]))};
+document.getElementById('bRand').onclick=()=>{
+  let g=ID;for(let i=0;i<40;i++)g=comp(g,Math.random()<.5?GY:GZ);
+  spins=0;moves++;animateTo(sigma.map(s=>g[s]));
+};
+document.getElementById('bRoot').onclick=()=>{
+  if(sel<0){info.innerHTML='<span class="k">Tap any dot on the drawing first, then make it the root.</span>';return}
+  const s=sigma[sel];if(s===0)return;
+  const base=inv(T[s]);let best=null,bt=1e9,c=ID;
+  for(let k=0;k<11;k++){const g=comp(base,c);const sg=sigma.map(x=>g[x]);const tv=travel(sg);if(tv<bt){bt=tv;best=sg}c=comp(c,C0)}
+  spins=0;moves++;animateTo(best);
+};
+document.getElementById('bReset').onclick=()=>{spins=0;moves=0;sel=-1;animateTo(ID.slice())};
+
+const info=document.getElementById('info'), hud=document.getElementById('hud');
+const names=['the root','distance 1','distance 2','distance 3','distance 4'];
+function update(moving){
+  const r=rootVertex();
+  hud.textContent=`root ${r} · spins ${spins}/11 · symmetries applied ${moves}`;
+  if(sel<0){info.innerHTML=`<div class="k">Root vertex <span class="mono">${r}</span></div><div style="margin-top:6px">Tap any dot to see its 11 neighbours and its shortest path to the root.</div>`;draw();return}
+  const L=layerOf(sel);let back=0,same=0,fwd=0;
+  for(const w of adj[sel]){const l=layerOf(w);if(l<L)back++;else if(l===L)same++;else fwd++}
+  const path=shortestPath(r,sel);
+  info.innerHTML=`<div class="k">Vertex <span class="mono">${sel}</span> · ${L===0?'this is the root':names[L]+' from root '+r}</div>
+  <div class="split"><span class="chip">${back} back</span><span class="chip">${same} same</span><span class="chip">${fwd} forward</span></div>
+  <div class="path" style="margin-top:8px">${path.join(' → ')}</div>`;
+  if(!moving)draw();
+}
+cv.addEventListener('pointerdown',ev=>{
+  const b=cv.getBoundingClientRect(),x=ev.clientX-b.left,y=ev.clientY-b.top;let best=-1,bd=18*18;
+  for(let v=0;v<N;v++){const p=px(cur[v]);const d=(p[0]-x)**2+(p[1]-y)**2;if(d<bd){bd=d;best=v}}
+  sel=best;update();
+});
+readColors();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors();draw()});
+new MutationObserver(()=>{readColors();draw()}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+new ResizeObserver(size).observe(cv);
+document.fonts&&document.fonts.ready.then(()=>{readColors();size()});
+size();update();
+</script>
+</body>
+</html>

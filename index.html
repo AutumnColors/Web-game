@@ -36,11 +36,15 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
   <h2 class="sec">Explore</h2>
   <p class="sub">Interactive math. No score, just play with it.</p>
   <ul class="levels" id="explore"></ul>
+  <h2 class="sec">J1 viewer</h2>
+  <p class="sub">The first Janko group: 175,560 symmetries, seen from different angles.</p>
+  <ul class="levels" id="j1"></ul>
   <div class="foot"><button class="reset" id="reset" type="button">Reset progress</button></div>
 </main>
 <script src="shared/progress.js"></script>
 <script src="levels.js"></script>
 <script src="explore.js"></script>
+<script src="j1.js"></script>
 <script>
 'use strict';
 function card(href,badge,badgeClass,title,metaHtml,extraClass){
@@ -68,6 +72,9 @@ function render(){
   const ex=document.getElementById('explore');
   ex.replaceChildren();
   (window.EXPLORE||[]).forEach(e=>ex.append(card(e.path,e.badge||'?',' badge',e.title,'','')));
+  const j1=document.getElementById('j1');
+  j1.replaceChildren();
+  (window.J1||[]).forEach(e=>j1.append(card(e.path,e.badge||'?',' badge',e.title,'','')));
 }
 document.getElementById('reset').addEventListener('click',()=>{
   if(!confirm('Reset all progress?'))return;
