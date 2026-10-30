@@ -34,5 +34,12 @@ window.EXPLORE = [
     title: 'Vector Cube',
     path: 'explore/rubiks-cube/',
     desc: 'A Rubik\'s cube as 54 stickers, each a position, facing and color vector. One rotation rule turns every layer.'
+  },
+  {
+    id: 'j1',
+    badge: 'J1',
+    title: 'J1 viewer',
+    path: 'explore/j1/',
+    desc: 'The Livingstone graph: 266 vertices, 1,463 edges, valency 11, built from the Janko group J1. Spin, re-root and apply random symmetries.'
   }
 ];
