@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>A₅ Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+/* Layout: the 3D stage is the instrument (left, sticky on wide screens); the derivation reads top-to-bottom beside it.
+   The five cube colors are the only hues on the page; everything else is ink on cool paper. */
+:root{
+  --bg:#ECEFF3; --panel:#F7F8FA; --stage:#E1E5EB; --fg:#17202C; --muted:#586374; --line:#C8CFD9; --soft:#DCE1E8;
+  --edge:#2A3342; --face:#93A0B4; --ghost:#6E7A8C;
+  --c1:#D0403A; --c2:#D38A0C; --c3:#22905C; --c4:#2B67CF; --c5:#8445C9;
+  --f-math:"STIX Two Text","Times New Roman",Times,serif;
+  --f-ui:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F131A; --panel:#151A23; --stage:#0A0D12; --fg:#E3E7EE; --muted:#8D97A7; --line:#283041; --soft:#1C2330;
+    --edge:#C3CBD8; --face:#5F6D83; --ghost:#8792A4;
+    --c1:#EE6A61; --c2:#F0B03E; --c3:#47C285; --c4:#5E94F0; --c5:#AE7BEA;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F131A; --panel:#151A23; --stage:#0A0D12; --fg:#E3E7EE; --muted:#8D97A7; --line:#283041; --soft:#1C2330;
+  --edge:#C3CBD8; --face:#5F6D83; --ghost:#8792A4;
+  --c1:#EE6A61; --c2:#F0B03E; --c3:#47C285; --c4:#5E94F0; --c5:#AE7BEA;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-ui);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1260px;margin:0 auto}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.math{font-family:var(--f-math)}
+.bar{text-decoration:overline;text-decoration-thickness:1px}
+sub{font-size:.68em;line-height:0}
+
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 22px;margin-bottom:18px}
+h1{font-family:var(--f-math);font-weight:600;font-size:clamp(30px,4.4vw,44px);line-height:1.05;margin:0;letter-spacing:-.01em}
+h1 sub{font-size:.6em}
+.lede{color:var(--muted);margin:0;max-width:62ch;text-wrap:pretty}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:32px;align-items:start}
+.stage-col{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:12px;min-width:0}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr);gap:22px}.stage-col{position:static}}
+
+.stage{position:relative;width:100%;aspect-ratio:1/1;max-width:100%;max-height:min(64vh,720px);background:var(--stage);border-radius:4px;overflow:hidden}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.hud{position:absolute;left:14px;top:12px;pointer-events:none;display:flex;align-items:baseline;gap:10px}
+.hud .cl{font-family:var(--f-math);font-size:30px;font-weight:600;line-height:1}
+.hud .an{font-family:var(--f-num);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hint{position:absolute;right:12px;bottom:10px;font-size:11.5px;color:var(--muted);pointer-events:none;letter-spacing:.02em}
+
+.controls{display:flex;flex-direction:column;gap:10px}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:none;padding:8px 6px;cursor:pointer;line-height:1.2;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button b{display:block;font-weight:600;font-size:14px}
+.seg button span{font-size:11.5px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.seg button[aria-pressed="true"] span{color:var(--bg);opacity:.75}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip-t{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 11px 5px 9px;cursor:pointer;font-size:13px}
+.chip-t svg{width:14px;height:14px;flex:none}
+.chip-t[aria-pressed="false"]{color:var(--muted);background:transparent}
+.chip-t[aria-pressed="false"] svg{opacity:.45}
+.chip-t[aria-pressed="true"]{border-color:var(--fg)}
+.legend{font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;text-wrap:pretty}
+.legend .cubes{display:inline-flex;gap:4px}
+
+.cc{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:3px;background:var(--c);color:#fff;font-family:var(--f-num);font-size:12px;font-weight:500;line-height:1}
+
+.panel-col{display:flex;flex-direction:column;gap:26px;min-width:0}
+section h2{font-family:var(--f-math);font-style:italic;font-weight:400;font-size:23px;line-height:1.15;margin:0 0 4px}
+section .sub{color:var(--muted);font-size:13.5px;margin:0 0 12px;max-width:62ch;text-wrap:pretty}
+section + section{border-top:1px solid var(--line);padding-top:22px}
+
+.picker{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.cls{position:relative;border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:8px 4px 7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px}
+.cls .cn{font-family:var(--f-math);font-size:21px;font-weight:600;line-height:1.1}
+.cls .cm{font-family:var(--f-num);font-size:11.5px;color:var(--muted)}
+.cls .cs{font-size:11px;color:var(--muted)}
+.cls .dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--fg);opacity:0}
+.cls.visited .dot{opacity:.8}
+.cls[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.cls[aria-pressed="true"] .cm,.cls[aria-pressed="true"] .cs{color:var(--bg);opacity:.75}
+.cls[aria-pressed="true"] .dot{background:var(--bg)}
+
+.player{display:flex;align-items:center;gap:10px;margin-top:12px}
+.play{border:1px solid var(--fg);background:var(--fg);color:var(--bg);border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:500;font-size:13.5px;white-space:nowrap}
+.play:disabled{opacity:.35;cursor:default}
+.player input[type=range]{flex:1;min-width:0;accent-color:var(--fg)}
+.deg{font-family:var(--f-num);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;min-width:9ch;text-align:right}
+
+.eldesc{margin:12px 0 0;text-wrap:pretty}
+.perm{margin-top:10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:14px}
+.perm .cyc{display:inline-flex;align-items:center;gap:3px;font-family:var(--f-math);font-size:18px}
+.perm .lbl{color:var(--muted);font-size:13px}
+.perm .even{font-size:12.5px;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--muted)}
+details.mx{margin-top:10px}
+details.mx summary{cursor:pointer;color:var(--muted);font-size:13px}
+.matrix{display:inline-grid;grid-template-columns:repeat(3,auto);gap:2px 16px;margin-top:8px;padding:6px 12px;border-left:1.5px solid var(--fg);border-right:1.5px solid var(--fg);font-family:var(--f-math);font-size:16px;text-align:right}
+
+.drows{display:flex;flex-direction:column}
+.drow{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:4px 12px;align-items:center;text-align:left;background:none;border:0;border-top:1px solid var(--soft);padding:10px 4px;cursor:pointer;width:100%}
+.drow:first-child{border-top:0}
+.drow:hover{background:var(--soft)}
+.drow.static{cursor:default}
+.drow.static:hover{background:none}
+.drow svg{width:18px;height:18px}
+.drow .nm{font-weight:600;font-size:14px;display:block}
+.drow .ct{color:var(--muted);font-size:13px;display:block}
+.drow .ct b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+.drow .res{font-family:var(--f-math);font-size:18px;white-space:nowrap;text-align:right}
+.drow .res strong{font-weight:600}
+.drow .tag{display:block;font-family:var(--f-ui);font-size:11.5px;color:var(--muted);text-align:right}
+
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+table.ct{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+table.ct th,table.ct td{padding:7px 10px;text-align:center;border-bottom:1px solid var(--soft)}
+table.ct thead th{font-family:var(--f-math);font-weight:600;font-size:17px}
+table.ct thead tr.sz th{font-family:var(--f-num);font-weight:400;font-size:12px;color:var(--muted);padding-top:0}
+table.ct tbody th{text-align:left;font-family:var(--f-math);font-weight:400;font-size:17px;white-space:nowrap}
+table.ct tbody th small{font-family:var(--f-ui);font-size:11.5px;color:var(--muted);margin-left:6px}
+table.ct td{font-family:var(--f-math);font-size:18px}
+table.ct td.q{color:var(--muted);opacity:.6}
+table.ct .cur{background:var(--soft)}
+table.ct tbody tr:last-child th,table.ct tbody tr:last-child td{border-bottom:0}
+table.ct .lab{text-align:left;font-family:var(--f-ui);font-size:12px;color:var(--muted);font-weight:400}
+.tbl-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;font-size:13px;color:var(--muted)}
+.ghostbtn{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:13px}
+
+.checks{display:flex;flex-direction:column;gap:14px}
+.check{display:grid;grid-template-columns:22px minmax(0,1fr);gap:2px 10px}
+.check .ok{font-family:var(--f-math);font-size:17px;line-height:1.3}
+.check .ttl{font-weight:600;font-size:14px}
+.check .mth{font-family:var(--f-math);font-size:17px;overflow-x:auto}
+.ortho{display:inline-grid;grid-template-columns:auto repeat(5,26px);gap:2px;margin-top:6px;font-family:var(--f-math);font-size:15px;text-align:center}
+.ortho span{padding:1px 0}
+.ortho .h{color:var(--muted);font-size:13px}
+.ortho .one{background:var(--fg);color:var(--bg);border-radius:2px}
+.dec{border-collapse:collapse;margin-top:6px;font-size:14px}
+.dec td,.dec th{padding:4px 12px 4px 0;text-align:left;border-bottom:1px solid var(--soft)}
+.dec th{font-weight:500;color:var(--muted);font-size:12px}
+.dec td.m{font-family:var(--f-math);font-size:17px}
+.pending{color:var(--muted);font-size:14px}
+.pending button{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:2px 9px;margin:0 2px;cursor:pointer;font-family:var(--f-math);font-weight:600}
+.err{color:var(--c1);font-size:14px}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+.back{font:13px var(--f-num);color:var(--muted);text-decoration:none;display:inline-block;margin-bottom:10px}
+.back:hover{color:var(--fg)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <a class="back" href="../../">← Back</a>
+  <header>
+    <h1>A<sub>5</sub> Viewer</h1>
+    <p class="lede">Turn the solid by one of its 60 rotations. Count what lands back on itself. Those counts are the characters.</p>
+  </header>
+
+  <div class="grid">
+    <div class="stage-col">
+      <div class="stage" id="stage">
+        <canvas id="cv" aria-label="3D view of the dodecahedron and its symmetries"></canvas>
+        <div class="hud"><span class="cl" id="hudCl">3A</span><span class="an" id="hudAn">0° / 120°</span></div>
+        <div class="hint">drag to turn · pinch or scroll to zoom</div>
+      </div>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Solid">
+          <button id="m-dodeca" data-mode="dodeca" aria-pressed="true"><b>Dodecahedron</b><span>12 faces · 5 cubes inside</span></button>
+          <button id="m-ico" data-mode="ico" aria-pressed="false"><b>Icosahedron</b><span>20 faces</span></button>
+          <button id="m-both" data-mode="both" aria-pressed="false"><b>Compound</b><span>dual pair</span></button>
+        </div>
+        <div class="chips" role="group" aria-label="Overlays">
+          <button class="chip-t" id="t-cubes" data-ov="cubes" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1.5 14 4.5v7L8 14.5 2 11.5v-7z M2 4.5 8 7.5l6-3 M8 7.5v7"/></svg>5 cubes</button>
+          <button class="chip-t" id="t-ax6" data-ov="ax6" aria-pressed="false"><svg viewBox="0 0 16 16"><path d="M8 1.6 14.1 6 11.8 13.2H4.2L1.9 6z" fill="currentColor"/></svg>6 five-fold axes</button>
+          <button class="chip-t" id="t-ax10" data-ov="ax10" aria-pressed="false"><svg viewBox="0 0 16 16"><path d="M8 2 14.5 13.5h-13z" fill="currentColor"/></svg>10 three-fold</button>
+          <button class="chip-t" id="t-ax15" data-ov="ax15" aria-pressed="false"><svg viewBox="0 0 16 16"><ellipse cx="8" cy="8" rx="6.5" ry="3.3" fill="currentColor"/></svg>15 two-fold</button>
+          <button class="chip-t" id="t-ghost" data-ov="ghost" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2 1.6"><rect x="2" y="2" width="12" height="12"/></svg>Start position</button>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+
+    <div class="panel-col">
+      <section>
+        <h2>Pick a symmetry</h2>
+        <p class="sub">Every rotation of the dodecahedron falls into one of five conjugacy classes. Tap a class to pick a rotation from it; tap again for the next one.</p>
+        <div class="picker" id="picker"></div>
+        <div class="player">
+          <button class="play" id="play">Play</button>
+          <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Rotation progress">
+          <span class="deg" id="deg">0°</span>
+        </div>
+        <p class="eldesc" id="eldesc"></p>
+        <div class="perm" id="perm"></div>
+        <details class="mx"><summary>Rotation matrix R</summary><div class="matrix" id="matrix"></div></details>
+      </section>
+
+      <section>
+        <h2>Count what stays put</h2>
+        <p class="sub">For this rotation g, each natural action gives one number. Tap a row to see that family on the solid.</p>
+        <div class="drows" id="drows"></div>
+      </section>
+
+      <section>
+        <h2>Character table</h2>
+        <p class="sub">A column fills in once you have visited its class. Rows come from the counts above.</p>
+        <div class="tbl-wrap"><table class="ct" id="ct"></table></div>
+        <div class="tbl-foot"><span id="visitedTxt"></span><button class="ghostbtn" id="fillAll">Visit all classes</button></div>
+      </section>
+
+      <section>
+        <h2>Checks</h2>
+        <p class="sub">Computed from the table you just built, with the class sizes counted from the 60 matrices.</p>
+        <div class="checks" id="checks"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script id="math">
+/* ---------- A5 from geometry: everything below is computed, nothing is typed in ---------- */
+const PHI=(1+Math.sqrt(5))/2;
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const sub3=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const nrm=a=>{const l=Math.hypot(a[0],a[1],a[2]);return [a[0]/l,a[1]/l,a[2]/l]};
+const near=(a,b,e=1e-5)=>Math.abs(a-b)<e;
+function rotM(a,t){const [x,y,z]=a,c=Math.cos(t),s=Math.sin(t),C=1-c;
+  return [c+x*x*C,x*y*C-z*s,x*z*C+y*s, y*x*C+z*s,c+y*y*C,y*z*C-x*s, z*x*C-y*s,z*y*C+x*s,c+z*z*C];}
+function mul(A,B){const R=new Array(9);for(let i=0;i<3;i++)for(let j=0;j<3;j++)R[i*3+j]=A[i*3]*B[j]+A[i*3+1]*B[3+j]+A[i*3+2]*B[6+j];return R}
+const ap=(R,v)=>[R[0]*v[0]+R[1]*v[1]+R[2]*v[2],R[3]*v[0]+R[4]*v[1]+R[5]*v[2],R[6]*v[0]+R[7]*v[1]+R[8]*v[2]];
+function idxOf(list,p){for(let i=0;i<list.length;i++){const q=list[i];if(Math.abs(q[0]-p[0])+Math.abs(q[1]-p[1])+Math.abs(q[2]-p[2])<1e-6)return i}return -1}
+
+function buildA5(){
+  const S=[1,-1],I=1/PHI;
+  const D=[]; // dodecahedron vertices; the first 8 are the axis-aligned cube
+  for(const a of S)for(const b of S)for(const c of S)D.push([a,b,c]);
+  for(const a of S)for(const b of S){D.push([0,a*I,b*PHI]);D.push([a*I,b*PHI,0]);D.push([a*PHI,0,b*I]);}
+  const Ic=[]; // icosahedron vertices, dual to D (they sit over the dodecahedron's face centres)
+  for(const a of S)for(const b of S){Ic.push([0,a*PHI,b]);Ic.push([a,0,b*PHI]);Ic.push([a*PHI,b,0]);}
+
+  function edges(V){let m=Infinity;const P=[];for(let i=0;i<V.length;i++)for(let j=i+1;j<V.length;j++)m=Math.min(m,Math.hypot(...sub3(V[i],V[j])));
+    for(let i=0;i<V.length;i++)for(let j=i+1;j<V.length;j++)if(near(Math.hypot(...sub3(V[i],V[j])),m))P.push([i,j]);return P}
+  function faces(V,N){return N.map(n=>{const u=nrm(n);let best=-Infinity;V.forEach(p=>best=Math.max(best,dot(p,u)));
+    const ids=[];V.forEach((p,i)=>{if(dot(p,u)>best-1e-6)ids.push(i)});
+    const c=[0,0,0];ids.forEach(i=>{c[0]+=V[i][0]/ids.length;c[1]+=V[i][1]/ids.length;c[2]+=V[i][2]/ids.length});
+    const e1=nrm(sub3(V[ids[0]],c)),e2=cross(u,e1);
+    const ang=i=>{const d=sub3(V[i],c);return Math.atan2(dot(d,e2),dot(d,e1))};
+    return ids.sort((i,j)=>ang(i)-ang(j));});}
+
+  // the group: close two generators under multiplication
+  const g5=rotM(nrm(Ic[0]),2*Math.PI/5), g3=rotM(nrm([1,1,1]),2*Math.PI/3);
+  const key=R=>R.map(x=>Math.round(x*1e5)+0).join(',');
+  const E=[1,0,0,0,1,0,0,0,1],G=[E],seen=new Set([key(E)]);
+  for(let k=0;k<G.length;k++)for(const g of [g5,g3]){const R=mul(g,G[k]),kk=key(R);if(!seen.has(kk)){seen.add(kk);G.push(R)}}
+
+  function orbit(set){const out=[],ks=new Set();for(const R of G){const img=set.map(i=>idxOf(D,ap(R,D[i]))).sort((a,b)=>a-b),k=img.join(',');if(!ks.has(k)){ks.add(k);out.push(img)}}return out}
+  const cubes=orbit([0,1,2,3,4,5,6,7]);
+  const t0=[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]].map(p=>idxOf(D,p));
+  const tets=orbit(t0); // one chiral family: one tetrahedron inside each cube
+  const tetCube=tets.map(t=>cubes.findIndex(c=>t.every(i=>c.includes(i))));
+  const vCube=new Array(D.length);tets.forEach((t,k)=>t.forEach(i=>vCube[i]=tetCube[k]));
+
+  function lines(P){const L=[];P.forEach(p=>{const u=nrm(p);if(!L.some(q=>Math.abs(dot(q,u))>1-1e-6))L.push(u)});return L}
+  const dE=edges(D),iE=edges(Ic);
+  const ax6=lines(Ic),ax10=lines(D),ax15=lines(iE.map(([i,j])=>[(Ic[i][0]+Ic[j][0])/2,(Ic[i][1]+Ic[j][1])/2,(Ic[i][2]+Ic[j][2])/2]));
+  const dF=faces(D,Ic),iF=faces(Ic,D); // iF[k] is the icosahedron face over dodecahedron vertex k
+
+  const CLS=['1A','2A','3A','5A','5B'];
+  const els=G.map(R=>{
+    const tr=R[0]+R[4]+R[8];
+    const cls=near(tr,3)?'1A':near(tr,-1)?'2A':near(tr,0)?'3A':near(tr,PHI)?'5A':'5B';
+    const ang=Math.acos(Math.max(-1,Math.min(1,(tr-1)/2)));
+    let axis=null;
+    if(cls==='2A'){let best=null,bl=0;for(let c=0;c<3;c++){const col=[R[c]+(c===0),R[3+c]+(c===1),R[6+c]+(c===2)],l=Math.hypot(...col);if(l>bl){bl=l;best=col}}axis=nrm(best)}
+    else if(cls!=='1A')axis=nrm([R[7]-R[5],R[2]-R[6],R[3]-R[1]]);
+    const perm=cubes.map(c=>{const k=c.map(i=>idxOf(D,ap(R,D[i]))).sort((a,b)=>a-b).join(',');return cubes.findIndex(c2=>c2.join(',')===k)});
+    const fixL=L=>L.map(u=>Math.abs(dot(ap(R,u),u))>1-1e-6);
+    const f6=fixL(ax6),f10=fixL(ax10),f15=fixL(ax15);
+    const cnt=a=>a.filter(Boolean).length;
+    return {R,tr,cls,ang,axis,perm,nCubes:perm.filter((p,i)=>p===i).length,f6,f10,f15,n6:cnt(f6),n10:cnt(f10),n15:cnt(f15)};
+  }).sort((a,b)=>CLS.indexOf(a.cls)-CLS.indexOf(b.cls));
+  return {D,Ic,dE,iE,dF,iF,cubes,tets,vCube,ax6,ax10,ax15,G,els,CLS};
+}
+const galois=x=>near(x,PHI)?1-PHI:near(x,1-PHI)?PHI:x;
+function chiOf(e){return {c1:1,c3:e.tr,c3p:galois(e.tr),c4:e.nCubes-1,c5:e.n6-1,p5:e.nCubes,p6:e.n6,p10:e.n10}}
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+const A=buildA5();
+const CLS=A.CLS;
+const byClass={};CLS.forEach(c=>byClass[c]=[]);A.els.forEach((e,i)=>byClass[e.cls].push(i));
+const SIZE={};CLS.forEach(c=>SIZE[c]=byClass[c].length);
+const classChi={};CLS.forEach(c=>classChi[c]=chiOf(A.els[byClass[c][0]]));
+// sanity: characters are class functions
+let classOk=true;A.els.forEach(e=>{const a=chiOf(e),b=classChi[e.cls];for(const k in a)if(!near(a[k],b[k]))classOk=false});
+
+const $=s=>document.getElementById(s);
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const DEG={'1A':0,'2A':180,'3A':120,'5A':72,'5B':144};
+const ORDER={'1A':1,'2A':2,'3A':3,'5A':5,'5B':5};
+
+const state={mode:'dodeca',ov:{cubes:true,ax6:false,ax10:false,ax15:false,ghost:true},
+  el:byClass['3A'][0],t:0,visited:new Set(['3A']),ptr:{},anim:null,autospin:!reduced};
+CLS.forEach(c=>state.ptr[c]=0);
+
+/* ---------- formatting ---------- */
+function chiH(x){if(near(x,PHI))return '<i>φ</i>';if(near(x,1-PHI))return '<i class="bar">φ</i>';const r=Math.round(x);return r<0?'−'+(-r):''+r}
+function numH(n){return n<0?'−'+(-n):''+n}
+const cubeChip=i=>`<span class="cc" style="--c:var(--c${i+1})">${i+1}</span>`;
+function entryH(x){const s=x<-1e-9?'−':'',a=Math.abs(x);
+  const C=[[0,'0'],[1,'1'],[.5,'½'],[PHI/2,'<i>φ</i>/2'],[1/(2*PHI),'1/2<i>φ</i>']];
+  for(const [v,l] of C)if(near(a,v,1e-6))return (v===0?'':s)+l;return x.toFixed(3)}
+function cycles(p){const seen=[],out=[];for(let i=0;i<p.length;i++){if(seen[i])continue;const c=[];let j=i;while(!seen[j]){seen[j]=1;c.push(j);j=p[j]}out.push(c)}return out}
+
+/* ---------- three.js scene ---------- */
+const cv=$('cv'),stage=$('stage');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(32,1,.1,100);let camDist=8.4;camera.position.set(0,0,camDist);
+scene.add(camera);
+scene.add(new THREE.AmbientLight(0xffffff,.62));
+const key=new THREE.DirectionalLight(0xffffff,.62);key.position.set(3,4,6);camera.add(key);
+const view=new THREE.Group();scene.add(view);
+view.quaternion.setFromEuler(new THREE.Euler(.42,-.62,.08));
+const body=new THREE.Group();view.add(body);
+const ghost=new THREE.Group();view.add(ghost);
+const raxis=new THREE.Group();view.add(raxis);
+
+const CYL=new THREE.CylinderGeometry(1,1,1,12,1,false),SPH=new THREE.SphereGeometry(1,14,10),UP=new THREE.Vector3(0,1,0),ZZ=new THREE.Vector3(0,0,1);
+function tube(a,b,r,mat){const P=new THREE.Vector3(...a),Q=new THREE.Vector3(...b),d=Q.clone().sub(P),m=new THREE.Mesh(CYL,mat);
+  m.scale.set(r,d.length(),r);m.position.copy(P).add(Q).multiplyScalar(.5);m.quaternion.setFromUnitVectors(UP,d.normalize());m.userData.r=r;return m}
+function ball(p,r,mat){const m=new THREE.Mesh(SPH,mat);m.position.set(...p);m.scale.setScalar(r);m.userData.r=r;return m}
+const MK={2:(()=>{const g=new THREE.CircleGeometry(1,32);g.scale(1,.46,1);return g})(),3:new THREE.CircleGeometry(1,3),5:new THREE.CircleGeometry(1,5)};
+function marker(n,u,L,s,mat){const m=new THREE.Mesh(MK[n],mat);m.scale.setScalar(s);m.position.set(u[0]*L,u[1]*L,u[2]*L);m.quaternion.setFromUnitVectors(ZZ,new THREE.Vector3(...u));return m}
+
+const mat={
+  dFace:new THREE.MeshPhongMaterial({flatShading:true,shininess:40,side:THREE.DoubleSide,transparent:true,opacity:.15,depthWrite:false}),
+  iFace:new THREE.MeshPhongMaterial({flatShading:true,shininess:28,side:THREE.DoubleSide,vertexColors:true,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1}),
+  edge:new THREE.MeshLambertMaterial(),
+  cube:[0,1,2,3,4].map(()=>new THREE.MeshPhongMaterial({shininess:50})),
+  axOn:new THREE.MeshBasicMaterial({side:THREE.DoubleSide}),
+  axOff:new THREE.MeshBasicMaterial({side:THREE.DoubleSide,transparent:true,opacity:.18,depthWrite:false}),
+  rot:new THREE.MeshBasicMaterial({side:THREE.DoubleSide}),
+  ghost:new THREE.LineBasicMaterial({transparent:true,opacity:.5})
+};
+
+function polyGeo(V,F,withColor){const pos=[];F.forEach(f=>{for(let k=1;k<f.length-1;k++)[f[0],f[k],f[k+1]].forEach(i=>pos.push(...V[i]))});
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  if(withColor)g.setAttribute('color',new THREE.Float32BufferAttribute(new Array(pos.length).fill(1),3));
+  g.computeVertexNormals();return g}
+function lineGeo(V,E){const pos=[];E.forEach(([i,j])=>pos.push(...V[i],...V[j]));const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));return g}
+
+// dodecahedron
+const dodeca=new THREE.Group();body.add(dodeca);
+dodeca.add(new THREE.Mesh(polyGeo(A.D,A.dF),mat.dFace));
+A.dE.forEach(([i,j])=>dodeca.add(tube(A.D[i],A.D[j],.016,mat.edge)));
+// icosahedron, faces 5-coloured by the tetrahedron (hence cube) under each one
+const ico=new THREE.Group();body.add(ico);
+const icoGeo=polyGeo(A.Ic,A.iF,true);const icoFaceMesh=new THREE.Mesh(icoGeo,mat.iFace);ico.add(icoFaceMesh);
+A.iE.forEach(([i,j])=>ico.add(tube(A.Ic[i],A.Ic[j],.013,mat.edge)));
+// five cubes
+const cubeGroup=new THREE.Group();body.add(cubeGroup);
+const cubeParts=A.cubes.map((c,ci)=>{const parts=[];
+  for(let a=0;a<8;a++)for(let b=a+1;b<8;b++){const p=A.D[c[a]],q=A.D[c[b]];if(near(Math.hypot(...sub3(p,q)),2,1e-6))parts.push(tube(p,q,.022,mat.cube[ci]))}
+  c.forEach(i=>parts.push(ball(A.D[i],.03,mat.cube[ci])));parts.forEach(m=>cubeGroup.add(m));return parts});
+// axis families
+function family(L,n,len,ms){const g=new THREE.Group();body.add(g);
+  const items=L.map(u=>{const line=tube(u.map(x=>-x*len),u.map(x=>x*len),.009,mat.axOff);
+    const mk=[marker(n,u,len,ms,mat.axOff),marker(n,u.map(x=>-x),len,ms,mat.axOff)];g.add(line,...mk);return {line,mk}});
+  return {g,items}}
+const fam={ax6:family(A.ax6,5,2.45,.085),ax10:family(A.ax10,3,2.45,.08),ax15:family(A.ax15,2,2.45,.075)};
+// ghost of the start position
+const ghostD=new THREE.LineSegments(lineGeo(A.D,A.dE),mat.ghost),ghostI=new THREE.LineSegments(lineGeo(A.Ic,A.iE),mat.ghost);
+ghost.add(ghostD,ghostI);
+
+/* ---------- theme ---------- */
+function tok(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function applyTheme(){
+  renderer.setClearColor(new THREE.Color(tok('--stage')));
+  mat.dFace.color.set(tok('--face'));mat.edge.color.set(tok('--edge'));
+  const fg=tok('--fg');mat.axOn.color.set(fg);mat.axOff.color.set(fg);mat.rot.color.set(fg);mat.ghost.color.set(tok('--ghost'));
+  const cc=[1,2,3,4,5].map(i=>new THREE.Color(tok('--c'+i)));
+  mat.cube.forEach((m,i)=>m.color.copy(cc[i]));
+  const col=icoGeo.getAttribute('color');let v=0;
+  A.iF.forEach((f,k)=>{const c=cc[A.vCube[k]];for(let t=0;t<(f.length-2)*3;t++){col.setXYZ(v++,c.r,c.g,c.b)}});
+  col.needsUpdate=true;
+}
+applyTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ---------- scene state ---------- */
+function applyScene(){
+  const m=state.mode,e=A.els[state.el];
+  dodeca.visible=m!=='ico';ico.visible=m!=='dodeca';
+  const opaque=m==='both';
+  if(mat.dFace.transparent===opaque){mat.dFace.transparent=!opaque;mat.dFace.depthWrite=opaque;mat.dFace.opacity=opaque?1:.15;mat.dFace.needsUpdate=true}
+  cubeGroup.visible=state.ov.cubes;
+  ghostD.visible=state.ov.ghost&&m!=='ico';ghostI.visible=state.ov.ghost&&m!=='dodeca';
+  cubeParts.forEach((parts,i)=>{const fixed=e.perm[i]===i&&e.cls!=='1A';const k=fixed?1.75:1;
+    parts.forEach(p=>{const r=p.userData.r*k;if(p.geometry===CYL){p.scale.x=r;p.scale.z=r}else p.scale.setScalar(r)})});
+  for(const f of ['ax6','ax10','ax15']){const F=fam[f],fx=e['f'+f.slice(2)];F.g.visible=state.ov[f];
+    F.items.forEach((it,i)=>{const on=fx[i];const mt=on?mat.axOn:mat.axOff;it.line.material=mt;it.mk.forEach(x=>x.material=mt);
+      const r=on?.015:.009;it.line.scale.x=r;it.line.scale.z=r;});}
+  // rotation axis of g
+  raxis.clear();
+  if(e.axis){const u=e.axis,L=3.05;raxis.add(tube(u.map(x=>-x*L),u.map(x=>x*L),.012,mat.rot));
+    const n=ORDER[e.cls];raxis.add(marker(n,u,L,.13,mat.rot),marker(n,u.map(x=>-x),L,.13,mat.rot));}
+  setPose();
+}
+function setPose(){const e=A.els[state.el];
+  if(e.axis)body.quaternion.setFromAxisAngle(new THREE.Vector3(...e.axis),state.t*e.ang);else body.quaternion.identity();
+  const d=DEG[e.cls];$('hudCl').textContent=e.cls;
+  const txt=e.cls==='1A'?'identity':`${Math.round(state.t*d)}° / ${d}°`;$('hudAn').textContent=txt;$('deg').textContent=e.cls==='1A'?'0°':`${Math.round(state.t*d)}°`;
+  $('scrub').value=Math.round(state.t*1000);
+}
+
+/* ---------- interaction on the stage ---------- */
+const ptrs=new Map();let pinch0=0,dist0=camDist;
+cv.addEventListener('pointerdown',ev=>{cv.setPointerCapture(ev.pointerId);ptrs.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});state.autospin=false;
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);dist0=camDist}});
+cv.addEventListener('pointermove',ev=>{if(!ptrs.has(ev.pointerId))return;const p=ptrs.get(ev.pointerId),dx=ev.clientX-p.x,dy=ev.clientY-p.y;
+  p.x=ev.clientX;p.y=ev.clientY;
+  if(ptrs.size===1){const l=Math.hypot(dx,dy);if(l>0){const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(dy/l,dx/l,0),l*.0085);view.quaternion.premultiply(q)}}
+  else if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinch0>0)setDist(dist0*pinch0/d)}});
+const up=ev=>{ptrs.delete(ev.pointerId);pinch0=0};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+cv.addEventListener('wheel',ev=>{ev.preventDefault();setDist(camDist*Math.exp(ev.deltaY*.0012))},{passive:false});
+function setDist(d){camDist=Math.max(5.2,Math.min(15,d));camera.position.set(0,0,camDist)}
+
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;
+  camera.fov=w<h?32*h/w:32;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(stage);resize();
+
+/* ---------- playback ---------- */
+const ease=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+function play(from){const e=A.els[state.el];if(e.cls==='1A')return;
+  const t0=from??(state.t>=.999?0:state.t);const dur=reduced?400:700+DEG[e.cls]*7;
+  state.anim={t0,start:performance.now(),dur};}
+function tick(now){
+  if(state.anim){const a=state.anim,x=Math.min(1,(now-a.start)/a.dur);state.t=a.t0+(1-a.t0)*ease(x);setPose();if(x>=1)state.anim=null}
+  if(state.autospin&&!ptrs.size)view.rotateOnWorldAxis(UP,.0022);
+  renderer.render(scene,camera);requestAnimationFrame(tick)}
+requestAnimationFrame(tick);
+
+/* ---------- panels ---------- */
+function renderPicker(){const e=A.els[state.el];
+  $('picker').innerHTML=CLS.map(c=>`<button class="cls${state.visited.has(c)?' visited':''}" data-c="${c}" aria-pressed="${e.cls===c}">
+    <span class="dot"></span><span class="cn">${c}</span><span class="cm">${c==='1A'?'id':DEG[c]+'°'}</span><span class="cs">${SIZE[c]} elt${SIZE[c]>1?'s':''}</span></button>`).join('');}
+$('picker').addEventListener('click',ev=>{const b=ev.target.closest('.cls');if(!b)return;selectClass(b.dataset.c,true)});
+function selectClass(c,advance){const list=byClass[c];
+  if(advance&&A.els[state.el].cls===c)state.ptr[c]=(state.ptr[c]+1)%list.length;
+  state.el=list[state.ptr[c]];state.visited.add(c);state.t=0;state.anim=null;renderAll();if(c!=='1A')play(0)}
+
+const DESC={
+  '1A':'The identity. Nothing moves, so every count equals the size of the set, and each character takes its dimension.',
+  '2A':'A half turn (180°) about a two-fold axis through the midpoints of two opposite edges.',
+  '3A':'A turn by 120° about a three-fold axis through two opposite vertices of the dodecahedron, which are the centres of two opposite icosahedron faces.',
+  '5A':'A turn by 72° about a five-fold axis through the centres of two opposite dodecahedron faces, which are two opposite icosahedron vertices.',
+  '5B':'A turn by 144° about a five-fold axis. Same axes as 5A, but twice the angle, and no rotation can turn one into the other.'};
+function renderElement(){const e=A.els[state.el],pos=byClass[e.cls].indexOf(state.el)+1;
+  $('eldesc').innerHTML=`${DESC[e.cls]} <span style="color:var(--muted)">Rotation ${pos} of ${SIZE[e.cls]} in class ${e.cls}.</span>`;
+  const cy=cycles(e.perm),moving=cy.filter(c=>c.length>1),fixed=cy.filter(c=>c.length===1).map(c=>c[0]);
+  const even=moving.reduce((s,c)=>s+c.length-1,0)%2===0;
+  let h='<span class="lbl">On the cubes</span>';
+  if(!moving.length)h+='<span class="cyc">identity</span>';
+  else h+=moving.map(c=>`<span class="cyc">(${c.map(cubeChip).join(' ')})</span>`).join('');
+  if(moving.length&&fixed.length)h+=`<span class="lbl">fixes ${fixed.map(cubeChip).join(' ')}</span>`;
+  h+=`<span class="even">${even?'even permutation':'odd permutation'}</span>`;
+  $('perm').innerHTML=h;
+  $('matrix').innerHTML=e.R.map(entryH).map(s=>`<span>${s}</span>`).join('');
+  $('play').disabled=e.cls==='1A';$('scrub').disabled=e.cls==='1A';
+}
+
+const ICON={
+  one:'<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="9" cy="9" r="2.2" fill="currentColor"/></svg>',
+  mat:'<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 3H3v12h2M13 3h2v12h-2"/><path d="M6.5 9h5" /></svg>',
+  gal:'<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 6h10l-2.5-2.5M15 12H5l2.5 2.5"/></svg>',
+  cube:'<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 2 15.5 5.3v7.4L9 16 2.5 12.7V5.3z M2.5 5.3 9 8.6l6.5-3.3 M9 8.6V16"/></svg>',
+  ax6:'<svg viewBox="0 0 18 18"><path d="M9 2.2 15.6 7 13.1 14.8H4.9L2.4 7z" fill="currentColor"/></svg>',
+  ax10:'<svg viewBox="0 0 18 18"><path d="M9 2.5 16 15H2z" fill="currentColor"/></svg>'};
+function renderDerive(){const e=A.els[state.el],c=chiOf(e),d=DEG[e.cls];
+  const rows=[
+    {f:null,ic:'one',nm:'Do nothing',ct:'every rotation acts as 1',res:`χ<sub>1</sub> = <strong>1</strong>`,tag:'trivial'},
+    {f:'3d',ic:'mat',nm:'Rotation matrix R',ct:`tr R = 1 + 2 cos ${d}° = <b>${(1+2*Math.cos(d*Math.PI/180)).toFixed(3).replace('-','−')}</b>`,res:`χ<sub>3</sub> = <strong>${chiH(c.c3)}</strong>`,tag:'3D rotation'},
+    {f:'3d',ic:'gal',nm:'Galois twin',ct:'swap √5 ↦ −√5 in the trace',res:`χ<sub>3′</sub> = <strong>${chiH(c.c3p)}</strong>`,tag:'conjugate 3D'},
+    {f:'cubes',ic:'cube',nm:'5 inscribed cubes',ct:`<b>${e.nCubes}</b> of 5 land on themselves`,res:`χ<sub>4</sub> = ${e.nCubes} − 1 = <strong>${numH(c.c4)}</strong>`,tag:'5 = 1 + 4'},
+    {f:'ax6',ic:'ax6',nm:'6 five-fold axes',ct:`<b>${e.n6}</b> of 6 land on themselves`,res:`χ<sub>5</sub> = ${e.n6} − 1 = <strong>${numH(c.c5)}</strong>`,tag:'6 = 1 + 5'},
+    {f:'ax10',ic:'ax10',nm:'10 three-fold axes',ct:`<b>${e.n10}</b> of 10 land on themselves`,res:`χ<sub>10</sub> = <strong>${e.n10}</strong>`,tag:'reducible, see checks'}];
+  $('drows').innerHTML=rows.map(r=>`<button class="drow${r.f?'':' static'}" ${r.f?`data-f="${r.f}"`:'tabindex="-1"'}>${ICON[r.ic]}
+    <span><span class="nm">${r.nm}</span><span class="ct">${r.ct}</span></span><span class="res">${r.res}<span class="tag">${r.tag}</span></span></button>`).join('');}
+$('drows').addEventListener('click',ev=>{const b=ev.target.closest('.drow');if(!b||!b.dataset.f)return;const f=b.dataset.f;
+  if(f==='cubes'){if(state.mode==='ico'||state.mode==='both')state.mode='dodeca';state.ov.cubes=true}
+  else{state.ov.ax6=f==='ax6';state.ov.ax10=f==='ax10';state.ov.ax15=false}
+  syncToggles();applyScene();play(0);
+  if(innerWidth<=900)stage.scrollIntoView({behavior:reduced?'auto':'smooth',block:'start'});});
+
+const ROWS=[{k:'c1',n:'χ<sub>1</sub>',dim:1,src:'trivial'},{k:'c3',n:'χ<sub>3</sub>',dim:3,src:'trace'},{k:'c3p',n:'χ<sub>3′</sub>',dim:3,src:'Galois'},
+  {k:'c4',n:'χ<sub>4</sub>',dim:4,src:'cubes − 1'},{k:'c5',n:'χ<sub>5</sub>',dim:5,src:'axes − 1'}];
+function renderTable(){const cur=A.els[state.el].cls;
+  let h='<thead><tr><th class="lab">class</th>'+CLS.map(c=>`<th class="${c===cur?'cur':''}">${c}</th>`).join('')+'</tr>';
+  h+='<tr class="sz"><th class="lab">size</th>'+CLS.map(c=>`<th class="${c===cur?'cur':''}">${SIZE[c]}</th>`).join('')+'</tr></thead><tbody>';
+  ROWS.forEach(r=>{h+=`<tr><th>${r.n}<small>${r.src}</small></th>`+CLS.map(c=>{const v=state.visited.has(c);
+    return `<td class="${c===cur?'cur ':''}${v?'':'q'}">${v?chiH(classChi[c][r.k]):'·'}</td>`}).join('')+'</tr>'});
+  $('ct').innerHTML=h+'</tbody>';
+  const n=state.visited.size;$('visitedTxt').textContent=n===5?'All 5 classes visited.':`${n} of 5 classes visited.`;$('fillAll').hidden=n===5;}
+$('fillAll').addEventListener('click',()=>{CLS.forEach(c=>state.visited.add(c));renderAll()});
+
+function ip(a,b){return CLS.reduce((s,c)=>s+SIZE[c]*a(c)*b(c),0)/60}
+function renderChecks(){const box=$('checks');
+  if(state.visited.size<5){const miss=CLS.filter(c=>!state.visited.has(c));
+    box.innerHTML=`<p class="pending">Visit ${miss.length===1?'one more class':miss.length+' more classes'} to run the checks: ${miss.map(c=>`<button data-c="${c}">${c}</button>`).join('')}</p>`;return}
+  const ch=k=>c=>classChi[c][k];
+  const sumSq=ROWS.reduce((s,r)=>s+r.dim*r.dim,0),order=A.els.length;
+  const M=ROWS.map(r=>ROWS.map(s=>ip(ch(r.k),ch(s.k))));
+  const orthoOk=M.every((row,i)=>row.every((v,j)=>near(v,i===j?1:0,1e-9)));
+  let og='<div class="ortho"><span></span>'+ROWS.map(r=>`<span class="h">${r.n}</span>`).join('');
+  M.forEach((row,i)=>{og+=`<span class="h" style="padding-right:6px">${ROWS[i].n}</span>`+row.map(v=>{const r=Math.round(v);return `<span class="${r===1?'one':''}">${r}</span>`}).join('')});og+='</div>';
+  const perms=[{k:'p5',nm:'5 cubes'},{k:'p6',nm:'6 five-fold axes'},{k:'p10',nm:'10 three-fold axes'}];
+  const dec=perms.map(p=>{const f=ch(p.k),norm=Math.round(ip(f,f)),ms=ROWS.map(r=>Math.round(ip(f,ch(r.k))));
+    const parts=[];ROWS.forEach((r,i)=>{for(let k=0;k<ms[i];k++)parts.push(r.dim)});
+    return `<tr><td>${p.nm}</td><td class="m">${norm}</td><td class="m">${classChi['1A'][p.k]} = ${parts.join(' + ')}</td></tr>`}).join('');
+  const ok=b=>b?'✓':'✗';
+  box.innerHTML=`
+  <div class="check"><span class="ok">${ok(sumSq===order)}</span><div><div class="ttl">Dimensions fill the group</div>
+    <div class="mth">1² + 3² + 3² + 4² + 5² = ${sumSq} = |A<sub>5</sub>|</div></div></div>
+  <div class="check"><span class="ok">${ok(orthoOk)}</span><div><div class="ttl">Orthogonality ⟨χ<sub>i</sub>, χ<sub>j</sub>⟩ = δ<sub>ij</sub></div>
+    <div class="mth" style="font-size:14px;color:var(--muted);font-family:var(--f-ui)">⟨χ, ψ⟩ = (1/60) Σ |C| χ(C) ψ(C). Five characters, five classes, and every pair is orthonormal, so the list is complete.</div>${og}</div></div>
+  <div class="check"><span class="ok">${ok(classOk)}</span><div><div class="ttl">Counts are constant on each class</div>
+    <div class="mth" style="font-size:14px;color:var(--muted);font-family:var(--f-ui)">Checked on all 60 rotations, not only the one on screen.</div></div></div>
+  <div class="check"><span class="ok">✓</span><div><div class="ttl">Permutation representations decompose</div>
+    <div style="overflow-x:auto"><table class="dec"><tr><th>action</th><th>⟨χ, χ⟩</th><th>splits as</th></tr>${dec}</table></div></div></div>`;}
+$('checks').addEventListener('click',ev=>{const b=ev.target.closest('button[data-c]');if(b)selectClass(b.dataset.c,false)});
+
+/* ---------- toggles ---------- */
+function syncToggles(){
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===state.mode));
+  document.querySelectorAll('.chip-t').forEach(b=>b.setAttribute('aria-pressed',!!state.ov[b.dataset.ov]));
+  const leg=$('legend');
+  if(state.mode==='dodeca')leg.innerHTML=`<span class="cubes">${[0,1,2,3,4].map(cubeChip).join('')}</span><span>Each cube uses 8 of the 20 vertices, and every vertex is shared by exactly 2 cubes. Thick cubes are the ones g fixes.</span>`;
+  else if(state.mode==='ico')leg.innerHTML=`<span class="cubes">${[0,1,2,3,4].map(cubeChip).join('')}</span><span>Each of the 20 faces sits over a dodecahedron vertex. Those vertices split into 5 tetrahedra, one per cube, and each face takes its cube's colour. The colours permute exactly like the cubes.</span>`;
+  else leg.innerHTML=`<span>The dual pair. Icosahedron vertices sit over dodecahedron faces, and their edges cross at right angles. Both have the same 60 rotations.</span>`;
+}
+document.querySelector('.seg').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;state.mode=b.dataset.mode;
+  state.ov.cubes=state.mode==='dodeca';syncToggles();applyScene()});
+document.querySelector('.chips').addEventListener('click',ev=>{const b=ev.target.closest('.chip-t');if(!b)return;const k=b.dataset.ov;state.ov[k]=!state.ov[k];syncToggles();applyScene()});
+$('play').addEventListener('click',()=>play());
+$('scrub').addEventListener('input',ev=>{state.anim=null;state.t=ev.target.value/1000;setPose()});
+
+function renderAll(){renderPicker();renderElement();renderDerive();renderTable();renderChecks();syncToggles();applyScene()}
+renderAll();
+setTimeout(()=>play(0),reduced?0:700);
+})();
+</script>
+</body>
+</html>

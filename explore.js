@@ -41,5 +41,12 @@ window.EXPLORE = [
     title: 'J1 viewer',
     path: 'explore/j1/',
     desc: 'The Livingstone graph: 266 vertices, 1,463 edges, valency 11, built from the Janko group J1. Spin, re-root and apply random symmetries.'
+  },
+  {
+    id: 'a5',
+    badge: 'A5',
+    title: 'A₅ viewer',
+    path: 'explore/a5/',
+    desc: 'The dodecahedron\'s 60 rotations, its five hidden cubes and the icosahedron\'s 20 faces. Count what stays fixed and build the character table.'
   }
 ];

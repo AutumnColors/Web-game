@@ -25,6 +25,7 @@ explore/
   constants/          Scale of Constants (math constants and Standard Model parameters on one ruler, running couplings)
   rubiks-cube/        Vector Cube (Rubik's cube as 54 position/facing/color sticker vectors, one rotation rule)
   j1/                 J1 viewer (the Livingstone graph: 266 vertices built from J1; spin, re-root, random symmetries)
+  a5/                 A5 viewer (dodecahedron with its 5 inscribed cubes, icosahedron dual; derive the character table from fixed points)
 tools/
   chartable_convert.py  Regenerates explore/simple-groups/chartables from CTblLib data files
   j1/build_action.py  Rebuilds J1's 266-point action from Janko's 7×7 matrices over F11 (the generators in explore/j1)
