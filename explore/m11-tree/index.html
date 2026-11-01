@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
+<title>M11 Discovery Tree</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-screen instrument. Header with search, full-bleed canvas stage, overview strip at the bottom.
+   Single dark look on purpose: it matches the tree's own ground and edge colours. */
+:root {
+  --ground: #07111f;
+  --panel: #0d1b2e;
+  --panel-2: #12243b;
+  --rule: #213752;
+  --ink: #e9f1ff;
+  --muted: #8ea2bf;
+  --label: #b7c7df;
+  --blue: #35b9e6;
+  --gold: #dca52b;
+  --node-edge: #17293c;
+  --font-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+html { height: 100%; box-sizing: border-box; background: var(--ground); }
+*, *::before, *::after { box-sizing: inherit; }
+body {
+  height: 100%; margin: 0; overflow: hidden;
+  display: flex; flex-direction: column;
+  background: var(--ground); color: var(--ink);
+  font: 14px/1.4 var(--font-ui);
+}
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+header {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--panel); border-bottom: 1px solid var(--rule);
+}
+.id { min-width: 0; display: grid; gap: 2px; }
+h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: 0.01em; text-wrap: balance; }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.meta b { color: var(--ink); font-weight: 500; font-family: var(--font-num); }
+.sw { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+.sw.b { background: var(--blue); } .sw.g { background: var(--gold); }
+
+.tools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+form.find { display: flex; align-items: stretch; border: 1px solid var(--rule); border-radius: 8px; background: var(--ground); overflow: hidden; }
+form.find:focus-within { border-color: var(--blue); }
+form.find input {
+  width: 7.5em; min-width: 0; border: 0; background: transparent; color: var(--ink);
+  font: 500 15px var(--font-num); padding: 8px 10px; outline: none;
+}
+form.find input::placeholder { color: var(--muted); font-family: var(--font-ui); font-weight: 400; font-size: 14px; }
+button {
+  font: 500 14px var(--font-ui); color: var(--ink); background: var(--panel-2);
+  border: 1px solid var(--rule); border-radius: 8px; padding: 7px 12px; cursor: pointer;
+  min-height: 38px;
+}
+button:hover { background: var(--rule); }
+button:focus-visible, canvas:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+form.find button { border: 0; border-left: 1px solid var(--rule); border-radius: 0; background: var(--panel-2); }
+.msg { flex-basis: 100%; margin: 0; color: var(--gold); font-size: 13px; }
+
+.stage { position: relative; flex: 1; min-height: 0; background: var(--ground); }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; display: block; }
+.stage canvas.dragging { cursor: grabbing; }
+
+.zoom {
+  position: absolute; right: calc(12px + env(safe-area-inset-right, 0px)); bottom: 12px;
+  display: grid; gap: 0; background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden;
+}
+.zoom button { border: 0; border-radius: 0; width: 44px; min-height: 40px; padding: 0; font-size: 20px; line-height: 1; background: var(--panel); }
+.zoom button + button, .zoom .pct + button { border-top: 1px solid var(--rule); }
+.zoom button.fit { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.zoom .pct { border-top: 1px solid var(--rule); text-align: center; font: 500 11px var(--font-num); color: var(--muted); padding: 5px 0; font-variant-numeric: tabular-nums; }
+
+.card, .hint {
+  position: absolute; left: calc(12px + env(safe-area-inset-left, 0px)); bottom: 12px;
+  width: min(380px, calc(100% - 92px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--rule); border-radius: 12px;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.hint { width: auto; max-width: min(380px, calc(100% - 92px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))); padding: 9px 12px; color: var(--muted); font-size: 13px; }
+.card { padding: 12px 12px 10px; display: grid; gap: 8px; }
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.card-head h2 { margin: 0; font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.card-head h2 span { font: 500 22px var(--font-num); color: var(--ink); letter-spacing: 0; text-transform: none; margin-left: 6px; }
+.card-head button { min-height: 32px; width: 32px; padding: 0; font-size: 18px; line-height: 1; background: transparent; border-color: transparent; color: var(--muted); }
+.card-head button:hover { color: var(--ink); background: var(--panel-2); }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; margin: 0; font-size: 13px; }
+.facts dt { color: var(--muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.facts dd { margin: 0; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-variant-numeric: tabular-nums; }
+.chip {
+  font: 500 13px var(--font-num); min-height: 28px; padding: 3px 8px; border-radius: 6px;
+  background: var(--ground); border: 1px solid var(--rule); color: var(--ink);
+}
+.chip:hover { border-color: var(--muted); background: var(--ground); }
+.chip.here { border-color: var(--ink); }
+.none { color: var(--muted); }
+.path-wrap { display: grid; gap: 4px; min-width: 0; }
+.path-wrap .lbl { color: var(--muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.path { display: flex; align-items: center; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.path .chip { flex: none; min-height: 26px; padding: 2px 6px; font-size: 12px; }
+.path .link { flex: none; width: 12px; height: 3px; border-radius: 2px; }
+.link.b { background: var(--blue); } .link.g { background: var(--gold); }
+
+.overview {
+  height: 66px; position: relative; background: var(--panel); border-top: 1px solid var(--rule);
+  padding-block: 6px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.overview canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; border-radius: 6px; }
+#probe { position: absolute; visibility: hidden; padding-left: env(safe-area-inset-left, 0px); }
+
+.back { font: 12px var(--font-num); color: var(--muted); text-decoration: none; }
+.back:hover { color: var(--blue); }
+
+@media (max-width: 520px) {
+  h1 { font-size: 16px; }
+  .tools { width: 100%; }
+  form.find { flex: 1; }
+  form.find input { flex: 1; width: auto; }
+}
+</style></head><body>
+
+<header>
+  <div class="id">
+    <a class="back" href="../../">← Back</a>
+    <h1>M11 Discovery Tree</h1>
+    <div class="meta">
+      <span><b id="s-n">…</b> nodes</span>
+      <span><b id="s-l">…</b> levels</span>
+      <span><b id="s-f">…</b> leaves</span>
+      <span><i class="sw b"></i><b id="s-b">…</b> blue edges</span>
+      <span><i class="sw g"></i><b id="s-g">…</b> gold edges</span>
+    </div>
+  </div>
+  <div class="tools">
+    <form class="find" id="find" autocomplete="off">
+      <label for="node-input" class="sr">Go to node number</label>
+      <input id="node-input" name="node" inputmode="numeric" enterkeyhint="go" placeholder="Node #">
+      <button type="submit" id="go-btn">Go</button>
+    </form>
+    <button type="button" id="root-btn">Root</button>
+  </div>
+  <p class="msg" id="msg" role="status" aria-live="polite" hidden></p>
+</header>
+
+<main class="stage" id="stage">
+  <canvas id="tree" tabindex="0" role="img" aria-label="M11 discovery tree. Drag to pan, pinch or scroll to zoom, tap a node for details. Arrow keys pan, plus and minus zoom."></canvas>
+  <div class="hint" id="hint">Loading the tree…</div>
+  <section class="card" id="card" hidden aria-live="polite"></section>
+  <div class="zoom" role="group" aria-label="Zoom">
+    <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+    <div class="pct" id="pct">100%</div>
+    <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+    <button type="button" class="fit" id="fit-btn" aria-label="Fit whole tree">Fit</button>
+  </div>
+  <div id="probe"></div>
+</main>
+
+<footer class="overview">
+  <canvas id="mini" aria-label="Overview of the whole tree. Tap or drag to move the view."></canvas>
+</footer>
+
+<script>
+(async () => {
+"use strict";
+const hint0 = document.getElementById("hint");
+let raw;
+try {
+  raw = await Promise.all(["x1", "x2", "x3", "x4", "k", "c"].map(async f => {
+    const r = await fetch("data/" + f + ".txt"); if (!r.ok) throw new Error(f);
+    return (await r.text()).replace(/\s+/g, "");
+  }));
+} catch (err) { hint0.textContent = "Couldn't load the tree data. Reload the page to try again."; return; }
+const xs = raw.slice(0, 4).join(""), KS = raw[4], CS = raw[5];
+const WW = 31172, WH = 3100, N = KS.length;
+if (xs.length !== N * 5 || CS.length !== N) { hint0.textContent = "The tree data files are incomplete."; return; }
+const XI = new Int32Array(N), X = new Float64Array(N), Y = new Float64Array(N), D = new Uint8Array(N), P = new Int32Array(N), COL = new Uint8Array(N);
+P[0] = -1;
+for (let p = 0, next = 1; p < N; p++) for (let k = +KS[p]; k > 0; k--, next++) { P[next] = p; D[next] = D[p] + 1; }
+const at = new Map();
+for (let i = 0; i < N; i++) {
+  XI[i] = parseInt(xs.substr(i * 5, 5), 36); X[i] = XI[i] / 100; Y[i] = 65 + 110 * D[i]; COL[i] = CS[i] === "1" ? 1 : 0;
+  const k = XI[i] + ":" + D[i]; (at.get(k) || at.set(k, []).get(k)).push(i);
+}
+const LEVELS = Math.max(...D) + 1;
+const kids = Array.from({ length: N }, () => []);
+for (let i = 1; i < N; i++) kids[P[i]].push(i);
+const size = new Uint32Array(N).fill(1);
+for (let i = N - 1; i > 0; i--) size[P[i]] += size[i];
+const spot = at;
+const fmt = n => n.toLocaleString("en-US");
+document.getElementById("s-n").textContent = fmt(N);
+document.getElementById("s-l").textContent = LEVELS;
+document.getElementById("s-f").textContent = fmt(kids.filter(k => !k.length).length);
+document.getElementById("s-b").textContent = fmt(N - 1 - COL.reduce((a, b) => a + b, 0));
+document.getElementById("s-g").textContent = fmt(COL.reduce((a, b) => a + b, 0));
+document.getElementById("node-input").placeholder = "Node 0–" + (N - 1);
+hint0.textContent = "Drag to pan, pinch or scroll to zoom, tap a node for details.";
+
+const css = getComputedStyle(document.documentElement);
+const tok = n => css.getPropertyValue(n).trim();
+const K = { ground: tok("--ground"), ink: tok("--ink"), muted: tok("--muted"), label: tok("--label"),
+  blue: tok("--blue"), gold: tok("--gold"), nodeEdge: tok("--node-edge"), panel: tok("--panel"), rule: tok("--rule") };
+const NUMFONT = '"IBM Plex Mono", ui-monospace, Menlo, monospace';
+const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+
+const $ = id => document.getElementById(id);
+const stage = $("stage"), cv = $("tree"), ctx = cv.getContext("2d");
+const mini = $("mini"), mctx = mini.getContext("2d");
+const card = $("card"), hint = $("hint"), msg = $("msg"), pct = $("pct");
+
+let W = 0, H = 0, dpr = 1, s = 1, tx = 0, ty = 0, sMin = 0.005, sMax = 8;
+let sel = -1, insetL = 0, rect = null, raf = 0, anim = null;
+
+/* ---------- view math ---------- */
+const fitScale = () => Math.min(W / WW, H / WH) * 0.96;
+function clampPan() {
+  let cx = (W / 2 - tx) / s, cy = (H / 2 - ty) / s;
+  cx = Math.max(0, Math.min(WW, cx)); cy = Math.max(0, Math.min(WH, cy));
+  tx = W / 2 - cx * s; ty = H / 2 - cy * s;
+}
+function setView(scale, cx, cy) {
+  s = Math.max(sMin, Math.min(sMax, scale)); tx = W / 2 - cx * s; ty = H / 2 - cy * s; request();
+}
+function zoomAt(f, sx, sy) {
+  const wx = (sx - tx) / s, wy = (sy - ty) / s;
+  s = Math.max(sMin, Math.min(sMax, s * f));
+  tx = sx - wx * s; ty = sy - wy * s; clampPan(); request();
+}
+function animateTo(s2, cx2, cy2) {
+  s2 = Math.max(sMin, Math.min(sMax, s2));
+  const s0 = s, cx0 = (W / 2 - tx) / s, cy0 = (H / 2 - ty) / s;
+  const dur = reduce.matches ? 0 : 480, t0 = performance.now();
+  anim = { cancel: false };
+  const me = anim;
+  const step = now => {
+    if (me.cancel) return;
+    const k = dur ? Math.min(1, (now - t0) / dur) : 1;
+    const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    const sc = Math.exp(Math.log(s0) + (Math.log(s2) - Math.log(s0)) * e);
+    setView(sc, cx0 + (cx2 - cx0) * e, cy0 + (cy2 - cy0) * e);
+    if (k < 1) requestAnimationFrame(step); else anim = null;
+  };
+  requestAnimationFrame(step);
+}
+const stopAnim = () => { if (anim) { anim.cancel = true; anim = null; } };
+
+/* ---------- drawing ---------- */
+function request() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); drawMini(); }); }
+
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = K.ground; ctx.fillRect(0, 0, W, H);
+  const m = 20 / s, vx0 = -tx / s - m, vx1 = (W - tx) / s + m, vy0 = -ty / s - m, vy1 = (H - ty) / s + m;
+
+  ctx.lineCap = "round";
+  ctx.lineWidth = Math.max(2.1 * s, 0.7);
+  for (const c of [0, 1]) {
+    ctx.beginPath();
+    for (let i = 1; i < N; i++) {
+      if (COL[i] !== c) continue;
+      const p = P[i], x1 = X[p], x2 = X[i];
+      if (Y[i] < vy0 || Y[p] > vy1 || Math.max(x1, x2) < vx0 || Math.min(x1, x2) > vx1) continue;
+      ctx.moveTo(x1 * s + tx, Y[p] * s + ty); ctx.lineTo(x2 * s + tx, Y[i] * s + ty);
+    }
+    ctx.strokeStyle = c ? K.gold : K.blue; ctx.stroke();
+  }
+
+  if (sel >= 0) {
+    ctx.beginPath();
+    for (let i = sel; i > 0; i = P[i]) { const p = P[i]; ctx.moveTo(X[i] * s + tx, Y[i] * s + ty); ctx.lineTo(X[p] * s + tx, Y[p] * s + ty); }
+    ctx.strokeStyle = K.ink; ctx.lineWidth = Math.max(4 * s, 2.5); ctx.stroke();
+  }
+
+  const r = 4 * s;
+  if (s >= 0.05) {
+    const rr = Math.max(r, 0.9);
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const x = X[i], y = Y[i];
+      if (x < vx0 || x > vx1 || y < vy0 || y > vy1) continue;
+      const sx = x * s + tx, sy = y * s + ty;
+      if (rr < 2) ctx.rect(sx - rr, sy - rr, rr * 2, rr * 2);
+      else { ctx.moveTo(sx + rr, sy); ctx.arc(sx, sy, rr, 0, 6.2832); }
+    }
+    ctx.fillStyle = K.ink; ctx.fill();
+    if (rr >= 2) { ctx.strokeStyle = K.nodeEdge; ctx.lineWidth = Math.max(s, 0.5); ctx.stroke(); }
+  }
+
+  if (s >= 0.7) {
+    const fs = Math.min(10 * s, 26);
+    ctx.font = `500 ${fs}px ${NUMFONT}`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = K.label;
+    for (let i = 0; i < N; i++) {
+      const x = X[i], y = Y[i];
+      if (x < vx0 || x > vx1 || y < vy0 || y > vy1) continue;
+      ctx.fillText(String(i), x * s + tx, y * s + ty - r - fs * 0.5);
+    }
+  }
+
+  if (sel >= 0) {
+    const sx = X[sel] * s + tx, sy = Y[sel] * s + ty;
+    ctx.beginPath(); ctx.arc(sx, sy, Math.max(r, 3) + 5, 0, 6.2832);
+    ctx.strokeStyle = K.ink; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  drawRuler();
+  pct.textContent = (s >= 0.1 ? Math.round(s * 100) : (s * 100).toFixed(1)) + "%";
+}
+
+function drawRuler() {
+  const rowPx = 110 * s, step = Math.max(1, Math.ceil(18 / rowPx));
+  const x0 = insetL, bandW = 44;
+  const g = ctx.createLinearGradient(x0, 0, x0 + bandW, 0);
+  g.addColorStop(0, K.ground); g.addColorStop(1, "rgba(7,17,31,0)");
+  ctx.fillStyle = K.ground; ctx.fillRect(0, 0, x0, H);
+  ctx.fillStyle = g; ctx.fillRect(x0, 0, bandW, H);
+  ctx.font = `500 10px ${NUMFONT}`; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillStyle = K.muted;
+  for (let d = 0; d < LEVELS; d += step) {
+    const y = (65 + 110 * d) * s + ty;
+    if (y < 8 || y > H - 8) continue;
+    ctx.fillText("L" + d, x0 + 6, y);
+  }
+}
+
+/* ---------- overview strip ---------- */
+let mW = 0, mH = 0, ms = 1, mox = 0, moy = 0, mImg = null;
+function buildMini() {
+  const r = mini.getBoundingClientRect();
+  mW = r.width; mH = r.height;
+  mini.width = Math.round(mW * dpr); mini.height = Math.round(mH * dpr);
+  ms = Math.min((mW - 8) / WW, (mH - 6) / WH); mox = (mW - WW * ms) / 2; moy = (mH - WH * ms) / 2;
+  mImg = document.createElement("canvas"); mImg.width = mini.width; mImg.height = mini.height;
+  const g = mImg.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = K.ground; g.fillRect(0, 0, mW, mH);
+  g.lineWidth = 0.8;
+  for (const c of [0, 1]) {
+    g.beginPath();
+    for (let i = 1; i < N; i++) {
+      if (COL[i] !== c) continue; const p = P[i];
+      g.moveTo(X[p] * ms + mox, Y[p] * ms + moy); g.lineTo(X[i] * ms + mox, Y[i] * ms + moy);
+    }
+    g.strokeStyle = c ? K.gold : K.blue; g.stroke();
+  }
+}
+function drawMini() {
+  if (!mImg) return;
+  mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.drawImage(mImg, 0, 0);
+  mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  let x = (-tx / s) * ms + mox, y = (-ty / s) * ms + moy, w = (W / s) * ms, h = (H / s) * ms;
+  const x1 = Math.max(1, x), y1 = Math.max(1, y), x2 = Math.min(mW - 1, x + w), y2 = Math.min(mH - 1, y + h);
+  let rw = Math.max(4, x2 - x1), rh = Math.max(4, y2 - y1);
+  mctx.fillStyle = "rgba(233,241,255,0.14)"; mctx.fillRect(x1, y1, rw, rh);
+  mctx.strokeStyle = K.ink; mctx.lineWidth = 1.5; mctx.strokeRect(x1 + 0.5, y1 + 0.5, rw - 1, rh - 1);
+  if (sel >= 0) {
+    mctx.beginPath(); mctx.arc(X[sel] * ms + mox, Y[sel] * ms + moy, 3, 0, 6.2832);
+    mctx.fillStyle = K.ink; mctx.fill();
+  }
+}
+function miniTo(e) {
+  const r = mini.getBoundingClientRect();
+  const wx = (e.clientX - r.left - mox) / ms, wy = (e.clientY - r.top - moy) / ms;
+  stopAnim(); setView(s, Math.max(0, Math.min(WW, wx)), Math.max(0, Math.min(WH, wy)));
+}
+let miniDrag = false;
+mini.addEventListener("pointerdown", e => { miniDrag = true; mini.setPointerCapture(e.pointerId); miniTo(e); });
+mini.addEventListener("pointermove", e => { if (miniDrag) miniTo(e); });
+mini.addEventListener("pointerup", () => { miniDrag = false; });
+mini.addEventListener("pointercancel", () => { miniDrag = false; });
+
+/* ---------- selection & card ---------- */
+function chip(i, extra) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip" + (extra ? " " + extra : ""); b.textContent = i;
+  b.setAttribute("aria-label", "Go to node " + i);
+  b.addEventListener("click", () => focusNode(i, false));
+  return b;
+}
+function row(label, content) {
+  const dt = document.createElement("dt"); dt.textContent = label;
+  const dd = document.createElement("dd");
+  for (const c of [].concat(content)) dd.append(c);
+  return [dt, dd];
+}
+function txt(t, cls) { const s = document.createElement("span"); s.textContent = t; if (cls) s.className = cls; return s; }
+function swatch(c) { const i = document.createElement("i"); i.className = "sw " + (c ? "g" : "b"); return i; }
+
+function select(i) {
+  sel = i; request();
+  if (i < 0) { card.hidden = true; return; }
+  hint.hidden = true;
+  card.replaceChildren();
+  const head = document.createElement("div"); head.className = "card-head";
+  const h = document.createElement("h2"); h.append("Node", txt(String(i)));
+  const x = document.createElement("button"); x.type = "button"; x.textContent = "×"; x.setAttribute("aria-label", "Close node details");
+  x.addEventListener("click", () => select(-1));
+  head.append(h, x);
+
+  const dl = document.createElement("dl"); dl.className = "facts";
+  const sub = size[i] - 1;
+  dl.append(...row("Level", [txt(D[i] + " of " + (LEVELS - 1)), txt("· " + (sub ? sub.toLocaleString() + " descendants" : "leaf"), "none")]));
+  if (i > 0) dl.append(...row("Parent", [chip(P[i]), swatch(COL[i]), txt(COL[i] ? "gold edge" : "blue edge", "none")]));
+  const ks = kids[i];
+  dl.append(...row(ks.length === 1 ? "Child" : "Children", ks.length ? ks.map(k => { const w = document.createElement("span"); w.style.display = "inline-flex"; w.style.alignItems = "center"; w.style.gap = "3px"; w.append(swatch(COL[k]), chip(k)); return w; }) : [txt("none", "none")]));
+  const same = spot.get(XI[i] + ":" + D[i]).filter(j => j !== i);
+  if (same.length) dl.append(...row("Same spot", same.map(j => chip(j))));
+
+  const pw = document.createElement("div"); pw.className = "path-wrap";
+  const pl = document.createElement("div"); pl.className = "lbl"; pl.textContent = "Path from root";
+  const path = document.createElement("div"); path.className = "path";
+  const chain = []; for (let j = i; j >= 0; j = j ? P[j] : -1) chain.push(j);
+  chain.reverse();
+  chain.forEach((j, n) => {
+    if (n) { const l = document.createElement("i"); l.className = "link " + (COL[j] ? "g" : "b"); path.append(l); }
+    path.append(chip(j, j === i ? "here" : ""));
+  });
+  pw.append(pl, path);
+  card.append(head, dl, pw);
+  card.hidden = false;
+  path.scrollLeft = path.scrollWidth;
+}
+function focusNode(i, fromSearch) {
+  select(i);
+  const target = fromSearch ? (s < 1.2 ? 1.4 : s) : Math.max(s, 0.8);
+  stopAnim(); animateTo(target, X[i], Y[i]);
+}
+function nearest(px, py) {
+  const lim = Math.max(16, 4 * s + 8);
+  let best = -1, bd = lim * lim;
+  for (let i = 0; i < N; i++) {
+    const dx = X[i] * s + tx - px, dy = Y[i] * s + ty - py, d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = i; }
+  }
+  return best;
+}
+
+/* ---------- gestures ---------- */
+const pts = new Map();
+let moved = false, tapT = 0, tapX = 0, tapY = 0, lastTap = { t: 0, x: 0, y: 0 };
+const local = e => ({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+const pair = () => { const [a, b] = [...pts.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
+
+cv.addEventListener("pointerdown", e => {
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  rect = cv.getBoundingClientRect(); stopAnim();
+  cv.setPointerCapture(e.pointerId);
+  const p = local(e); pts.set(e.pointerId, p);
+  if (pts.size === 1) { moved = false; tapT = performance.now(); tapX = p.x; tapY = p.y; cv.classList.add("dragging"); }
+  else moved = true;
+});
+cv.addEventListener("pointermove", e => {
+  if (!pts.has(e.pointerId)) return;
+  const p = local(e), prev = pts.get(e.pointerId);
+  if (pts.size === 1) {
+    tx += p.x - prev.x; ty += p.y - prev.y; pts.set(e.pointerId, p);
+    if (Math.hypot(p.x - tapX, p.y - tapY) > 6) moved = true;
+    clampPan(); request();
+  } else {
+    const a = pair(); pts.set(e.pointerId, p); const b = pair();
+    zoomAt(b.d / a.d, a.x, a.y); tx += b.x - a.x; ty += b.y - a.y; clampPan(); request();
+  }
+});
+function release(e) {
+  if (!pts.has(e.pointerId)) return;
+  const p = local(e); pts.delete(e.pointerId);
+  if (pts.size === 0) cv.classList.remove("dragging");
+  if (pts.size === 0 && e.type === "pointerup" && !moved && performance.now() - tapT < 400) tap(p.x, p.y);
+}
+cv.addEventListener("pointerup", release);
+cv.addEventListener("pointercancel", release);
+
+function tap(x, y) {
+  const now = performance.now();
+  if (now - lastTap.t < 320 && Math.hypot(x - lastTap.x, y - lastTap.y) < 28) {
+    lastTap.t = 0;
+    const wx = (x - tx) / s, wy = (y - ty) / s, s2 = Math.min(sMax, s * 2.2);
+    stopAnim(); animateTo(s2, wx + (W / 2 - x) / s2, wy + (H / 2 - y) / s2); // tapped point stays under the finger
+    return;
+  }
+  lastTap = { t: now, x, y };
+  const hit = nearest(x, y);
+  if (hit >= 0) select(hit); else if (sel >= 0) select(-1);
+}
+
+cv.addEventListener("wheel", e => {
+  e.preventDefault(); stopAnim(); rect = cv.getBoundingClientRect();
+  const p = local(e), unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? H : 1;
+  if (e.ctrlKey) { zoomAt(Math.exp(-e.deltaY * unit * 0.01), p.x, p.y); return; }
+  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) { tx -= e.deltaX * unit; clampPan(); request(); return; }
+  zoomAt(Math.exp(-e.deltaY * unit * 0.0016), p.x, p.y);
+}, { passive: false });
+
+cv.addEventListener("keydown", e => {
+  const k = e.key, step = 80;
+  if (k === "ArrowLeft") tx += step; else if (k === "ArrowRight") tx -= step;
+  else if (k === "ArrowUp") ty += step; else if (k === "ArrowDown") ty -= step;
+  else if (k === "+" || k === "=") { zoomAt(1.4, W / 2, H / 2); e.preventDefault(); return; }
+  else if (k === "-" || k === "_") { zoomAt(1 / 1.4, W / 2, H / 2); e.preventDefault(); return; }
+  else if (k === "0") { fit(); return; }
+  else return;
+  e.preventDefault(); stopAnim(); clampPan(); request();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && sel >= 0) select(-1); });
+
+/* ---------- controls ---------- */
+function fit() { stopAnim(); animateTo(fitScale(), WW / 2, WH / 2); }
+$("fit-btn").addEventListener("click", fit);
+$("zoom-in").addEventListener("click", () => { stopAnim(); animateTo(s * 1.8, (W / 2 - tx) / s, (H / 2 - ty) / s); });
+$("zoom-out").addEventListener("click", () => { stopAnim(); animateTo(s / 1.8, (W / 2 - tx) / s, (H / 2 - ty) / s); });
+$("root-btn").addEventListener("click", () => { msg.hidden = true; focusNode(0, true); });
+$("find").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = $("node-input").value.trim().replace(/^#/, "");
+  const n = /^\d+$/.test(v) ? Number(v) : NaN;
+  if (!(n >= 0 && n < N)) { msg.textContent = "Enter a node number from 0 to " + (N - 1) + "."; msg.hidden = false; return; }
+  msg.hidden = true; $("node-input").blur(); focusNode(n, true);
+});
+
+/* ---------- sizing ---------- */
+function resize(first) {
+  const r = stage.getBoundingClientRect();
+  const cx = W ? (W / 2 - tx) / s : X[0], cy = H ? (H / 2 - ty) / s : WH / 2;
+  W = r.width; H = r.height; dpr = Math.min(window.devicePixelRatio || 1, 3);
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  insetL = parseFloat(getComputedStyle($("probe")).paddingLeft) || 0;
+  sMin = fitScale() * 0.6;
+  rect = cv.getBoundingClientRect();
+  if (first) {
+    const m = /^#n?(\d+)$/.exec(location.hash);
+    const n = m ? Number(m[1]) : -1;
+    if (n >= 0 && n < N) { setView(1.4, X[n], Y[n]); select(n); }
+    else setView(Math.max(fitScale(), H * 0.94 / WH), X[0], WH / 2);
+  } else setView(s, cx, cy);
+  buildMini(); request();
+}
+new ResizeObserver(() => resize(false)).observe(stage);
+resize(true);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(request);
+})();
+</script>
+
+</body></html>

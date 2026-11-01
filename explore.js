@@ -8,6 +8,13 @@ window.EXPLORE = [
     desc: '11 points, 66 blocks, 7920 symmetries. Move any 4 points anywhere.'
   },
   {
+    id: 'm11-tree',
+    badge: '7920',
+    title: 'M11 Discovery Tree',
+    path: 'explore/m11-tree/',
+    desc: 'All 7,920 elements of M11 in one tree, 28 levels deep. Blue and gold edges, pan and zoom, jump to any node.'
+  },
+  {
     id: 'simple-groups',
     badge: 'FSG',
     title: 'Periodic table of finite simple groups',

@@ -19,6 +19,7 @@ levels/
   05-minesweeper/     Minesweeper (own level list inside: Classic 16×16, Circle)
 explore/
   m11/                M11 symmetry (S(4,5,11) and the Mathieu group M11)
+  m11-tree/           M11 Discovery Tree (all 7920 elements as one tree; data/ holds the packed tree)
   simple-groups/      Periodic table of finite simple groups (families by Lie rank, sporadics, order lookup, character tables)
     chartables/       Character tables (A5, A6, 26 sporadics, Tits) as JSON, from the GAP Character Table Library
   rainbow/            Rainbow vectors (spectrum → RGB, gamut loss, metrics, rebuild from k vectors)
