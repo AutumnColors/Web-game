@@ -21,8 +21,8 @@ h1{font-size:1.35rem;margin:0;letter-spacing:.02em}
 .chip[aria-pressed="true"]{border-color:var(--accent);background:var(--card2);color:var(--accent);font-weight:650}
 .chips.fields .chip{padding:4px 11px;font-size:.82rem;border-width:1.5px}
 main{flex:1;display:flex;flex-direction:column;max-width:1200px;width:100%;margin:0 auto;padding:0 16px 24px;gap:12px}
-.mapwrap{position:relative;border:2px solid var(--line);border-radius:16px;overflow:hidden;background:var(--sea)}
-svg#map{display:block;width:100%;height:auto;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.mapwrap{position:relative;border:2px solid var(--line);border-radius:16px;overflow:hidden;background:var(--sea);height:clamp(340px,68vh,640px)}
+svg#map{display:block;width:100%;height:100%;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
 svg#map.dragging{cursor:grabbing}
 .sphere{fill:var(--sea)}
 .grat{fill:none;stroke:#1a2740;stroke-width:.6}
@@ -115,7 +115,7 @@ const PALETTES={
   purple:['#2c2340','#3e2c5e','#53357d','#6b409b','#8752b6','#a670cc','#c99ce0'],
   redgreen:['#8a2f2f','#b65a3f','#d9965a','#6f8a5a','#3f9a63','#33b874','#7fe0a3']
 };
-const S={layers:{},basemap:null,layer:null,field:null,sel:null,k:1,tx:0,ty:0,hl:null};
+const S={layers:{},basemap:null,layer:null,field:null,sel:null,k:1,tx:0,ty:0,hl:null,vw:1000,vh:500,kmin:1};
 
 // ---------- values ----------
 // A value is a number, or text such as "<0.1" (below 0.1) or "≈0.2" (approximate).
@@ -162,12 +162,14 @@ function colorFor(v,f,bins){
 const TOPO_URL='https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json';
 function makeBasemap(topo,meta){
   const W=1000,proj=d3.geoEqualEarth().fitWidth(W,{type:'Sphere'}),path=d3.geoPath(proj).digits(1);
-  const [[,y0],[,y1]]=path.bounds({type:'Sphere'});
-  proj.translate([proj.translate()[0],proj.translate()[1]-y0]);
+  const feats=topojson.feature(topo,topo.objects.countries).features.filter(f=>{
+    const iso=meta.ids[f.id]||meta.byName[f.properties.name];f.iso=iso;return iso&&iso!=='ATA'&&meta.names[iso];});
+  // Crop the frame to the land (no empty Antarctic band), with a little sea around it.
+  const [[,y0],[,y1]]=path.bounds({type:'FeatureCollection',features:feats}),pad=12;
+  proj.translate([proj.translate()[0],proj.translate()[1]-y0+pad]);
   const r1=x=>Math.round(x*10)/10,countries={};
-  for(const f of topojson.feature(topo,topo.objects.countries).features){
-    const iso=meta.ids[f.id]||meta.byName[f.properties.name];
-    if(!iso||iso==='ATA'||!meta.names[iso])continue;
+  for(const f of feats){
+    const iso=f.iso;
     const d=path(f);if(!d)continue;
     let lab=path.centroid(f);
     if(f.geometry.type==='MultiPolygon'){let best=0;  // label on the largest part, not in the sea between parts
@@ -178,13 +180,12 @@ function makeBasemap(topo,meta){
   for(const [iso,[lon,lat]] of Object.entries(meta.points||{})){  // too small for the outlines
     if(countries[iso])continue;const [x,y]=proj([lon,lat]);countries[iso]={name:meta.names[iso],d:'',c:[r1(x),r1(y)],small:true};
   }
-  return {width:W,height:Math.ceil(y1-y0),sphere:path({type:'Sphere'}),graticule:path(d3.geoGraticule10()),countries};
+  return {width:W,height:Math.ceil(y1-y0+2*pad),sphere:path({type:'Sphere'}),graticule:path(d3.geoGraticule10()),countries};
 }
 
 // ---------- map ----------
 function buildMap(){
   const b=S.basemap,svg=$('map');
-  svg.setAttribute('viewBox',`0 0 ${b.width} ${b.height}`);
   $('sphere').setAttribute('d',b.sphere);$('grat').setAttribute('d',b.graticule);
   const g=$('countries'),dg=$('dots');
   for(const [iso,c] of Object.entries(b.countries)){
@@ -193,24 +194,35 @@ function buildMap(){
   }
   sizeDots();
 }
+// The view window keeps the map's height and takes its width from the box on screen, so on a
+// phone the map fills the box (pan sideways) and on a wide screen it shows the whole world.
+function fitView(reset){
+  const b=S.basemap,r=$('wrap').getBoundingClientRect();if(!r.width||!r.height)return;
+  S.vh=b.height;S.vw=b.height*r.width/r.height;S.kmin=Math.min(1,S.vw/b.width);
+  $('map').setAttribute('viewBox',`0 0 ${S.vw.toFixed(1)} ${S.vh}`);
+  if(reset){S.k=S.vw/b.width>=0.75?S.kmin:1;S.tx=(S.vw-b.width*S.k)/2;S.ty=0;}  // wide box: whole world; narrow (phone): fill the height
+  applyView();
+}
 function sizeDots(){for(const c of Object.values(S.basemap.countries))if(c.dot)c.dot.setAttribute('r',(3.2/Math.sqrt(S.k)).toFixed(2));}
 function applyView(){
   const b=S.basemap,k=S.k;
-  S.tx=Math.min(0,Math.max(b.width*(1-k),S.tx));S.ty=Math.min(0,Math.max(b.height*(1-k),S.ty));
+  const w=b.width*k,h=b.height*k;  // keep the map in view; centre it along an axis where it is smaller than the window
+  S.tx=w<=S.vw?(S.vw-w)/2:Math.min(0,Math.max(S.vw-w,S.tx));
+  S.ty=h<=S.vh?(S.vh-h)/2:Math.min(0,Math.max(S.vh-h,S.ty));
   $('vp').setAttribute('transform',`translate(${S.tx.toFixed(2)} ${S.ty.toFixed(2)}) scale(${k.toFixed(4)})`);
   sizeDots();
 }
 function zoomAt(f,px,py){ // px,py in viewBox units
-  const k=Math.min(24,Math.max(1,S.k*f));const r=k/S.k;
+  const k=Math.min(24,Math.max(S.kmin,S.k*f));const r=k/S.k;
   S.tx=px-(px-S.tx)*r;S.ty=py-(py-S.ty)*r;S.k=k;applyView();
 }
-function toVB(e){const r=$('map').getBoundingClientRect();return [(e.clientX-r.left)*S.basemap.width/r.width,(e.clientY-r.top)*S.basemap.height/r.height];}
+function toVB(e){const r=$('map').getBoundingClientRect();return [(e.clientX-r.left)*S.vw/r.width,(e.clientY-r.top)*S.vh/r.height];}
 function zoomTo(iso){
   const c=S.basemap.countries[iso];if(!c)return;
   const bb=(c.el||c.dot).getBBox(),b=S.basemap;
   const pad=1.6,w=Math.max(bb.width,40)*pad,h=Math.max(bb.height,40)*pad;
-  const k=Math.min(12,Math.max(1,Math.min(b.width/w,b.height/h)));
-  S.k=k;S.tx=b.width/2-(bb.x+bb.width/2)*k;S.ty=b.height/2-(bb.y+bb.height/2)*k;applyView();
+  const k=Math.min(12,Math.max(1,Math.min(S.vw/w,S.vh/h)));
+  S.k=k;S.tx=S.vw/2-(bb.x+bb.width/2)*k;S.ty=S.vh/2-(bb.y+bb.height/2)*k;applyView();
 }
 function setupPanZoom(){
   const svg=$('map'),pts=new Map();let last=null,moved=0,pinch=null;
@@ -232,9 +244,10 @@ function setupPanZoom(){
   };
   svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
   svg.addEventListener('pointerleave',()=>{$('tip').style.display='none';});
-  $('zin').onclick=()=>zoomAt(1.6,S.basemap.width/2,S.basemap.height/2);
-  $('zout').onclick=()=>zoomAt(1/1.6,S.basemap.width/2,S.basemap.height/2);
-  $('zreset').onclick=()=>{S.k=1;S.tx=0;S.ty=0;applyView();};
+  $('zin').onclick=()=>zoomAt(1.6,S.vw/2,S.vh/2);
+  $('zout').onclick=()=>zoomAt(1/1.6,S.vw/2,S.vh/2);
+  $('zreset').onclick=()=>fitView(true);
+  let lastW=0;new ResizeObserver(()=>{const w=$('wrap').clientWidth;fitView(w!==lastW&&S.k<=1);lastW=w;}).observe($('wrap'));
 }
 function hover(e){
   const tip=$('tip');const iso=e.target&&e.target.dataset&&e.target.dataset.iso;
@@ -357,7 +370,7 @@ async function loadLayer(id,fieldKey){
 }
 async function start(){
   try{
-    const [topo,meta]=await Promise.all([getJSON(TOPO_URL),getJSON('countries.json')]);S.basemap=makeBasemap(topo,meta);buildMap();setupPanZoom();
+    const [topo,meta]=await Promise.all([getJSON(TOPO_URL),getJSON('countries.json')]);S.basemap=makeBasemap(topo,meta);buildMap();fitView(true);setupPanZoom();
     const h=readHash();await loadLayer(h.layer,h.field);
     if(h.c&&S.basemap.countries[h.c]){select(h.c);zoomTo(h.c);}
     $('find').addEventListener('input',rank);
