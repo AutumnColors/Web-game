@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>World Viewer</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--card:#141e30;--card2:#1b2840;--line:#2a3a55;--text:#eef3fa;--muted:#93a4bd;--accent:#79d4ff;--sea:#0e1828;--land:#26334a;--nodata:#2b3446;--border:#0b1220}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;display:flex;flex-direction:column;min-height:100vh}
+a{color:var(--accent)}
+header{padding:12px 16px 8px;display:flex;flex-direction:column;gap:10px;max-width:1200px;width:100%;margin:0 auto}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.back{color:var(--muted);text-decoration:none;font-size:.9rem}
+.back:hover{color:var(--text)}
+h1{font-size:1.35rem;margin:0;letter-spacing:.02em}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:2px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:6px 14px;font:inherit;font-size:.9rem;cursor:pointer;white-space:nowrap}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--card2);color:var(--accent);font-weight:650}
+.chips.fields .chip{padding:4px 11px;font-size:.82rem;border-width:1.5px}
+main{flex:1;display:flex;flex-direction:column;max-width:1200px;width:100%;margin:0 auto;padding:0 16px 24px;gap:12px}
+.mapwrap{position:relative;border:2px solid var(--line);border-radius:16px;overflow:hidden;background:var(--sea)}
+svg#map{display:block;width:100%;height:auto;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+svg#map.dragging{cursor:grabbing}
+.sphere{fill:var(--sea)}
+.grat{fill:none;stroke:#1a2740;stroke-width:.6}
+.c{stroke:var(--border);stroke-width:.5;vector-effect:non-scaling-stroke;transition:opacity .15s}
+.c:hover{stroke:#fff;stroke-width:1.2}
+.c.sel{stroke:var(--accent);stroke-width:2}
+.dot{stroke:var(--border);stroke-width:1;vector-effect:non-scaling-stroke}
+.dot.sel{stroke:var(--accent);stroke-width:2.5}
+.dim .c,.dim .dot{opacity:.18}
+.dim .c.hl,.dim .dot.hl{opacity:1}
+.zoom{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+.zoom button{width:36px;height:36px;border-radius:10px;border:1.5px solid var(--line);background:rgba(20,30,48,.9);color:var(--text);font-size:1.2rem;cursor:pointer;line-height:1}
+.zoom button:hover{border-color:var(--accent)}
+#tip{position:absolute;pointer-events:none;background:rgba(11,18,32,.95);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:.85rem;white-space:nowrap;display:none;z-index:2}
+#tip b{font-weight:650}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:4px 0;font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.lg{display:flex;flex-direction:column;align-items:flex-start;align-self:flex-start;cursor:pointer;min-width:0}
+.lg .sw{width:44px;height:12px}
+.lg:first-child .sw{border-radius:4px 0 0 4px}
+.lg.last .sw{border-radius:0 4px 4px 0}
+.lg span{padding-top:3px;transform:translateX(-50%);white-space:nowrap}
+.lg:first-child span{transform:none}
+.lg.nd{margin-left:14px}
+.lg.nd .sw{border-radius:4px;width:22px}
+.lg.nd span{transform:none}
+.lg.active .sw{outline:2px solid var(--text);outline-offset:1px}
+.legendrow{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.unit{font-size:.82rem;color:var(--muted)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:14px 16px}
+.card h2{font-size:1.05rem;margin:0 0 8px}
+.card p{margin:0 0 8px;line-height:1.45;color:#cbd6e6;font-size:.92rem}
+.muted{color:var(--muted)}
+.small{font-size:.82rem}
+table.kv{width:100%;border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+table.kv td{padding:5px 0;border-bottom:1px solid var(--line)}
+table.kv td:last-child{text-align:right;font-weight:600}
+table.kv tr.pri td{color:var(--accent)}
+.note{margin-top:10px;padding:8px 10px;border-left:3px solid #e6b450;background:#1b2230;font-size:.85rem;color:#d9c9a3;border-radius:0 8px 8px 0}
+.rank{max-height:420px;overflow:auto;margin:0;padding:0;list-style:none}
+.rank li{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;padding:5px 4px;border-radius:8px;cursor:pointer;font-size:.88rem;font-variant-numeric:tabular-nums}
+.rank li:hover,.rank li.sel{background:var(--card2)}
+.rank .n{color:var(--muted);text-align:right}
+.rank .bar{height:6px;border-radius:3px;margin-top:3px}
+.rank .v{font-weight:600}
+.headrow{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.headrow h2{margin:0}
+input#find{background:var(--bg);border:1.5px solid var(--line);color:var(--text);border-radius:8px;padding:5px 9px;font:inherit;font-size:.85rem;width:140px}
+.err{padding:24px;color:#ffb4a8}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <a class="back" href="../">← Home</a>
+    <h1>World</h1>
+  </div>
+  <div class="chips" id="layers" role="group" aria-label="Layer"></div>
+  <div class="chips fields" id="fields" role="group" aria-label="Value"></div>
+</header>
+<main>
+  <div class="mapwrap" id="wrap">
+    <svg id="map" aria-label="World map"><g id="vp"><path class="sphere" id="sphere"/><path class="grat" id="grat"/><g id="countries"></g><g id="dots"></g></g></svg>
+    <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zreset" aria-label="Reset view">⟲</button></div>
+    <div id="tip"></div>
+  </div>
+  <div class="legendrow"><div class="legend" id="legend"></div><div class="unit" id="unit"></div></div>
+  <div class="grid">
+    <div class="card" id="info"><h2>Tap a country</h2><p class="muted">Every value this layer has for it shows up here.</p></div>
+    <div class="card" id="about"></div>
+  </div>
+  <div class="card">
+    <div class="headrow"><h2 id="rankTitle">Ranking</h2><input id="find" type="search" placeholder="Find country…" aria-label="Find country"></div>
+    <ol class="rank" id="rank"></ol>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/d3-array@3.2.4/dist/d3-array.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo@3.1.1/dist/d3-geo.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="../world.js"></script>
+<script>
+'use strict';
+const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const PALETTES={
+  amber:['#3a2f1e','#5c4520','#87601f','#b07d1d','#d39b24','#efbd45','#ffe08a'],
+  teal:['#16313a','#17474f','#155f63','#127a74','#239682','#4db38f','#8fd3a5'],
+  blue:['#1a2a4a','#1f3c6b','#22518d','#2967ad','#3a82c9','#5ea2df','#94c6f0'],
+  purple:['#2c2340','#3e2c5e','#53357d','#6b409b','#8752b6','#a670cc','#c99ce0'],
+  redgreen:['#8a2f2f','#b65a3f','#d9965a','#6f8a5a','#3f9a63','#33b874','#7fe0a3']
+};
+const S={layers:{},basemap:null,layer:null,field:null,sel:null,k:1,tx:0,ty:0,hl:null};
+
+// ---------- values ----------
+// A value is a number, or text such as "<0.1" (below 0.1) or "≈0.2" (approximate).
+function num(v){
+  if(typeof v==='number')return v;
+  if(typeof v!=='string')return null;
+  const m=v.match(/^([<≈~]?)\s*(-?[\d.]+)/);if(!m)return null;
+  const x=parseFloat(m[2]);return m[1]==='<'?x/2:x;
+}
+function fmt(v,f){
+  if(v===undefined||v===null||v==='')return '—';
+  if(typeof v==='string')return v+(f&&f.unit&&f.unit!=='%'&&f.format!=='money'?' '+f.unit:f&&f.unit==='%'?'%':'');
+  const fmtd=f&&f.format;
+  if(fmtd==='money')return (f.unit==='US$'?'US$ ':'$')+Math.round(v).toLocaleString('en-US');
+  if(fmtd==='signed')return (v>0?'+':'')+v.toFixed(1)+(f.unit==='%'?'%':'');
+  if(fmtd==='decimal')return (Math.abs(v)<10&&v%1!==0?v.toFixed(1):(+v.toFixed(1)).toString())+(f.unit==='%'?'%':f.unit?' '+f.unit:'');
+  return v.toLocaleString('en-US')+(f&&f.unit?' '+f.unit:'');
+}
+function short(x,f){ // compact legend labels
+  if(f.format==='money'){return x>=1000?'$'+(x/1000).toLocaleString('en-US')+'k':'$'+x;}
+  if(f.format==='signed')return (x>0?'+':'')+x+(f.unit==='%'?'%':'');
+  return x+(f.unit==='%'?'%':'');
+}
+
+// ---------- color ----------
+function binsFor(f){
+  const sc=f.scale||{};
+  if(sc.bins)return sc.bins;
+  const vals=Object.values(S.layer.data).map(r=>num(r[f.key])).filter(v=>v!==null).sort((a,b)=>a-b);
+  if(!vals.length)return [];
+  const q=p=>vals[Math.floor(p*(vals.length-1))];
+  return [1,2,3,4,5,6].map(i=>+q(i/7).toPrecision(2)); // quantiles
+}
+function colorFor(v,f,bins){
+  if(v===null)return null;
+  const pal=PALETTES[(f.scale&&f.scale.palette)||'teal']||PALETTES.teal;
+  let i=0;while(i<bins.length&&v>=bins[i])i++;
+  const n=bins.length+1;return pal[Math.round(i*(pal.length-1)/(n-1))];
+}
+
+// ---------- base map ----------
+// Country outlines: Natural Earth 1:50m (world-atlas), projected here with Equal Earth.
+// countries.json maps Natural Earth ids to ISO 3166-1 alpha-3 codes and display names.
+const TOPO_URL='https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json';
+function makeBasemap(topo,meta){
+  const W=1000,proj=d3.geoEqualEarth().fitWidth(W,{type:'Sphere'}),path=d3.geoPath(proj).digits(1);
+  const [[,y0],[,y1]]=path.bounds({type:'Sphere'});
+  proj.translate([proj.translate()[0],proj.translate()[1]-y0]);
+  const r1=x=>Math.round(x*10)/10,countries={};
+  for(const f of topojson.feature(topo,topo.objects.countries).features){
+    const iso=meta.ids[f.id]||meta.byName[f.properties.name];
+    if(!iso||iso==='ATA'||!meta.names[iso])continue;
+    const d=path(f);if(!d)continue;
+    let lab=path.centroid(f);
+    if(f.geometry.type==='MultiPolygon'){let best=0;  // label on the largest part, not in the sea between parts
+      for(const poly of f.geometry.coordinates){const part={type:'Polygon',coordinates:poly},a=path.area(part);if(a>best){best=a;lab=path.centroid(part);}}}
+    const [[bx0,by0],[bx1,by1]]=path.bounds(f);
+    countries[iso]={name:meta.names[iso],d,c:[r1(lab[0]),r1(lab[1])],small:Math.max(bx1-bx0,by1-by0)<3};
+  }
+  for(const [iso,[lon,lat]] of Object.entries(meta.points||{})){  // too small for the outlines
+    if(countries[iso])continue;const [x,y]=proj([lon,lat]);countries[iso]={name:meta.names[iso],d:'',c:[r1(x),r1(y)],small:true};
+  }
+  return {width:W,height:Math.ceil(y1-y0),sphere:path({type:'Sphere'}),graticule:path(d3.geoGraticule10()),countries};
+}
+
+// ---------- map ----------
+function buildMap(){
+  const b=S.basemap,svg=$('map');
+  svg.setAttribute('viewBox',`0 0 ${b.width} ${b.height}`);
+  $('sphere').setAttribute('d',b.sphere);$('grat').setAttribute('d',b.graticule);
+  const g=$('countries'),dg=$('dots');
+  for(const [iso,c] of Object.entries(b.countries)){
+    if(c.d){const p=document.createElementNS(NS,'path');p.setAttribute('d',c.d);p.setAttribute('class','c');p.dataset.iso=iso;g.append(p);c.el=p;}
+    if(c.small){const d=document.createElementNS(NS,'circle');d.setAttribute('cx',c.c[0]);d.setAttribute('cy',c.c[1]);d.setAttribute('class','dot');d.dataset.iso=iso;dg.append(d);c.dot=d;}
+  }
+  sizeDots();
+}
+function sizeDots(){for(const c of Object.values(S.basemap.countries))if(c.dot)c.dot.setAttribute('r',(3.2/Math.sqrt(S.k)).toFixed(2));}
+function applyView(){
+  const b=S.basemap,k=S.k;
+  S.tx=Math.min(0,Math.max(b.width*(1-k),S.tx));S.ty=Math.min(0,Math.max(b.height*(1-k),S.ty));
+  $('vp').setAttribute('transform',`translate(${S.tx.toFixed(2)} ${S.ty.toFixed(2)}) scale(${k.toFixed(4)})`);
+  sizeDots();
+}
+function zoomAt(f,px,py){ // px,py in viewBox units
+  const k=Math.min(24,Math.max(1,S.k*f));const r=k/S.k;
+  S.tx=px-(px-S.tx)*r;S.ty=py-(py-S.ty)*r;S.k=k;applyView();
+}
+function toVB(e){const r=$('map').getBoundingClientRect();return [(e.clientX-r.left)*S.basemap.width/r.width,(e.clientY-r.top)*S.basemap.height/r.height];}
+function zoomTo(iso){
+  const c=S.basemap.countries[iso];if(!c)return;
+  const bb=(c.el||c.dot).getBBox(),b=S.basemap;
+  const pad=1.6,w=Math.max(bb.width,40)*pad,h=Math.max(bb.height,40)*pad;
+  const k=Math.min(12,Math.max(1,Math.min(b.width/w,b.height/h)));
+  S.k=k;S.tx=b.width/2-(bb.x+bb.width/2)*k;S.ty=b.height/2-(bb.y+bb.height/2)*k;applyView();
+}
+function setupPanZoom(){
+  const svg=$('map'),pts=new Map();let last=null,moved=0,pinch=null;
+  svg.addEventListener('wheel',e=>{e.preventDefault();const [x,y]=toVB(e);zoomAt(Math.exp(-e.deltaY*0.0015),x,y);},{passive:false});
+  svg.addEventListener('pointerdown',e=>{svg.setPointerCapture(e.pointerId);pts.set(e.pointerId,toVB(e));moved=0;
+    if(pts.size===1){last=toVB(e);svg.classList.add('dragging');}
+    if(pts.size===2){const [a,b]=[...pts.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),k:S.k};}});
+  svg.addEventListener('pointermove',e=>{
+    if(!pts.has(e.pointerId)){hover(e);return;}
+    const p=toVB(e);pts.set(e.pointerId,p);
+    if(pts.size===2&&pinch){const [a,b]=[...pts.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);
+      zoomAt(pinch.k*d/pinch.d/S.k,(a[0]+b[0])/2,(a[1]+b[1])/2);moved+=10;return;}
+    if(last){const dx=p[0]-last[0],dy=p[1]-last[1];moved+=Math.abs(dx)+Math.abs(dy);S.tx+=dx;S.ty+=dy;applyView();last=toVB(e);}
+  });
+  const up=e=>{
+    const wasTap=pts.size===1&&moved<6;pts.delete(e.pointerId);
+    if(pts.size<2)pinch=null;if(!pts.size){last=null;svg.classList.remove('dragging');}
+    if(wasTap&&e.type==='pointerup'){const t=document.elementFromPoint(e.clientX,e.clientY);const iso=t&&t.dataset&&t.dataset.iso;select(iso||null);}
+  };
+  svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
+  svg.addEventListener('pointerleave',()=>{$('tip').style.display='none';});
+  $('zin').onclick=()=>zoomAt(1.6,S.basemap.width/2,S.basemap.height/2);
+  $('zout').onclick=()=>zoomAt(1/1.6,S.basemap.width/2,S.basemap.height/2);
+  $('zreset').onclick=()=>{S.k=1;S.tx=0;S.ty=0;applyView();};
+}
+function hover(e){
+  const tip=$('tip');const iso=e.target&&e.target.dataset&&e.target.dataset.iso;
+  if(!iso||e.pointerType==='touch'){tip.style.display='none';return;}
+  const c=S.basemap.countries[iso],r=(S.layer.data[iso]||{});
+  tip.innerHTML='';const b=document.createElement('b');b.textContent=c.name;tip.append(b,document.createTextNode('  '+fmt(r[S.field.key],S.field)));
+  const w=$('wrap').getBoundingClientRect();tip.style.display='block';
+  let x=e.clientX-w.left+14,y=e.clientY-w.top+14;if(x+tip.offsetWidth>w.width-8)x=e.clientX-w.left-tip.offsetWidth-10;
+  tip.style.left=x+'px';tip.style.top=y+'px';
+}
+
+// ---------- rendering ----------
+function visibleFields(){return S.layer.fields.filter(f=>!f.hidden);}
+function paint(){
+  const f=S.field,bins=binsFor(f),data=S.layer.data;
+  for(const [iso,c] of Object.entries(S.basemap.countries)){
+    const v=num((data[iso]||{})[f.key]);const col=colorFor(v,f,bins)||'var(--nodata)';
+    if(c.el)c.el.style.fill=col;if(c.dot)c.dot.style.fill=col;
+    const hl=S.hl!==null&&bandOf(v,bins)===S.hl;
+    for(const el of [c.el,c.dot])if(el)el.classList.toggle('hl',hl);
+  }
+  $('countries').parentNode.classList.toggle('dim',S.hl!==null);
+  legend(bins);rank();
+}
+function bandOf(v,bins){if(v===null)return 'nd';let i=0;while(i<bins.length&&v>=bins[i])i++;return i;}
+function legend(bins){
+  const f=S.field,L=$('legend');L.replaceChildren();
+  const n=bins.length+1;
+  for(let i=0;i<n;i++){
+    const d=document.createElement('div');d.className='lg'+(i===n-1?' last':'')+(S.hl===i?' active':'');
+    const sw=document.createElement('div');sw.className='sw';sw.style.background=colorFor(i===0?-Infinity:bins[i-1],f,bins);
+    const s=document.createElement('span');s.textContent=i===0?' ':short(bins[i-1],f);
+    d.append(sw,s);d.onclick=()=>{S.hl=S.hl===i?null:i;paint();};L.append(d);
+  }
+  const nd=document.createElement('div');nd.className='lg nd'+(S.hl==='nd'?' active':'');
+  const sw=document.createElement('div');sw.className='sw';sw.style.background='var(--nodata)';
+  const s=document.createElement('span');s.textContent='No data';nd.append(sw,s);nd.onclick=()=>{S.hl=S.hl==='nd'?null:'nd';paint();};L.append(nd);
+  $('unit').textContent=f.label+(f.unit?' · '+f.unit:'')+(S.layer.year?' · '+S.layer.year:'');
+}
+function ranked(){
+  const f=S.field;
+  return Object.entries(S.layer.data).filter(([iso,r])=>num(r[f.key])!==null&&S.basemap.countries[iso])
+    .sort((a,b)=>num(b[1][f.key])-num(a[1][f.key]));
+}
+function rank(){
+  const f=S.field,list=ranked(),ol=$('rank'),q=$('find').value.trim().toLowerCase(),bins=binsFor(f);
+  $('rankTitle').textContent=f.label+' ranking';
+  const vals=list.map(([,r])=>num(r[f.key]));const max=Math.max(...vals.map(Math.abs),1e-9);
+  ol.replaceChildren();
+  list.forEach(([iso,r],i)=>{
+    const name=S.basemap.countries[iso].name;if(q&&!name.toLowerCase().includes(q))return;
+    const li=document.createElement('li');if(iso===S.sel)li.classList.add('sel');li.dataset.iso=iso;
+    const n=document.createElement('span');n.className='n';n.textContent=i+1;
+    const mid=document.createElement('span');mid.textContent=name;
+    const bar=document.createElement('div');bar.className='bar';const v=num(r[f.key]);
+    bar.style.width=Math.max(2,Math.abs(v)/max*100)+'%';bar.style.background=colorFor(v,f,bins);mid.append(bar);
+    const val=document.createElement('span');val.className='v';val.textContent=fmt(r[f.key],f);
+    li.append(n,mid,val);li.onclick=()=>{select(iso);zoomTo(iso);$('wrap').scrollIntoView({behavior:'smooth',block:'nearest'});};
+    ol.append(li);
+  });
+}
+function info(){
+  const box=$('info');box.replaceChildren();
+  const h=document.createElement('h2');
+  if(!S.sel){h.textContent='Tap a country';const p=document.createElement('p');p.className='muted';p.textContent='Every value this layer has for it shows up here.';box.append(h,p);return;}
+  const c=S.basemap.countries[S.sel],r=S.layer.data[S.sel];h.textContent=c.name;box.append(h);
+  if(!r){const p=document.createElement('p');p.className='muted';p.textContent='No data in this layer.';box.append(p);return;}
+  const list=ranked(),pos=list.findIndex(([iso])=>iso===S.sel);
+  if(pos>=0){const p=document.createElement('p');p.className='muted small';p.textContent=`#${pos+1} of ${list.length} by ${/[A-Z]{2}/.test(S.field.label)?S.field.label:S.field.label.toLowerCase()}`;box.append(p);}
+  const t=document.createElement('table');t.className='kv';
+  for(const f of visibleFields()){
+    if(r[f.key]===undefined)continue;
+    const tr=document.createElement('tr');if(f.key===S.field.key)tr.className='pri';
+    const a=document.createElement('td');a.textContent=f.label+(f.yearKey&&r[f.yearKey]?` (${r[f.yearKey]})`:'');
+    const b=document.createElement('td');b.textContent=fmt(r[f.key],f);tr.append(a,b);t.append(tr);
+  }
+  const ref=S.layer.reference;
+  if(ref&&ref.values){for(const [k,v] of Object.entries(ref.values)){const f=S.layer.fields.find(x=>x.key===k);const mine=num(r[k]);
+    if(!f||mine===null)continue;const tr=document.createElement('tr');const a=document.createElement('td');a.className='muted';
+    a.textContent=`${f.label} vs ${ref.label.toLowerCase()} (${fmt(v,f)})`;const b=document.createElement('td');b.className='muted';
+    b.textContent=(mine/v).toFixed(mine/v<10?2:1)+'×';tr.append(a,b);t.append(tr);}}
+  box.append(t);
+  if(r.note){const n=document.createElement('div');n.className='note';n.textContent=r.note;box.append(n);}
+}
+function about(){
+  const L=S.layer,box=$('about');box.replaceChildren();
+  const h=document.createElement('h2');h.textContent=L.title;
+  const p=document.createElement('p');p.textContent=L.about||'';
+  const s=document.createElement('p');s.className='muted small';s.textContent='Source: ';
+  if(L.source){const a=document.createElement('a');a.href=L.source.url;a.target='_blank';a.rel='noopener';a.textContent=L.source.name;s.append(a);}
+  box.append(h,p,s);
+}
+function select(iso){
+  S.sel=iso;
+  for(const [k,c] of Object.entries(S.basemap.countries))for(const el of [c.el,c.dot])if(el)el.classList.toggle('sel',k===iso);
+  if(iso){const c=S.basemap.countries[iso];if(c.el)c.el.parentNode.append(c.el);}
+  info();rank();saveHash();
+}
+function chips(){
+  const L=$('layers');L.replaceChildren();
+  for(const l of WORLD_LAYERS){const b=document.createElement('button');b.className='chip';b.type='button';b.textContent=l.title;
+    b.setAttribute('aria-pressed',S.layer&&S.layer.id===l.id);b.onclick=()=>loadLayer(l.id);L.append(b);}
+  const F=$('fields');F.replaceChildren();
+  const vf=visibleFields();if(vf.length<2)return;
+  for(const f of vf){const b=document.createElement('button');b.className='chip';b.type='button';b.textContent=f.label;
+    b.setAttribute('aria-pressed',S.field.key===f.key);b.onclick=()=>{S.field=f;S.hl=null;chips();paint();info();saveHash();};F.append(b);}
+}
+
+// ---------- state ----------
+function readHash(){const o={};for(const kv of location.hash.slice(1).split('&')){const [k,v]=kv.split('=');if(k)o[k]=decodeURIComponent(v||'');}
+  if(!o.layer&&location.hash.length>1&&!location.hash.includes('='))o.layer=location.hash.slice(1);return o;}
+function saveHash(){if(!S.layer)return;const h=`#layer=${S.layer.id}&field=${S.field.key}`+(S.sel?`&c=${S.sel}`:'');history.replaceState(null,'',h);}
+async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(u+': '+r.status);return r.json();}
+async function loadLayer(id,fieldKey){
+  const entry=WORLD_LAYERS.find(l=>l.id===id)||WORLD_LAYERS[0];
+  if(!S.layers[entry.id])S.layers[entry.id]=await getJSON(entry.file);
+  S.layer=S.layers[entry.id];S.hl=null;
+  S.field=S.layer.fields.find(f=>f.key===fieldKey&&!f.hidden)||S.layer.fields.find(f=>f.primary)||S.layer.fields[0];
+  chips();about();paint();info();saveHash();
+}
+async function start(){
+  try{
+    const [topo,meta]=await Promise.all([getJSON(TOPO_URL),getJSON('countries.json')]);S.basemap=makeBasemap(topo,meta);buildMap();setupPanZoom();
+    const h=readHash();await loadLayer(h.layer,h.field);
+    if(h.c&&S.basemap.countries[h.c]){select(h.c);zoomTo(h.c);}
+    $('find').addEventListener('input',rank);
+  }catch(e){
+    $('wrap').innerHTML='<div class="err">Could not load the map data. The page needs an internet connection (outlines come from cdn.jsdelivr.net) and must be served over http (e.g. <code>python3 -m http.server</code>), not opened from disk.<br><small></small></div>';
+    $('wrap').querySelector('small').textContent=e.message;
+  }
+}
+start();
+</script>
+</body>
+</html>
