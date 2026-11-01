@@ -15,7 +15,7 @@ header{padding:12px 16px 8px;display:flex;flex-direction:column;gap:10px;max-wid
 .back{color:var(--muted);text-decoration:none;font-size:.9rem}
 .back:hover{color:var(--text)}
 h1{font-size:1.35rem;margin:0;letter-spacing:.02em}
-.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap;position:relative}
 .chip{border:2px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:6px 14px;font:inherit;font-size:.9rem;cursor:pointer;white-space:nowrap}
 .chip:hover{border-color:var(--accent)}
 .chip[aria-pressed="true"]{border-color:var(--accent);background:var(--card2);color:var(--accent);font-weight:650}
@@ -83,7 +83,7 @@ input#find{background:var(--bg);border:1.5px solid var(--line);color:var(--text)
 .ticks span.on{color:var(--accent);font-weight:700}
 #yearLabel{flex:none;font-size:1.6rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--accent);min-width:3.2ch;text-align:right}
 .spark{margin-top:12px}
-@media(max-width:560px){#yearLabel{font-size:1.2rem}#play{width:36px;height:36px}.timebar{gap:8px}.lg .sw{width:8.4vw}.legend{font-size:.7rem}}
+@media(max-width:560px){.chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}.chips::-webkit-scrollbar{display:none}#yearLabel{font-size:1.2rem}#play{width:36px;height:36px}.timebar{gap:8px}.lg .sw{width:8.4vw}.legend{font-size:.7rem}}
 .spark svg{display:block;width:100%;height:auto}
 .spark .lbl{fill:var(--muted);font-size:10px;font-family:inherit}
 .spark rect{cursor:pointer}
@@ -140,7 +140,10 @@ const S={layers:{},basemap:null,layer:null,field:null,sel:null,k:1,tx:0,ty:0,hl:
 // ---------- time and groups ----------
 // A time layer stores each field as an array, one value per year in layer.time.years.
 // A group (e.g. the Soviet Union) stands in for its member countries in the years before `until`.
-function val(r,key){const v=r?r[key]:undefined;return Array.isArray(v)?v[S.ti]:v;}
+function val(r,key,i=S.ti){
+  const d=S.layer.fields.find(f=>f.key===key&&f.ratio);  // derived field: one field divided by another
+  if(d){const a=num(val(r,d.ratio[0],i)),b=num(val(r,d.ratio[1],i));return a!=null&&b?Math.round(a/b*100)/100:null;}
+  const v=r?r[key]:undefined;return Array.isArray(v)?v[i]:v;}
 function curYear(){return S.layer.time?S.layer.time.years[S.ti]:S.layer.year;}
 function groupOf(iso){
   const G=S.layer.groups;if(!G||!S.layer.time)return null;
@@ -163,6 +166,8 @@ function fmt(v,f){
   if(v===undefined||v===null||v==='')return '—';
   if(typeof v==='string')return v+(f&&f.unit&&f.unit!=='%'&&f.format!=='money'?' '+f.unit:f&&f.unit==='%'?'%':'');
   const fmtd=f&&f.format;
+  if(fmtd==='times')return (v<1?v.toFixed(2):v<10?v.toFixed(1):v.toFixed(0))+'×';
+  if(fmtd==='perday')return '$'+(v<10?v.toFixed(2):v.toFixed(1))+' a day';
   if(fmtd==='share')return (v<0.1?v.toFixed(3):v<1?v.toFixed(2):v.toFixed(1))+'%';
   if(fmtd==='billions')return v>=1000?'$'+(v/1000).toLocaleString('en-US',{maximumFractionDigits:2})+' tn':'$'+Math.round(v).toLocaleString('en-US')+' bn';
   if(fmtd==='money')return (f.unit==='US$'?'US$ ':'$')+Math.round(v).toLocaleString('en-US');
@@ -175,7 +180,9 @@ function short(x,f){ // compact legend labels
   if(f.format==='money'){return x>=1000?'$'+(x/1000).toLocaleString('en-US')+'k':'$'+x;}
   if(f.format==='signed')return (x>0?'+':'')+x+(f.unit==='%'?'%':'');
   if(f.format==='billions')return x>=1000?'$'+x/1000+'tn':'$'+x+'bn';
-  if(f.format==='share')return String(x);  // the unit (%) is shown beside the legend
+  if(f.format==='share')return String(x);
+  if(f.format==='times')return x+'×';
+  if(f.format==='perday')return '$'+x;  // the unit (%) is shown beside the legend
   return x+(f.unit==='%'?'%':'');
 }
 
@@ -320,7 +327,7 @@ function legend(bins){
   for(let i=0;i<n;i++){
     const d=document.createElement('div');d.className='lg'+(i===n-1?' last':'')+(S.hl===i?' active':'');
     const sw=document.createElement('div');sw.className='sw';sw.style.background=colorFor(i===0?-Infinity:bins[i-1],f,bins);
-    const s=document.createElement('span');s.textContent=i===0?' ':short(bins[i-1],f);
+    const s=document.createElement('span');s.textContent=i===0?' ':short(bins[i-1],f);
     d.append(sw,s);d.onclick=()=>{S.hl=S.hl===i?null:i;paint();};L.append(d);
   }
   const nd=document.createElement('div');nd.className='lg nd'+(S.hl==='nd'?' active':'');
@@ -365,7 +372,7 @@ function info(){
   for(const f of visibleFields()){
     if(val(r,f.key)==null)continue;
     const tr=document.createElement('tr');if(f.key===S.field.key)tr.className='pri';
-    const a=document.createElement('td');a.textContent=f.label+(f.yearKey&&r[f.yearKey]?` (${r[f.yearKey]})`:'');
+    const a=document.createElement('td');const yk=f.yearKey&&val(r,f.yearKey);a.textContent=f.label+(yk&&yk!==curYear()?` (${yk})`:'');
     const b=document.createElement('td');b.textContent=fmt(val(r,f.key),f);tr.append(a,b);t.append(tr);
   }
   const ref=S.layer.reference;
@@ -381,14 +388,14 @@ function info(){
   if(r.note){const n=document.createElement('div');n.className='note';n.textContent=r.note;box.append(n);}
 }
 function spark(box,r){  // the selected field across all years; tap a bar to jump there
-  const f=S.field,ys=S.layer.time.years,vs=ys.map((_,i)=>{const v=r[f.key];return Array.isArray(v)?num(v[i]):null;});
+  const f=S.field,ys=S.layer.time.years,vs=ys.map((_,i)=>num(val(r,f.key,i)));
   const max=Math.max(...vs.filter(v=>v!=null),1e-9),W=320,H=92,top=14,bot=16,bw=W/ys.length;
   const bins=binsFor(f);let g='';
   ys.forEach((y,i)=>{const v=vs[i],h=v==null?0:Math.max(1.5,(H-top-bot)*v/max),x=i*bw+3,w=bw-6;
     g+=`<rect data-i="${i}" x="${x}" y="${H-bot-h}" width="${w}" height="${h}" rx="2" fill="${v==null?'var(--nodata)':colorFor(v,f,bins)}" opacity="${i===S.ti?1:.55}"${i===S.ti?' stroke="var(--text)" stroke-width="1.5"':''}/>`;
     g+=`<rect data-i="${i}" x="${i*bw}" y="0" width="${bw}" height="${H}" fill="transparent"/>`;
     g+=`<text class="lbl" x="${x+w/2}" y="${H-3}" text-anchor="middle">${String(y).slice(2)}</text>`;
-    if(i===S.ti&&v!=null)g+=`<text class="lbl" x="${x+w/2}" y="${Math.max(10,H-bot-h-3)}" text-anchor="middle" style="fill:var(--text)">${fmt(r[f.key][i],f)}</text>`;});
+    if(i===S.ti&&v!=null)g+=`<text class="lbl" x="${x+w/2}" y="${Math.max(10,H-bot-h-3)}" text-anchor="middle" style="fill:var(--text)">${fmt(val(r,f.key,i),f)}</text>`;});
   const d=document.createElement('div');d.className='spark';
   d.innerHTML=`<div class="muted small">${f.label} by ${S.layer.time.label?S.layer.time.label.toLowerCase():'year'}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${f.label} over time">${g}</svg>`;
   d.querySelector('svg').addEventListener('click',e=>{const i=e.target.dataset&&e.target.dataset.i;if(i!=null)setYear(+i);});
@@ -433,9 +440,11 @@ function chips(){
   for(const l of WORLD_LAYERS){const b=document.createElement('button');b.className='chip';b.type='button';b.textContent=l.title;
     b.setAttribute('aria-pressed',S.layer&&S.layer.id===l.id);b.onclick=()=>loadLayer(l.id);L.append(b);}
   const F=$('fields');F.replaceChildren();
-  const vf=visibleFields();if(vf.length<2)return;
+  const vf=visibleFields();if(vf.length<2)vf.length=0;
   for(const f of vf){const b=document.createElement('button');b.className='chip';b.type='button';b.textContent=f.label;
     b.setAttribute('aria-pressed',S.field.key===f.key);b.onclick=()=>{S.field=f;S.hl=null;chips();paint();info();saveHash();};F.append(b);}
+  for(const c of [L,F]){const on=c.querySelector('[aria-pressed="true"]');  // phones: rows scroll, keep the active chip in view
+    if(on&&c.scrollWidth>c.clientWidth)c.scrollLeft=Math.max(0,on.offsetLeft-(c.clientWidth-on.offsetWidth)/2);}
 }
 
 // ---------- state ----------

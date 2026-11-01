@@ -17,6 +17,13 @@ window.WORLD_LAYERS = [
     desc: 'Each country\'s slice of the world economy, decade by decade. Press play to watch 70 years of change.'
   },
   {
+    id: 'typical-income',
+    badge: '½',
+    title: 'Typical income, 1990–2020',
+    file: 'layers/typical-income.json',
+    desc: 'What the median person lives on per day, how far that sits below GDP per person, and how unequal households are.'
+  },
+  {
     id: 'gdp-per-capita',
     badge: '$',
     title: 'GDP per capita',
