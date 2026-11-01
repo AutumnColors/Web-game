@@ -36,11 +36,15 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
   <h2 class="sec">Explore</h2>
   <p class="sub">Interactive math. No score, just play with it.</p>
   <ul class="levels" id="explore"></ul>
+  <h2 class="sec">World</h2>
+  <p class="sub">One world map, many layers. Tap a country to see its numbers.</p>
+  <ul class="levels" id="world"></ul>
   <div class="foot"><button class="reset" id="reset" type="button">Reset progress</button></div>
 </main>
 <script src="shared/progress.js"></script>
 <script src="levels.js"></script>
 <script src="explore.js"></script>
+<script src="world.js"></script>
 <script>
 'use strict';
 function card(href,badge,badgeClass,title,metaHtml,extraClass){
@@ -68,6 +72,9 @@ function render(){
   const ex=document.getElementById('explore');
   ex.replaceChildren();
   (window.EXPLORE||[]).forEach(e=>ex.append(card(e.path,e.badge||'?',' badge',e.title,'','')));
+  const wo=document.getElementById('world');
+  wo.replaceChildren();
+  (window.WORLD_LAYERS||[]).forEach(l=>wo.append(card('world/#layer='+l.id,l.badge||'?',' badge',l.title,'','')));
 }
 document.getElementById('reset').addEventListener('click',()=>{
   if(!confirm('Reset all progress?'))return;

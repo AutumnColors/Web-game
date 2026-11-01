@@ -7,9 +7,10 @@ Plain static HTML — no build step. Progress (played / best score / cleared) is
 ## Structure
 
 ```
-index.html            landing page (levels + explore)
+index.html            landing page (levels, explore, world)
 levels.js             level registry
 explore.js            explore registry (interactive math, no score)
+world.js              world registry (map layers)
 shared/progress.js    progress store used by every level
 levels/
   01-smiley-paths/    Smiley Paths
@@ -27,9 +28,14 @@ explore/
   rubiks-cube/        Vector Cube (Rubik's cube as 54 position/facing/color sticker vectors, one rotation rule)
   j1/                 J1 viewer (the Livingstone graph: 266 vertices built from J1; spin, re-root, random symmetries)
   a5/                 A5 viewer (dodecahedron with its 5 inscribed cubes, icosahedron dual; derive the character table from fixed points)
+world/
+  index.html          World viewer: one base map, switchable data layers, country panel, ranking
+  countries.json      Natural Earth id → ISO-3 code and display name (outlines load from world-atlas on jsDelivr, projected to Equal Earth)
+  layers/             One JSON file per layer (alcohol.json, gdp-per-capita.json)
 tools/
   chartable_convert.py  Regenerates explore/simple-groups/chartables from CTblLib data files
   j1/build_action.py  Rebuilds J1's 266-point action from Janko's 7×7 matrices over F11 (the generators in explore/j1)
+  world/build_layers.py  Rebuilds world/layers/*.json from World Bank bulk CSVs and the WHO table (see the script's header)
 ```
 
 ## Add a level
@@ -51,9 +57,42 @@ Minesweeper keeps its own level list in the `LEVELS` array at the top of the scr
 1. Create `explore/name/index.html` (self-contained, back link to `../../`).
 2. Add an entry to `explore.js` with a short `badge` (up to ~3 characters).
 
+## Add a world layer
+
+1. Create `world/layers/name.json` (format below). Countries are keyed by ISO 3166-1 alpha-3 (`VNM`, `CHE`), matching `world/countries.json`.
+2. Add an entry to `world.js` with the same `id`, a `badge` and the `file` path.
+
+```json
+{
+  "id": "alcohol",
+  "title": "Alcohol consumption",
+  "kind": "choropleth",
+  "year": 2019,
+  "about": "What the numbers mean, shown under the map.",
+  "source": { "name": "WHO …", "url": "https://…" },
+  "reference": { "label": "World", "values": { "total": 5.5 } },
+  "fields": [
+    { "key": "total", "label": "Total", "unit": "L", "format": "decimal", "primary": true,
+      "scale": { "type": "linear", "palette": "amber", "bins": [1, 2.5, 5, 7.5, 10, 12.5] } },
+    { "key": "beer", "label": "Beer share", "unit": "%", "format": "decimal" },
+    { "key": "ppp_year", "hidden": true }
+  ],
+  "data": {
+    "VNM": { "total": 9.3, "beer": 92.4, "note": "Optional free text for this country." }
+  }
+}
+```
+
+- `fields`: every visible field becomes a switch above the map and a row in the country panel. `primary` colors the map first. `hidden` fields are data only (e.g. a year), shown next to the field that names them in `yearKey`.
+- `format`: `decimal`, `money` (unit `US$` or `intl $`), `signed` (+/−), or plain.
+- `scale.bins`: the colour class edges (6 edges → 7 colours). Leave them out and the page uses quantiles. Palettes: `amber`, `teal`, `blue`, `purple`, `redgreen` (diverging).
+- Values may be text like `"<0.1"` or `"≈0.2"`; the page shows the text and colours by the number.
+- `reference` (optional): values the country panel compares against, e.g. the world average.
+- `kind` is `choropleth` for now; other kinds (points, categories) can be added in the viewer later.
+
 ## Run locally
 
-Open `index.html` in a browser, or `python3 -m http.server` in this folder.
+Open `index.html` in a browser, or `python3 -m http.server` in this folder. The World viewer and character tables load JSON, so they need the server.
 
 ## Live
 
