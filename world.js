@@ -10,6 +10,13 @@ window.WORLD_LAYERS = [
     desc: 'Litres of pure alcohol per adult per year, recorded and unrecorded, and what people drink: beer, wine or spirits.'
   },
   {
+    id: 'gdp-share',
+    badge: '%',
+    title: 'Share of world GDP, 1955–2025',
+    file: 'layers/gdp-share.json',
+    desc: 'Each country\'s slice of the world economy, decade by decade. Press play to watch 70 years of change.'
+  },
+  {
     id: 'gdp-per-capita',
     badge: '$',
     title: 'GDP per capita',

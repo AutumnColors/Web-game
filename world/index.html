@@ -73,6 +73,20 @@ table.kv tr.pri td{color:var(--accent)}
 .headrow h2{margin:0}
 input#find{background:var(--bg);border:1.5px solid var(--line);color:var(--text);border-radius:8px;padding:5px 9px;font:inherit;font-size:.85rem;width:140px}
 .err{padding:24px;color:#ffb4a8}
+.timebar{display:flex;align-items:center;gap:12px}
+.timebar[hidden]{display:none}
+#play{flex:none;width:40px;height:40px;border-radius:50%;border:2px solid var(--accent);background:var(--card2);color:var(--accent);font-size:1rem;cursor:pointer}
+.tslider{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+#year{width:100%;accent-color:var(--accent);margin:0}
+.ticks{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);font-variant-numeric:tabular-nums;padding:0 2px}
+.ticks span{cursor:pointer}
+.ticks span.on{color:var(--accent);font-weight:700}
+#yearLabel{flex:none;font-size:1.6rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--accent);min-width:3.2ch;text-align:right}
+.spark{margin-top:12px}
+@media(max-width:560px){#yearLabel{font-size:1.2rem}#play{width:36px;height:36px}.timebar{gap:8px}.lg .sw{width:8.4vw}.legend{font-size:.7rem}}
+.spark svg{display:block;width:100%;height:auto}
+.spark .lbl{fill:var(--muted);font-size:10px;font-family:inherit}
+.spark rect{cursor:pointer}
 </style>
 </head>
 <body>
@@ -83,6 +97,11 @@ input#find{background:var(--bg);border:1.5px solid var(--line);color:var(--text)
   </div>
   <div class="chips" id="layers" role="group" aria-label="Layer"></div>
   <div class="chips fields" id="fields" role="group" aria-label="Value"></div>
+  <div class="timebar" id="timebar" hidden>
+    <button id="play" type="button" aria-label="Play">▶</button>
+    <div class="tslider"><input id="year" type="range" min="0" max="0" step="1" value="0" aria-label="Year"><div class="ticks" id="ticks"></div></div>
+    <div id="yearLabel"></div>
+  </div>
 </header>
 <main>
   <div class="mapwrap" id="wrap">
@@ -113,9 +132,24 @@ const PALETTES={
   teal:['#16313a','#17474f','#155f63','#127a74','#239682','#4db38f','#8fd3a5'],
   blue:['#1a2a4a','#1f3c6b','#22518d','#2967ad','#3a82c9','#5ea2df','#94c6f0'],
   purple:['#2c2340','#3e2c5e','#53357d','#6b409b','#8752b6','#a670cc','#c99ce0'],
-  redgreen:['#8a2f2f','#b65a3f','#d9965a','#6f8a5a','#3f9a63','#33b874','#7fe0a3']
+  redgreen:['#8a2f2f','#b65a3f','#d9965a','#6f8a5a','#3f9a63','#33b874','#7fe0a3'],
+  spectrum:['#2d1e5e','#3d3296','#2d62b4','#1f92bb','#2bb59a','#80cf6a','#e4d84f','#f39a3c','#e5483e']
 };
-const S={layers:{},basemap:null,layer:null,field:null,sel:null,k:1,tx:0,ty:0,hl:null,vw:1000,vh:500,kmin:1};
+const S={layers:{},basemap:null,layer:null,field:null,sel:null,k:1,tx:0,ty:0,hl:null,vw:1000,vh:500,kmin:1,ti:0,timer:null};
+
+// ---------- time and groups ----------
+// A time layer stores each field as an array, one value per year in layer.time.years.
+// A group (e.g. the Soviet Union) stands in for its member countries in the years before `until`.
+function val(r,key){const v=r?r[key]:undefined;return Array.isArray(v)?v[S.ti]:v;}
+function curYear(){return S.layer.time?S.layer.time.years[S.ti]:S.layer.year;}
+function groupOf(iso){
+  const G=S.layer.groups;if(!G||!S.layer.time)return null;
+  for(const [g,d] of Object.entries(G))if(d.members.includes(iso)&&curYear()<d.until)return g;
+  return null;
+}
+function unit(iso){return groupOf(iso)||iso;}          // the data key that colours this country now
+function unitName(key){const G=S.layer.groups;return (G&&G[key]&&G[key].name)||(S.basemap.countries[key]||{}).name||key;}
+function members(key){const G=S.layer.groups;return G&&G[key]?G[key].members:[key];}
 
 // ---------- values ----------
 // A value is a number, or text such as "<0.1" (below 0.1) or "≈0.2" (approximate).
@@ -129,14 +163,19 @@ function fmt(v,f){
   if(v===undefined||v===null||v==='')return '—';
   if(typeof v==='string')return v+(f&&f.unit&&f.unit!=='%'&&f.format!=='money'?' '+f.unit:f&&f.unit==='%'?'%':'');
   const fmtd=f&&f.format;
+  if(fmtd==='share')return (v<0.1?v.toFixed(3):v<1?v.toFixed(2):v.toFixed(1))+'%';
+  if(fmtd==='billions')return v>=1000?'$'+(v/1000).toLocaleString('en-US',{maximumFractionDigits:2})+' tn':'$'+Math.round(v).toLocaleString('en-US')+' bn';
   if(fmtd==='money')return (f.unit==='US$'?'US$ ':'$')+Math.round(v).toLocaleString('en-US');
   if(fmtd==='signed')return (v>0?'+':'')+v.toFixed(1)+(f.unit==='%'?'%':'');
+  if(fmtd==='decimal'&&Math.abs(v)>=1000)return Math.round(v).toLocaleString('en-US')+(f.unit?' '+f.unit:'');
   if(fmtd==='decimal')return (Math.abs(v)<10&&v%1!==0?v.toFixed(1):(+v.toFixed(1)).toString())+(f.unit==='%'?'%':f.unit?' '+f.unit:'');
   return v.toLocaleString('en-US')+(f&&f.unit?' '+f.unit:'');
 }
 function short(x,f){ // compact legend labels
   if(f.format==='money'){return x>=1000?'$'+(x/1000).toLocaleString('en-US')+'k':'$'+x;}
   if(f.format==='signed')return (x>0?'+':'')+x+(f.unit==='%'?'%':'');
+  if(f.format==='billions')return x>=1000?'$'+x/1000+'tn':'$'+x+'bn';
+  if(f.format==='share')return String(x);  // the unit (%) is shown beside the legend
   return x+(f.unit==='%'?'%':'');
 }
 
@@ -144,7 +183,7 @@ function short(x,f){ // compact legend labels
 function binsFor(f){
   const sc=f.scale||{};
   if(sc.bins)return sc.bins;
-  const vals=Object.values(S.layer.data).map(r=>num(r[f.key])).filter(v=>v!==null).sort((a,b)=>a-b);
+  const vals=Object.values(S.layer.data).map(r=>num(val(r,f.key))).filter(v=>v!==null).sort((a,b)=>a-b);
   if(!vals.length)return [];
   const q=p=>vals[Math.floor(p*(vals.length-1))];
   return [1,2,3,4,5,6].map(i=>+q(i/7).toPrecision(2)); // quantiles
@@ -217,9 +256,11 @@ function zoomAt(f,px,py){ // px,py in viewBox units
   S.tx=px-(px-S.tx)*r;S.ty=py-(py-S.ty)*r;S.k=k;applyView();
 }
 function toVB(e){const r=$('map').getBoundingClientRect();return [(e.clientX-r.left)*S.vw/r.width,(e.clientY-r.top)*S.vh/r.height];}
-function zoomTo(iso){
-  const c=S.basemap.countries[iso];if(!c)return;
-  const bb=(c.el||c.dot).getBBox(),b=S.basemap;
+function zoomTo(key){
+  let bb=null;
+  for(const iso of members(key)){const c=S.basemap.countries[iso];if(!c)continue;const r=(c.el||c.dot).getBBox();
+    bb=bb?{x:Math.min(bb.x,r.x),y:Math.min(bb.y,r.y),width:Math.max(bb.x+bb.width,r.x+r.width)-Math.min(bb.x,r.x),height:Math.max(bb.y+bb.height,r.y+r.height)-Math.min(bb.y,r.y)}:r;}
+  if(!bb)return;
   const pad=1.6,w=Math.max(bb.width,40)*pad,h=Math.max(bb.height,40)*pad;
   const k=Math.min(12,Math.max(1,Math.min(S.vw/w,S.vh/h)));
   S.k=k;S.tx=S.vw/2-(bb.x+bb.width/2)*k;S.ty=S.vh/2-(bb.y+bb.height/2)*k;applyView();
@@ -252,8 +293,8 @@ function setupPanZoom(){
 function hover(e){
   const tip=$('tip');const iso=e.target&&e.target.dataset&&e.target.dataset.iso;
   if(!iso||e.pointerType==='touch'){tip.style.display='none';return;}
-  const c=S.basemap.countries[iso],r=(S.layer.data[iso]||{});
-  tip.innerHTML='';const b=document.createElement('b');b.textContent=c.name;tip.append(b,document.createTextNode('  '+fmt(r[S.field.key],S.field)));
+  const key=unit(iso),r=(S.layer.data[key]||{});
+  tip.innerHTML='';const b=document.createElement('b');b.textContent=unitName(key);tip.append(b,document.createTextNode('  '+fmt(val(r,S.field.key),S.field)));
   const w=$('wrap').getBoundingClientRect();tip.style.display='block';
   let x=e.clientX-w.left+14,y=e.clientY-w.top+14;if(x+tip.offsetWidth>w.width-8)x=e.clientX-w.left-tip.offsetWidth-10;
   tip.style.left=x+'px';tip.style.top=y+'px';
@@ -264,10 +305,10 @@ function visibleFields(){return S.layer.fields.filter(f=>!f.hidden);}
 function paint(){
   const f=S.field,bins=binsFor(f),data=S.layer.data;
   for(const [iso,c] of Object.entries(S.basemap.countries)){
-    const v=num((data[iso]||{})[f.key]);const col=colorFor(v,f,bins)||'var(--nodata)';
+    const v=num(val(data[unit(iso)],f.key));const col=colorFor(v,f,bins)||'var(--nodata)';
     if(c.el)c.el.style.fill=col;if(c.dot)c.dot.style.fill=col;
     const hl=S.hl!==null&&bandOf(v,bins)===S.hl;
-    for(const el of [c.el,c.dot])if(el)el.classList.toggle('hl',hl);
+    for(const el of [c.el,c.dot])if(el){el.classList.toggle('hl',hl);el.classList.toggle('sel',!!S.sel&&unit(iso)===S.sel);}
   }
   $('countries').parentNode.classList.toggle('dim',S.hl!==null);
   legend(bins);rank();
@@ -285,27 +326,28 @@ function legend(bins){
   const nd=document.createElement('div');nd.className='lg nd'+(S.hl==='nd'?' active':'');
   const sw=document.createElement('div');sw.className='sw';sw.style.background='var(--nodata)';
   const s=document.createElement('span');s.textContent='No data';nd.append(sw,s);nd.onclick=()=>{S.hl=S.hl==='nd'?null:'nd';paint();};L.append(nd);
-  $('unit').textContent=f.label+(f.unit?' · '+f.unit:'')+(S.layer.year?' · '+S.layer.year:'');
+  $('unit').textContent=f.label+(f.unit?' · '+f.unit:'')+(curYear()?' · '+curYear():'');
 }
 function ranked(){
   const f=S.field;
-  return Object.entries(S.layer.data).filter(([iso,r])=>num(r[f.key])!==null&&S.basemap.countries[iso])
-    .sort((a,b)=>num(b[1][f.key])-num(a[1][f.key]));
+  const G=S.layer.groups||{};
+  return Object.entries(S.layer.data).filter(([k,r])=>num(val(r,f.key))!==null&&(S.basemap.countries[k]||G[k])&&unit(k)===k)
+    .sort((a,b)=>num(val(b[1],f.key))-num(val(a[1],f.key)));
 }
 function rank(){
   const f=S.field,list=ranked(),ol=$('rank'),q=$('find').value.trim().toLowerCase(),bins=binsFor(f);
   $('rankTitle').textContent=f.label+' ranking';
-  const vals=list.map(([,r])=>num(r[f.key]));const max=Math.max(...vals.map(Math.abs),1e-9);
+  const vals=list.map(([,r])=>num(val(r,f.key)));const max=Math.max(...vals.map(Math.abs),1e-9);
   ol.replaceChildren();
   list.forEach(([iso,r],i)=>{
-    const name=S.basemap.countries[iso].name;if(q&&!name.toLowerCase().includes(q))return;
+    const name=unitName(iso);if(q&&!name.toLowerCase().includes(q))return;
     const li=document.createElement('li');if(iso===S.sel)li.classList.add('sel');li.dataset.iso=iso;
     const n=document.createElement('span');n.className='n';n.textContent=i+1;
     const mid=document.createElement('span');mid.textContent=name;
-    const bar=document.createElement('div');bar.className='bar';const v=num(r[f.key]);
+    const bar=document.createElement('div');bar.className='bar';const v=num(val(r,f.key));
     bar.style.width=Math.max(2,Math.abs(v)/max*100)+'%';bar.style.background=colorFor(v,f,bins);mid.append(bar);
-    const val=document.createElement('span');val.className='v';val.textContent=fmt(r[f.key],f);
-    li.append(n,mid,val);li.onclick=()=>{select(iso);zoomTo(iso);$('wrap').scrollIntoView({behavior:'smooth',block:'nearest'});};
+    const vs=document.createElement('span');vs.className='v';vs.textContent=fmt(val(r,f.key),f);
+    li.append(n,mid,vs);li.onclick=()=>{select(iso);zoomTo(iso);$('wrap').scrollIntoView({behavior:'smooth',block:'nearest'});};
     ol.append(li);
   });
 }
@@ -313,24 +355,44 @@ function info(){
   const box=$('info');box.replaceChildren();
   const h=document.createElement('h2');
   if(!S.sel){h.textContent='Tap a country';const p=document.createElement('p');p.className='muted';p.textContent='Every value this layer has for it shows up here.';box.append(h,p);return;}
-  const c=S.basemap.countries[S.sel],r=S.layer.data[S.sel];h.textContent=c.name;box.append(h);
-  if(!r){const p=document.createElement('p');p.className='muted';p.textContent='No data in this layer.';box.append(p);return;}
+  const r=S.layer.data[S.sel];h.textContent=unitName(S.sel)+(S.layer.time?' · '+curYear():'');box.append(h);
+  if(S.layer.groups&&S.layer.groups[S.sel]){const p=document.createElement('p');p.className='muted small';
+    p.textContent='Until '+(S.layer.groups[S.sel].until-1)+', one country made of: '+members(S.sel).map(m=>(S.basemap.countries[m]||{}).name||m).join(', ')+'.';box.append(p);}
+  if(!r||visibleFields().every(f=>val(r,f.key)==null)){const p=document.createElement('p');p.className='muted';p.textContent=S.layer.time?'No data for '+curYear()+'.':'No data in this layer.';box.append(p);if(r&&S.layer.time)spark(box,r);return;}
   const list=ranked(),pos=list.findIndex(([iso])=>iso===S.sel);
   if(pos>=0){const p=document.createElement('p');p.className='muted small';p.textContent=`#${pos+1} of ${list.length} by ${/[A-Z]{2}/.test(S.field.label)?S.field.label:S.field.label.toLowerCase()}`;box.append(p);}
   const t=document.createElement('table');t.className='kv';
   for(const f of visibleFields()){
-    if(r[f.key]===undefined)continue;
+    if(val(r,f.key)==null)continue;
     const tr=document.createElement('tr');if(f.key===S.field.key)tr.className='pri';
     const a=document.createElement('td');a.textContent=f.label+(f.yearKey&&r[f.yearKey]?` (${r[f.yearKey]})`:'');
-    const b=document.createElement('td');b.textContent=fmt(r[f.key],f);tr.append(a,b);t.append(tr);
+    const b=document.createElement('td');b.textContent=fmt(val(r,f.key),f);tr.append(a,b);t.append(tr);
   }
   const ref=S.layer.reference;
-  if(ref&&ref.values){for(const [k,v] of Object.entries(ref.values)){const f=S.layer.fields.find(x=>x.key===k);const mine=num(r[k]);
+  if(ref&&ref.values){for(const [k,v] of Object.entries(ref.values)){const f=S.layer.fields.find(x=>x.key===k);const mine=num(val(r,k));
     if(!f||mine===null)continue;const tr=document.createElement('tr');const a=document.createElement('td');a.className='muted';
     a.textContent=`${f.label} vs ${ref.label.toLowerCase()} (${fmt(v,f)})`;const b=document.createElement('td');b.className='muted';
     b.textContent=(mine/v).toFixed(mine/v<10?2:1)+'×';tr.append(a,b);t.append(tr);}}
   box.append(t);
+  const G=S.layer.groups||{};
+  for(const [g,d] of Object.entries(G))if(d.members.includes(S.sel)){const p=document.createElement('p');p.className='muted small';
+    p.style.marginTop='10px';p.textContent=`Before ${d.until}: counted as part of ${d.name}.`;box.append(p);}
+  if(S.layer.time)spark(box,r);
   if(r.note){const n=document.createElement('div');n.className='note';n.textContent=r.note;box.append(n);}
+}
+function spark(box,r){  // the selected field across all years; tap a bar to jump there
+  const f=S.field,ys=S.layer.time.years,vs=ys.map((_,i)=>{const v=r[f.key];return Array.isArray(v)?num(v[i]):null;});
+  const max=Math.max(...vs.filter(v=>v!=null),1e-9),W=320,H=92,top=14,bot=16,bw=W/ys.length;
+  const bins=binsFor(f);let g='';
+  ys.forEach((y,i)=>{const v=vs[i],h=v==null?0:Math.max(1.5,(H-top-bot)*v/max),x=i*bw+3,w=bw-6;
+    g+=`<rect data-i="${i}" x="${x}" y="${H-bot-h}" width="${w}" height="${h}" rx="2" fill="${v==null?'var(--nodata)':colorFor(v,f,bins)}" opacity="${i===S.ti?1:.55}"${i===S.ti?' stroke="var(--text)" stroke-width="1.5"':''}/>`;
+    g+=`<rect data-i="${i}" x="${i*bw}" y="0" width="${bw}" height="${H}" fill="transparent"/>`;
+    g+=`<text class="lbl" x="${x+w/2}" y="${H-3}" text-anchor="middle">${String(y).slice(2)}</text>`;
+    if(i===S.ti&&v!=null)g+=`<text class="lbl" x="${x+w/2}" y="${Math.max(10,H-bot-h-3)}" text-anchor="middle" style="fill:var(--text)">${fmt(r[f.key][i],f)}</text>`;});
+  const d=document.createElement('div');d.className='spark';
+  d.innerHTML=`<div class="muted small">${f.label} by ${S.layer.time.label?S.layer.time.label.toLowerCase():'year'}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${f.label} over time">${g}</svg>`;
+  d.querySelector('svg').addEventListener('click',e=>{const i=e.target.dataset&&e.target.dataset.i;if(i!=null)setYear(+i);});
+  box.append(d);
 }
 function about(){
   const L=S.layer,box=$('about');box.replaceChildren();
@@ -341,11 +403,31 @@ function about(){
   box.append(h,p,s);
 }
 function select(iso){
-  S.sel=iso;
-  for(const [k,c] of Object.entries(S.basemap.countries))for(const el of [c.el,c.dot])if(el)el.classList.toggle('sel',k===iso);
-  if(iso){const c=S.basemap.countries[iso];if(c.el)c.el.parentNode.append(c.el);}
+  if(iso)S.anchor=(S.layer.groups||{})[iso]?S.layer.groups[iso].members[0]:iso;  // the country actually tapped
+  S.sel=iso?unit(iso):null;
+  for(const [k,c] of Object.entries(S.basemap.countries)){const on=!!S.sel&&unit(k)===S.sel;
+    for(const el of [c.el,c.dot])if(el)el.classList.toggle('sel',on);if(on&&c.el)c.el.parentNode.append(c.el);}
   info();rank();saveHash();
 }
+function setYear(i){
+  const T=S.layer.time;if(!T)return;S.ti=Math.max(0,Math.min(T.years.length-1,i));
+  if(S.sel&&S.layer.groups){  // a group splits (or not yet): follow the selection to what covers it now
+    S.sel=unit(S.anchor||S.sel);}
+  $('year').value=S.ti;$('yearLabel').textContent=T.years[S.ti];
+  [...$('ticks').children].forEach((t,j)=>t.classList.toggle('on',j===S.ti));
+  paint();select(S.sel);
+}
+function timebar(){
+  const T=S.layer.time,bar=$('timebar');stopPlay();bar.hidden=!T;if(!T)return;
+  const sl=$('year');sl.max=T.years.length-1;
+  const narrow=$('timebar').clientWidth<560;  // on a phone: '55 '65 … instead of 1955 1965 …
+  $('ticks').replaceChildren(...T.years.map((y,j)=>{const s=document.createElement('span');s.textContent=narrow?'’'+String(y).slice(2):String(y);s.onclick=()=>setYear(j);return s;}));
+  sl.oninput=()=>{stopPlay();setYear(+sl.value);};
+  $('play').onclick=()=>{if(S.timer){stopPlay();return;}
+    if(S.ti>=T.years.length-1)setYear(0);$('play').textContent='❚❚';$('play').setAttribute('aria-label','Pause');
+    S.timer=setInterval(()=>{if(S.ti>=T.years.length-1){stopPlay();return;}setYear(S.ti+1);},1300);};
+}
+function stopPlay(){if(S.timer){clearInterval(S.timer);S.timer=null;}$('play').textContent='▶';$('play').setAttribute('aria-label','Play');}
 function chips(){
   const L=$('layers');L.replaceChildren();
   for(const l of WORLD_LAYERS){const b=document.createElement('button');b.className='chip';b.type='button';b.textContent=l.title;
@@ -359,20 +441,26 @@ function chips(){
 // ---------- state ----------
 function readHash(){const o={};for(const kv of location.hash.slice(1).split('&')){const [k,v]=kv.split('=');if(k)o[k]=decodeURIComponent(v||'');}
   if(!o.layer&&location.hash.length>1&&!location.hash.includes('='))o.layer=location.hash.slice(1);return o;}
-function saveHash(){if(!S.layer)return;const h=`#layer=${S.layer.id}&field=${S.field.key}`+(S.sel?`&c=${S.sel}`:'');history.replaceState(null,'',h);}
+function saveHash(){if(!S.layer)return;const h=`#layer=${S.layer.id}&field=${S.field.key}`+(S.layer.time?`&y=${curYear()}`:'')+(S.sel?`&c=${S.sel}`:'');history.replaceState(null,'',h);}
 async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(u+': '+r.status);return r.json();}
-async function loadLayer(id,fieldKey){
+async function loadLayer(id,fieldKey,year){
   const entry=WORLD_LAYERS.find(l=>l.id===id)||WORLD_LAYERS[0];
   if(!S.layers[entry.id])S.layers[entry.id]=await getJSON(entry.file);
   S.layer=S.layers[entry.id];S.hl=null;
   S.field=S.layer.fields.find(f=>f.key===fieldKey&&!f.hidden)||S.layer.fields.find(f=>f.primary)||S.layer.fields[0];
-  chips();about();paint();info();saveHash();
+  const T=S.layer.time;
+  if(T){const want=+(year||T.default||T.years[T.years.length-1]);const j=T.years.indexOf(want);S.ti=j>=0?j:T.years.length-1;}else S.ti=0;
+  if(S.sel&&!S.basemap.countries[S.sel]&&!(S.layer.groups||{})[S.sel])S.sel=null;
+  chips();about();timebar();
+  if(T){$('year').value=S.ti;$('yearLabel').textContent=T.years[S.ti];[...$('ticks').children].forEach((t,j)=>t.classList.toggle('on',j===S.ti));}
+  if(S.sel)S.sel=unit((S.layer.groups||{})[S.sel]?S.layer.groups[S.sel].members[0]:S.sel);
+  paint();info();saveHash();
 }
 async function start(){
   try{
     const [topo,meta]=await Promise.all([getJSON(TOPO_URL),getJSON('countries.json')]);S.basemap=makeBasemap(topo,meta);buildMap();fitView(true);setupPanZoom();
-    const h=readHash();await loadLayer(h.layer,h.field);
-    if(h.c&&S.basemap.countries[h.c]){select(h.c);zoomTo(h.c);}
+    const h=readHash();await loadLayer(h.layer,h.field,h.y);
+    if(h.c&&(S.basemap.countries[h.c]||(S.layer.groups||{})[h.c])){select(h.c);zoomTo(S.sel);}
     $('find').addEventListener('input',rank);
   }catch(e){
     $('wrap').innerHTML='<div class="err">Could not load the map data. The page needs an internet connection (outlines come from cdn.jsdelivr.net) and must be served over http (e.g. <code>python3 -m http.server</code>), not opened from disk.<br><small></small></div>';
