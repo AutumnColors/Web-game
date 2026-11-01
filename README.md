@@ -31,11 +31,12 @@ explore/
 world/
   index.html          World viewer: one base map, switchable data layers, country panel, ranking
   countries.json      Natural Earth id → ISO-3 code and display name (outlines load from world-atlas on jsDelivr, projected to Equal Earth)
-  layers/             One JSON file per layer (alcohol.json, gdp-per-capita.json)
+  layers/             One JSON file per layer (alcohol.json, gdp-share.json, gdp-per-capita.json)
 tools/
   chartable_convert.py  Regenerates explore/simple-groups/chartables from CTblLib data files
   j1/build_action.py  Rebuilds J1's 266-point action from Janko's 7×7 matrices over F11 (the generators in explore/j1)
   world/build_layers.py  Rebuilds world/layers/*.json from World Bank bulk CSVs and the WHO table (see the script's header)
+  world/build_gdp_share.py  Rebuilds world/layers/gdp-share.json from the Maddison Project 2023 and World Bank data
 ```
 
 ## Add a level
@@ -88,6 +89,9 @@ Minesweeper keeps its own level list in the `LEVELS` array at the top of the scr
 - `scale.bins`: the colour class edges (6 edges → 7 colours). Leave them out and the page uses quantiles. Palettes: `amber`, `teal`, `blue`, `purple`, `redgreen` (diverging).
 - Values may be text like `"<0.1"` or `"≈0.2"`; the page shows the text and colours by the number.
 - `reference` (optional): values the country panel compares against, e.g. the world average.
+- `time` (optional): `{ "years": [1955, 1965, …], "default": 2025, "label": "Decade" }`. Each field's value is then an array with one entry per year (`null` where there is no data). The page shows a slider with play, and the country panel shows the field across all years.
+- `groups` (optional, for time layers): `{ "SUN": { "name": "Soviet Union", "members": ["RUS", "UKR", …], "until": 1992 } }`. Before `until`, the members are coloured and ranked as one country using `data.SUN`.
+- More formats: `share` (percent with precision that suits small values), `billions` (shown as bn / tn). Palette `spectrum` has 9 colours for 8 bin edges.
 - `kind` is `choropleth` for now; other kinds (points, categories) can be added in the viewer later.
 
 ## Run locally
