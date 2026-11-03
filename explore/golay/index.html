@@ -121,13 +121,30 @@ code{background:var(--sheet);border:1px solid var(--line);border-radius:4px;padd
 .lede{margin:0;max-width:60ch}
 .small{font-size:.84rem;color:var(--muted);margin:0;max-width:62ch}
 nav.tabs{flex-wrap:wrap}
-.gm{display:flex;flex-direction:column;gap:3px;overflow-x:auto}
-.gmrow{display:flex;align-items:center;gap:10px;width:max-content;min-width:100%;font:500 .8rem/1.2 var(--f-mono);letter-spacing:.03em;background:transparent;border:1px solid transparent;border-radius:6px;padding:.3rem .5rem;color:var(--muted);cursor:pointer;text-align:left}
-.gmrow:hover{border-color:var(--line)}
-.gmrow:focus-visible{outline:2px solid var(--bit);outline-offset:1px}
-.gmrow[aria-pressed="true"]{background:var(--sheet);border-color:var(--bit);color:var(--ink)}
-.gmrow .ri{font:italic 500 .95rem var(--f-display);color:var(--muted);width:2.1rem}
-.gmrow b{color:var(--bit);font-weight:600}
+.cmpwrap{overflow-x:auto}
+.cmp{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
+.cmp th,.cmp td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);vertical-align:baseline}
+.cmp thead th{font:600 .7rem var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.cmp tbody th{font-weight:500;color:var(--muted);white-space:nowrap}
+.cmp b{font:500 1.15rem var(--f-display)}
+.mat{display:flex;flex-direction:column;gap:1px;margin-block:.7rem .4rem}
+.mrow{display:grid;grid-template-columns:1.8rem repeat(23,minmax(0,1fr)) .3rem minmax(0,1fr);gap:2px;align-items:center;width:100%;background:transparent;border:1px solid transparent;border-radius:5px;padding:2px 4px;cursor:pointer;font:inherit;color:inherit}
+.mrow:hover{border-color:var(--line)}
+.mrow:focus-visible{outline:2px solid var(--bit);outline-offset:1px}
+.mrow[aria-pressed="true"]{border-color:var(--bit);background:var(--sheet)}
+.mrow.hd,.mrow.sum{cursor:default}
+.mrow.hd:hover,.mrow.sum:hover{border-color:transparent}
+.mrow.sum{border-top:1.5px solid var(--ink);border-radius:0;margin-top:4px;padding-top:6px}
+.ri{font:500 .7rem var(--f-mono);color:var(--muted);text-align:right;padding-right:5px}
+.cn{font:.62rem/1 var(--f-mono);color:var(--muted);text-align:center;white-space:nowrap}
+.sq{display:block;aspect-ratio:1;border-radius:2px;background:var(--sheet);box-shadow:inset 0 0 0 1px var(--line)}
+.sq.one{background:var(--bit);box-shadow:none}
+.mrow[aria-pressed="true"] .sq:not(.one){background:var(--paper)}
+.mg{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:.9rem;margin-top:.5rem}
+.relabel{display:flex;flex-wrap:wrap;gap:3px 12px;font:500 .78rem var(--f-mono);color:var(--muted);margin-top:.2rem}
+.amat{display:flex;flex-direction:column;gap:2px;max-width:290px;margin-top:.4rem}
+.arow{display:grid;grid-template-columns:1.8rem repeat(12,minmax(0,1fr));gap:2px;align-items:center}
+.cell.pick .t2,.cell.good .t2{color:var(--bit-ink)}
 .perm{font:500 .78rem/1.6 var(--f-mono);overflow-x:auto;white-space:nowrap;background:var(--sheet);border:1px solid var(--line);border-radius:6px;padding:.4rem .6rem}
 .gens{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .gen h4{margin:0 0 .3rem;font:500 1.15rem var(--f-display)}
@@ -228,9 +245,16 @@ function nearest(w){if(w===_nk)return _nv;let d=99,list=[];for(const c of CODE){
 const applyPerm=(w,f)=>{let o=0;for(let i=0;i<24;i++)if(w>>>i&1)o|=1<<f[i];return o;};
 const isAut=f=>BASIS.every(b=>CODESET.has(applyPerm(b,f)));
 const PERM3=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
-// all elements of M24 sending p[i] -> q[i] (i=0..4); there are always 48
-function findMaps(p,q){
-  const P=maskOf(p),Q=maskOf(q),O=octadThrough(P),O2=octadThrough(Q);
+// a code object: words, 5-set -> octad lookup, a basis
+const spanOf=rows=>{let s=[0];for(const r of rows)s=s.concat(s.map(x=>x^r));return s;};
+function makeCode(words){const set=new Set(words),oct5=new Map();
+  for(const o of words){if(pc(o)!==8)continue;const b=bitsOf(o);for(let i=0;i<8;i++)for(let j=i+1;j<8;j++)for(let k=j+1;k<8;k++)oct5.set(o&~(1<<b[i])&~(1<<b[j])&~(1<<b[k]),o);}
+  const rows=[];for(const w of words){let x=w;for(const r of rows)if(x&(r&-r))x^=r;if(x){const p=x&-x;for(let k=0;k<rows.length;k++)if(rows[k]&p)rows[k]^=x;rows.push(x);if(rows.length===12)break;}}
+  return{set,oct5,basis:rows};}
+// all bijections f with f(p[i]) = q[i] carrying code X onto code Y (48 of them; 'first' stops at one)
+function findMapsGen(p,q,X,Y,first){
+  const ot=X.oct5,ot2=Y.oct5;
+  const P=maskOf(p),Q=maskOf(q),O=ot.get(P),O2=ot2.get(Q);
   const rest=bitsOf(O&~P),rest2=bitsOf(O2&~Q);
   let x=0;while(O>>>x&1)x++;
   const outs=bitsOf(FULL&~O&~(1<<x)),outs2=bitsOf(FULL&~O2);
@@ -244,8 +268,8 @@ function findMaps(p,q){
       for(let a=0;a<8;a++)for(let b=a+1;b<8;b++)for(let c=b+1;c<8;c++)for(let d=c+1;d<8;d++){
         const T=(1<<Opts[a])|(1<<Opts[b])|(1<<Opts[c])|(1<<Opts[d]);
         const fT=(1<<f[Opts[a]])|(1<<f[Opts[b]])|(1<<f[Opts[c]])|(1<<f[Opts[d]]);
-        const S=octadThrough(T|(1<<x))&~T&~(1<<x);
-        const S2=octadThrough(fT|(1<<y))&~fT&~(1<<y);
+        const S=ot.get(T|(1<<x))&~T&~(1<<x);
+        const S2=ot2.get(fT|(1<<y))&~fT&~(1<<y);
         for(const z of bitsOf(S))cand[z]&=S2;
       }
       const g=f.slice();let used=0,okk=true;
@@ -253,11 +277,13 @@ function findMaps(p,q){
       if(!okk)continue;
       for(const v of g)used|=1<<v;
       if(used!==FULL)continue;
-      if(isAut(g))res.push(g);
+      if(X.basis.every(b=>Y.set.has(applyPerm(b,g)))){res.push(g);if(first)return res;}
     }
   }
   return res;
 }
+const MOGC={set:CODESET,oct5:OCT5,basis:BASIS};
+const findMaps=(p,q)=>findMapsGen(p,q,MOGC,MOGC);
 function randomElement(){
   const pts=[...Array(24).keys()];
   for(let i=23;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pts[i],pts[j]]=[pts[j],pts[i]];}
@@ -275,11 +301,33 @@ const comp=(p,q)=>p.map(x=>q[x]);
 const inv=p=>{const r=new Array(24);p.forEach((y,x)=>r[y]=x);return r;};
 const isId=p=>p.every((y,x)=>y===x);
 const powPerm=(p,n)=>{let r=ID;for(let i=0;i<n;i++)r=comp(r,p);return r;};
-// generator matrix in reduced row-echelon form (pivot = lowest index in each row)
-const GENMAT=(()=>{const rows=[];for(const w of CODE){let x=w;for(const r of rows)if(x&(r&-r))x^=r;
-  if(x){const p=x&-x;for(let k=0;k<rows.length;k++)if(rows[k]&p)rows[k]^=x;rows.push(x);if(rows.length===12)break;}}
-  return rows.sort((a,b)=>(a&-a)-(b&-b));})();
-const PIVOTS=GENMAT.reduce((m,r)=>m|(r&-r),0);
+const conj=(f,s)=>{const r=new Array(24);f.forEach((y,x)=>r[s[x]]=s[y]);return r;}; // f relabelled by s
+// cyclic generator matrix: row i = x^i g(x), g(x)=x^11+x^9+x^7+x^6+x^5+x+1, coordinate 24 = parity
+const GPOLY=maskOf([0,1,5,6,7,9,11]);
+const GROWS=[...Array(12).keys()].map(i=>{const r=GPOLY<<i;return r|((pc(r)&1)<<23);});
+const CYC=makeCode(spanOf(GROWS));
+// message m (12 bits) with mG = w, by elimination that tracks row combinations
+const GSOLVE=(()=>{const R=[],T=[];GROWS.forEach((g,i)=>{let x=g,t=1<<i;for(let k=0;k<R.length;k++)if(x&(R[k]&-R[k])){x^=R[k];t^=T[k];}
+  const p=x&-x;for(let k=0;k<R.length;k++)if(R[k]&p){R[k]^=x;T[k]^=t;}R.push(x);T.push(t);});return{R,T};})();
+function messageOf(w){let m=0;const{R,T}=GSOLVE;for(let k=0;k<R.length;k++)if(w&(R[k]&-R[k])){w^=R[k];m^=T[k];}return w?-1:m;}
+const encode=m=>{let w=0;for(let i=0;i<12;i++)if(m>>i&1)w^=GROWS[i];return w;};
+// A with GP = AG: row i of A is the message of (row i of G) moved by f
+const matrixA=f=>GROWS.map(r=>messageOf(applyPerm(r,f)));
+const rank12=rows=>{const B=[];for(let x of rows){for(const b of B)if(x&(b&-b))x^=b;if(x){const p=x&-x;for(let k=0;k<B.length;k++)if(B[k]&p)B[k]^=x;B.push(x);}}return B.length;};
+// the quoted pair, in its own labels 1..24
+const cyc2perm=cs=>{const f=[...Array(24).keys()];for(const c of cs)c.forEach((v,i)=>f[v-1]=c[(i+1)%c.length]-1);return f;};
+const WA=cyc2perm([[1,16,8,23,13,14,5],[2,7,11,19,20,24,12],[3,4,17,9,22,21,15]]);
+const WB=cyc2perm([[1,24],[2,21],[3,10],[4,22],[5,9],[6,23],[7,8],[11,18],[12,20],[13,14],[15,19],[16,17]]);
+// the code that <WA,WB> preserves: an involution of shape 1^8 2^8 fixes an octad; its orbit spans the code
+const WCODE=(()=>{let fr=[WA,WB],oct=0;
+  for(let len=0;len<10&&!oct;len++){const nx=[];for(const g of fr){const s=shapeOf(g);
+    if(s.order%2===0){const t=powPerm(g,s.order/2);if(shapeOf(t).text==='1⁸ 2⁸'){oct=maskOf(t.map((y,x)=>y===x?x:-1).filter(v=>v>=0));break;}}
+    nx.push(comp(g,WA),comp(g,WB));}fr=nx;}
+  const seen=new Set([oct]);let f2=[oct];while(f2.length){const n=[];for(const w of f2)for(const p of [WA,WB]){const y=applyPerm(w,p);if(!seen.has(y)){seen.add(y);n.push(y);}}f2=n;}
+  return makeCode(spanOf(makeCode([...seen]).basis));})();
+const PSI=findMapsGen([0,1,2,3,4],[0,1,2,3,4],WCODE,CYC,true)[0]; // labels of the pair -> coordinates of G
+const PHI=findMapsGen([0,1,2,3,4],[0,1,2,3,4],CYC,MOGC,true)[0];  // coordinates of G -> MOG cells
+const GA=conj(WA,PSI),GB=conj(WB,PSI);                               // the pair, written in G's coordinates
 // deterministic Schreier–Sims: base, basic orbit sizes and the group order
 function schreierSims(gens){
   const L=[];let sifted=0;
@@ -317,11 +365,7 @@ const S={
   play:{game:'noise',level:2,hint:false,noise:null,hunt:null,streakN:0,streakH:0,bestN:store.get('golay-bestN',0),bestH:store.get('golay-bestH',0)},
   m:{word:0,base:0,labels:null,baseLabels:null,g:null,k:0,pick:null,maps:null,mapIdx:0}
 };
-// default generators: a has order 23, b is an involution of shape 1⁸ 2⁸; together they generate M24
-const GEN_A=[14,19,3,21,5,15,12,11,18,7,16,10,2,1,6,8,4,23,22,9,20,17,0,13];
-const GEN_B=[0,11,8,3,4,15,12,7,2,9,10,1,6,13,14,5,17,16,20,22,18,23,19,21];
-const KNOWN={244823040:'M₂₄, the whole symmetry group',10200960:'M₂₃, the stabilizer of one point',443520:'M₂₂',887040:'M₂₂:2',6072:'L₂(23)',253:'23:11',23:'the cyclic group generated by a alone'};
-S.gen={sel:0,show:'matrix',word:0,a:GEN_A,b:GEN_B,ss:null,lvl:-1,orb:null,timer:null};
+S.gen={sel:3,show:'matrix',word:0,lvl:-1,orb:null,timer:null,pP:'a'};
 // opening states
 {const o=pick(OCTADS);S.ex.word=maskOf(shuffle(bitsOf(o)).slice(0,5));}
 S.m.word=pick(OCTADS);S.m.base=S.m.word;S.m.g=randomElement();
@@ -548,76 +592,109 @@ function actM(a){const M=S.m;
 }
 
 // ----- generate -----
-const SUB='₀₁₂₃₄₅₆₇₈₉';const subN=n=>String(n).split('').map(d=>SUB[d]).join('');
 const cycleStr=f=>cyclesOf(f).filter(c=>c.length>1).map(c=>'('+c.map(i=>i+1).join(' ')+')').join('');
-function rowBits(r){let s='';for(let c=0;c<6;c++){for(let k=0;k<4;k++){const i=c*4+k,bit=(r>>>i)&1;s+=(PIVOTS>>>i&1)?`<b>${bit}</b>`:bit;}s+=c%2?(c<5?' · ':''):' ';}return s;}
-function selWord(){let w=0;GENMAT.forEach((r,k)=>{if(S.gen.sel>>k&1)w^=r;});return w;}
+const fixedList=f=>f.map((y,x)=>y===x?x+1:0).filter(Boolean);
+const toCells=w=>applyPerm(w,PHI);
+const GA_C=conj(GA,PHI),GB_C=conj(GB,PHI);
+const SS_W=schreierSims([WA,WB]);
+const NAIVE_A=GROWS.filter(r=>!CYC.set.has(applyPerm(r,WA))).length,NAIVE_B=GROWS.filter(r=>!CYC.set.has(applyPerm(r,WB))).length;
+const CELL_LABEL=(()=>{const t=new Array(24);PHI.forEach((c,k)=>t[c]=String(k+1));return t;})();
+const WCELL=WA.map((_,k)=>PHI[PSI[k]]);
+const W_LABEL=(()=>{const t=new Array(24);WCELL.forEach((c,k)=>t[c]=String(k+1));return t;})();
+const bitStr=(w,n)=>{let s='';for(let i=0;i<n;i++)s+=(w>>>i)&1;return s;};
+const sqRow=(w,n,gap)=>{let s='';for(let i=0;i<n;i++){if(i===gap)s+='<span></span>';s+=`<span class="sq${(w>>>i)&1?' one':''}"></span>`;}return s;};
 function orbInsert(x){const B=S.gen.orb.basis;for(const r of B)if(x&(r&-r))x^=r;if(x){const p=x&-x;for(let k=0;k<B.length;k++)if(B[k]&p)B[k]^=x;B.push(x);}}
-function orbReset(){const G=S.gen;stopRun();const O0=15|(15<<4);G.orb={found:new Set([O0]),frontier:[O0],step:0,basis:[],last:O0};orbInsert(O0);}
-function orbStep(){const G=S.gen,o=G.orb;if(!o.frontier.length)return false;const nx=[];
-  for(const w of o.frontier)for(const f of [G.a,G.b]){const x=applyPerm(w,f);if(!o.found.has(x)){o.found.add(x);nx.push(x);orbInsert(x);}}
+function orbReset(){const G=S.gen;stopRun();const O0=GROWS[0];G.orb={found:new Set([O0]),frontier:[O0],step:0,basis:[],last:O0};orbInsert(O0);}
+function orbStep(){const o=S.gen.orb;if(!o.frontier.length)return false;const nx=[];
+  for(const w of o.frontier)for(const f of [GA,GB]){const x=applyPerm(w,f);if(!o.found.has(x)){o.found.add(x);nx.push(x);orbInsert(x);}}
   o.frontier=nx;o.step++;if(nx.length)o.last=nx[nx.length-1];return nx.length>0;}
 function stopRun(){const G=S.gen;if(G.timer){clearInterval(G.timer);G.timer=null;}}
 function startRun(){const G=S.gen;stopRun();G.show='orbit';
   G.timer=setInterval(()=>{if(S.mode!=='generate'){stopRun();return;}if(!orbStep())stopRun();render();},reduceMotion?80:340);}
-function randomPair(){let a,b;for(;;){a=randomElement();if(shapeOf(a).order===23)break;}
-  for(;;){const g=randomElement(),o=shapeOf(g).order;if(o%2===0){b=powPerm(g,o/2);break;}}return[a,b];}
-function setPair([a,b]){const G=S.gen;G.a=a;G.b=b;G.ss=schreierSims([a,b]);G.lvl=-1;if(G.show==='chain')G.show='matrix';orbReset();}
 function viewGen(){const G=S.gen;
-  if(G.show==='matrix')return{word:selWord()};
-  if(G.show==='orbit')return{word:G.orb.last};
-  if(G.show==='chain'&&G.ss&&G.lvl>=0){const L=G.ss.levels,t1=new Array(24);let w=0;
-    for(let k=0;k<G.lvl;k++){w|=1<<L[k].b;t1[L[k].b]=String(k+1);}
-    const b=L[G.lvl].b;t1[b]=String(G.lvl+1);return{word:w,pick:1<<b,ghost:L[G.lvl].orbit&~(1<<b),t1};}
-  return{word:G.word};}
-function panelGen(){const G=S.gen;const sa=shapeOf(G.a),sb=shapeOf(G.b),sab=shapeOf(comp(G.a,G.b));let h='';
-  h+=`<section class="status"><div class="kind">Generate</div><div class="meta">All 4096 codewords from 12 rows, and all of M₂₄ from two permutations.</div></section>`;
-  const w=selWord(),k=pc(G.sel),wt=pc(w);
-  h+=`<section><p class="eyebrow">Generator matrix G · 12 × 24</p>
-    <p class="small" style="margin-bottom:.6rem">Reduced row-echelon form. Bits run column by column, top to bottom, as in the line under the board. Blue bits are the pivots; those 12 positions form an information set. Every row happens to be an octad. Tap rows to add them.</p>
-    <div class="gm" role="group" aria-label="Rows of G">${GENMAT.map((r,i)=>`<button class="gmrow" data-act="row-${i}" aria-pressed="${!!(G.sel>>i&1)}"><span class="ri">g${subN(i+1)}</span><span>${rowBits(r)}</span></button>`).join('')}</div>
-    <p class="feedback ${k?'ok':''}" style="margin-top:.5rem">${k?`Sum of ${k} row${k>1?'s':''}: weight ${wt}, ${KIND[wt]==='Empty word'?'the empty word':KIND[wt].toLowerCase()}.`:'No rows chosen: the empty word.'}</p>
-    <p class="small">Each of the 2¹² = 4096 choices of rows gives a different codeword, and every codeword arises this way.</p>
-    <div class="actions" style="margin-top:.6rem"><button class="btn" data-act="row-rand">Random sum</button><button class="btn" data-act="row-all">All 12</button><button class="btn" data-act="row-clear">Clear</button></div></section>`;
-  h+=`<section><p class="eyebrow">Two permutations</p>
-    <p class="small" style="margin-bottom:.6rem">Points are numbered 1–24 down each column, left to right. Cycles of length 1 are left out.</p>
-    <div class="gens">
-      <div class="gen"><h4><i>a</i> · order ${sa.order}</h4><p class="small">cycle shape ${sa.text}</p><div class="perm">${cycleStr(G.a)}</div></div>
-      <div class="gen"><h4><i>b</i> · order ${sb.order}</h4><p class="small">cycle shape ${sb.text}</p><div class="perm">${cycleStr(G.b)}</div></div>
+  if(G.show==='chain'&&G.lvl>=0){const L=SS_W.levels;let w=0,ghost=0;
+    for(let k=0;k<G.lvl;k++)w|=1<<WCELL[L[k].b];
+    const b=WCELL[L[G.lvl].b];bitsOf(L[G.lvl].orbit).forEach(k=>ghost|=1<<WCELL[k]);
+    return{word:w,pick:1<<b,ghost:ghost&~(1<<b),t2:W_LABEL};}
+  if(G.show==='matrix')return{word:toCells(encode(G.sel)),t2:CELL_LABEL};
+  if(G.show==='orbit')return{word:toCells(G.orb.last),t2:CELL_LABEL};
+  return{word:G.word,t2:CELL_LABEL};}
+function panelGen(){const G=S.gen;let h='';
+  const sa=shapeOf(WA),sb=shapeOf(WB);
+  h+=`<section class="status"><div class="kind">Two kinds of generators</div><div class="meta">12 binary vectors build the code by XOR. 2 permutations build its symmetries by composition.</div></section>
+  <div class="cmpwrap"><table class="cmp"><thead><tr><th></th><th>Generator matrix</th><th>Group generators</th></tr></thead><tbody>
+    <tr><th>Generators</th><td>12 binary vectors</td><td>2 permutations</td></tr>
+    <tr><th>Operation</th><td>XOR</td><td>composition</td></tr>
+    <tr><th>Generates</th><td><b>${fmtN(4096)}</b> codewords</td><td><b>${fmtN(SS_W.order)}</b> symmetries</td></tr>
+  </tbody></table></div>
+  <p class="small">They act on different objects, but the permutations preserve the code the matrix generates. Part 3 checks this with actual numbers.</p>`;
+  // 1. the matrix
+  const m=G.sel,c=encode(m),wt=pc(c);
+  h+=`<section><p class="eyebrow">1 · A Golay generator matrix, 12 × 24</p>
+    <p class="lede">Take g(x) = x¹¹ + x⁹ + x⁷ + x⁶ + x⁵ + x + 1. Row i holds the coefficients of x<sup>i−1</sup>·g(x) in coordinates 1–23 (x⁰ up to x²²), and coordinate 24 is an overall parity bit. Each row is a codeword of weight 8, and the 12 rows are independent.</p>
+    <div class="mat" role="group" aria-label="Rows of G">
+      <div class="mrow hd" aria-hidden="true"><span></span>${[...Array(24)].map((_,i)=>(i===23?'<span></span>':'')+`<span class="cn">${[1,6,12,18,23,24].includes(i+1)?i+1:''}</span>`).join('')}</div>
+      ${GROWS.map((r,i)=>`<button class="mrow" data-act="row-${i}" aria-pressed="${!!(m>>i&1)}" aria-label="Row ${i+1}"><span class="ri">${i+1}</span>${sqRow(r,24,23)}</button>`).join('')}
+      <div class="mrow sum"><span class="ri">mG</span>${sqRow(c,24,23)}</div>
     </div>
-    <p class="small" style="margin-top:.6rem">Their product <i>ab</i> (a first, then b) has shape ${sab.text} and order ${sab.order}.</p>
-    <div class="actions" style="margin-top:.6rem"><button class="btn" data-act="ap-a">Apply a</button><button class="btn" data-act="ap-b">Apply b</button><button class="btn" data-act="ap-ab">Apply ab</button><button class="btn" data-act="pair-rand">New random pair</button><button class="btn" data-act="pair-def">Default pair</button></div>
-    <p class="small" style="margin-top:.5rem">A new pair is a random element of order 23 and a random involution. Most pairs generate all of M₂₄; when both fix the same point you get M₂₃.</p></section>`;
+    <p class="small">Blue squares are 1s. The last column, set apart, is the parity bit. Tap rows to choose which ones to XOR.</p>
+    <div class="mg"><div>m = <code>${bitStr(m,12)}</code></div><div>mG = <code>${bitStr(c,24)}</code></div></div>
+    <p class="feedback ok">${m?`${pc(m)} row${pc(m)>1?'s':''} XORed: weight ${wt}, ${wt?KIND[wt].toLowerCase():'the empty word'}.`:'No rows chosen: the empty word.'}</p>
+    <p class="small">Message <code>100000000000</code> selects row 1 alone; <code>110000000000</code> XORs rows 1 and 2. All 2¹² = 4096 messages give the 4096 codewords of the extended Golay code. The board shows mG, with coordinate k on the cell numbered k.</p>
+    <div class="actions" style="margin-top:.6rem"><button class="btn" data-act="row-rand">Random message</button><button class="btn" data-act="row-one">Row 1 only</button><button class="btn" data-act="row-clear">Clear</button></div></section>`;
+  // 2. the permutations
+  let run=1;const sel=G.show==='chain'&&G.lvl>=0?SS_W.levels[G.lvl]:null;
+  h+=`<section><p class="eyebrow">2 · Two permutations that generate M₂₄</p>
+    <p class="lede">Now the operation changes. Instead of XORing binary strings, we compose permutations of the 24 positions.</p>
+    <div class="gens" style="margin-top:.7rem">
+      <div class="gen"><h4><i>a</i> · order ${sa.order}</h4><div class="perm">${cycleStr(WA)}</div><p class="small" style="margin-top:.3rem">Shape ${sa.text}. Positions ${fixedList(WA).join(', ')} stay fixed.</p></div>
+      <div class="gen"><h4><i>b</i> · order ${sb.order}</h4><div class="perm">${cycleStr(WB)}</div><p class="small" style="margin-top:.3rem">Shape ${sb.text}. It swaps 12 pairs and fixes nothing.</p></div>
+    </div>
+    <p class="small" style="margin-top:.6rem">The first cycle of a reads 1 → 16 → 8 → 23 → 13 → 14 → 5 → 1: the bit in position 1 moves to 16, the bit in 16 moves to 8, and so on round the cycle. b exchanges positions 1 and 24, 2 and 21, and so on.</p>
+    <p class="eyebrow" style="margin-top:1.1rem">Do they generate all of M₂₄? Schreier–Sims</p>
+    <p class="small" style="margin-bottom:.6rem">Pin points one at a time and count the places the next point can still reach. The product of the counts is the size of ⟨a, b⟩. Tap a row to see it on the board; the cell numbers switch to the labels a and b use.</p>
+    <div class="ladder" role="group" aria-label="Stabilizer chain">
+      <div class="lrow" style="cursor:default;padding-block:0"><span class="li"></span><span class="small">point</span><span class="lp">places</span><span class="lp">product</span></div>
+      ${SS_W.levels.map((l,i)=>{run*=l.size;return`<button class="lrow" data-act="lvl-${i}" aria-pressed="${G.show==='chain'&&G.lvl===i}"><span class="li">${i+1}</span><span>point ${l.b+1}</span><span class="lo">${l.size}</span><span class="lp">${fmtN(run)}</span></button>`;}).join('')}
+    </div>
+    <div class="total"><b>${fmtN(SS_W.order)}</b><span>${SS_W.order===244823040?'= |M₂₄|, so ⟨a, b⟩ = M₂₄':'smaller than M₂₄'}</span></div>
+    ${sel?`<p class="note" style="margin-top:.6rem">Row ${G.lvl+1}: ${G.lvl?`the ${G.lvl} earlier point${G.lvl>1?'s are':' is'} pinned (blue), and `:''}point ${sel.b+1} (amber) can move to the ${sel.size-1} ringed cells, ${sel.size} places counting where it is.</p>`:''}
+    <p class="small" style="margin-top:.6rem">${SS_W.strong} strong generators, found by sifting ${fmtN(SS_W.sifted)} Schreier generators.</p></section>`;
+  // 3. the connection
+  const f=G.pP==='a'?GA:G.pP==='b'?GB:comp(GA,GB),pn=G.pP==='a'?'a′':G.pP==='b'?'b′':'a′b′';
+  const A=matrixA(f),ok=A.every((row,i)=>row>=0&&encode(row)===applyPerm(GROWS[i],f)),rk=ok?rank12(A):0;
   const o=G.orb,n=o.found.size,r=o.basis.length,done=!o.frontier.length;
-  const msg=done?(n===759&&r===12?`Closed after ${o.step} steps: all 759 octads, and they span the whole Golay code.`:`Closed after ${o.step} steps: ${n} octads spanning ${fmtN(2**r)} codewords. This pair does not reach every octad.`)
-    :o.step===0?'Ready. The board shows the starting octad.':`${o.frontier.length} new octad${o.frontier.length===1?'':'s'} in the last step. The board shows the newest.`;
-  h+=`<section><p class="eyebrow">Grow the code from one octad</p>
-    <p class="small" style="margin-bottom:.6rem">Start with the octad made of the first two columns. Each step applies a and b to the octads found in the last step and keeps the new ones. Rank counts how many of them are linearly independent.</p>
+  const msg=done?(n===759&&r===12?`Closed after ${o.step} steps: all 759 octads, and they span the whole Golay code.`:`Closed after ${o.step} steps: ${n} octads, rank ${r}.`)
+    :o.step===0?'Ready. The board shows row 1 of G.':`${o.frontier.length} new octad${o.frontier.length===1?'':'s'} in the last step. The board shows the newest.`;
+  h+=`<section><p class="eyebrow">3 · How they connect: GP = AG</p>
+    <p class="lede">G is the matrix from part 1. P is the 24 × 24 permutation matrix of a symmetry; GP moves the columns of G, giving 12 new rows. Since the symmetry preserves the code, each new row is again a codeword, so it is a sum of the old rows. A records those sums. It is an invertible 12 × 12 binary matrix.</p>
+    <p class="note" style="margin-top:.7rem">The pair in part 2 is written in different labels from the matrix. As printed, a sends ${NAIVE_A} of the 12 rows of G outside the code and b sends ${NAIVE_B}, so the labels have to be aligned first. The page computes a relabelling σ from the pair's labels to G's coordinates. Any of 244 823 040 relabellings would work; this one keeps 1–5 in place.</p>
+    <p class="small" style="margin-top:.6rem">σ:</p><div class="relabel">${PSI.map((y,x)=>`<span>${x+1}→${y+1}</span>`).join('')}</div>
+    <div class="gens" style="margin-top:.8rem">
+      <div class="gen"><h4><i>a</i>′ = σ⁻¹<i>a</i>σ</h4><div class="perm">${cycleStr(GA)}</div></div>
+      <div class="gen"><h4><i>b</i>′ = σ⁻¹<i>b</i>σ</h4><div class="perm">${cycleStr(GB)}</div></div>
+    </div>
+    <p class="small" style="margin-top:.5rem">Same cycle shapes, new numbers. Now both preserve the code of G.</p>
+    <div class="actions" style="margin-top:.8rem;align-items:center"><span class="small">P from</span><div class="seg" role="group" aria-label="Symmetry for P">${['a','b','ab'].map(k=>`<button data-act="pp-${k}" aria-pressed="${G.pP===k}">${k==='a'?'a′':k==='b'?'b′':'a′b′'}</button>`).join('')}</div></div>
+    <p class="small" style="margin-top:.6rem">A for P = ${pn}. Row i of A says which rows of G add up to row i of GP.</p>
+    <div class="amat" aria-label="Matrix A">${A.map((row,i)=>`<div class="arow"><span class="ri">${i+1}</span>${sqRow(row,12,-1)}</div>`).join('')}</div>
+    <p class="feedback ${ok?'ok':'no'}" style="margin-top:.5rem">${ok?`GP = AG holds in all 288 entries, and A has rank ${rk}, so it is invertible.`:'GP = AG fails for this P.'}</p>
+    <div class="actions"><button class="btn" data-act="ap-a">Apply a′ to the board</button><button class="btn" data-act="ap-b">Apply b′ to the board</button></div>
+    <p class="eyebrow" style="margin-top:1.1rem">The symmetries reach every octad</p>
+    <p class="small" style="margin-bottom:.6rem">Start from row 1 of G. Apply a′ and b′ to the newest octads, keep the new ones, repeat. Rank counts how many are linearly independent.</p>
     <div class="stats"><div class="stat"><span>Step</span><b>${o.step}</b></div><div class="stat"><span>Octads</span><b>${n} / 759</b></div><div class="stat"><span>Rank</span><b>${r} / 12</b></div><div class="stat"><span>Codewords spanned</span><b>${fmtN(2**r)}</b></div></div>
     <div class="bar" aria-hidden="true" style="margin-top:.6rem"><div style="width:${(n/759*100).toFixed(1)}%"></div></div>
     <p class="feedback ${done?'ok':''}" style="margin-top:.5rem">${msg}</p>
-    <div class="actions"><button class="btn primary" data-act="orb-step"${done?' disabled':''}>Step</button><button class="btn" data-act="orb-run"${done?' disabled':''}>${G.timer?'Pause':'Run'}</button><button class="btn" data-act="orb-reset">Reset</button></div></section>`;
-  const ss=G.ss||(G.ss=schreierSims([G.a,G.b]));let run=1;
-  const name=KNOWN[ss.order]||`a subgroup of index ${fmtN(244823040/ss.order)} in M₂₄`;
-  const sel=G.show==='chain'&&G.lvl>=0?ss.levels[G.lvl]:null;
-  h+=`<section><p class="eyebrow">How big is ⟨a, b⟩? Schreier–Sims</p>
-    <p class="small" style="margin-bottom:.6rem">Pin points one at a time. Each row counts the places the next point can still reach while the earlier points stay put. The product of those counts is the order of the group. Tap a row to see it on the board.</p>
-    <div class="ladder" role="group" aria-label="Stabilizer chain">
-      <div class="lrow" style="cursor:default;padding-block:0"><span class="li"></span><span class="small">point</span><span class="lp">places</span><span class="lp">product</span></div>
-      ${ss.levels.map((l,i)=>{run*=l.size;return`<button class="lrow" data-act="lvl-${i}" aria-pressed="${G.show==='chain'&&G.lvl===i}"><span class="li">${i+1}</span><span>point ${l.b+1}</span><span class="lo">${l.size}</span><span class="lp">${fmtN(run)}</span></button>`;}).join('')}
-    </div>
-    <div class="total"><b>${fmtN(ss.order)}</b><span>${name}</span></div>
-    ${sel?`<p class="note" style="margin-top:.6rem">Row ${G.lvl+1}: ${G.lvl?`points labelled 1–${G.lvl} are pinned (blue), and `:''}point ${sel.b+1} (amber) can move to the ${sel.size-1} ringed cells, ${sel.size} places counting where it is.</p>`:''}
-    <p class="small" style="margin-top:.6rem">${ss.strong} strong generators, found by sifting ${fmtN(ss.sifted)} Schreier generators.</p></section>`;
+    <div class="actions"><button class="btn primary" data-act="orb-step"${done?' disabled':''}>Step</button><button class="btn" data-act="orb-run"${done?' disabled':''}>${G.timer?'Pause':'Run'}</button><button class="btn" data-act="orb-reset">Reset</button></div>
+    <p class="note blue" style="margin-top:1rem">The 12 generators construct the objects. The 2 generators construct the symmetries of those objects. That is why 12 and 2 mean completely different things.</p></section>`;
   return h;}
 function actGen(a){const G=S.gen;
   if(a.startsWith('row-')){const r=a.slice(4);stopRun();G.show='matrix';
-    if(r==='rand')G.sel=1+rnd(4095);else if(r==='all')G.sel=4095;else if(r==='clear')G.sel=0;else G.sel^=1<<+r;return;}
-  if(a.startsWith('ap-')){stopRun();const f=a==='ap-a'?G.a:a==='ap-b'?G.b:comp(G.a,G.b);const w=viewGen().word;G.show='free';G.word=w;render();
+    if(r==='rand')G.sel=1+rnd(4095);else if(r==='one')G.sel=1;else if(r==='clear')G.sel=0;else G.sel^=1<<+r;return;}
+  if(a.startsWith('pp-')){G.pP=a.slice(3);return;}
+  if(a.startsWith('ap-')){stopRun();const f=a==='ap-a'?GA_C:GB_C;const w=viewGen().word;G.show='free';G.word=w;render();
     flyPerm(w,f,null,()=>{G.word=0;},nw=>{G.word=nw;});return true;}
-  if(a==='pair-rand')setPair(randomPair());
-  else if(a==='pair-def')setPair([GEN_A,GEN_B]);
-  else if(a==='orb-step'){stopRun();G.show='orbit';orbStep();}
+  if(a==='orb-step'){stopRun();G.show='orbit';orbStep();}
   else if(a==='orb-run'){if(G.timer)stopRun();else startRun();}
   else if(a==='orb-reset'){orbReset();G.show='orbit';}
   else if(a.startsWith('lvl-')){const i=+a.slice(4);stopRun();if(G.show==='chain'&&G.lvl===i){G.show='matrix';G.lvl=-1;}else{G.show='chain';G.lvl=i;}}
