@@ -61,6 +61,6 @@ window.EXPLORE = [
     badge: 'M24',
     title: 'Golay MOG Lab',
     path: 'explore/golay/',
-    desc: 'The binary Golay code on the Miracle Octad Generator. Complete octads, colour sextets, decode noisy messages and let M24 move the 24 points.'
+    desc: 'The binary Golay code on the Miracle Octad Generator. Complete octads, colour sextets, decode noisy messages, and build the code and M24 from a generator matrix and two permutations.'
   }
 ];

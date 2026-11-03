@@ -75,6 +75,7 @@ nav.tabs a:focus-visible{outline:2px solid var(--bit);outline-offset:2px}
 .dg{font:500 .8rem/1 var(--f-mono);text-align:center;color:var(--muted);padding-top:6px;font-variant-numeric:tabular-nums}
 .dg.bad{color:var(--bad);font-weight:600}
 .dg.sc{font-size:.92rem}
+.board .sep{grid-column:1/-1;height:0}
 .bits{margin-top:14px;font:500 .78rem var(--f-mono);color:var(--muted);letter-spacing:.04em;overflow-x:auto;white-space:nowrap}
 .bits b{color:var(--ink);font-weight:500}
 .caption{margin:.5rem 0 0;font-size:.8rem;color:var(--muted);max-width:52ch}
@@ -119,10 +120,35 @@ code{background:var(--sheet);border:1px solid var(--line);border-radius:4px;padd
 .fact span{font-size:.85rem;color:var(--muted)}
 .lede{margin:0;max-width:60ch}
 .small{font-size:.84rem;color:var(--muted);margin:0;max-width:62ch}
+nav.tabs{flex-wrap:wrap}
+.gm{display:flex;flex-direction:column;gap:3px;overflow-x:auto}
+.gmrow{display:flex;align-items:center;gap:10px;width:max-content;min-width:100%;font:500 .8rem/1.2 var(--f-mono);letter-spacing:.03em;background:transparent;border:1px solid transparent;border-radius:6px;padding:.3rem .5rem;color:var(--muted);cursor:pointer;text-align:left}
+.gmrow:hover{border-color:var(--line)}
+.gmrow:focus-visible{outline:2px solid var(--bit);outline-offset:1px}
+.gmrow[aria-pressed="true"]{background:var(--sheet);border-color:var(--bit);color:var(--ink)}
+.gmrow .ri{font:italic 500 .95rem var(--f-display);color:var(--muted);width:2.1rem}
+.gmrow b{color:var(--bit);font-weight:600}
+.perm{font:500 .78rem/1.6 var(--f-mono);overflow-x:auto;white-space:nowrap;background:var(--sheet);border:1px solid var(--line);border-radius:6px;padding:.4rem .6rem}
+.gens{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.gen h4{margin:0 0 .3rem;font:500 1.15rem var(--f-display)}
+.gen h4 i{font-weight:500}
+.bar{height:6px;background:var(--sheet);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.bar div{height:100%;background:var(--bit);transition:width .2s}
+.ladder{display:flex;flex-direction:column;gap:2px;font-variant-numeric:tabular-nums}
+.lrow{display:grid;grid-template-columns:2rem minmax(0,1fr) 3.5rem minmax(0,7.5rem);gap:8px;align-items:center;background:transparent;border:1px solid transparent;border-radius:6px;padding:.35rem .5rem;font:inherit;color:var(--ink);text-align:left;cursor:pointer}
+.lrow:hover{border-color:var(--line)}
+.lrow[aria-pressed="true"]{background:var(--sheet);border-color:var(--bit)}
+.lrow:focus-visible{outline:2px solid var(--bit);outline-offset:1px}
+.lrow .li{color:var(--muted);font:.8rem var(--f-mono)}
+.lrow .lo{font:600 1rem var(--f-mono);text-align:right}
+.lrow .lp{font:.8rem var(--f-mono);color:var(--muted);text-align:right}
+.total{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;border-top:1px solid var(--line);padding-top:.6rem;margin-top:.3rem}
+.total b{font:500 1.5rem var(--f-display);font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion: reduce){ .cell{transition:none} .cell:active{transform:none} }
 </style>
 </head>
 <body>
+
 <div class="wrap">
   <a class="back" href="../../">← Back</a>
   <header class="top">
@@ -134,6 +160,7 @@ code{background:var(--sheet);border:1px solid var(--line);border-radius:4px;padd
       <a href="#explore" data-mode="explore">Explore</a>
       <a href="#play" data-mode="play">Play</a>
       <a href="#m24" data-mode="m24">M₂₄</a>
+      <a href="#generate" data-mode="generate">Generate</a>
     </nav>
   </header>
 
@@ -242,6 +269,35 @@ const gcd=(a,b)=>b?gcd(b,a%b):a;
 const SUP='⁰¹²³⁴⁵⁶⁷⁸⁹';
 function shapeOf(f){const cnt={};for(const c of cyclesOf(f))cnt[c.length]=(cnt[c.length]||0)+1;const keys=Object.keys(cnt).map(Number).sort((a,b)=>a-b);
   return{text:keys.map(k=>k+(cnt[k]>1?String(cnt[k]).split('').map(d=>SUP[d]).join(''):'')).join(' '),order:keys.reduce((a,b)=>a*b/gcd(a,b),1),fixed:cnt[1]||0};}
+// permutations: p[x] is the image of x; comp(p,q) = first p, then q
+const ID=[...Array(24).keys()];
+const comp=(p,q)=>p.map(x=>q[x]);
+const inv=p=>{const r=new Array(24);p.forEach((y,x)=>r[y]=x);return r;};
+const isId=p=>p.every((y,x)=>y===x);
+const powPerm=(p,n)=>{let r=ID;for(let i=0;i<n;i++)r=comp(r,p);return r;};
+// generator matrix in reduced row-echelon form (pivot = lowest index in each row)
+const GENMAT=(()=>{const rows=[];for(const w of CODE){let x=w;for(const r of rows)if(x&(r&-r))x^=r;
+  if(x){const p=x&-x;for(let k=0;k<rows.length;k++)if(rows[k]&p)rows[k]^=x;rows.push(x);if(rows.length===12)break;}}
+  return rows.sort((a,b)=>(a&-a)-(b&-b));})();
+const PIVOTS=GENMAT.reduce((m,r)=>m|(r&-r),0);
+// deterministic Schreier–Sims: base, basic orbit sizes and the group order
+function schreierSims(gens){
+  const L=[];let sifted=0;
+  const gensFrom=i=>{let g=[];for(let k=i;k<L.length;k++)g=g.concat(L[k].gens);return g;};
+  const orbit=i=>{const b=L[i].b,G=gensFrom(i),t=new Map([[b,ID]]),q=[b];
+    while(q.length){const x=q.shift(),u=t.get(x);for(const s of G){const y=s[x];if(!t.has(y)){t.set(y,comp(u,s));q.push(y);}}}L[i].trans=t;};
+  const sift=(g,i)=>{let h=g;for(;i<L.length;i++){const u=L[i].trans.get(h[L[i].b]);if(!u)return{h,i};h=comp(h,inv(u));}return{h,i:L.length};};
+  const add=(g,d)=>{if(d===L.length){let b=0;while(g[b]===b)b++;L.push({b,gens:[],trans:null});}L[d].gens.push(g);for(let k=0;k<=d;k++)orbit(k);};
+  for(const g of gens){const r=sift(g,0);if(!isId(r.h))add(r.h,r.i);}
+  let changed=true;
+  while(changed){changed=false;
+    outer:for(let i=L.length-1;i>=0;i--){const G=gensFrom(i);
+      for(const [x,u] of L[i].trans)for(const s of G){
+        const h=comp(comp(u,s),inv(L[i].trans.get(s[x])));sifted++;
+        const r=sift(h,i+1);if(!isId(r.h)){add(r.h,r.i);changed=true;break outer;}}}}
+  const levels=L.map(l=>({b:l.b,orbit:maskOf([...l.trans.keys()]),size:l.trans.size}));
+  return{levels,order:levels.reduce((a,l)=>a*l.size,1),sifted,strong:L.reduce((a,l)=>a+l.gens.length,0)};
+}
 // ==/CORE==
 
 // ===== APP =====
@@ -261,6 +317,11 @@ const S={
   play:{game:'noise',level:2,hint:false,noise:null,hunt:null,streakN:0,streakH:0,bestN:store.get('golay-bestN',0),bestH:store.get('golay-bestH',0)},
   m:{word:0,base:0,labels:null,baseLabels:null,g:null,k:0,pick:null,maps:null,mapIdx:0}
 };
+// default generators: a has order 23, b is an involution of shape 1⁸ 2⁸; together they generate M24
+const GEN_A=[14,19,3,21,5,15,12,11,18,7,16,10,2,1,6,8,4,23,22,9,20,17,0,13];
+const GEN_B=[0,11,8,3,4,15,12,7,2,9,10,1,6,13,14,5,17,16,20,22,18,23,19,21];
+const KNOWN={244823040:'M₂₄, the whole symmetry group',10200960:'M₂₃, the stabilizer of one point',443520:'M₂₂',887040:'M₂₂:2',6072:'L₂(23)',253:'23:11',23:'the cyclic group generated by a alone'};
+S.gen={sel:0,show:'matrix',word:0,a:GEN_A,b:GEN_B,ss:null,lvl:-1,orb:null,timer:null};
 // opening states
 {const o=pick(OCTADS);S.ex.word=maskOf(shuffle(bitsOf(o)).slice(0,5));}
 S.m.word=pick(OCTADS);S.m.base=S.m.word;S.m.g=randomElement();
@@ -280,6 +341,7 @@ const EMPTY={word:0,pick:0,good:0,ghost:0,bad:0,fixed:0,locked:0,tint:null,t1:nu
 function view(){
   if(S.mode==='explore')return viewExplore();
   if(S.mode==='play')return S.play.game==='noise'?viewNoise():viewHunt();
+  if(S.mode==='generate')return viewGen();
   return viewM();
 }
 function renderBoard(){
@@ -298,12 +360,13 @@ function renderBoard(){
 }
 function render(){
   renderBoard();
-  $('#panel').innerHTML=S.mode==='explore'?panelExplore():S.mode==='play'?panelPlay():panelM();
+  $('#panel').innerHTML=S.mode==='explore'?panelExplore():S.mode==='play'?panelPlay():S.mode==='generate'?panelGen():panelM();
 }
 function onCell(i){
   if(S.anim)return;
   if(S.mode==='explore'){S.ex.word^=1<<i;S.ex.nearIdx=0;}
   else if(S.mode==='play'){S.play.game==='noise'?tapNoise(i):tapHunt(i);}
+  else if(S.mode==='generate'){const G=S.gen;G.word=viewGen().word^(1<<i);G.show='free';}
   else tapM(i);
   render();
 }
@@ -442,8 +505,10 @@ function tapM(i){const M=S.m;
       M.word=M.base;M.labels=M.baseLabels;M.g=M.maps[0];M.k=0;M.pick=null;requestAnimationFrame(()=>applyG());}
     return;}
   M.word^=1<<i;M.base=M.word;M.k=0;M.labels=null;M.baseLabels=null;M.maps=null;}
-function applyG(){const M=S.m,f=M.g,prev=M.word,lab=M.labels;
-  const finish=()=>{M.word=applyPerm(prev,f);if(lab){const nl=new Array(24);lab.forEach((t,i)=>{if(t)nl[f[i]]=t;});M.labels=nl;}M.k++;S.anim=false;render();};
+function applyG(){const M=S.m;
+  flyPerm(M.word,M.g,M.labels,()=>{M.word=0;M.labels=null;},(w,nl)=>{M.word=w;M.labels=nl;M.k++;});}
+function flyPerm(prev,f,lab,hide,land){
+  const finish=()=>{let nl=null;if(lab){nl=new Array(24);lab.forEach((t,i)=>{if(t)nl[f[i]]=t;});}land(applyPerm(prev,f),nl);S.anim=false;render();};
   const list=bitsOf(prev);
   if(reduceMotion||!list.length){finish();return;}
   const rects=cells.map(c=>c.getBoundingClientRect());const layer=$('#fly');const dur=720,stag=24;
@@ -451,7 +516,7 @@ function applyG(){const M=S.m,f=M.g,prev=M.word,lab=M.labels;
     d.style.cssText=`left:${a.left}px;top:${a.top}px;width:${a.width}px;height:${a.height}px`;if(lab&&lab[i])d.textContent=lab[i];layer.appendChild(d);
     const dx=b.left-a.left,dy=b.top-a.top;
     d.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${dx/2}px,${dy/2}px) scale(.62)`,offset:.5},{transform:`translate(${dx}px,${dy}px) scale(1)`}],{duration:dur,delay:n*stag,easing:'cubic-bezier(.55,0,.25,1)',fill:'forwards'});});
-  S.anim=true;M.word=0;M.labels=null;renderBoard();
+  S.anim=true;hide();renderBoard();
   setTimeout(()=>{layer.innerHTML='';finish();},dur+stag*list.length+40);}
 function panelM(){const M=S.m;let h='';
   if(M.pick){const P=M.pick;const step=P.src.length<5;
@@ -482,15 +547,92 @@ function actM(a){const M=S.m;
   if(a==='m-junk')setBoard(maskOf(shuffle([...Array(24).keys()]).slice(0,6)));if(a==='m-clear')setBoard(0);
 }
 
+// ----- generate -----
+const SUB='₀₁₂₃₄₅₆₇₈₉';const subN=n=>String(n).split('').map(d=>SUB[d]).join('');
+const cycleStr=f=>cyclesOf(f).filter(c=>c.length>1).map(c=>'('+c.map(i=>i+1).join(' ')+')').join('');
+function rowBits(r){let s='';for(let c=0;c<6;c++){for(let k=0;k<4;k++){const i=c*4+k,bit=(r>>>i)&1;s+=(PIVOTS>>>i&1)?`<b>${bit}</b>`:bit;}s+=c%2?(c<5?' · ':''):' ';}return s;}
+function selWord(){let w=0;GENMAT.forEach((r,k)=>{if(S.gen.sel>>k&1)w^=r;});return w;}
+function orbInsert(x){const B=S.gen.orb.basis;for(const r of B)if(x&(r&-r))x^=r;if(x){const p=x&-x;for(let k=0;k<B.length;k++)if(B[k]&p)B[k]^=x;B.push(x);}}
+function orbReset(){const G=S.gen;stopRun();const O0=15|(15<<4);G.orb={found:new Set([O0]),frontier:[O0],step:0,basis:[],last:O0};orbInsert(O0);}
+function orbStep(){const G=S.gen,o=G.orb;if(!o.frontier.length)return false;const nx=[];
+  for(const w of o.frontier)for(const f of [G.a,G.b]){const x=applyPerm(w,f);if(!o.found.has(x)){o.found.add(x);nx.push(x);orbInsert(x);}}
+  o.frontier=nx;o.step++;if(nx.length)o.last=nx[nx.length-1];return nx.length>0;}
+function stopRun(){const G=S.gen;if(G.timer){clearInterval(G.timer);G.timer=null;}}
+function startRun(){const G=S.gen;stopRun();G.show='orbit';
+  G.timer=setInterval(()=>{if(S.mode!=='generate'){stopRun();return;}if(!orbStep())stopRun();render();},reduceMotion?80:340);}
+function randomPair(){let a,b;for(;;){a=randomElement();if(shapeOf(a).order===23)break;}
+  for(;;){const g=randomElement(),o=shapeOf(g).order;if(o%2===0){b=powPerm(g,o/2);break;}}return[a,b];}
+function setPair([a,b]){const G=S.gen;G.a=a;G.b=b;G.ss=schreierSims([a,b]);G.lvl=-1;if(G.show==='chain')G.show='matrix';orbReset();}
+function viewGen(){const G=S.gen;
+  if(G.show==='matrix')return{word:selWord()};
+  if(G.show==='orbit')return{word:G.orb.last};
+  if(G.show==='chain'&&G.ss&&G.lvl>=0){const L=G.ss.levels,t1=new Array(24);let w=0;
+    for(let k=0;k<G.lvl;k++){w|=1<<L[k].b;t1[L[k].b]=String(k+1);}
+    const b=L[G.lvl].b;t1[b]=String(G.lvl+1);return{word:w,pick:1<<b,ghost:L[G.lvl].orbit&~(1<<b),t1};}
+  return{word:G.word};}
+function panelGen(){const G=S.gen;const sa=shapeOf(G.a),sb=shapeOf(G.b),sab=shapeOf(comp(G.a,G.b));let h='';
+  h+=`<section class="status"><div class="kind">Generate</div><div class="meta">All 4096 codewords from 12 rows, and all of M₂₄ from two permutations.</div></section>`;
+  const w=selWord(),k=pc(G.sel),wt=pc(w);
+  h+=`<section><p class="eyebrow">Generator matrix G · 12 × 24</p>
+    <p class="small" style="margin-bottom:.6rem">Reduced row-echelon form. Bits run column by column, top to bottom, as in the line under the board. Blue bits are the pivots; those 12 positions form an information set. Every row happens to be an octad. Tap rows to add them.</p>
+    <div class="gm" role="group" aria-label="Rows of G">${GENMAT.map((r,i)=>`<button class="gmrow" data-act="row-${i}" aria-pressed="${!!(G.sel>>i&1)}"><span class="ri">g${subN(i+1)}</span><span>${rowBits(r)}</span></button>`).join('')}</div>
+    <p class="feedback ${k?'ok':''}" style="margin-top:.5rem">${k?`Sum of ${k} row${k>1?'s':''}: weight ${wt}, ${KIND[wt]==='Empty word'?'the empty word':KIND[wt].toLowerCase()}.`:'No rows chosen: the empty word.'}</p>
+    <p class="small">Each of the 2¹² = 4096 choices of rows gives a different codeword, and every codeword arises this way.</p>
+    <div class="actions" style="margin-top:.6rem"><button class="btn" data-act="row-rand">Random sum</button><button class="btn" data-act="row-all">All 12</button><button class="btn" data-act="row-clear">Clear</button></div></section>`;
+  h+=`<section><p class="eyebrow">Two permutations</p>
+    <p class="small" style="margin-bottom:.6rem">Points are numbered 1–24 down each column, left to right. Cycles of length 1 are left out.</p>
+    <div class="gens">
+      <div class="gen"><h4><i>a</i> · order ${sa.order}</h4><p class="small">cycle shape ${sa.text}</p><div class="perm">${cycleStr(G.a)}</div></div>
+      <div class="gen"><h4><i>b</i> · order ${sb.order}</h4><p class="small">cycle shape ${sb.text}</p><div class="perm">${cycleStr(G.b)}</div></div>
+    </div>
+    <p class="small" style="margin-top:.6rem">Their product <i>ab</i> (a first, then b) has shape ${sab.text} and order ${sab.order}.</p>
+    <div class="actions" style="margin-top:.6rem"><button class="btn" data-act="ap-a">Apply a</button><button class="btn" data-act="ap-b">Apply b</button><button class="btn" data-act="ap-ab">Apply ab</button><button class="btn" data-act="pair-rand">New random pair</button><button class="btn" data-act="pair-def">Default pair</button></div>
+    <p class="small" style="margin-top:.5rem">A new pair is a random element of order 23 and a random involution. Most pairs generate all of M₂₄; when both fix the same point you get M₂₃.</p></section>`;
+  const o=G.orb,n=o.found.size,r=o.basis.length,done=!o.frontier.length;
+  const msg=done?(n===759&&r===12?`Closed after ${o.step} steps: all 759 octads, and they span the whole Golay code.`:`Closed after ${o.step} steps: ${n} octads spanning ${fmtN(2**r)} codewords. This pair does not reach every octad.`)
+    :o.step===0?'Ready. The board shows the starting octad.':`${o.frontier.length} new octad${o.frontier.length===1?'':'s'} in the last step. The board shows the newest.`;
+  h+=`<section><p class="eyebrow">Grow the code from one octad</p>
+    <p class="small" style="margin-bottom:.6rem">Start with the octad made of the first two columns. Each step applies a and b to the octads found in the last step and keeps the new ones. Rank counts how many of them are linearly independent.</p>
+    <div class="stats"><div class="stat"><span>Step</span><b>${o.step}</b></div><div class="stat"><span>Octads</span><b>${n} / 759</b></div><div class="stat"><span>Rank</span><b>${r} / 12</b></div><div class="stat"><span>Codewords spanned</span><b>${fmtN(2**r)}</b></div></div>
+    <div class="bar" aria-hidden="true" style="margin-top:.6rem"><div style="width:${(n/759*100).toFixed(1)}%"></div></div>
+    <p class="feedback ${done?'ok':''}" style="margin-top:.5rem">${msg}</p>
+    <div class="actions"><button class="btn primary" data-act="orb-step"${done?' disabled':''}>Step</button><button class="btn" data-act="orb-run"${done?' disabled':''}>${G.timer?'Pause':'Run'}</button><button class="btn" data-act="orb-reset">Reset</button></div></section>`;
+  const ss=G.ss||(G.ss=schreierSims([G.a,G.b]));let run=1;
+  const name=KNOWN[ss.order]||`a subgroup of index ${fmtN(244823040/ss.order)} in M₂₄`;
+  const sel=G.show==='chain'&&G.lvl>=0?ss.levels[G.lvl]:null;
+  h+=`<section><p class="eyebrow">How big is ⟨a, b⟩? Schreier–Sims</p>
+    <p class="small" style="margin-bottom:.6rem">Pin points one at a time. Each row counts the places the next point can still reach while the earlier points stay put. The product of those counts is the order of the group. Tap a row to see it on the board.</p>
+    <div class="ladder" role="group" aria-label="Stabilizer chain">
+      <div class="lrow" style="cursor:default;padding-block:0"><span class="li"></span><span class="small">point</span><span class="lp">places</span><span class="lp">product</span></div>
+      ${ss.levels.map((l,i)=>{run*=l.size;return`<button class="lrow" data-act="lvl-${i}" aria-pressed="${G.show==='chain'&&G.lvl===i}"><span class="li">${i+1}</span><span>point ${l.b+1}</span><span class="lo">${l.size}</span><span class="lp">${fmtN(run)}</span></button>`;}).join('')}
+    </div>
+    <div class="total"><b>${fmtN(ss.order)}</b><span>${name}</span></div>
+    ${sel?`<p class="note" style="margin-top:.6rem">Row ${G.lvl+1}: ${G.lvl?`points labelled 1–${G.lvl} are pinned (blue), and `:''}point ${sel.b+1} (amber) can move to the ${sel.size-1} ringed cells, ${sel.size} places counting where it is.</p>`:''}
+    <p class="small" style="margin-top:.6rem">${ss.strong} strong generators, found by sifting ${fmtN(ss.sifted)} Schreier generators.</p></section>`;
+  return h;}
+function actGen(a){const G=S.gen;
+  if(a.startsWith('row-')){const r=a.slice(4);stopRun();G.show='matrix';
+    if(r==='rand')G.sel=1+rnd(4095);else if(r==='all')G.sel=4095;else if(r==='clear')G.sel=0;else G.sel^=1<<+r;return;}
+  if(a.startsWith('ap-')){stopRun();const f=a==='ap-a'?G.a:a==='ap-b'?G.b:comp(G.a,G.b);const w=viewGen().word;G.show='free';G.word=w;render();
+    flyPerm(w,f,null,()=>{G.word=0;},nw=>{G.word=nw;});return true;}
+  if(a==='pair-rand')setPair(randomPair());
+  else if(a==='pair-def')setPair([GEN_A,GEN_B]);
+  else if(a==='orb-step'){stopRun();G.show='orbit';orbStep();}
+  else if(a==='orb-run'){if(G.timer)stopRun();else startRun();}
+  else if(a==='orb-reset'){orbReset();G.show='orbit';}
+  else if(a.startsWith('lvl-')){const i=+a.slice(4);stopRun();if(G.show==='chain'&&G.lvl===i){G.show='matrix';G.lvl=-1;}else{G.show='chain';G.lvl=i;}}
+}
+
 // ----- wiring -----
 $('#panel').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||S.anim)return;const a=b.dataset.act;
-  if(S.mode==='explore')actExplore(a);else if(S.mode==='play')actPlay(a);else if(actM(a))return;render();});
-function route(){const h=location.hash.replace('#','');S.mode=['explore','play','m24'].includes(h)?h:'explore';
+  if(S.mode==='explore')actExplore(a);else if(S.mode==='play')actPlay(a);else if(S.mode==='generate'){if(actGen(a))return;}else if(actM(a))return;render();});
+function route(){const h=location.hash.replace('#','');S.mode=['explore','play','m24','generate'].includes(h)?h:'explore';
+  if(S.mode!=='generate')stopRun();
   document.querySelectorAll('nav.tabs a').forEach(a=>{if(a.dataset.mode===S.mode)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
   if(S.anim){$('#fly').innerHTML='';S.anim=false;}
   render();}
 window.addEventListener('hashchange',route);
-newNoise();newHunt();route();
+newNoise();newHunt();orbReset();route();
 </script>
 </body>
 </html>
