@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Golay MOG Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a two-pane workbench. The 4×6 MOG board sits on the left (sticky on wide screens), the mode panel on the right; stacks to one column on phones. */
+:root{
+  --paper:#ECEFF4; --sheet:#F8F9FC; --ink:#121A2C; --muted:#586379; --line:#C9D0DC;
+  --bit:#2340C4; --bit-ink:#FFFFFF; --ghost:#C27400; --ok:#15805A; --bad:#BD3434;
+  --s0:#F2C4BD; --s1:#F1DD98; --s2:#BCE2C4; --s3:#B6D7EF; --s4:#D5C9F2; --s5:#E3DCCB;
+  --f-display:"Bodoni Moda","Bodoni 72","Didot",Georgia,serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  color-scheme:light;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#0D1220; --sheet:#151C2D; --ink:#E6EAF2; --muted:#8E99AF; --line:#2A3348;
+  --bit:#6E8CFF; --bit-ink:#0D1220; --ghost:#FFB13D; --ok:#3CC48C; --bad:#FF6B6B;
+  --s0:#5E2C28; --s1:#5B4A1A; --s2:#21503A; --s3:#1C4561; --s4:#41376F; --s5:#3F3B30;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#0D1220; --sheet:#151C2D; --ink:#E6EAF2; --muted:#8E99AF; --line:#2A3348;
+  --bit:#6E8CFF; --bit-ink:#0D1220; --ghost:#FFB13D; --ok:#3CC48C; --bad:#FF6B6B;
+  --s0:#5E2C28; --s1:#5B4A1A; --s2:#21503A; --s3:#1C4561; --s4:#41376F; --s5:#3F3B30;
+  color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 48px}
+.back{display:inline-block;margin-bottom:14px;font:500 .88rem var(--f-body);color:var(--muted);text-decoration:none}
+.back:hover{color:var(--ink)}
+.back:focus-visible{outline:2px solid var(--bit);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 28px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+h1{font-family:var(--f-display);font-weight:500;font-size:clamp(2.1rem,6.5vw,3.2rem);line-height:.95;margin:0;letter-spacing:-.015em;text-wrap:balance}
+h1 i{font-weight:400}
+.sub{color:var(--muted);margin:.5rem 0 0;max-width:56ch}
+nav.tabs{display:flex;gap:2px;background:var(--sheet);border:1px solid var(--line);border-radius:999px;padding:3px}
+nav.tabs a{font:500 .9rem var(--f-body);color:var(--muted);text-decoration:none;padding:.42rem 1rem;border-radius:999px}
+nav.tabs a[aria-current="page"]{background:var(--ink);color:var(--paper)}
+nav.tabs a:focus-visible{outline:2px solid var(--bit);outline-offset:2px}
+
+.main{display:grid;grid-template-columns:minmax(0,430px) minmax(0,1fr);gap:32px;margin-top:24px;align-items:start}
+@media (max-width:780px){.main{grid-template-columns:minmax(0,1fr);gap:22px}}
+.boardcol{position:sticky;top:calc(env(safe-area-inset-top,0px) + 14px);min-width:0}
+@media (max-width:780px){.boardcol{position:static}}
+
+.board{display:grid;grid-template-columns:1.5rem repeat(2,minmax(0,1fr)) .55rem repeat(2,minmax(0,1fr)) .55rem repeat(2,minmax(0,1fr));gap:5px;user-select:none;-webkit-user-select:none}
+.rl{font-family:var(--f-display);font-style:italic;font-size:1.15rem;color:var(--muted);display:grid;place-items:center}
+.cell{aspect-ratio:1;max-width:100%;width:100%;border:1px solid var(--line);background:var(--sheet);border-radius:7px;position:relative;cursor:pointer;padding:0;transition:background-color .14s,border-color .14s,transform .08s;-webkit-tap-highlight-color:transparent}
+.cell:active{transform:scale(.93)}
+.cell:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.cell.tx0{background:var(--s0)} .cell.tx1{background:var(--s1)} .cell.tx2{background:var(--s2)}
+.cell.tx3{background:var(--s3)} .cell.tx4{background:var(--s4)} .cell.tx5{background:var(--s5)}
+.cell.on{background:var(--bit);border-color:var(--bit)}
+.cell.pick{background:var(--ghost);border-color:var(--ghost)}
+.cell.good{background:var(--ok);border-color:var(--ok)}
+.cell.ghost::after{content:"";position:absolute;inset:20%;border:2.5px dashed var(--ghost);border-radius:50%}
+.cell.bad::after{content:"";position:absolute;inset:16%;border:3px solid var(--bad);border-radius:50%}
+.cell.fixed{box-shadow:0 0 0 2px var(--paper),0 0 0 3.5px var(--muted)}
+.cell.locked{cursor:default}
+.t1,.t2{position:absolute;font:600 .7rem/1 var(--f-mono);pointer-events:none}
+.t1{left:5px;top:5px;color:var(--muted)}
+.t2{right:5px;bottom:5px;color:var(--bit)}
+.cell.on .t1,.cell.pick .t1,.cell.good .t1{color:var(--bit-ink)}
+.cell.on .t2{color:var(--bit-ink)}
+.dg{font:500 .8rem/1 var(--f-mono);text-align:center;color:var(--muted);padding-top:6px;font-variant-numeric:tabular-nums}
+.dg.bad{color:var(--bad);font-weight:600}
+.dg.sc{font-size:.92rem}
+.bits{margin-top:14px;font:500 .78rem var(--f-mono);color:var(--muted);letter-spacing:.04em;overflow-x:auto;white-space:nowrap}
+.bits b{color:var(--ink);font-weight:500}
+.caption{margin:.5rem 0 0;font-size:.8rem;color:var(--muted);max-width:52ch}
+[data-diag="off"] .dg,[data-diag="off"] .dgl,[data-diag="off"] .caption{display:none}
+
+#fly{position:fixed;inset:0;pointer-events:none;z-index:20}
+.flydot{position:fixed;background:var(--bit);border-radius:7px;color:var(--bit-ink);font:600 .7rem/1 var(--f-mono);padding:5px;will-change:transform}
+
+.panel{min-width:0;display:flex;flex-direction:column;gap:20px}
+.status{display:flex;flex-direction:column;gap:2px}
+.kind{font-family:var(--f-display);font-size:clamp(1.9rem,5vw,2.5rem);line-height:1.05;font-weight:500;text-wrap:balance}
+.status.ok .kind{color:var(--ok)}
+.meta{color:var(--muted);font-variant-numeric:tabular-nums}
+.eyebrow{font:600 .72rem var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 .5rem}
+.rules{display:flex;flex-direction:column;gap:10px}
+.rule{display:grid;grid-template-columns:1.6rem minmax(0,1fr);gap:8px;align-items:start}
+.mark{width:1.4rem;height:1.4rem;border-radius:50%;display:grid;place-items:center;font:700 .78rem var(--f-mono);color:var(--paper);background:var(--bad);margin-top:1px}
+.rule.ok .mark{background:var(--ok)}
+.rule p{margin:0;max-width:62ch}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+code{background:var(--sheet);border:1px solid var(--line);border-radius:4px;padding:.05em .35em;white-space:nowrap}
+.note{border-left:3px solid var(--ghost);padding:.1rem 0 .1rem .8rem;margin:0;max-width:62ch}
+.note.blue{border-color:var(--bit)}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font:500 .88rem var(--f-body);padding:.55rem .9rem;border-radius:8px;border:1px solid var(--line);background:var(--sheet);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn:focus-visible{outline:2px solid var(--bit);outline-offset:2px}
+.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn[disabled]{opacity:.45;cursor:default}
+.seg{display:inline-flex;gap:2px;background:var(--sheet);border:1px solid var(--line);border-radius:9px;padding:3px;flex-wrap:wrap}
+.seg button{font:500 .86rem var(--f-body);border:0;background:transparent;color:var(--muted);padding:.4rem .8rem;border-radius:6px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.seg button:focus-visible{outline:2px solid var(--bit);outline-offset:1px}
+.stats{display:flex;flex-wrap:wrap;gap:8px 26px}
+.stat{display:flex;flex-direction:column}
+.stat span{font:600 .7rem var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stat b{font:500 1.5rem/1.2 var(--f-display);font-variant-numeric:tabular-nums}
+.feedback{min-height:1.5em;margin:0;font-weight:500}
+.feedback.ok{color:var(--ok)} .feedback.no{color:var(--bad)}
+.facts{border-top:1px solid var(--line);padding-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px 24px}
+.fact b{display:block;font:500 1.2rem/1.2 var(--f-display);font-variant-numeric:tabular-nums}
+.fact span{font-size:.85rem;color:var(--muted)}
+.lede{margin:0;max-width:60ch}
+.small{font-size:.84rem;color:var(--muted);margin:0;max-width:62ch}
+@media (prefers-reduced-motion: reduce){ .cell{transition:none} .cell:active{transform:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../../">← Back</a>
+  <header class="top">
+    <div>
+      <h1>Golay <i>MOG</i> Lab</h1>
+      <p class="sub">The binary Golay code C₂₄ drawn on Curtis's Miracle Octad Generator: 24 points in a 4 × 6 grid, three bricks of two columns. Tap points to build words.</p>
+    </div>
+    <nav class="tabs" aria-label="Mode">
+      <a href="#explore" data-mode="explore">Explore</a>
+      <a href="#play" data-mode="play">Play</a>
+      <a href="#m24" data-mode="m24">M₂₄</a>
+    </nav>
+  </header>
+
+  <div class="main">
+    <div class="boardcol">
+      <div id="boardwrap" data-diag="on">
+        <div class="board" id="board" role="group" aria-label="MOG board, 24 points"></div>
+        <div class="bits" id="bits"></div>
+        <p class="caption">Rows carry the labels of 𝔽₄ = {0, 1, ω, ω̄}. Under the board: <i>n</i> is the number of points in each column, <i>σ</i> is the column's score, the 𝔽₄-sum of its row labels.</p>
+      </div>
+    </div>
+    <div class="panel" id="panel" aria-live="polite"></div>
+  </div>
+</div>
+<div id="fly"></div>
+
+<script>
+// ==CORE==
+const FULL=(1<<24)-1;
+const pc=x=>{x=x-((x>>>1)&0x55555555);x=(x&0x33333333)+((x>>>2)&0x33333333);return(((x+(x>>>4))&0x0F0F0F0F)*0x01010101)>>>24;};
+const bitsOf=m=>{const a=[];for(let i=0;i<24;i++)if(m>>>i&1)a.push(i);return a;};
+const maskOf=a=>a.reduce((m,i)=>m|(1<<i),0);
+// F4 = {0,1,ω,ω̄} encoded 0,1,2,3; addition is XOR
+const LOG=[-1,0,1,2],EXP=[1,2,3];
+const fmul=(a,b)=>(!a||!b)?0:EXP[(LOG[a]+LOG[b])%3];
+const SYM=['0','1','ω','ω̄'];
+const phiOf=(a,b,c)=>x=>fmul(a,fmul(x,x))^fmul(b,x)^c;
+const HEX=[];
+for(let a=0;a<4;a++)for(let b=0;b<4;b++)for(let c=0;c<4;c++){const p=phiOf(a,b,c);HEX.push([a,b,c,p(1),p(2),p(3)]);}
+const HEXKEY=new Set(HEX.map(h=>h.join('')));
+// point index = column*4 + row ; row r carries label r
+const colBits=(w,c)=>(w>>>(c*4))&15;
+const scoreOf=b=>{let s=0;for(let r=0;r<4;r++)if(b>>r&1)s^=r;return s;};
+const topCount=w=>{let n=0;for(let c=0;c<6;c++)n+=(w>>>(c*4))&1;return n;};
+function mog(w){
+  const counts=[],scores=[];
+  for(let c=0;c<6;c++){const b=colBits(w,c);counts.push(pc(b));scores.push(scoreOf(b));}
+  const tc=topCount(w),tp=tc&1;
+  const parityOK=counts.every(n=>(n&1)===tp);
+  const p=phiOf(scores[0],scores[1],scores[2]);
+  const expect=[p(1),p(2),p(3)];
+  const hexOK=HEXKEY.has(scores.join(''));
+  return{counts,scores,tc,tp,parityOK,hexOK,expect,ok:parityOK&&hexOK};
+}
+// column patterns grouped by (score, parity)
+const PAT=[[[],[]],[[],[]],[[],[]],[[],[]]];
+for(let b=0;b<16;b++)PAT[scoreOf(b)][pc(b)&1].push(b);
+const CODE=[];
+for(const h of HEX)for(let p=0;p<2;p++)for(let m=0;m<64;m++){
+  let w=0;for(let c=0;c<6;c++)w|=PAT[h[c]][p][(m>>c)&1]<<(c*4);
+  if((topCount(w)&1)===p)CODE.push(w);
+}
+const CODESET=new Set(CODE);
+const OCTADS=CODE.filter(w=>pc(w)===8);
+const DODECADS=CODE.filter(w=>pc(w)===12);
+// basis by elimination
+const BASIS=(()=>{const piv=[],rows=[];for(const w of CODE){let x=w;for(let k=0;k<rows.length;k++)if(x>>>piv[k]&1)x^=rows[k];if(x){const p=31-Math.clz32(x);for(let k=0;k<rows.length;k++)if(rows[k]>>>p&1)rows[k]^=x;rows.push(x);piv.push(p);if(rows.length===12)break;}}return rows;})();
+// every 5-set lies in exactly one octad
+const OCT5=new Map();
+for(const o of OCTADS){const b=bitsOf(o);for(let i=0;i<8;i++)for(let j=i+1;j<8;j++)for(let k=j+1;k<8;k++)OCT5.set(o&~(1<<b[i])&~(1<<b[j])&~(1<<b[k]),o);}
+const octadThrough=m5=>OCT5.get(m5);
+function sextet(T){const out=[T];let cov=T;for(let x=0;x<24;x++){if(cov>>>x&1)continue;const t=octadThrough(T|(1<<x))&~T;out.push(t);cov|=t;}return out;}
+let _nk=-1,_nv=null;
+function nearest(w){if(w===_nk)return _nv;let d=99,list=[];for(const c of CODE){const x=pc(c^w);if(x<d){d=x;list=[c];}else if(x===d)list.push(c);}_nk=w;_nv={d,list};return _nv;}
+const applyPerm=(w,f)=>{let o=0;for(let i=0;i<24;i++)if(w>>>i&1)o|=1<<f[i];return o;};
+const isAut=f=>BASIS.every(b=>CODESET.has(applyPerm(b,f)));
+const PERM3=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+// all elements of M24 sending p[i] -> q[i] (i=0..4); there are always 48
+function findMaps(p,q){
+  const P=maskOf(p),Q=maskOf(q),O=octadThrough(P),O2=octadThrough(Q);
+  const rest=bitsOf(O&~P),rest2=bitsOf(O2&~Q);
+  let x=0;while(O>>>x&1)x++;
+  const outs=bitsOf(FULL&~O&~(1<<x)),outs2=bitsOf(FULL&~O2);
+  const res=[];
+  for(const s of PERM3){
+    const f=new Array(24).fill(-1);
+    p.forEach((a,i)=>f[a]=q[i]);rest.forEach((a,i)=>f[a]=rest2[s[i]]);
+    const Opts=bitsOf(O);
+    for(const y of outs2){
+      f[x]=y;const cand={};for(const z of outs)cand[z]=FULL&~O2&~(1<<y);
+      for(let a=0;a<8;a++)for(let b=a+1;b<8;b++)for(let c=b+1;c<8;c++)for(let d=c+1;d<8;d++){
+        const T=(1<<Opts[a])|(1<<Opts[b])|(1<<Opts[c])|(1<<Opts[d]);
+        const fT=(1<<f[Opts[a]])|(1<<f[Opts[b]])|(1<<f[Opts[c]])|(1<<f[Opts[d]]);
+        const S=octadThrough(T|(1<<x))&~T&~(1<<x);
+        const S2=octadThrough(fT|(1<<y))&~fT&~(1<<y);
+        for(const z of bitsOf(S))cand[z]&=S2;
+      }
+      const g=f.slice();let used=0,okk=true;
+      for(const z of outs){if(pc(cand[z])!==1){okk=false;break;}g[z]=31-Math.clz32(cand[z]);}
+      if(!okk)continue;
+      for(const v of g)used|=1<<v;
+      if(used!==FULL)continue;
+      if(isAut(g))res.push(g);
+    }
+  }
+  return res;
+}
+function randomElement(){
+  const pts=[...Array(24).keys()];
+  for(let i=23;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pts[i],pts[j]]=[pts[j],pts[i]];}
+  const maps=findMaps([0,1,2,3,4],pts.slice(0,5));
+  return maps[Math.floor(Math.random()*maps.length)];
+}
+function cyclesOf(f){const seen=new Array(24).fill(false),cyc=[];for(let i=0;i<24;i++){if(seen[i])continue;const c=[];let j=i;while(!seen[j]){seen[j]=true;c.push(j);j=f[j];}cyc.push(c);}return cyc;}
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+const SUP='⁰¹²³⁴⁵⁶⁷⁸⁹';
+function shapeOf(f){const cnt={};for(const c of cyclesOf(f))cnt[c.length]=(cnt[c.length]||0)+1;const keys=Object.keys(cnt).map(Number).sort((a,b)=>a-b);
+  return{text:keys.map(k=>k+(cnt[k]>1?String(cnt[k]).split('').map(d=>SUP[d]).join(''):'')).join(' '),order:keys.reduce((a,b)=>a*b/gcd(a,b),1),fixed:cnt[1]||0};}
+// ==/CORE==
+
+// ===== APP =====
+const $=s=>document.querySelector(s);
+const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const rnd=n=>Math.floor(Math.random()*n);
+const pick=a=>a[rnd(a.length)];
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;};
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+const fmtN=n=>n.toLocaleString('en-US').replace(/,/g,' ');
+const KIND={0:'Empty word',8:'Octad',12:'Dodecad',16:'16-ad',24:'All 24 points'};
+const scoreStr=s=>`(${SYM[s[0]]} ${SYM[s[1]]} | ${SYM[s[2]]} ${SYM[s[3]]} | ${SYM[s[4]]} ${SYM[s[5]]})`;
+
+const S={
+  mode:'explore',anim:false,
+  ex:{word:0,showSextet:true,nearIdx:0},
+  play:{game:'noise',level:2,hint:false,noise:null,hunt:null,streakN:0,streakH:0,bestN:store.get('golay-bestN',0),bestH:store.get('golay-bestH',0)},
+  m:{word:0,base:0,labels:null,baseLabels:null,g:null,k:0,pick:null,maps:null,mapIdx:0}
+};
+// opening states
+{const o=pick(OCTADS);S.ex.word=maskOf(shuffle(bitsOf(o)).slice(0,5));}
+S.m.word=pick(OCTADS);S.m.base=S.m.word;S.m.g=randomElement();
+
+// ----- board -----
+const board=$('#board');const cells=[];const dgN=[],dgS=[];
+for(let r=0;r<4;r++){const l=document.createElement('div');l.className='rl';l.textContent=SYM[r];l.style.gridRow=r+1;l.style.gridColumn=1;board.appendChild(l);}
+for(let c=0;c<6;c++){const gc=2+c+Math.floor(c/2);
+  for(let r=0;r<4;r++){const i=c*4+r;const b=document.createElement('button');b.type='button';b.className='cell';b.id='cell'+i;
+    b.style.gridRow=r+1;b.style.gridColumn=gc;b.setAttribute('aria-label',`Row ${SYM[r]}, column ${c+1}`);
+    b.innerHTML='<span class="t1"></span><span class="t2"></span>';b.addEventListener('click',()=>onCell(i));board.appendChild(b);cells[i]=b;}
+  const n=document.createElement('div');n.className='dg';n.style.gridRow=5;n.style.gridColumn=gc;board.appendChild(n);dgN[c]=n;
+  const s=document.createElement('div');s.className='dg sc';s.style.gridRow=6;s.style.gridColumn=gc;board.appendChild(s);dgS[c]=s;}
+[['n',5],['σ',6]].forEach(([t,r])=>{const l=document.createElement('div');l.className='rl dgl';l.style.gridRow=r;l.style.gridColumn=1;l.style.fontSize='.95rem';l.textContent=t;board.appendChild(l);});
+
+const EMPTY={word:0,pick:0,good:0,ghost:0,bad:0,fixed:0,locked:0,tint:null,t1:null,t2:null,diag:false};
+function view(){
+  if(S.mode==='explore')return viewExplore();
+  if(S.mode==='play')return S.play.game==='noise'?viewNoise():viewHunt();
+  return viewM();
+}
+function renderBoard(){
+  const v=Object.assign({},EMPTY,view());
+  cells.forEach((el,i)=>{const b=1<<i;
+    let cls='cell';if(v.tint&&v.tint[i]!=null)cls+=' tx'+v.tint[i];
+    if(v.word&b)cls+=' on';if(v.pick&b)cls+=' pick';if(v.good&b)cls+=' good';
+    if(v.ghost&b)cls+=' ghost';if(v.bad&b)cls+=' bad';if(v.fixed&b)cls+=' fixed';if(v.locked&b)cls+=' locked';
+    el.className=cls;el.setAttribute('aria-pressed',(v.word|v.pick)&b?'true':'false');
+    el.children[0].textContent=v.t1?.[i]??'';el.children[1].textContent=v.t2?.[i]??'';});
+  $('#boardwrap').dataset.diag=v.diag?'on':'off';
+  const shown=v.word|v.pick;
+  if(v.diag){const m=mog(shown);for(let c=0;c<6;c++){dgN[c].textContent=m.counts[c];dgN[c].classList.toggle('bad',(m.counts[c]&1)!==m.tp);dgS[c].textContent=SYM[m.scores[c]];dgS[c].classList.toggle('bad',!m.hexOK&&c>2&&m.scores[c]!==m.expect[c-3]);}}
+  let s='';for(let c=0;c<6;c++){let col='';for(let r=0;r<4;r++)col+=(shown>>>(c*4+r))&1;s+=`<b>${col}</b>`+(c%2?(c<5?'&ensp;·&ensp;':''):' ');}
+  $('#bits').innerHTML=s+`&ensp;<span>weight ${pc(shown)}</span>`;
+}
+function render(){
+  renderBoard();
+  $('#panel').innerHTML=S.mode==='explore'?panelExplore():S.mode==='play'?panelPlay():panelM();
+}
+function onCell(i){
+  if(S.anim)return;
+  if(S.mode==='explore'){S.ex.word^=1<<i;S.ex.nearIdx=0;}
+  else if(S.mode==='play'){S.play.game==='noise'?tapNoise(i):tapHunt(i);}
+  else tapM(i);
+  render();
+}
+
+// ----- explore -----
+function viewExplore(){
+  const E=S.ex,w=E.word,wt=pc(w),m=mog(w);const v={word:w,diag:true};
+  if(m.ok)return v;
+  if(wt===4&&E.showSextet){const sx=sextet(w);v.tint=new Array(24);v.t1=new Array(24);
+    sx.forEach((t,k)=>bitsOf(t).forEach(i=>{v.tint[i]=k;v.t1[i]='ABCDEF'[k];}));return v;}
+  if(wt===5){v.ghost=octadThrough(w)&~w;return v;}
+  const n=nearest(w);v.ghost=n.list[E.nearIdx%n.list.length]^w;return v;
+}
+function panelExplore(){
+  const E=S.ex,w=E.word,wt=pc(w),m=mog(w);let h='';
+  if(m.ok)h+=`<section class="status ok"><div class="kind">${KIND[wt]}</div><div class="meta">weight ${wt} · a codeword of C₂₄</div></section>`;
+  else{const n=nearest(w);h+=`<section class="status"><div class="kind">Not a codeword</div><div class="meta">weight ${wt} · ${n.d} flip${n.d>1?'s':''} from the nearest codeword${n.list.length>1?` (there are ${n.list.length} at that distance)`:''}</div></section>`;}
+  const par=m.tp?'odd':'even';
+  h+=`<section><p class="eyebrow">The MOG test</p><div class="rules">
+   <div class="rule ${m.parityOK?'ok':''}"><span class="mark">${m.parityOK?'✓':'✗'}</span><p>Every column has the parity of the top row. The top row holds ${m.tc} point${m.tc===1?'':'s'}, so each column needs an ${par} count. Counts: <code>${m.counts.join(' ')}</code></p></div>
+   <div class="rule ${m.hexOK?'ok':''}"><span class="mark">${m.hexOK?'✓':'✗'}</span><p>The column scores <code>${scoreStr(m.scores)}</code> form a hexacode word. With φ(x) = ax² + bx + c built from the first three scores, the last three must be φ(1), φ(ω), φ(ω̄) = <code>${m.expect.map(e=>SYM[e]).join(' ')}</code>.</p></div>
+  </div></section>`;
+  // context
+  let ctx='',acts='';
+  if(m.ok){
+    if(wt===8)ctx=`<p class="note blue">Pick any 5 of these 8 points and no other octad contains them. Remove 3 points to see the completion come back.</p>`;
+    else if(wt===12)ctx=`<p class="note blue">The complement of a dodecad is another dodecad. The subgroup of M₂₄ fixing this set is the Mathieu group M₁₂.</p>`;
+    else if(wt===16)ctx=`<p class="note blue">A 16-ad is the complement of an octad. Tap Complement to see that octad.</p>`;
+  }else if(wt===4){
+    ctx=`<p class="note">Four points fix a <b>sextet</b>: the 24 points split into six tetrads A–F, and any two tetrads together make an octad. The six nearest codewords are the empty word and the five octads A∪B, …, A∪F.</p>`;
+    acts+=`<button class="btn" data-act="sextet">${E.showSextet?'Hide':'Show'} sextet</button>`;
+  }else if(wt===5){
+    ctx=`<p class="note">Five points lie in exactly one octad. The three amber rings complete it.</p>`;
+    acts+=`<button class="btn primary" data-act="snapghost">Complete the octad</button>`;
+  }else{const n=nearest(w);
+    if(n.list.length===1)ctx=`<p class="note">Within ${n.d} flip${n.d>1?'s':''} of exactly one codeword. Flip the amber-ringed cells, or snap. Any 3 errors can be corrected because codewords are at least 8 apart.</p>`;
+    else ctx=`<p class="note">${n.list.length} codewords are equally close (distance ${n.d}). Showing #${E.nearIdx%n.list.length+1}. Weight-4 cosets always come in sextets like this.</p>`;
+    acts+=`<button class="btn primary" data-act="snapghost">Snap to ${n.list.length>1?'this one':'nearest codeword'}</button>`;
+    if(n.list.length>1)acts+=`<button class="btn" data-act="nextnear">Next of ${n.list.length}</button>`;
+  }
+  h+=ctx;
+  h+=`<section><p class="eyebrow">Build</p><div class="actions">${acts}
+    <button class="btn" data-act="octad">Random octad</button><button class="btn" data-act="dodecad">Random dodecad</button>
+    <button class="btn" data-act="five">5 random points</button><button class="btn" data-act="cols">Two columns</button>
+    <button class="btn" data-act="complement">Complement</button><button class="btn" data-act="clear">Clear</button></div></section>`;
+  h+=`<section class="facts">
+    <div class="fact"><b>4096 codewords</b><span>weights 0 · 8 · 12 · 16 · 24 occur 1 · 759 · 2576 · 759 · 1 times</span></div>
+    <div class="fact"><b>Distance 8</b><span>any two codewords differ in at least 8 places, so 3 errors are always correctable</span></div>
+    <div class="fact"><b>S(5, 8, 24)</b><span>the 759 octads form a Steiner system: every 5 points lie in exactly one</span></div>
+    <div class="fact"><b>${fmtN(244823040)}</b><span>symmetries of the code, the order of M₂₄ = 2¹⁰·3³·5·7·11·23</span></div>
+  </section>`;
+  return h;
+}
+function actExplore(a){
+  const E=S.ex;
+  if(a==='clear')E.word=0;
+  else if(a==='octad')E.word=pick(OCTADS);
+  else if(a==='dodecad')E.word=pick(DODECADS);
+  else if(a==='five')E.word=maskOf(shuffle([...Array(24).keys()]).slice(0,5));
+  else if(a==='cols'){const c=shuffle([0,1,2,3,4,5]);E.word=(15<<(c[0]*4))|(15<<(c[1]*4));}
+  else if(a==='complement')E.word=FULL&~E.word;
+  else if(a==='sextet'){E.showSextet=!E.showSextet;return;}
+  else if(a==='nextnear'){E.nearIdx++;return;}
+  else if(a==='snapghost'){const v=viewExplore();E.word^=v.ghost;}
+  E.nearIdx=0;
+}
+
+// ----- play: noisy channel -----
+function newNoise(){const P=S.play;const sent=Math.random()<.5?pick(OCTADS):pick(DODECADS);
+  const err=maskOf(shuffle([...Array(24).keys()]).slice(0,P.level));
+  P.noise={sent,err,word:sent^err,flips:0,solved:false,revealed:false,msg:'',cls:''};}
+function tapNoise(i){const N=S.play.noise;if(N.solved||N.revealed)return;N.word^=1<<i;N.flips++;
+  if(N.word===N.sent){N.solved=true;const P=S.play;P.streakN++;if(P.streakN>P.bestN){P.bestN=P.streakN;store.set('golay-bestN',P.bestN);}
+    N.msg=`Decoded. The message was ${N.flips===pc(N.err)?'restored in the minimum':'restored in '+N.flips} flip${N.flips>1?'s':''}${N.flips===pc(N.err)?'':' (the minimum was '+pc(N.err)+')'}.`;N.cls='ok';}
+  else{N.msg='';N.cls='';}}
+function viewNoise(){const N=S.play.noise;const v={word:N.word,diag:S.play.hint&&!N.solved};
+  if(N.solved)v.good=0,v.word=N.word;
+  if(N.revealed)v.bad=N.word^N.sent;
+  return v;}
+function viewHunt(){const H=S.play.hunt;const v={word:H.given,pick:H.picks,locked:H.given};
+  if(H.done==='win'){v.good=H.given|H.ans;v.word=0;v.pick=0;}
+  if(H.done==='lose'){v.ghost=H.ans;v.bad=H.picks&~H.ans;}
+  return v;}
+function newHunt(){const H=S.play.hunt;if(H&&H.timer)clearTimeout(H.timer);
+  const o=pick(OCTADS);const b=shuffle(bitsOf(o));const given=maskOf(b.slice(0,5));
+  S.play.hunt={given,ans:o&~given,picks:0,done:null,t0:performance.now(),msg:'',cls:'',timer:null};}
+function tapHunt(i){const H=S.play.hunt,P=S.play;if(H.done||H.given>>>i&1)return;H.picks^=1<<i;
+  if(pc(H.picks)===3){const t=((performance.now()-H.t0)/1000).toFixed(1);
+    if(H.picks===H.ans){H.done='win';P.streakH++;if(P.streakH>P.bestH){P.bestH=P.streakH;store.set('golay-bestH',P.bestH);}H.msg=`Octad found in ${t} s.`;H.cls='ok';
+      H.timer=setTimeout(()=>{if(S.mode==='play'&&S.play.game==='hunt'&&S.play.hunt===H){newHunt();render();}},1300);}
+    else{H.done='lose';P.streakH=0;const right=pc(H.picks&H.ans);H.msg=`Not an octad: ${right} of your 3 were right. The amber rings show the true completion.`;H.cls='no';}}}
+function panelPlay(){const P=S.play;let h=`<div class="seg" role="group" aria-label="Game">
+   <button data-act="g-noise" aria-pressed="${P.game==='noise'}">Noisy channel</button>
+   <button data-act="g-hunt" aria-pressed="${P.game==='hunt'}">Octad hunt</button></div>`;
+  if(P.game==='noise'){const N=P.noise;
+    h+=`<section class="status"><div class="kind">Noisy channel</div><div class="meta">A codeword left the transmitter and ${P.level} bit${P.level>1?'s':''} flipped on the way. Tap cells to undo the damage.</div></section>
+    <div class="actions" style="align-items:center"><span class="small">Errors</span><div class="seg" role="group" aria-label="Errors per message">${[1,2,3].map(k=>`<button data-act="lv-${k}" aria-pressed="${P.level===k}">${k}</button>`).join('')}</div></div>
+    <div class="stats"><div class="stat"><span>Flips</span><b>${N.flips}</b></div><div class="stat"><span>Streak</span><b>${P.streakN}</b></div><div class="stat"><span>Best</span><b>${P.bestN}</b></div></div>
+    <p class="feedback ${N.cls}">${N.msg}</p>
+    <div class="actions">${N.solved||N.revealed?'<button class="btn primary" data-act="n-new">Next message</button>':'<button class="btn primary" data-act="n-check">Check</button><button class="btn" data-act="n-hint">'+(P.hint?'Hide':'Show')+' column test</button><button class="btn" data-act="n-reveal">Reveal errors</button>'}</div>
+    <p class="note blue">Decoding by hand: make every column match the top row's parity, then make the scores a hexacode word. The red figures under the board point at the faulty columns.</p>
+    <p class="small">Voyager 1 and 2 used this [24, 12, 8] code to send colour images of Jupiter and Saturn back to Earth.</p>`;
+  }else{const H=P.hunt;
+    h+=`<section class="status"><div class="kind">Octad hunt</div><div class="meta">Five blue points. Exactly one octad contains them. Tap the other three.</div></section>
+    <div class="stats"><div class="stat"><span>Picked</span><b>${pc(H.picks)} / 3</b></div><div class="stat"><span>Streak</span><b>${P.streakH}</b></div><div class="stat"><span>Best</span><b>${P.bestH}</b></div></div>
+    <p class="feedback ${H.cls}">${H.msg}</p>
+    <div class="actions">${H.done==='lose'?'<button class="btn primary" data-act="h-new">Next round</button>':H.done?'':'<button class="btn" data-act="h-reveal">Reveal</button><button class="btn" data-act="h-new">Skip</button>'}</div>
+    <p class="note blue">Shortcuts that help: two full columns make an octad, and so does any column plus a matching pattern spread over the others. Use Explore to test guesses, the completion shows instantly there.</p>`;}
+  return h;}
+function actPlay(a){const P=S.play;
+  if(a==='g-noise')P.game='noise';else if(a==='g-hunt')P.game='hunt';
+  else if(a.startsWith('lv-')){P.level=+a.slice(3);P.streakN=0;newNoise();}
+  else if(a==='n-new')newNoise();
+  else if(a==='n-hint')P.hint=!P.hint;
+  else if(a==='n-reveal'){P.noise.revealed=true;P.streakN=0;P.noise.msg='Red rings mark the cells that differ from the codeword that was sent.';P.noise.cls='no';}
+  else if(a==='n-check'){const N=P.noise;const m=mog(N.word);
+    if(m.ok){N.msg='That is a codeword, but not the one that was sent. You moved at least 5 flips away from it.';N.cls='no';}
+    else{const n=nearest(N.word);N.msg=`Not a codeword yet. The nearest codeword is ${n.d} flip${n.d>1?'s':''} away.`;N.cls='';}}
+  else if(a==='h-new')newHunt();
+  else if(a==='h-reveal'){const H=P.hunt;H.done='lose';H.picks=0;P.streakH=0;H.msg='The amber rings complete the octad.';H.cls='';}
+}
+
+// ----- M24 -----
+function viewM(){const M=S.m;
+  if(M.pick){const t1=new Array(24),t2=new Array(24);M.pick.src.forEach((p,k)=>t1[p]=k+1);M.pick.dst.forEach((p,k)=>t2[p]=(k+1)+'′');
+    return{word:0,pick:maskOf(M.pick.src),t1,t2};}
+  const v={word:M.word,t1:M.labels};
+  if(M.g&&!S.anim){let f=0;M.g.forEach((j,i)=>{if(i===j)f|=1<<i;});v.fixed=f;}
+  return v;}
+function tapM(i){const M=S.m;
+  if(M.pick){const P=M.pick;
+    if(P.src.length<5){if(!P.src.includes(i))P.src.push(i);return;}
+    if(!P.dst.includes(i))P.dst.push(i);
+    if(P.dst.length===5){M.maps=findMaps(P.src,P.dst);M.mapIdx=0;M.mapSrc=P.src.slice();
+      M.base=octadThrough(maskOf(P.src));M.baseLabels=new Array(24);P.src.forEach((p,k)=>M.baseLabels[p]=String(k+1));
+      M.word=M.base;M.labels=M.baseLabels;M.g=M.maps[0];M.k=0;M.pick=null;requestAnimationFrame(()=>applyG());}
+    return;}
+  M.word^=1<<i;M.base=M.word;M.k=0;M.labels=null;M.baseLabels=null;M.maps=null;}
+function applyG(){const M=S.m,f=M.g,prev=M.word,lab=M.labels;
+  const finish=()=>{M.word=applyPerm(prev,f);if(lab){const nl=new Array(24);lab.forEach((t,i)=>{if(t)nl[f[i]]=t;});M.labels=nl;}M.k++;S.anim=false;render();};
+  const list=bitsOf(prev);
+  if(reduceMotion||!list.length){finish();return;}
+  const rects=cells.map(c=>c.getBoundingClientRect());const layer=$('#fly');const dur=720,stag=24;
+  list.forEach((i,n)=>{const a=rects[i],b=rects[f[i]];const d=document.createElement('div');d.className='flydot';
+    d.style.cssText=`left:${a.left}px;top:${a.top}px;width:${a.width}px;height:${a.height}px`;if(lab&&lab[i])d.textContent=lab[i];layer.appendChild(d);
+    const dx=b.left-a.left,dy=b.top-a.top;
+    d.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${dx/2}px,${dy/2}px) scale(.62)`,offset:.5},{transform:`translate(${dx}px,${dy}px) scale(1)`}],{duration:dur,delay:n*stag,easing:'cubic-bezier(.55,0,.25,1)',fill:'forwards'});});
+  S.anim=true;M.word=0;M.labels=null;renderBoard();
+  setTimeout(()=>{layer.innerHTML='';finish();},dur+stag*list.length+40);}
+function panelM(){const M=S.m;let h='';
+  if(M.pick){const P=M.pick;const step=P.src.length<5;
+    h+=`<section class="status"><div class="kind">${step?'Pick 5 starting points':'Pick 5 destinations'}</div><div class="meta">${step?`Tap them in order: ${P.src.length} of 5 chosen. They get labels 1–5.`:`Tap where 1, 2, 3, 4, 5 should land: ${P.dst.length} of 5 chosen. Any five distinct points work.`}</div></section>
+    <p class="note blue">M₂₄ is 5-transitive: some symmetry of the code sends any 5 points to any other 5, in any order. Exactly 48 symmetries do each such job.</p>
+    <div class="actions"><button class="btn" data-act="m-cancel">Cancel</button></div>`;return h;}
+  const sh=M.g?shapeOf(M.g):null;const wt=pc(M.word),isC=CODESET.has(M.word);
+  h+=`<section class="status"><div class="kind">Element g of M₂₄</div><div class="meta">M₂₄ permutes the 24 points and carries the code to itself: octads to octads, dodecads to dodecads.</div></section>`;
+  if(sh)h+=`<div class="stats"><div class="stat"><span>Cycle shape</span><b>${sh.text}</b></div><div class="stat"><span>Order</span><b>${sh.order}</b></div><div class="stat"><span>Applied</span><b>${M.k}×</b></div></div>`;
+  if(sh)h+=`<p class="small">${sh.fixed?`Ringed cells are the ${sh.fixed} fixed point${sh.fixed>1?'s':''} of g. `:'g fixes no point. '}${M.k&&M.k%sh.order===0?'After '+M.k+' applications the board is back where it started.':'Apply g '+sh.order+' times and every point returns home.'}</p>`;
+  if(M.maps)h+=`<p class="note">${M.maps.length} elements of M₂₄ send points 1–5 to the five destinations in order. This is #${M.mapIdx+1}. They all agree on those five points but differ elsewhere, so watch the other three points of the octad and the cycle shape.</p>`;
+  h+=`<p class="feedback ${isC?'ok':''}">Board: weight ${wt}, ${isC?(KIND[wt]||'codeword')+', still a codeword':'not a codeword'}${M.k&&!isC?' (and it stayed that way, since g preserves the code)':''}.</p>`;
+  h+=`<div class="actions"><button class="btn primary" data-act="m-rand">Random element</button><button class="btn" data-act="m-again"${M.g?'':' disabled'}>Apply g again</button>
+    ${M.maps?`<button class="btn" data-act="m-next">Next of ${M.maps.length}</button>`:''}<button class="btn" data-act="m-pick">Map 5 points → 5</button>
+    <button class="btn" data-act="m-reset"${M.k?'':' disabled'}>Back to start</button></div>
+  <section><p class="eyebrow">Board</p><div class="actions"><button class="btn" data-act="m-oct">Octad</button><button class="btn" data-act="m-dod">Dodecad</button><button class="btn" data-act="m-junk">Random 6 points</button><button class="btn" data-act="m-clear">Clear</button></div>
+  <p class="small" style="margin-top:.6rem">Tap cells to draw your own board. A random set that is not a codeword stays a non-codeword under every g.</p></section>`;
+  return h;}
+function actM(a){const M=S.m;
+  const setBoard=w=>{M.word=w;M.base=w;M.k=0;M.labels=null;M.baseLabels=null;M.maps=null;};
+  if(a==='m-rand'){M.g=randomElement();M.maps=null;M.base=M.word;M.baseLabels=M.labels;M.k=0;render();applyG();return true;}
+  if(a==='m-again'){render();applyG();return true;}
+  if(a==='m-next'){M.mapIdx=(M.mapIdx+1)%M.maps.length;M.g=M.maps[M.mapIdx];M.word=M.base;M.labels=M.baseLabels;M.k=0;render();applyG();return true;}
+  if(a==='m-reset'){M.word=M.base;M.labels=M.baseLabels;M.k=0;}
+  if(a==='m-pick'){M.pick={src:[],dst:[]};}
+  if(a==='m-cancel'){M.pick=null;}
+  if(a==='m-oct')setBoard(pick(OCTADS));if(a==='m-dod')setBoard(pick(DODECADS));
+  if(a==='m-junk')setBoard(maskOf(shuffle([...Array(24).keys()]).slice(0,6)));if(a==='m-clear')setBoard(0);
+}
+
+// ----- wiring -----
+$('#panel').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||S.anim)return;const a=b.dataset.act;
+  if(S.mode==='explore')actExplore(a);else if(S.mode==='play')actPlay(a);else if(actM(a))return;render();});
+function route(){const h=location.hash.replace('#','');S.mode=['explore','play','m24'].includes(h)?h:'explore';
+  document.querySelectorAll('nav.tabs a').forEach(a=>{if(a.dataset.mode===S.mode)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+  if(S.anim){$('#fly').innerHTML='';S.anim=false;}
+  render();}
+window.addEventListener('hashchange',route);
+newNoise();newHunt();route();
+</script>
+</body>
+</html>

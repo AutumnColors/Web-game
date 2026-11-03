@@ -55,5 +55,12 @@ window.EXPLORE = [
     title: 'A₅ viewer',
     path: 'explore/a5/',
     desc: 'The dodecahedron\'s 60 rotations, its five hidden cubes and the icosahedron\'s 20 faces. Count what stays fixed and build the character table.'
+  },
+  {
+    id: 'golay',
+    badge: 'M24',
+    title: 'Golay MOG Lab',
+    path: 'explore/golay/',
+    desc: 'The binary Golay code on the Miracle Octad Generator. Complete octads, colour sextets, decode noisy messages and let M24 move the 24 points.'
   }
 ];
