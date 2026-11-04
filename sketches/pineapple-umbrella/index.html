@@ -76,7 +76,7 @@ stage.appendChild(renderer.domElement);
 
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(35,1,0.1,100);
-const HOME_POS=new V3(6.5,1.2,11.5), HOME_TGT=new V3(-0.35,-1.1,0);
+const HOME_POS=new V3(7.6,1.6,14.6), HOME_TGT=new V3(-0.35,-0.75,0);
 camera.position.copy(HOME_POS);
 
 const controls=new THREE.OrbitControls(camera,renderer.domElement);
@@ -101,8 +101,8 @@ function pencilCanvas(w,h,base,strokes){
   const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;
   t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;
 }
-const woodTex=pencilCanvas(1024,256,'#c99a64',(g,w,h)=>{
-  const cols=['#a8723f','#d8b07c','#8f5d33','#e6c79c','#b98450'];
+const woodTex=pencilCanvas(1024,256,'#b9864f',(g,w,h)=>{
+  const cols=['#9a6535','#cf9f66','#7f5029','#ddb47e','#a87340'];
   for(let i=0;i<2600;i++){
     g.strokeStyle=cols[i%cols.length];g.globalAlpha=0.08+rnd()*0.18;g.lineWidth=0.6+rnd()*1.6;
     const x=rnd()*w,y=rnd()*h,l=10+rnd()*40;
