@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Corn Cob</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Instrument+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed WebGL stage on sketch paper, hand-lettered label top-left, control strip bottom */
+:root{
+  --paper:#eef0ec; --paper-2:#dfe3dc; --ink:#25302b; --ink-soft:#5d6a63;
+  --leaf:#2e8c7a; --wood:#b97f45; --chip:rgba(255,255,255,.72); --chip-line:rgba(37,48,43,.14);
+  --f-hand:"Caveat","Segoe Print","Comic Sans MS",cursive;
+  --f-ui:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#201c19; --paper-2:#2c2622; --ink:#ece6dc; --ink-soft:#a89e92;
+  --leaf:#6cc7b0; --wood:#d9a067; --chip:rgba(44,38,34,.78); --chip-line:rgba(236,230,220,.14); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#201c19; --paper-2:#2c2622; --ink:#ece6dc; --ink-soft:#a89e92;
+  --leaf:#6cc7b0; --wood:#d9a067; --chip:rgba(44,38,34,.78); --chip-line:rgba(236,230,220,.14); color-scheme:dark }
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(120% 80% at 50% 40%, var(--paper) 0%, var(--paper-2) 100%) var(--paper);
+  color:var(--ink);font-family:var(--f-ui);overflow:hidden;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#stage{position:fixed;inset:0;touch-action:none}
+#stage canvas{display:block;width:100%;height:100%;cursor:grab}
+#stage canvas:active{cursor:grabbing}
+.label{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));pointer-events:none}
+.label h1{font-family:var(--f-hand);font-weight:600;font-size:2.4rem;line-height:1;margin:0;color:var(--ink);text-wrap:balance}
+.back{pointer-events:auto;display:inline-block;margin-bottom:.4rem;font-size:.85rem;color:var(--ink-soft);text-decoration:none}
+.back:hover,.back:focus-visible{color:var(--ink);text-decoration:underline}
+.label p{margin:.35rem 0 0;font-size:.8rem;color:var(--ink-soft);letter-spacing:.02em}
+.bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  display:flex;gap:6px;padding:6px;border-radius:999px;background:var(--chip);border:1px solid var(--chip-line);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.bar button{font:500 .85rem var(--f-ui);color:var(--ink);background:transparent;border:0;border-radius:999px;padding:.55rem .95rem;cursor:pointer;white-space:nowrap}
+.bar button:hover{background:var(--chip-line)}
+.bar button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.bar button:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
+.sketch{position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:calc(14px + env(safe-area-inset-top,0px));
+  width:min(130px,28vw);margin:0;padding:6px 6px 4px;background:#fff;border-radius:4px;
+  box-shadow:0 6px 20px rgba(0,0,0,.18);transform:rotate(2.5deg);transition:opacity .25s,transform .25s}
+.sketch img{display:block;width:100%;border-radius:2px}
+.sketch figcaption{font:600 1rem var(--f-hand);color:#4a4540;text-align:center;padding-top:2px}
+.sketch[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){.sketch{transition:none}}
+</style>
+</head>
+<body>
+
+<div id="stage" aria-label="3D model of an ear of corn in its husk"></div>
+<div class="label"><a class="back" href="../../">← Back</a><h1>Corn Cob</h1><p>Drag to turn · pinch or scroll to zoom</p></div>
+<figure class="sketch" id="sketch"><img alt="Original colored-pencil drawing" src="data:image/jpeg;base64,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"><figcaption>the sketch</figcaption></figure>
+<div class="bar" role="toolbar">
+  <button id="spin" aria-pressed="true">Spin</button>
+  <button id="reset">Reset view</button>
+  <button id="showSketch" aria-pressed="true">Sketch</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const V3=THREE.Vector3;
+const stage=document.getElementById('stage');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=0.95;
+renderer.setClearColor(0x000000,0);
+stage.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(35,1,0.1,100);
+const HOME_POS=new V3(3.6,3.0,15.6), HOME_TGT=new V3(0,1.0,0);
+camera.position.copy(HOME_POS);
+
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.target.copy(HOME_TGT);
+controls.enableDamping=true; controls.dampingFactor=0.08;
+controls.enablePan=false; controls.minDistance=5; controls.maxDistance=24;
+controls.autoRotate=true; controls.autoRotateSpeed=1.4;
+
+// lights
+scene.add(new THREE.HemisphereLight(0xfffbf0,0x6b5a48,0.85));
+const key=new THREE.DirectionalLight(0xfff4e2,1.25); key.position.set(5,8,6); scene.add(key);
+const rim=new THREE.DirectionalLight(0xcfe8ff,0.55); rim.position.set(-6,3,-5); scene.add(rim);
+
+// seeded random
+let seed=11; const rnd=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646};
+const smooth=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t);};
+const lin=h=>new THREE.Color(h).convertSRGBToLinear();
+
+// ---------- cob ----------
+const YB=-0.7, YT=4.3, RMAX=0.72;
+function cobR(y){
+  const u=(y-YB)/(YT-YB); if(u<0||u>1) return 0;
+  return RMAX*(1-0.58*u*u)*Math.sqrt(Math.min(1,u*9))*Math.sqrt(Math.min(1,(1-u)*14+0.15));
+}
+const lathe=[];
+for(let i=0;i<=60;i++){const y=YB+(YT-YB)*i/60;lathe.push(new THREE.Vector2(Math.max(0.001,cobR(y)*0.93),y));}
+lathe.push(new THREE.Vector2(0.001,YT+0.03));
+scene.add(new THREE.Mesh(new THREE.LatheGeometry(lathe,48),new THREE.MeshStandardMaterial({color:0xc08a2e,roughness:0.85})));
+
+// kernels: straight rows around the cob, smaller toward the tip
+const ROWS=16, kernels=[];
+for(let row=0;row<ROWS;row++){
+  const th0=row/ROWS*Math.PI*2;
+  let y=YB+0.1;
+  while(y<YT-0.06){
+    const r=cobR(y);
+    const step=0.09+0.08*(r/RMAX);
+    if(r>0.1) kernels.push({th:th0+(rnd()-.5)*0.03,y:y+step/2,r,step});
+    y+=step;
+  }
+}
+const kMesh=new THREE.InstancedMesh(new THREE.SphereGeometry(1,12,8),new THREE.MeshStandardMaterial({roughness:0.42,metalness:0}),kernels.length);
+const m=new THREE.Matrix4(), kc=new THREE.Color();
+const kA=lin('#f2c54c'), kB=lin('#fae28f'), kTop=lin('#e6a63a');
+kernels.forEach((k,i)=>{
+  const c=Math.cos(k.th), s=Math.sin(k.th);
+  const radial=new V3(c,0,s), tang=new V3(-s,0,c), up=new V3(0,1,0);
+  const sx=Math.PI*k.r/ROWS*0.92, sy=k.step*0.47, sz=0.06+0.03*(k.r/RMAX);
+  m.makeBasis(tang.clone().multiplyScalar(sx),up.clone().multiplyScalar(sy),radial.clone().multiplyScalar(sz));
+  m.setPosition(c*k.r*0.97,k.y,s*k.r*0.97);
+  kMesh.setMatrixAt(i,m);
+  const u=(k.y-YB)/(YT-YB);
+  kc.copy(kA).lerp(kB,rnd()*0.65).lerp(kTop,Math.pow(u,3)*0.7);
+  kMesh.setColorAt(i,kc);
+});
+scene.add(kMesh);
+
+// silk: fine wisps from the tip
+const silkPts=[];
+for(let i=0;i<80;i++){
+  const th=rnd()*Math.PI*2, spread=0.25+rnd()*0.6;
+  let p=new V3(Math.cos(th)*0.1,YT-0.05,Math.sin(th)*0.1);
+  const dir=new V3(Math.cos(th)*spread,1,Math.sin(th)*spread).normalize();
+  const segs=6+Math.floor(rnd()*6);
+  for(let j=0;j<segs;j++){
+    const q=p.clone().addScaledVector(dir,0.07+rnd()*0.03).add(new V3((rnd()-.5)*0.05,(rnd()-.5)*0.02,(rnd()-.5)*0.05));
+    silkPts.push(p.x,p.y,p.z,q.x,q.y,q.z);p=q;
+    dir.x+=(rnd()-.5)*0.25;dir.z+=(rnd()-.5)*0.25;dir.y-=0.04;dir.normalize();
+  }
+}
+const silkGeo=new THREE.BufferGeometry();silkGeo.setAttribute('position',new THREE.Float32BufferAttribute(silkPts,3));
+scene.add(new THREE.LineSegments(silkGeo,new THREE.LineBasicMaterial({color:0xc99a5c,transparent:true,opacity:0.8})));
+
+// ---------- husk ----------
+const YS=-2.55;
+const hPale=lin('#cde3bd'), hPale2=lin('#8fc293'), hTeal=lin('#2f8a73'), hDeep=lin('#1f6a5a'), hTip=lin('#e8d75a');
+const HP=[],HC=[],HI=[];
+function addHusk(o){
+  const NS=40, NC=12, ds=o.L/NS, base=HP.length/3;
+  let rho=0.07, y=YS;
+  const line=[];
+  for(let i=0;i<=NS;i++){
+    const t=i/NS;
+    if(i>0){
+      const a=o.a0*(1-smooth(0,0.38,t))-o.inward*smooth(0.38,1,t)+(o.curl?o.curl*smooth(o.t0,o.t0+0.42,t):0);
+      rho+=Math.sin(a)*ds; y+=Math.cos(a)*ds;
+      if(t<o.t0+0.05) rho=Math.max(rho,cobR(y)+0.05+o.layer*0.045);
+      rho=Math.max(rho,0.06);
+    }
+    line.push([rho,y]);
+  }
+  for(let i=0;i<=NS;i++){
+    const t=i/NS, [r,yy]=line[i];
+    const w=o.W*Math.pow(Math.sin(Math.PI*Math.pow(t,0.78)),0.8);
+    const half=Math.min(1.45,w/Math.max(r,0.12));
+    for(let j=0;j<=NC;j++){
+      const sN=j/NC*2-1, e=Math.abs(sN);
+      const th=o.th+sN*half+o.twist*t*t;
+      const rr=r+0.035*(1-sN*sN)*Math.sin(Math.PI*t);
+      HP.push(Math.cos(th)*rr,yy,Math.sin(th)*rr);
+      const col=hPale.clone().lerp(hPale2,o.teal*0.6);
+      col.lerp(hTeal,Math.min(1,smooth(0.35,1,e)*0.85+o.teal*0.45*smooth(0.05,0.3,t)*(1-smooth(0.5,0.8,t))));
+      if(o.teal>0.6) col.lerp(hDeep,0.45*e+0.15);
+      if(o.tip&&t>0.82) col.lerp(hTip,smooth(0.82,1,t)*0.85);
+      if(t<0.06) col.lerp(hTeal,0.4);
+      HC.push(col.r,col.g,col.b);
+    }
+  }
+  const S=NC+1;
+  for(let i=0;i<NS;i++)for(let j=0;j<NC;j++){
+    const a=base+i*S+j,b=a+S,c=a+1,d=b+1;HI.push(a,b,c,b,d,c);
+  }
+}
+const D=Math.PI/180;
+[
+  {th:200,L:6.7,W:1.25,a0:0.95,inward:0.12,t0:1,curl:0,layer:0,teal:0.85,twist:0},
+  {th:340,L:5.9,W:1.2, a0:0.95,inward:0.10,t0:1,curl:0,layer:0,teal:0.85,twist:0},
+  {th:270,L:5.3,W:1.0, a0:0.95,inward:0.10,t0:1,curl:0,layer:0,teal:0.9, twist:0},
+  {th:20, L:5.5,W:0.8, a0:0.95,inward:0.20,t0:1,curl:0,layer:1,teal:0.6, twist:0.15},
+  {th:165,L:5.0,W:0.8, a0:0.95,inward:0.20,t0:1,curl:0,layer:1,teal:0.5, twist:-0.1},
+  {th:132,L:6.4,W:0.85,a0:0.95,inward:0.05,t0:0.56,curl:2.3,layer:2,teal:0.25,twist:0.25,tip:1},
+  {th:52, L:6.8,W:0.9, a0:0.95,inward:0.05,t0:0.50,curl:2.1,layer:2,teal:0.25,twist:-0.2,tip:1},
+  {th:95, L:3.7,W:1.05,a0:0.95,inward:0.35,t0:1,curl:0,layer:3,teal:0.55,twist:0}
+].forEach(o=>{o.th*=D;addHusk(o);});
+const huskGeo=new THREE.BufferGeometry();
+huskGeo.setAttribute('position',new THREE.Float32BufferAttribute(HP,3));
+huskGeo.setAttribute('color',new THREE.Float32BufferAttribute(HC,3));
+huskGeo.setIndex(HI);huskGeo.computeVertexNormals();
+scene.add(new THREE.Mesh(huskGeo,new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:0.75})));
+
+// stem nub
+const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.12,0.4,24),new THREE.MeshStandardMaterial({color:0x9fb36a,roughness:.8}));
+stem.position.set(0,YS-0.12,0);scene.add(stem);
+const stemEnd=new THREE.Mesh(new THREE.CircleGeometry(0.12,24),new THREE.MeshStandardMaterial({color:0xb07a3e,roughness:.9,side:THREE.DoubleSide}));
+stemEnd.rotation.x=Math.PI/2;stemEnd.position.set(0,YS-0.32,0);scene.add(stemEnd);
+
+// ---------- soft floor shadow ----------
+const sc=document.createElement('canvas');sc.width=sc.height=128;const sg=sc.getContext('2d');
+const rg=sg.createRadialGradient(64,64,0,64,64,64);rg.addColorStop(0,'rgba(0,0,0,.3)');rg.addColorStop(1,'rgba(0,0,0,0)');
+sg.fillStyle=rg;sg.fillRect(0,0,128,128);
+const shadow=new THREE.Mesh(new THREE.PlaneGeometry(4.4,4.4),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sc),transparent:true,depthWrite:false}));
+shadow.rotation.x=-Math.PI/2;shadow.position.set(0,-3.3,0);scene.add(shadow);
+
+// ---------- sizing & loop ----------
+function resize(){
+  const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);
+  camera.aspect=w/h;
+  // keep the whole object in frame on narrow screens
+  camera.fov=w/h<0.75?48:35;camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);resize();
+
+const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const spinBtn=document.getElementById('spin');
+function setSpin(on){controls.autoRotate=on;spinBtn.setAttribute('aria-pressed',String(on));}
+if(reduce) setSpin(false);
+spinBtn.onclick=()=>setSpin(!controls.autoRotate);
+controls.addEventListener('start',()=>setSpin(false));
+document.getElementById('reset').onclick=()=>{camera.position.copy(HOME_POS);controls.target.copy(HOME_TGT);controls.update();};
+const sk=document.getElementById('sketch'),skBtn=document.getElementById('showSketch');
+skBtn.onclick=()=>{sk.hidden=!sk.hidden;skBtn.setAttribute('aria-pressed',String(!sk.hidden));};
+
+(function loop(){controls.update();renderer.render(scene,camera);requestAnimationFrame(loop);})();
+})();
+</script>
+</body>
+</html>

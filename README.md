@@ -37,6 +37,7 @@ world/
   layers/             One JSON file per layer (alcohol.json, gdp-share.json, typical-income.json, gdp-per-capita.json)
 sketches/
   pineapple-umbrella/ Pineapple Umbrella (colored-pencil umbrella with a pineapple crown, as a three.js model; the original drawing is embedded)
+  corn-cob/           Corn Cob (an ear of corn in its husk: instanced kernels, silk, peeling husk leaves; the original drawing is embedded)
 tools/
   chartable_convert.py  Regenerates explore/simple-groups/chartables from CTblLib data files
   j1/build_action.py  Rebuilds J1's 266-point action from Janko's 7×7 matrices over F11 (the generators in explore/j1)
