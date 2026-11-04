@@ -62,5 +62,12 @@ window.EXPLORE = [
     title: 'Golay MOG Lab',
     path: 'explore/golay/',
     desc: 'The binary Golay code on the Miracle Octad Generator. Complete octads, colour sextets, decode noisy messages, and build the code and M24 from a generator matrix and two permutations.'
+  },
+  {
+    id: 'an-lab',
+    badge: 'Aₙ',
+    title: 'Aₙ(q) Lab',
+    path: 'explore/an-lab/',
+    desc: 'The linear groups PSL(n+1, q). Orders from the Dynkin diagram, the group moving its projective space, and a brute-force element census that tells the 20,160 twins apart.'
   }
 ];

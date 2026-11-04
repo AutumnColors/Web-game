@@ -29,6 +29,7 @@ explore/
   j1/                 J1 viewer (the Livingstone graph: 266 vertices built from J1; spin, re-root, random symmetries)
   a5/                 A5 viewer (dodecahedron with its 5 inscribed cubes, icosahedron dual; derive the character table from fixed points)
   golay/              Golay MOG Lab (binary Golay code on the Miracle Octad Generator: octads, sextets, decoding games, M24 acting on the board)
+  an-lab/             Aₙ(q) Lab (PSL(n+1, q): family grid, order from the Dynkin diagram, action on PG(n, q), element-order census and comparisons)
 world/
   index.html          World viewer: one base map, switchable data layers, country panel, ranking
   countries.json      Natural Earth id → ISO-3 code and display name (outlines load from world-atlas on jsDelivr, projected to Equal Earth)

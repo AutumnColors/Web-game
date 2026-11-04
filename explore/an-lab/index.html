@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aₙ(q) Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400;1,600&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: an ATLAS-style workbook. Family grid on top as the picker; below, the group's data sheet beside its projective space; the element census spans the bottom. */
+:root{
+  --paper:#ECEFF3; --sheet:#FAFBFC; --ink:#16202E; --muted:#596476; --line:#CCD3DD;
+  --accent:#B3122E; --accent-ink:#FFFFFF; --second:#1E5DAD; --soft:#E2E6EC;
+  --heat-lo:#DDE3EA; --heat-hi:#6E1A2A;
+  --c0:#C2352B; --c1:#1F6FB8; --c2:#2D8A4E; --c3:#B26A00; --c4:#7A43B6; --c5:#0E8A8A; --c6:#B8327A; --c7:#5E6B1E;
+  --f-display:"Spectral",Georgia,"Times New Roman",serif;
+  --f-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#0E131A; --sheet:#151C26; --ink:#E4E8EE; --muted:#8D97A7; --line:#283242;
+  --accent:#F0566C; --accent-ink:#1A0A0E; --second:#6EA8FF; --soft:#1D2531;
+  --heat-lo:#1B2330; --heat-hi:#E46A7C;
+  --c0:#FF7A6E; --c1:#6FB2FF; --c2:#5FD08A; --c3:#F2B04A; --c4:#B98CFF; --c5:#4FD2D2; --c6:#FF7FC0; --c7:#C6D46A;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#0E131A; --sheet:#151C26; --ink:#E4E8EE; --muted:#8D97A7; --line:#283242;
+  --accent:#F0566C; --accent-ink:#1A0A0E; --second:#6EA8FF; --soft:#1D2531;
+  --heat-lo:#1B2330; --heat-hi:#E46A7C;
+  --c0:#FF7A6E; --c1:#6FB2FF; --c2:#5FD08A; --c3:#F2B04A; --c4:#B98CFF; --c5:#4FD2D2; --c6:#FF7FC0; --c7:#C6D46A;
+  color-scheme:dark }
+*{box-sizing:border-box}
+html{background:var(--paper)}
+.back{display:inline-block;font:500 .88rem var(--f-body);color:var(--muted);text-decoration:none}
+.back:hover{color:var(--ink)}
+.back:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.toprow{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px}
+body{background:var(--paper);color:var(--ink);font:15px/1.55 var(--f-body);margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:22px}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;text-wrap:balance;margin:0}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font:600 11px/1 var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+header.hero{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 28px;border-bottom:2px solid var(--accent);padding-bottom:16px}
+.hero h1{font-size:clamp(44px,8vw,76px);line-height:.95;font-style:italic;letter-spacing:-.01em}
+.hero h1 b{color:var(--accent);font-weight:600}
+.hero p{margin:8px 0 0;max-width:60ch;color:var(--muted)}
+.current{text-align:right}
+.current .big{font:italic 600 clamp(28px,5vw,40px)/1.1 var(--f-display)}
+.current .alias{font:13px var(--f-mono);color:var(--muted)}
+section.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:6px;padding:18px;display:grid;gap:14px;min-width:0;align-content:start}
+.sheet-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 16px}
+.sheet-head h2{font-size:22px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+/* family grid */
+.grid-scroll{overflow-x:auto;padding-bottom:4px}
+.fam{display:grid;grid-template-columns:44px repeat(var(--cols),minmax(62px,1fr));gap:3px;min-width:max-content}
+.fam .qh,.fam .nh{font:600 12px var(--f-mono);color:var(--muted);display:flex;align-items:center;justify-content:center}
+.fam .nh{font:italic 600 15px var(--f-display);color:var(--ink);justify-content:flex-start}
+.tile{position:relative;height:38px;border:1px solid transparent;border-radius:3px;font:11px/1 var(--f-mono);font-variant-numeric:tabular-nums;cursor:pointer;color:var(--ink);padding:0 2px}
+.tile.hot{color:var(--paper)}
+.tile:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tile[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.tile.nonsimple{background-image:repeating-linear-gradient(135deg,transparent 0 4px,color-mix(in oklab,var(--ink) 18%,transparent) 4px 5px)!important;color:var(--muted)}
+.tile .iso{position:absolute;top:2px;right:3px;font-size:9px;color:inherit;opacity:.85}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:2px;display:inline-block;border:1px solid var(--line)}
+/* two-column */
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:22px}
+@media (max-width:860px){.duo{grid-template-columns:minmax(0,1fr)}}
+.dyn{overflow-x:auto}
+.dyn svg text{font:italic 13px var(--f-display);fill:var(--muted)}
+.facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;font-size:14px;margin:0}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;min-width:0}
+.formula{font:14px/1.7 var(--f-mono);background:var(--soft);border-radius:4px;padding:10px 12px;overflow-wrap:anywhere}
+.formula .res{color:var(--accent);font-weight:600}
+.notes{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.notes li{border-left:3px solid var(--accent);padding:2px 0 2px 10px;font-size:14px}
+.notes li.warn{border-color:var(--muted);color:var(--muted)}
+.chiplink{font:inherit;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+/* geometry */
+.geo-stage{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.geo-svg{width:100%;max-width:430px;aspect-ratio:1;justify-self:center;touch-action:manipulation}
+.geo-svg text{font-family:var(--f-mono);pointer-events:none}
+.tok{cursor:pointer}
+.tok circle{stroke:var(--sheet);stroke-width:1.5}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button.b{font:500 13px var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:4px;padding:8px 12px;cursor:pointer}
+button.b:hover{border-color:var(--accent)}
+button.b:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.b.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.b .f{font-family:var(--f-mono);font-size:12px}
+.readout{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px 18px;align-items:start}
+@media (max-width:480px){.readout{grid-template-columns:minmax(0,1fr)}}
+.matrix{display:inline-grid;gap:2px 10px;padding:6px 10px;border-left:2px solid var(--ink);border-right:2px solid var(--ink);border-radius:5px;font:13px var(--f-mono)}
+.matrix span{text-align:center;min-width:1.6em}
+.stat{display:grid;gap:4px;font-size:14px;min-width:0}
+.stat .k{color:var(--muted);font-size:12px}
+.cyc{font:12px/1.6 var(--f-mono);overflow-wrap:anywhere;max-height:7.5em;overflow:auto}
+.pointinfo{font-size:13px;background:var(--soft);border-radius:4px;padding:8px 10px;min-height:2.6em}
+.toolarge{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:6px}
+/* census */
+.cen-ctl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+select{font:13px var(--f-body);padding:7px 8px;border:1px solid var(--line);border-radius:4px;background:var(--sheet);color:var(--ink)}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.preset{font:12px var(--f-body);border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:5px 10px;cursor:pointer}
+.preset:focus-visible{outline:2px solid var(--accent)}
+.bars{display:grid;gap:6px}
+.barrow{display:grid;grid-template-columns:40px minmax(0,1fr);gap:10px;align-items:center}
+.barrow .ord{font:600 14px var(--f-mono);text-align:right}
+.barpair{display:grid;gap:2px}
+.bar{display:flex;align-items:center;gap:8px;min-width:0}
+.bar i{display:block;height:12px;border-radius:2px;background:var(--accent);min-width:2px}
+.bar.two i{background:var(--second)}
+.bar.zero i{background:none;border:1px dashed var(--muted);width:10px!important}
+.bar em{font:normal 11px var(--f-mono);color:var(--muted);white-space:nowrap}
+.keys{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px}
+.keys span{display:inline-flex;gap:6px;align-items:center}
+.verdict{font-size:14px;padding:10px 12px;border-radius:4px;background:var(--soft)}
+.verdict b{font-family:var(--f-display);font-style:italic}
+.prog{height:4px;background:var(--soft);border-radius:2px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--accent)}
+footer{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <nav class="toprow"><a class="back" href="../../">← Back</a><a class="back" href="../simple-groups/">Periodic table of simple groups →</a></nav>
+  <header class="hero">
+    <div>
+      <div class="eyebrow">Finite simple groups · Lie type, family A</div>
+      <h1>A<b>ₙ</b>(q) Lab</h1>
+      <p>The groups PSL(n+1, q): invertible matrices of determinant 1 over the field with q elements, modulo scalars. Each one is the symmetry group of a finite projective space.</p>
+    </div>
+    <div class="current"><div class="big" id="curName">A₁(5)</div><div class="alias" id="curAlias">PSL(2, 5) · L₂(5)</div></div>
+  </header>
+
+  <section class="sheet" aria-labelledby="famH">
+    <div class="sheet-head"><h2 id="famH">The family</h2><p class="hint">Rows are the rank n, columns the field size q. Shading follows the number of digits in the order. Tap a cell to open it.</p></div>
+    <div class="grid-scroll"><div class="fam" id="fam"></div></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--heat-lo)"></i>small order</span>
+      <span><i class="sw" style="background:var(--heat-hi)"></i>large order</span>
+      <span><i class="sw" style="background-image:repeating-linear-gradient(135deg,transparent 0 3px,var(--muted) 3px 4px)"></i>not simple</span>
+      <span><b class="mono" style="font-size:11px">≅</b> isomorphic to another group in this grid or to an alternating group</span>
+    </div>
+  </section>
+
+  <div class="duo">
+    <section class="sheet" aria-labelledby="dataH">
+      <div class="sheet-head"><h2 id="dataH">Data sheet</h2><span class="eyebrow">from the Dynkin diagram</span></div>
+      <div class="dyn" id="dyn"></div>
+      <dl class="facts" id="facts"></dl>
+      <div class="formula" id="formula"></div>
+      <ul class="notes" id="notes"></ul>
+    </section>
+
+    <section class="sheet" aria-labelledby="geoH">
+      <div class="sheet-head"><h2 id="geoH">The space it moves</h2><span class="eyebrow mono" id="pgName">PG(1, 5)</span></div>
+      <p class="hint" id="geoHint"></p>
+      <div class="geo-stage" id="geoStage"></div>
+    </section>
+  </div>
+
+  <section class="sheet" aria-labelledby="cenH">
+    <div class="sheet-head"><h2 id="cenH">Element census</h2><p class="hint">Every element is counted by brute force, grouped by its order.</p></div>
+    <div class="cen-ctl">
+      <label class="eyebrow" for="cmpSel">Compare with</label>
+      <select id="cmpSel"></select>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div class="prog" id="prog" hidden><i></i></div>
+    <div id="cenBody"></div>
+  </section>
+
+  <footer>Orders use exact integer arithmetic. The census enumerates SL(n+1, q) and divides by the centre, for groups up to 150 000 elements. Field elements: integers for prime q; powers of a primitive element ω otherwise.</footer>
+</div>
+
+<script>
+// ===== Core math for the A_n(q) lab: finite fields, PSL(n+1,q), projective spaces, census =====
+const SUP = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻'};
+const sup = s => String(s).split('').map(c => SUP[c] || c).join('');
+
+function primePower(q) {
+  if (q < 2) return null;
+  let p = 2; while (q % p) p++;
+  let k = 0, t = q; while (t > 1) { if (t % p) return null; t /= p; k++; }
+  return { p, k };
+}
+
+const fieldCache = {};
+function makeField(q) {
+  if (fieldCache[q]) return fieldCache[q];
+  const pp = primePower(q); if (!pp) throw new Error('not a prime power');
+  const { p, k } = pp;
+  const add = new Uint8Array(q * q), mul = new Uint8Array(q * q);
+  const digits = a => { const d = []; for (let i = 0; i < k; i++) { d.push(a % p); a = Math.floor(a / p); } return d; };
+  const undig = d => d.reduceRight((s, x) => s * p + x, 0);
+  for (let a = 0; a < q; a++) for (let b = 0; b < q; b++) {
+    const da = digits(a), db = digits(b);
+    add[a * q + b] = undig(da.map((x, i) => (x + db[i]) % p));
+  }
+  let poly = null;
+  if (k === 1) {
+    for (let a = 0; a < q; a++) for (let b = 0; b < q; b++) mul[a * q + b] = (a * b) % p;
+  } else {
+    // search monic irreducible x^k + c_{k-1}x^{k-1}+...+c_0 : multiplication with no zero divisors
+    for (let c = 0; c < q && !poly; c++) {
+      const cs = digits(c); if (cs[0] === 0) continue;
+      let ok = true;
+      const prod = (a, b) => {
+        const da = digits(a), db = digits(b), r = new Array(2 * k - 1).fill(0);
+        for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) r[i + j] = (r[i + j] + da[i] * db[j]) % p;
+        for (let d = 2 * k - 2; d >= k; d--) {
+          const t = r[d]; if (!t) continue; r[d] = 0;
+          for (let i = 0; i < k; i++) r[d - k + i] = ((r[d - k + i] - t * cs[i]) % p + p) % p;
+        }
+        return undig(r.slice(0, k));
+      };
+      for (let a = 1; a < q && ok; a++) for (let b = 1; b < q; b++) {
+        const v = prod(a, b); if (v === 0) { ok = false; break; } mul[a * q + b] = v;
+      }
+      if (ok) { poly = cs; for (let a = 0; a < q; a++) { mul[a] = 0; mul[a * q] = 0; } }
+    }
+  }
+  const neg = new Uint8Array(q), inv = new Uint8Array(q);
+  for (let a = 0; a < q; a++) for (let b = 0; b < q; b++) {
+    if (add[a * q + b] === 0) neg[a] = b;
+    if (mul[a * q + b] === 1) inv[a] = b;
+  }
+  // primitive element
+  let g = 0;
+  for (let c = 2 % q || 1; c < q && !g; c++) {
+    let x = 1, ord = 0;
+    do { x = mul[x * q + c]; ord++; } while (x !== 1 && ord < q);
+    if (ord === q - 1) g = c;
+  }
+  if (q === 2) g = 1;
+  const log = new Int16Array(q).fill(-1), exp = new Uint8Array(q);
+  { let x = 1; for (let i = 0; i < q - 1; i++) { exp[i] = x; log[x] = i; x = mul[x * q + g]; } }
+  const label = a => {
+    if (k === 1) return String(a);
+    if (a === 0) return '0';
+    const e = log[a]; return e === 0 ? '1' : e === 1 ? 'ω' : 'ω' + sup(e);
+  };
+  const F = { q, p, k, add, mul, neg, inv, g, log, exp, poly, label,
+    a: (x, y) => add[x * q + y], m: (x, y) => mul[x * q + y],
+    s: (x, y) => add[x * q + neg[y]] };
+  fieldCache[q] = F; return F;
+}
+
+// ===== matrices (flat, size m) =====
+function matMul(F, A, B, m) {
+  const C = new Array(m * m).fill(0), q = F.q;
+  for (let i = 0; i < m; i++) for (let j = 0; j < m; j++) {
+    let s = 0;
+    for (let t = 0; t < m; t++) s = F.add[s * q + F.mul[A[i * m + t] * q + B[t * m + j]]];
+    C[i * m + j] = s;
+  }
+  return C;
+}
+function det(F, A, m) {
+  const M = A.slice(); let d = 1;
+  for (let c = 0; c < m; c++) {
+    let r = c; while (r < m && M[r * m + c] === 0) r++;
+    if (r === m) return 0;
+    if (r !== c) { for (let j = 0; j < m; j++) { const t = M[r * m + j]; M[r * m + j] = M[c * m + j]; M[c * m + j] = t; } d = F.neg[d]; }
+    const piv = M[c * m + c]; d = F.m(d, piv); const pi = F.inv[piv];
+    for (let r2 = c + 1; r2 < m; r2++) {
+      const f = F.m(M[r2 * m + c], pi); if (!f) continue;
+      for (let j = c; j < m; j++) M[r2 * m + j] = F.s(M[r2 * m + j], F.m(f, M[c * m + j]));
+    }
+  }
+  return d;
+}
+const identity = m => { const I = new Array(m * m).fill(0); for (let i = 0; i < m; i++) I[i * m + i] = 1; return I; };
+function isScalar(A, m) {
+  const d = A[0]; if (!d) return false;
+  for (let i = 0; i < m; i++) for (let j = 0; j < m; j++) if (A[i * m + j] !== (i === j ? d : 0)) return false;
+  return true;
+}
+
+// ===== orders =====
+const gcd = (a, b) => { while (b) [a, b] = [b, a % b]; return a; };
+const gcdB = (a, b) => { while (b) [a, b] = [b, a % b]; return a; };
+function pslOrder(n, q) { // A_n(q) = PSL(n+1,q)
+  const Q = BigInt(q), m = n + 1;
+  let o = Q ** BigInt(n * (n + 1) / 2);
+  for (let i = 2; i <= m; i++) o *= Q ** BigInt(i) - 1n;
+  return o / BigInt(gcd(m, q - 1));
+}
+function factorNum(x, into) { // x: BigInt
+  for (const p of [2n, 3n]) while (x % p === 0n) { into.set(p, (into.get(p) || 0) + 1); x /= p; }
+  for (let p = 5n; p * p <= x; p += 6n) for (const r of [p, p + 2n]) while (x % r === 0n) { into.set(r, (into.get(r) || 0) + 1); x /= r; }
+  if (x > 1n) into.set(x, (into.get(x) || 0) + 1);
+  return into;
+}
+function pslFactor(n, q) {
+  const f = new Map(), { p, k } = primePower(q), m = n + 1, Q = BigInt(q);
+  f.set(BigInt(p), k * n * (n + 1) / 2);
+  for (let i = 2; i <= m; i++) factorNum(Q ** BigInt(i) - 1n, f);
+  const z = new Map(); factorNum(BigInt(gcd(m, q - 1)), z);
+  for (const [pr, e] of z) f.set(pr, f.get(pr) - e);
+  for (const [pr, e] of [...f]) if (!e) f.delete(pr);
+  return [...f].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+}
+
+// ===== projective space PG(n,q): normalized so the LAST nonzero coordinate is 1 =====
+function projSpace(n, q) {
+  const F = makeField(q), m = n + 1, pts = [], index = new Map();
+  const code = v => v.reduce((s, x) => s * q + x, 0);
+  const total = q ** m;
+  for (let c = 1; c < total; c++) {
+    const v = []; let t = c; for (let i = 0; i < m; i++) { v.unshift(t % q); t = Math.floor(t / q); }
+    let last = m - 1; while (v[last] === 0) last--;
+    if (v[last] !== 1) continue;
+    index.set(code(v), pts.length); pts.push(v);
+  }
+  const norm = v => {
+    let last = m - 1; while (last >= 0 && v[last] === 0) last--;
+    const s = F.inv[v[last]]; return v.map(x => F.m(x, s));
+  };
+  const apply = (A, v) => { // column vector A·v
+    const w = [];
+    for (let i = 0; i < m; i++) { let s = 0; for (let j = 0; j < m; j++) s = F.a(s, F.m(A[i * m + j], v[j])); w.push(s); }
+    return w;
+  };
+  const perm = A => pts.map(v => index.get(code(norm(apply(A, v)))));
+  // lines through point i: other points grouped by the line they span with i
+  const linesThrough = i => {
+    const P = pts[i], seen = new Set(), lines = [];
+    for (let j = 0; j < pts.length; j++) {
+      if (j === i || seen.has(j)) continue;
+      const line = [i, j]; seen.add(j);
+      for (let a = 1; a < q; a++) { // P + a*Q  (a != 0), plus Q itself already
+        const w = norm(P.map((x, t) => F.a(x, F.m(a, pts[j][t]))));
+        const id = index.get(code(w)); if (!seen.has(id) && id !== i) { seen.add(id); line.push(id); }
+      }
+      lines.push(line);
+    }
+    return lines;
+  };
+  const label = i => {
+    const v = pts[i];
+    if (n === 1) return v[1] === 0 ? '∞' : F.label(v[0]);
+    return '(' + v.map(F.label).join(F.k > 1 ? ':' : '') + ')';
+  };
+  return { n, q, F, m, pts, perm, linesThrough, label, N: pts.length };
+}
+
+// ===== permutations =====
+function cycles(perm) {
+  const seen = new Uint8Array(perm.length), out = [];
+  for (let i = 0; i < perm.length; i++) {
+    if (seen[i]) continue; const c = []; let j = i;
+    while (!seen[j]) { seen[j] = 1; c.push(j); j = perm[j]; }
+    out.push(c);
+  }
+  return out;
+}
+const lcm = (a, b) => a / gcd(a, b) * b;
+const permOrder = perm => cycles(perm).reduce((o, c) => lcm(o, c.length), 1);
+
+// ===== generators =====
+function generators(n, q) {
+  const F = makeField(q), m = n + 1, g = F.g;
+  const shear = identity(m); shear[0 * m + 1] = 1;                     // x0 += x1   (n=1: z -> z+1)
+  const stretch = identity(m); stretch[0] = g; stretch[m + 1] = F.inv[g]; // diag(g, 1/g)  (n=1: z -> g^2 z)
+  const rot = new Array(m * m).fill(0);                                 // coordinate cycle, det fixed to 1
+  for (let i = 0; i < m; i++) rot[i * m + ((i + 1) % m)] = 1;
+  if (det(F, rot, m) !== 1) rot[0 * m + 1] = F.neg[1];                  // n=1: z -> -1/z
+  return { shear, stretch, rot };
+}
+function randomSL(n, q, rnd = Math.random) {
+  const F = makeField(q), m = n + 1;
+  for (;;) {
+    const A = Array.from({ length: m * m }, () => Math.floor(rnd() * q));
+    const d = det(F, A, m); if (!d) continue;
+    const di = F.inv[d]; for (let j = 0; j < m; j++) A[j] = F.m(A[j], di);
+    return A;
+  }
+}
+
+// ===== census of element orders in PSL(m,q) =====
+const CENSUS_MAX = 150000;
+function censusFeasible(n, q) {
+  const m = n + 1, o = pslOrder(n, q);
+  return o <= BigInt(CENSUS_MAX) && (m === 2 || q ** (m * m) <= 300000);
+}
+// generator: yields progress in [0,1], returns Map(order -> count of PSL elements)
+function* censusGen(n, q) {
+  const F = makeField(q), m = n + 1, Q = q, z = gcd(m, q - 1);
+  const counts = new Map();
+  const ordOf = A => { let B = A, k = 1; while (!isScalar(B, m)) { B = matMul(F, B, A, m); k++; } return k; };
+  let done = 0;
+  if (m === 2) {
+    const tot = (q * q - 1) * q;
+    for (let a = 0; a < Q; a++) for (let b = 0; b < Q; b++) {
+      if (!a && !b) continue;
+      for (let t = 0; t < Q; t++) {
+        let c, d;
+        if (a) { c = t; d = F.m(F.a(1, F.m(b, c)), F.inv[a]); } else { c = F.neg[F.inv[b]]; d = t; }
+        const o = ordOf([a, b, c, d]); counts.set(o, (counts.get(o) || 0) + 1); done++;
+      }
+      if (done % 4000 < Q) yield done / tot;
+    }
+  } else {
+    const tot = q ** (m * m), A = new Array(m * m).fill(0);
+    for (let c = 0; c < tot; c++) {
+      let t = c; for (let i = 0; i < m * m; i++) { A[i] = t % q; t = Math.floor(t / q); }
+      if (det(F, A, m) === 1) { const o = ordOf(A.slice()); counts.set(o, (counts.get(o) || 0) + 1); }
+      if (c % 6000 === 0) yield c / tot;
+    }
+  }
+  for (const [o, c] of counts) counts.set(o, c / z);
+  return counts;
+}
+function censusSync(n, q) { const it = censusGen(n, q); let r; do { r = it.next(); } while (!r.done); return r.value; }
+
+if (typeof module !== 'undefined') module.exports = { makeField, det, matMul, pslOrder, pslFactor, projSpace, cycles, permOrder, generators, randomSL, censusSync, censusFeasible, identity, gcd };
+
+</script>
+<script>
+(() => {
+const QS = [2,3,4,5,7,8,9,11,13,16,17,19,23,25,27,29,31,32], NS = [1,2,3,4,5,6,7];
+const SUB = '₀₁₂₃₄₅₆₇₈₉';
+const sb = n => String(n).split('').map(d => SUB[d]).join('');
+const nm = (n,q) => `A${sb(n)}(${q})`;
+const key = (n,q) => n + ',' + q;
+const thin = s => s.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const short = o => { const s = o.toString(); if (s.length <= 6) return thin(s); return s[0] + '.' + s[1] + '·10' + sup(s.length - 1); };
+
+// isomorphisms & remarks
+const NOTES = {
+  '1,2': [['warn','Not simple. A₁(2) ≅ S₃, a solvable group of order 6.']],
+  '1,3': [['warn','Not simple. A₁(3) ≅ A₄, order 12; it has the Klein four-group as a normal subgroup.']],
+  '1,4': [['','A₁(4) ≅ A₁(5) ≅ A₅, the smallest non-abelian simple group.'],
+          ['','Its 5 points of PG(1, 4) behave exactly like the 5 cubes hidden in the dodecahedron: A₅ has one transitive action on 5 things.'],
+          ['link','Compare its census with A₁(5)', [1,5]]],
+  '1,5': [['','A₁(5) ≅ A₁(4) ≅ A₅.'],
+          ['','Its 6 points of PG(1, 5) are the 6 axes through opposite vertices of the icosahedron. Both actions have point stabiliser of order 10.'],
+          ['link','Compare its census with A₁(4)', [1,4]]],
+  '1,7': [['','A₁(7) ≅ A₂(2), order 168: the symmetries of the Fano plane and of Klein\'s quartic curve.'],['link','Compare with A₂(2)', [2,2]]],
+  '2,2': [['','A₂(2) ≅ A₁(7). It is the full symmetry group of the Fano plane drawn here: every one of its 168 elements maps lines to lines.'],['link','Compare with A₁(7)', [1,7]]],
+  '1,9': [['','A₁(9) ≅ A₆, order 360. A₆ is the alternating group with the famous exceptional outer automorphism.']],
+  '3,2': [['','A₃(2) ≅ A₈, order 20 160.'],['link','Its order twin A₂(4) is a different group', [2,4]]],
+  '2,4': [['','Same order as A₃(2) ≅ A₈, namely 20 160, but not isomorphic to it. The census below proves it.'],['link','Compare with A₃(2)', [3,2]],
+          ['','A₂(4) = PSL(3, 4) is the start of the M₂₄ story: M₂₁ ≅ PSL(3, 4) acts on the 21 points of PG(2, 4).']],
+  '1,8': [['','A₁(8), order 504. The smallest Ree group ²G₂(3) is not simple, and its derived subgroup is exactly A₁(8).']],
+};
+function notesFor(n,q){
+  const out = [...(NOTES[key(n,q)] || [])];
+  if (n === 3) out.push(['','A₃(q) ≅ D₃(q) = PΩ⁺₆(q) for every q, because the Dynkin diagrams A₃ and D₃ are the same picture (Klein correspondence: lines of PG(3, q) ↔ points of a quadric in PG(5, q)).']);
+  if (n === 1 && q > 3) out.push(['','A₁(q) acts on q + 1 points by Möbius maps z ↦ (az + b)/(cz + d) with ad − bc = 1. It is 2-transitive on those points; the larger group PGL(2, q) is sharply 3-transitive.']);
+  return out;
+}
+const ISO = new Set(['1,4','1,5','1,7','2,2','1,9','3,2']);
+const NONSIMPLE = new Set(['1,2','1,3']);
+const KNOWN_ISO = new Set(['1,4|1,5','1,5|1,4','1,7|2,2','2,2|1,7']);
+
+let state = { n:1, q:5, cmp:null };
+
+// ---------- family grid ----------
+function buildGrid(){
+  const fam = $('fam'); fam.style.setProperty('--cols', QS.length);
+  let h = '<div></div>' + QS.map(q => `<div class="qh">q=${q}</div>`).join('');
+  const maxD = pslOrder(7, 32).toString().length;
+  for (const n of NS){
+    h += `<div class="nh">A${sb(n)}</div>`;
+    for (const q of QS){
+      const o = pslOrder(n,q), d = o.toString().length, t = Math.round(Math.pow((d-1)/(maxD-1), .7)*100);
+      const k = key(n,q);
+      const cls = ['tile', t > 52 ? 'hot' : '', NONSIMPLE.has(k) ? 'nonsimple' : ''].join(' ');
+      h += `<button class="${cls}" data-n="${n}" data-q="${q}" aria-label="${nm(n,q)}, order ${o}" aria-pressed="false" style="background:color-mix(in oklab,var(--heat-hi) ${t}%,var(--heat-lo))">${short(o)}${ISO.has(k)?'<span class="iso">≅</span>':''}</button>`;
+    }
+  }
+  fam.innerHTML = h;
+  fam.addEventListener('click', e => { const b = e.target.closest('.tile'); if (b) select(+b.dataset.n, +b.dataset.q); });
+}
+
+// ---------- data sheet ----------
+function dynkin(n){
+  const sp = 46, w = sp*(n-1) + 40, y = 20;
+  let s = `<svg viewBox="0 0 ${w} 48" width="${w}" height="48" role="img" aria-label="Dynkin diagram A${n}: ${n} nodes in a chain">`;
+  for (let i = 0; i < n-1; i++) s += `<line x1="${20+i*sp}" y1="${y}" x2="${20+(i+1)*sp}" y2="${y}" stroke="var(--ink)" stroke-width="2"/>`;
+  for (let i = 0; i < n; i++) s += `<circle cx="${20+i*sp}" cy="${y}" r="8" fill="var(--sheet)" stroke="var(--accent)" stroke-width="2.5"/><text x="${20+i*sp}" y="44" text-anchor="middle">α${sb(i+1)}</text>`;
+  return s + '</svg>';
+}
+function renderSheet(){
+  const { n, q } = state, m = n + 1, N = n*(n+1)/2, z = gcd(m, q-1), pp = primePower(q);
+  $('curName').textContent = nm(n,q);
+  $('curAlias').textContent = `PSL(${m}, ${q}) · L${sb(m)}(${q})`;
+  $('dyn').innerHTML = dynkin(n);
+  let fact = 1n; for (let i = 2; i <= m; i++) fact *= BigInt(i);
+  $('facts').innerHTML = `
+    <dt>Positive roots</dt><dd>${N} &nbsp;→ the power q${sup(N)}</dd>
+    <dt>Degrees</dt><dd>${Array.from({length:n},(_, i)=>i+2).join(', ')} &nbsp;→ one factor q<sup>d</sup> − 1 each</dd>
+    <dt>Weyl group</dt><dd>S${sb(m)}, order ${thin(fact.toString())}</dd>
+    <dt>Centre of SL</dt><dd>gcd(${m}, ${q} − 1) = ${z} &nbsp;→ divide</dd>
+    <dt>Field</dt><dd>GF(${q}) = GF(${pp.p}${pp.k>1?sup(pp.k):''})</dd>`;
+  const facs = []; const nums = [];
+  for (let d = 2; d <= m; d++){ facs.push(`(${q}${sup(d)} − 1)`); nums.push(thin((BigInt(q)**BigInt(d) - 1n).toString())); }
+  const o = pslOrder(n,q);
+  const fz = pslFactor(n,q).map(([p,e]) => p.toString() + (e>1?sup(e):'')).join(' · ');
+  $('formula').innerHTML = `|${nm(n,q)}| = ${q}${sup(N)} · ${facs.join('')} / ${z}<br>= ${thin((BigInt(q)**BigInt(N)).toString())} · ${nums.join(' · ')} / ${z}<br>= <span class="res">${thin(o.toString())}</span><br>= ${fz}`;
+  $('notes').innerHTML = notesFor(n,q).map(([c,t,g]) => c === 'link'
+    ? `<li><button class="chiplink" data-cmp="${g[0]},${g[1]}">${esc(t)}</button></li>`
+    : `<li class="${c}">${esc(t)}</li>`).join('');
+}
+$('notes').addEventListener('click', e => {
+  const b = e.target.closest('[data-cmp]'); if (!b) return;
+  const [n2,q2] = b.dataset.cmp.split(',').map(Number);
+  state.cmp = [n2,q2]; renderCensus(); $('cenH').scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'start'});
+});
+
+// ---------- geometry ----------
+const GEO_MAX = 130;
+let G = null; // {S, slots, acc, M, sel, toks}
+const CYCOL = n => `var(--c${n % 8})`;
+function renderGeometry(){
+  const { n, q } = state, m = n + 1, N = (q**m - 1)/(q - 1);
+  $('pgName').textContent = `PG(${n}, ${q}) · ${N} points`;
+  const stage = $('geoStage');
+  if (N > GEO_MAX){
+    G = null;
+    $('geoHint').textContent = '';
+    stage.innerHTML = `<div class="toolarge">PG(${n}, ${q}) has ${thin(String(N))} points, too many to draw. Pick a smaller rank or field to play with the action.</div>`;
+    return;
+  }
+  const S = projSpace(n, q), F = S.F;
+  $('geoHint').textContent = n === 1
+    ? `The projective line over GF(${q}): the ${q} field elements plus ∞. Apply moves and watch where every point goes. Points of one colour form one cycle of the combined element.`
+    : `Points of PG(${n}, ${q}) are the lines through the origin in GF(${q})${sup(m)}. Tap a point to see the lines through it. Points of one colour form one cycle of the combined element.`;
+  // slot layout
+  const C = 180, R = 146, slots = new Array(S.N);
+  let fano = n === 2 && q === 2;
+  if (fano){
+    const code = v => v.join('');
+    const place = {'100':[180,40], '010':[52,262], '001':[308,262], '110':[116,151], '011':[180,262], '101':[244,151], '111':[180,188]};
+    S.pts.forEach((v,i) => slots[i] = place[code(v)]);
+  } else {
+    let order = [...Array(S.N).keys()];
+    if (n === 1){
+      const inf = order.find(i => S.pts[i][1] === 0);
+      const fin = order.filter(i => i !== inf);
+      fin.sort((a,b) => F.k === 1 ? S.pts[a][0] - S.pts[b][0] : ((S.pts[a][0] ? F.log[S.pts[a][0]] : -1) - (S.pts[b][0] ? F.log[S.pts[b][0]] : -1)));
+      order = [inf, ...fin];
+    }
+    order.forEach((pi, k) => { const a = -Math.PI/2 + 2*Math.PI*k/S.N; slots[pi] = [C + R*Math.cos(a), C + R*Math.sin(a)]; });
+  }
+  const r = S.N <= 8 ? 15 : S.N <= 16 ? 12.5 : S.N <= 40 ? 9 : 4.5;
+  const showLab = n === 1 ? S.N <= 40 : S.N <= 15;
+  const fs = n === 1 ? (S.N <= 8 ? 12 : S.N <= 16 ? 10 : 7) : (S.N <= 7 ? 10 : 7.5);
+  // static layer
+  let stat = '';
+  if (fano){
+    const lines = new Set(); const L = [];
+    for (let i = 0; i < 7; i++) for (const l of S.linesThrough(i)){ const k = [...l].sort().join(); if (!lines.has(k)){ lines.add(k); L.push(l); } }
+    G = { L };
+    for (const l of L){
+      const ps = l.map(i => slots[i]);
+      const [a,b,c] = ps, cross = (b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0]);
+      if (Math.abs(cross) < 1){
+        const xs = ps.slice().sort((u,v) => u[0]-v[0] || u[1]-v[1]);
+        stat += `<line data-line="${l.join('-')}" x1="${xs[0][0]}" y1="${xs[0][1]}" x2="${xs[2][0]}" y2="${xs[2][1]}" stroke="var(--line)" stroke-width="2"/>`;
+      } else stat += `<circle data-line="${l.join('-')}" cx="180" cy="188" r="74" fill="none" stroke="var(--line)" stroke-width="2"/>`;
+    }
+  } else {
+    G = {};
+    stat = `<circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="${n===1?'0':'2 4'}"/>`;
+  }
+  const toks = S.pts.map((_, i) => `<g class="tok" data-i="${i}" transform="translate(${slots[i][0]} ${slots[i][1]})" tabindex="0" role="button" aria-label="point ${esc(S.label(i))}"><circle r="${r}"/>${showLab ? `<text text-anchor="middle" dy="0.35em" font-size="${fs}"></text>` : ''}</g>`).join('');
+  const gens = generators(n, q);
+  const g2 = F.label(F.m(F.g, F.g)), neg1 = F.p === 2 ? '1/z' : '−1/z';
+  const moves = n === 1
+    ? [['shear', `z ↦ z + 1`], ['stretch', `z ↦ ${g2 === '1' ? '' : g2}z`], ['rot', `z ↦ ${neg1}`]]
+    : [['shear', 'Shear x₁ += x₂'], ['stretch', `Stretch x₁·${F.label(F.g)}, x₂/${F.label(F.g)}`], ['rot', 'Rotate coordinates']];
+  if (n === 1 ? g2 === '1' : F.g === 1) moves.splice(1, 1);
+  stage.innerHTML = `
+    <svg class="geo-svg" viewBox="0 0 360 ${fano ? 310 : 360}" id="geoSvg" aria-label="Projective space PG(${n}, ${q})">
+      <g id="gStat">${stat}</g><g id="gHi"></g><g id="gTok">${toks}</g>
+    </svg>
+    <div class="btns" id="moves">${moves.map(([k,t]) => `<button class="b" data-mv="${k}"><span class="f">${t}</span></button>`).join('')}
+      <button class="b primary" data-mv="rand">Random element</button><button class="b" data-mv="reset">Reset</button></div>
+    <div class="pointinfo" id="pinfo">Tap a point.</div>
+    <div class="readout">
+      <div><div class="eyebrow" style="margin-bottom:6px">Combined matrix</div><div class="matrix" id="mat"></div></div>
+      <div class="stat"><div><span class="k">Order in ${nm(n,q)}</span><div class="mono" id="eord" style="font-size:22px;font-weight:600"></div></div>
+        <div><span class="k">Cycle type on ${S.N} points</span><div class="mono" id="ctype"></div></div>
+        <div class="cyc" id="cycl"></div></div>
+    </div>`;
+  Object.assign(G, { S, slots, gens, acc: [...Array(S.N).keys()], M: identity(m), sel: null, anim: null, showLab });
+  $('moves').addEventListener('click', e => { const b = e.target.closest('[data-mv]'); if (b) move(b.dataset.mv); });
+  const tg = $('gTok');
+  tg.addEventListener('click', e => { const t = e.target.closest('.tok'); if (t) pick(+t.dataset.i); });
+  tg.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.tok')){ e.preventDefault(); pick(+e.target.closest('.tok').dataset.i); } });
+  paint(false);
+}
+// token i = original point i, sits at slot acc[i]
+function move(k){
+  if (!G) return;
+  const { S } = G, m = S.m;
+  let A;
+  if (k === 'reset'){ G.acc = [...Array(S.N).keys()]; G.M = identity(m); paint(true); return; }
+  if (k === 'rand') { A = randomSL(S.n, S.q); G.acc = [...Array(S.N).keys()]; G.M = identity(m); }
+  else A = G.gens[k];
+  const p = S.perm(A);
+  G.prev = G.acc.slice();
+  G.acc = G.acc.map(s => p[s]);
+  G.M = matMul(S.F, A, G.M, m);
+  paint(true);
+}
+function pick(i){ G.sel = G.sel === i ? null : i; paint(false); }
+function paint(animate){
+  const { S, slots, acc, M } = G, F = S.F, m = S.m;
+  // cycles of the combined permutation (on slots: slot s -> where the point at s is sent)
+  const perm = S.perm(M), cyc = cycles(perm);
+  const colOf = new Array(S.N).fill(null); let ci = 0;
+  for (const c of cyc) if (c.length > 1){ for (const s of c) colOf[s] = CYCOL(ci); ci++; }
+  // tokens: token i carries label of point i, sits at acc[i]; colour by its ORIGINAL slot's cycle
+  const tokEls = $('gTok').querySelectorAll('.tok');
+  const from = animate && G.prev ? G.prev : acc;
+  tokEls.forEach(el => {
+    const i = +el.dataset.i;
+    el.querySelector('circle').setAttribute('fill', colOf[i] || 'var(--muted)');
+    const t = el.querySelector('text'); if (t){ t.textContent = S.label(i); t.setAttribute('fill', 'var(--sheet)'); }
+    el.setAttribute('aria-label', `point ${S.label(i)}, now at position of ${S.label(acc[i])}`);
+  });
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  cancelAnimationFrame(G.anim);
+  if (animate && !reduce && G.prev){
+    const t0 = performance.now(), D = 460;
+    const step = now => {
+      const u = Math.min(1, (now - t0)/D), e = u < .5 ? 2*u*u : 1 - Math.pow(-2*u + 2, 2)/2;
+      tokEls.forEach(el => { const i = +el.dataset.i, a = slots[from[i]], b = slots[acc[i]];
+        el.setAttribute('transform', `translate(${a[0] + (b[0]-a[0])*e} ${a[1] + (b[1]-a[1])*e})`); });
+      if (u < 1) G.anim = requestAnimationFrame(step);
+    };
+    G.anim = requestAnimationFrame(step);
+  } else tokEls.forEach(el => { const i = +el.dataset.i, b = slots[acc[i]]; el.setAttribute('transform', `translate(${b[0]} ${b[1]})`); });
+  G.prev = null;
+  // matrix & stats
+  const mat = $('mat'); mat.style.gridTemplateColumns = `repeat(${m}, auto)`;
+  mat.innerHTML = M.map(x => `<span>${F.label(x)}</span>`).join('');
+  $('eord').textContent = permOrder(perm);
+  const lens = {}; cyc.forEach(c => lens[c.length] = (lens[c.length] || 0) + 1);
+  $('ctype').textContent = Object.keys(lens).map(Number).sort((a,b) => b-a).map(l => l + (lens[l] > 1 ? sup(lens[l]) : '')).join(' ');
+  const nontriv = cyc.filter(c => c.length > 1);
+  $('cycl').innerHTML = nontriv.length ? nontriv.map((c, k) => `<span style="color:${CYCOL(k)}">(${c.map(s => esc(S.label(s))).join(' ')})</span>`).join(' ') : 'Identity: every point stays put.';
+  // selection highlight (by slot)
+  const hi = $('gHi'); hi.innerHTML = '';
+  $('gStat').querySelectorAll('[data-line]').forEach(el => { el.setAttribute('stroke', 'var(--line)'); el.setAttribute('stroke-width', '2'); });
+  const info = $('pinfo');
+  if (G.sel == null){ info.textContent = S.n === 1 ? 'Tap a point to follow it.' : 'Tap a point to see the lines through it.'; return; }
+  const s = G.sel, img = perm[s], myc = cyc.find(c => c.includes(s));
+  let txt = `<b class="mono">${esc(S.label(s))}</b> is sent to <b class="mono">${esc(S.label(img))}</b> by the combined element`;
+  txt += myc.length > 1 ? `, on a cycle of length ${myc.length}.` : '. It is a fixed point.';
+  if (S.n >= 2){
+    const ls = S.linesThrough(s);
+    txt += ` ${ls.length} lines pass through it, each with ${S.q + 1} points.`;
+    if (G.L){ // fano: highlight drawn lines
+      $('gStat').querySelectorAll('[data-line]').forEach(el => { if (el.dataset.line.split('-').map(Number).includes(s)){ el.setAttribute('stroke', 'var(--accent)'); el.setAttribute('stroke-width', '3.5'); } });
+    } else {
+      let h = '';
+      ls.forEach((l, k) => { const col = CYCOL(k); for (const t of l) if (t !== s) h += `<line x1="${slots[s][0]}" y1="${slots[s][1]}" x2="${slots[t][0]}" y2="${slots[t][1]}" stroke="${col}" stroke-width="1.4" opacity=".75"/>`; });
+      hi.innerHTML = h;
+    }
+  }
+  hi.insertAdjacentHTML('beforeend', `<circle cx="${slots[s][0]}" cy="${slots[s][1]}" r="${(G.showLab ? 17 : 9)}" fill="none" stroke="var(--ink)" stroke-width="2"/>`);
+  info.innerHTML = txt;
+}
+
+// ---------- census ----------
+const cache = new Map(); let job = null;
+const feasible = []; for (const n of NS) for (const q of QS) if (censusFeasible(n,q)) feasible.push([n,q]);
+const PRESETS = [['Order twins: A₂(4) vs A₃(2)', [2,4], [3,2]], ['A₁(4) vs A₁(5)', [1,4], [1,5]], ['A₁(7) vs A₂(2)', [1,7], [2,2]]];
+function setupCensusControls(){
+  $('presets').innerHTML = PRESETS.map(([t], i) => `<button class="preset" data-p="${i}">${t}</button>`).join('');
+  $('presets').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (!b) return; const [, a, c] = PRESETS[+b.dataset.p]; state.cmp = c; select(a[0], a[1], true); });
+  $('cmpSel').addEventListener('change', e => { state.cmp = e.target.value ? e.target.value.split(',').map(Number) : null; renderCensus(); });
+}
+function runCensus(n, q){
+  const k = key(n,q); if (cache.has(k)) return Promise.resolve(cache.get(k));
+  return new Promise(res => {
+    const it = censusGen(n, q), prog = $('prog'), bar = prog.firstElementChild; prog.hidden = false;
+    const myJob = {}; job = myJob;
+    const tick = () => {
+      if (job !== myJob) return res(null);
+      const t0 = performance.now(); let r;
+      do { r = it.next(); } while (!r.done && performance.now() - t0 < 14);
+      if (r.done){ cache.set(k, r.value); prog.hidden = true; res(r.value); }
+      else { bar.style.width = (r.value*100).toFixed(1) + '%'; setTimeout(tick, 0); }
+    };
+    tick();
+  });
+}
+async function renderCensus(){
+  const { n, q } = state, body = $('cenBody');
+  $('cmpSel').innerHTML = '<option value="">nothing</option>' + feasible.filter(([a,b]) => !(a === n && b === q)).map(([a,b]) => `<option value="${a},${b}" ${state.cmp && state.cmp[0] === a && state.cmp[1] === b ? 'selected' : ''}>${nm(a,b)} · ${thin(pslOrder(a,b).toString())}</option>`).join('');
+  if (!censusFeasible(n,q)){
+    job = null; $('prog').hidden = true;
+    body.innerHTML = `<div class="toolarge">${nm(n,q)} has ${thin(pslOrder(n,q).toString())} elements, more than the 150 000 this page counts one by one. Pick a smaller group, or try a preset.</div>`;
+    return;
+  }
+  body.innerHTML = `<p class="hint">Counting ${thin(pslOrder(n,q).toString())} elements…</p>`;
+  const A = await runCensus(n,q); if (!A || state.n !== n || state.q !== q) return;
+  let B = null, cmp = state.cmp;
+  if (cmp && !(cmp[0] === n && cmp[1] === q)) { B = await runCensus(cmp[0], cmp[1]); if (!B || state.n !== n || state.q !== q) return; } else cmp = null;
+  const oA = Number(pslOrder(n,q)), oB = cmp ? Number(pslOrder(cmp[0],cmp[1])) : 1;
+  const ords = [...new Set([...A.keys(), ...(B ? B.keys() : [])])].sort((a,b) => a-b);
+  const maxF = Math.max(...ords.map(o => Math.max((A.get(o)||0)/oA, B ? (B.get(o)||0)/oB : 0)));
+  const bar = (cnt, tot, two) => { const f = cnt/tot, w = (f/maxF*100);
+    return `<div class="bar ${two?'two':''} ${cnt?'':'zero'}"><i style="width:calc(${w.toFixed(2)}% - 110px*${(w/100).toFixed(3)})"></i><em>${cnt ? thin(String(cnt)) + ' · ' + (f*100).toFixed(f < .01 ? 2 : 1) + '%' : 'none'}</em></div>`; };
+  let h = `<div class="keys"><span><i class="sw" style="background:var(--accent)"></i>${nm(n,q)} · ${thin(String(oA))} elements</span>${B ? `<span><i class="sw" style="background:var(--second)"></i>${nm(cmp[0],cmp[1])} · ${thin(String(oB))} elements</span>` : ''}</div>`;
+  h += `<div class="bars" role="table" aria-label="Number of elements of each order">${ords.map(o => `<div class="barrow" role="row"><div class="ord" role="rowheader">${o}</div><div class="barpair" role="cell">${bar(A.get(o)||0, oA, false)}${B ? bar(B.get(o)||0, oB, true) : ''}</div></div>`).join('')}</div>`;
+  const inv = A.get(2) || 0, maxO = Math.max(...A.keys());
+  h += `<p class="hint">Rows are element orders. ${nm(n,q)} has ${thin(String(inv))} involutions and its largest element order is ${maxO}.</p>`;
+  if (B){
+    const same = ords.every(o => (A.get(o)||0) === (B.get(o)||0));
+    const kk = key(n,q) + '|' + key(cmp[0],cmp[1]);
+    let v;
+    if (oA !== oB) v = `Different orders, so these are different groups.`;
+    else if (!same){
+      const diff = ords.filter(o => (A.get(o)||0) !== (B.get(o)||0));
+      const agree = ords.filter(o => (A.get(o)||0) === (B.get(o)||0) && o > 1);
+      v = `<b>Proof of non-isomorphism.</b> Same order, different census: they disagree at order ${diff.join(', ')}. An isomorphism preserves element orders, so no isomorphism exists.${agree.length ? ` Note that they agree exactly at order ${agree.join(', ')}.` : ''}`;
+    } else v = `<b>Evidence, not proof.</b> Same order and identical census. That alone does not prove the groups are isomorphic. ${KNOWN_ISO.has(kk) ? 'Here they are, and that is a theorem: ' + (kk.includes('1,4') ? 'A₁(4) ≅ A₁(5) ≅ A₅.' : 'A₁(7) ≅ A₂(2).') : ''}`;
+    h += `<div class="verdict">${v}</div>`;
+  }
+  body.innerHTML = h;
+}
+
+// ---------- routing ----------
+function select(n, q, keepCmp){
+  state.n = n; state.q = q; if (!keepCmp) state.cmp = state.cmp && censusFeasible(...state.cmp) ? state.cmp : null;
+  if (state.cmp && state.cmp[0] === n && state.cmp[1] === q) state.cmp = null;
+  document.querySelectorAll('.tile').forEach(t => t.setAttribute('aria-pressed', +t.dataset.n === n && +t.dataset.q === q ? 'true' : 'false'));
+  const h = `#a${n}-${q}`; if (location.hash !== h) { try { history.replaceState(null, '', h); } catch(e) { location.hash = h; } }
+  renderSheet(); renderGeometry(); renderCensus();
+}
+function fromHash(){
+  const mt = /^#a(\d)-(\d+)$/.exec(location.hash);
+  if (mt && NS.includes(+mt[1]) && QS.includes(+mt[2])) return [+mt[1], +mt[2]];
+  return null;
+}
+buildGrid(); setupCensusControls();
+window.addEventListener('hashchange', () => { const h = fromHash(); if (h && (h[0] !== state.n || h[1] !== state.q)) select(h[0], h[1]); });
+const h0 = fromHash();
+if (h0) select(h0[0], h0[1]); else { state.cmp = [1,4]; select(1, 5, true); }
+})();
+</script>
+
+</body>
+</html>
