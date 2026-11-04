@@ -1,16 +1,17 @@
 # Web-game
 
-A collection of small browser puzzle games, plus a few interactive math pages. Open the landing page, pick a level, play, come back.
+A collection of small browser puzzle games, plus interactive math pages, a world map viewer and 3D models of sketches. Open the landing page, pick a level, play, come back.
 
 Plain static HTML — no build step. Progress (played / best score / cleared) is saved in the player's browser.
 
 ## Structure
 
 ```
-index.html            landing page (levels, explore, world)
+index.html            landing page (levels, explore, world, sketches)
 levels.js             level registry
 explore.js            explore registry (interactive math, no score)
 world.js              world registry (map layers)
+sketches.js           sketches registry (drawings rebuilt as 3D models)
 shared/progress.js    progress store used by every level
 levels/
   01-smiley-paths/    Smiley Paths
@@ -34,6 +35,8 @@ world/
   index.html          World viewer: one base map, switchable data layers, country panel, ranking
   countries.json      Natural Earth id → ISO-3 code and display name (outlines load from world-atlas on jsDelivr, projected to Equal Earth)
   layers/             One JSON file per layer (alcohol.json, gdp-share.json, typical-income.json, gdp-per-capita.json)
+sketches/
+  pineapple-umbrella/ Pineapple Umbrella (colored-pencil umbrella with a pineapple crown, as a three.js model; the original drawing is embedded)
 tools/
   chartable_convert.py  Regenerates explore/simple-groups/chartables from CTblLib data files
   j1/build_action.py  Rebuilds J1's 266-point action from Janko's 7×7 matrices over F11 (the generators in explore/j1)
@@ -60,6 +63,11 @@ Minesweeper keeps its own level list in the `LEVELS` array at the top of the scr
 
 1. Create `explore/name/index.html` (self-contained, back link to `../../`).
 2. Add an entry to `explore.js` with a short `badge` (up to ~3 characters).
+
+## Add a sketch
+
+1. Create `sketches/name/index.html` (self-contained, back link to `../../`).
+2. Add an entry to `sketches.js` with a short `badge`.
 
 ## Add a world layer
 

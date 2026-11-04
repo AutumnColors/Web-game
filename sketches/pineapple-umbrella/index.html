@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pineapple Umbrella</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Instrument+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed WebGL stage on sketch paper, hand-lettered label top-left, control strip bottom */
+:root{
+  --paper:#eef0ec; --paper-2:#dfe3dc; --ink:#25302b; --ink-soft:#5d6a63;
+  --leaf:#2e8c7a; --wood:#b97f45; --chip:rgba(255,255,255,.72); --chip-line:rgba(37,48,43,.14);
+  --f-hand:"Caveat","Segoe Print","Comic Sans MS",cursive;
+  --f-ui:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#201c19; --paper-2:#2c2622; --ink:#ece6dc; --ink-soft:#a89e92;
+  --leaf:#6cc7b0; --wood:#d9a067; --chip:rgba(44,38,34,.78); --chip-line:rgba(236,230,220,.14); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#201c19; --paper-2:#2c2622; --ink:#ece6dc; --ink-soft:#a89e92;
+  --leaf:#6cc7b0; --wood:#d9a067; --chip:rgba(44,38,34,.78); --chip-line:rgba(236,230,220,.14); color-scheme:dark }
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(120% 80% at 50% 40%, var(--paper) 0%, var(--paper-2) 100%) var(--paper);
+  color:var(--ink);font-family:var(--f-ui);overflow:hidden;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#stage{position:fixed;inset:0;touch-action:none}
+#stage canvas{display:block;width:100%;height:100%;cursor:grab}
+#stage canvas:active{cursor:grabbing}
+.label{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));pointer-events:none}
+.label h1{font-family:var(--f-hand);font-weight:600;font-size:2.4rem;line-height:1;margin:0;color:var(--ink);text-wrap:balance}
+.back{pointer-events:auto;display:inline-block;margin-bottom:.4rem;font-size:.85rem;color:var(--ink-soft);text-decoration:none}
+.back:hover,.back:focus-visible{color:var(--ink);text-decoration:underline}
+.label p{margin:.35rem 0 0;font-size:.8rem;color:var(--ink-soft);letter-spacing:.02em}
+.bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  display:flex;gap:6px;padding:6px;border-radius:999px;background:var(--chip);border:1px solid var(--chip-line);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.bar button{font:500 .85rem var(--f-ui);color:var(--ink);background:transparent;border:0;border-radius:999px;padding:.55rem .95rem;cursor:pointer;white-space:nowrap}
+.bar button:hover{background:var(--chip-line)}
+.bar button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.bar button:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
+.sketch{position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:calc(14px + env(safe-area-inset-top,0px));
+  width:min(130px,28vw);margin:0;padding:6px 6px 4px;background:#fff;border-radius:4px;
+  box-shadow:0 6px 20px rgba(0,0,0,.18);transform:rotate(2.5deg);transition:opacity .25s,transform .25s}
+.sketch img{display:block;width:100%;border-radius:2px}
+.sketch figcaption{font:600 1rem var(--f-hand);color:#4a4540;text-align:center;padding-top:2px}
+.sketch[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){.sketch{transition:none}}
+</style>
+</head>
+<body>
+
+<div id="stage" aria-label="3D model of a pineapple-crowned umbrella handle"></div>
+<div class="label"><a class="back" href="../../">← Back</a><h1>Pineapple Umbrella</h1><p>Drag to turn · pinch or scroll to zoom</p></div>
+<figure class="sketch" id="sketch"><img alt="Original colored-pencil drawing" src="data:image/jpeg;base64,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"><figcaption>the sketch</figcaption></figure>
+<div class="bar" role="toolbar">
+  <button id="spin" aria-pressed="true">Spin</button>
+  <button id="reset">Reset view</button>
+  <button id="showSketch" aria-pressed="true">Sketch</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const V3=THREE.Vector3;
+const stage=document.getElementById('stage');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+renderer.setClearColor(0x000000,0);
+stage.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(35,1,0.1,100);
+const HOME_POS=new V3(6.5,1.2,11.5), HOME_TGT=new V3(-0.35,-1.1,0);
+camera.position.copy(HOME_POS);
+
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.target.copy(HOME_TGT);
+controls.enableDamping=true; controls.dampingFactor=0.08;
+controls.enablePan=false; controls.minDistance=5; controls.maxDistance=24;
+controls.autoRotate=true; controls.autoRotateSpeed=1.4;
+
+// lights
+scene.add(new THREE.HemisphereLight(0xfffbf0,0x6b5a48,0.85));
+const key=new THREE.DirectionalLight(0xfff4e2,1.25); key.position.set(5,8,6); scene.add(key);
+const rim=new THREE.DirectionalLight(0xcfe8ff,0.55); rim.position.set(-6,3,-5); scene.add(rim);
+
+// seeded random
+let seed=7; const rnd=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646};
+
+// ---------- textures (colored-pencil feel) ----------
+function pencilCanvas(w,h,base,strokes){
+  const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');
+  g.fillStyle=base;g.fillRect(0,0,w,h);
+  strokes(g,w,h);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;
+}
+const woodTex=pencilCanvas(1024,256,'#c99a64',(g,w,h)=>{
+  const cols=['#a8723f','#d8b07c','#8f5d33','#e6c79c','#b98450'];
+  for(let i=0;i<2600;i++){
+    g.strokeStyle=cols[i%cols.length];g.globalAlpha=0.08+rnd()*0.18;g.lineWidth=0.6+rnd()*1.6;
+    const x=rnd()*w,y=rnd()*h,l=10+rnd()*40;
+    g.beginPath();g.moveTo(x,y);g.lineTo(x+l,y+(rnd()-.5)*5);g.stroke();
+  }
+  g.globalAlpha=1;
+});
+woodTex.repeat.set(5,1);
+const bandTex=pencilCanvas(512,128,'#d9c35a',(g,w,h)=>{
+  const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#b79a35');gr.addColorStop(.5,'#f0e08a');gr.addColorStop(1,'#a88a2c');
+  g.fillStyle=gr;g.fillRect(0,0,w,h);
+  for(let i=0;i<5;i++){
+    const x=40+i*100+rnd()*20;g.strokeStyle='#2c2a26';g.globalAlpha=.85;g.lineWidth=5+rnd()*5;
+    g.beginPath();g.moveTo(x,0);g.bezierCurveTo(x+8,h*.3,x-8,h*.7,x+4,h);g.stroke();
+  }
+  g.globalAlpha=1;
+});
+
+// ---------- handle: shaft + J hook ----------
+const pts=[];
+for(let y=-0.3;y>-4.2;y-=0.3) pts.push(new V3(0,y,0));
+const R=0.86, cx=-R, cy=-4.2;
+for(let i=0;i<=24;i++){const a=-(Math.PI+0.28)*i/24;pts.push(new V3(cx+R*Math.cos(a),cy+R*Math.sin(a),0));}
+const curve=new THREE.CatmullRomCurve3(pts,false,'centripetal');
+const woodMat=new THREE.MeshStandardMaterial({map:woodTex,roughness:0.78,metalness:0});
+const handle=new THREE.Mesh(new THREE.TubeGeometry(curve,220,0.235,32,false),woodMat);
+scene.add(handle);
+const tipCap=new THREE.Mesh(new THREE.SphereGeometry(0.235,32,24),woodMat);
+tipCap.position.copy(pts[pts.length-1]);scene.add(tipCap);
+
+// ---------- ferrule band ----------
+const bandMat=new THREE.MeshStandardMaterial({map:bandTex,metalness:0.75,roughness:0.32});
+const band=new THREE.Mesh(new THREE.CylinderGeometry(0.29,0.29,0.38,48,1,false),bandMat);
+band.position.y=-0.19;scene.add(band);
+const rimGeo=new THREE.TorusGeometry(0.29,0.025,10,48);
+[0,-0.38].forEach(y=>{const r=new THREE.Mesh(rimGeo,new THREE.MeshStandardMaterial({color:0x3a3326,metalness:.5,roughness:.5}));r.rotation.x=Math.PI/2;r.position.y=y;scene.add(r);});
+const cap=new THREE.Mesh(new THREE.CircleGeometry(0.29,48),new THREE.MeshStandardMaterial({color:0x8fae55,roughness:.8}));
+cap.rotation.x=-Math.PI/2;cap.position.y=0.001;scene.add(cap);
+
+// ---------- pineapple crown ----------
+const P=[],C=[],I=[];
+const cLight=new THREE.Color('#cfe286').convertSRGBToLinear();
+const cMid=new THREE.Color('#9cc979').convertSRGBToLinear();
+const cTeal=new THREE.Color('#2a8a7c').convertSRGBToLinear();
+const cTip=new THREE.Color('#ece34f').convertSRGBToLinear();
+const COLS=[-1,-0.86,-0.45,0,0.45,0.86,1];
+function width(t){return t<0.14?0.6+0.4*(t/0.14):Math.pow((1-t)/0.86,0.9);}
+function addLeaf(o){
+  const NS=18, base=P.length/3, dt=o.L/NS;
+  const ca=Math.cos(o.az), sa=Math.sin(o.az);
+  let p=new V3(0,0,0);
+  for(let s=0;s<=NS;s++){
+    const t=s/NS, ang=o.tilt+o.bend*Math.pow(t,1.7);
+    const dir=new V3(0,Math.cos(ang),Math.sin(ang)), n=new V3(0,-Math.sin(ang),Math.cos(ang));
+    const w=o.W*width(t);
+    for(const c of COLS){
+      const e=Math.abs(c);
+      // channel: edges lifted toward the inner (upper) face; a slight sideways sway
+      const q=p.clone().add(new V3(c*w+o.sway*t*t,0,0)).addScaledVector(n,-o.fold*w*e*e);
+      // rotate around Y by azimuth, then move to base ring
+      const x=q.x*ca+q.z*sa, z=-q.x*sa+q.z*ca;
+      P.push(x+o.r*sa, q.y+o.y, z+o.r*ca);
+      const edge=e>0.8?1:e*0.35;
+      const col=o.body.clone().lerp(cTeal,Math.min(1,edge*0.95+o.teal*0.25));
+      if(t>0.86) col.lerp(cTip,Math.min(1,(t-0.86)/0.12)*(0.55+0.45*(1-e)));
+      if(t<0.08) col.lerp(cMid,0.5);
+      C.push(col.r,col.g,col.b);
+    }
+    p.addScaledVector(dir,dt);
+  }
+  const nc=COLS.length;
+  for(let s=0;s<NS;s++)for(let k=0;k<nc-1;k++){
+    const a=base+s*nc+k,b=a+1,c=a+nc,d=c+1;I.push(a,c,b,b,c,d);
+  }
+}
+const N=64, GA=Math.PI*(3-Math.sqrt(5));
+for(let i=0;i<N;i++){
+  const f=i/(N-1);           // 0 = outermost, 1 = innermost
+  const outer=1-f;
+  addLeaf({
+    az:i*GA+(rnd()-.5)*0.15,
+    r:0.04+0.22*outer,
+    y:0.02+0.32*f,
+    L:1.7+1.9*Math.pow(f,0.8)*(0.9+rnd()*0.2),
+    W:0.26+0.2*f+rnd()*0.04,
+    tilt:(0.06+1.05*Math.pow(outer,1.25))+(rnd()-.5)*0.12,
+    bend:0.25+0.75*outer+rnd()*0.15,
+    fold:0.35+0.2*rnd(),
+    sway:(rnd()-.5)*0.25,
+    teal:outer,
+    body:cLight.clone().lerp(cMid,outer*0.7+rnd()*0.2)
+  });
+}
+const crownGeo=new THREE.BufferGeometry();
+crownGeo.setAttribute('position',new THREE.Float32BufferAttribute(P,3));
+crownGeo.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
+crownGeo.setIndex(I);crownGeo.computeVertexNormals();
+const crown=new THREE.Mesh(crownGeo,new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:0.7,metalness:0}));
+scene.add(crown);
+
+// ---------- soft floor shadow ----------
+const sc=document.createElement('canvas');sc.width=sc.height=128;const sg=sc.getContext('2d');
+const rg=sg.createRadialGradient(64,64,0,64,64,64);rg.addColorStop(0,'rgba(0,0,0,.32)');rg.addColorStop(1,'rgba(0,0,0,0)');
+sg.fillStyle=rg;sg.fillRect(0,0,128,128);
+const shadow=new THREE.Mesh(new THREE.PlaneGeometry(4.2,3.2),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sc),transparent:true,depthWrite:false}));
+shadow.rotation.x=-Math.PI/2;shadow.position.set(-0.5,-5.6,0);scene.add(shadow);
+
+// ---------- sizing & loop ----------
+function resize(){
+  const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);
+  camera.aspect=w/h;
+  // keep the whole object in frame on narrow screens
+  camera.fov=w/h<0.75?48:35;camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);resize();
+
+const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const spinBtn=document.getElementById('spin');
+function setSpin(on){controls.autoRotate=on;spinBtn.setAttribute('aria-pressed',String(on));}
+if(reduce) setSpin(false);
+spinBtn.onclick=()=>setSpin(!controls.autoRotate);
+controls.addEventListener('start',()=>setSpin(false));
+document.getElementById('reset').onclick=()=>{camera.position.copy(HOME_POS);controls.target.copy(HOME_TGT);controls.update();};
+const sk=document.getElementById('sketch'),skBtn=document.getElementById('showSketch');
+skBtn.onclick=()=>{sk.hidden=!sk.hidden;skBtn.setAttribute('aria-pressed',String(!sk.hidden));};
+
+(function loop(){controls.update();renderer.render(scene,camera);requestAnimationFrame(loop);})();
+})();
+</script>
+</body>
+</html>
