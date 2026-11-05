@@ -32,6 +32,8 @@ explore/
   a5/                 A5 viewer (dodecahedron with its 5 inscribed cubes, icosahedron dual; derive the character table from fixed points)
   golay/              Golay MOG Lab (binary Golay code on the Miracle Octad Generator: octads, sextets, decoding games, M24 acting on the board)
   an-lab/             Aₙ(q) Lab (PSL(n+1, q): family grid, order from the Dynkin diagram, action on PG(n, q), element-order census and comparisons)
+  galois/             Galois Workbench (field extensions, S₃ on the roots of x³ − 2, the Galois correspondence, why A₅ blocks the quintic)
+  nonsimple/          Non-simple groups (C₄, V₄, D₃, D₄, Q₈, D₅, D₆, A₄, S₄: subgroup lattice, coset-colored Cayley table, quotients, composition series, splitting)
 world/
   index.html          World viewer: one base map, switchable data layers, country panel, ranking
   countries.json      Natural Earth id → ISO-3 code and display name (outlines load from world-atlas on jsDelivr, projected to Equal Earth)
