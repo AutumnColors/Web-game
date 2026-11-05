@@ -95,6 +95,10 @@ section + section{border-top:1px solid var(--line);padding-top:22px}
 .ech[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .ech.at{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
 .chips .ghostbtn{border-radius:999px;padding:4px 11px}
+.how{margin:0 0 8px}
+.how summary{cursor:pointer;color:var(--muted);font-size:13px;width:max-content}
+.how[open] summary{margin-bottom:6px}
+.how .sub{margin:0}
 
 .eldet{margin-top:12px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:4px;display:flex;flex-direction:column;gap:6px}
 .eldet .hd2{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
@@ -204,7 +208,7 @@ h4{margin:18px 0 6px;font-size:12px;font-weight:600;letter-spacing:.06em;text-tr
       </div>
       <section class="els">
         <h2>Elements</h2>
-        <p class="sub">Grouped by conjugacy class. Tap one to apply it to the solid where it stands now: tapping g at position x takes it to g·x. The underlined element is where the solid is now. Axes stay fixed in space, so numbers in the descriptions are positions, counted where the labels start. The small square shows which coset of H an element sits in.</p>
+        <details class="how"><summary>How it works</summary><p class="sub">Grouped by conjugacy class. Tap one to apply it to the solid where it stands now: tapping g at position x takes it to g·x. The underlined element is where the solid is now. Axes stay fixed in space, so numbers in the descriptions are positions, counted where the labels start. The small square shows which coset of H an element sits in.</p></details>
         <div id="elgrid"></div>
         <div class="eldet" id="eldet"></div>
       </section>
