@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Galois Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=IBM+Plex+Sans:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: one reading column of seven numbered chapters (a real logical sequence); each chapter carries one instrument panel */
+:root{
+  --paper:#eff2ee; --sheet:#fafbf8; --ink:#17201c; --muted:#58645e; --rule:#d0d8d2; --soft:#e2eae5;
+  --accent:#0d6966; --accent-ink:#ffffff;
+  --r0:#cc3f54; --r1:#2a67cc; --r2:#c98a0c; --r3:#278f60; --r4:#8749c0;
+  --good:#257d47; --bad:#bb3b27;
+  --f-display:"Gloock", Georgia, "Times New Roman", serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-math:"STIX Two Text", "Cambria Math", "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0f1412; --sheet:#161d1a; --ink:#e3eae5; --muted:#98a69f; --rule:#2a3530; --soft:#1f2a26;
+    --accent:#4dbdb4; --accent-ink:#06201e;
+    --r0:#ee6a7b; --r1:#6c9cf2; --r2:#efbd48; --r3:#5cc893; --r4:#b689ea;
+    --good:#5cc88a; --bad:#f08066; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f1412; --sheet:#161d1a; --ink:#e3eae5; --muted:#98a69f; --rule:#2a3530; --soft:#1f2a26;
+  --accent:#4dbdb4; --accent-ink:#06201e;
+  --r0:#ee6a7b; --r1:#6c9cf2; --r2:#efbd48; --r3:#5cc893; --r4:#b689ea;
+  --good:#5cc88a; --bad:#f08066; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--paper)}
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+.toprow{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;margin-bottom:20px}
+.back{font:500 .88rem var(--f-body);color:var(--muted);text-decoration:none}
+.back:hover{color:var(--ink)}
+body{background:var(--paper);color:var(--ink);font:16px/1.6 var(--f-body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 72px}
+h1,h2{font-family:var(--f-display);font-weight:400;text-wrap:balance;margin:0;letter-spacing:.005em}
+h1{font-size:clamp(40px,9vw,64px);line-height:1}
+h2{font-size:clamp(24px,5vw,30px);line-height:1.15}
+p{margin:0;max-width:65ch}
+a{color:var(--accent)}
+.m{font-family:var(--f-math);font-size:1.1em;white-space:nowrap}
+.eyebrow{font:600 12px/1 var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:18px;margin-top:16px;color:var(--ink)}
+.hero{display:grid;gap:18px;padding-bottom:28px;border-bottom:1px solid var(--rule)}
+.question{font-family:var(--f-math);font-size:clamp(20px,4.5vw,26px);line-height:1.35}
+.route{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:8px}
+.route a{display:flex;align-items:baseline;gap:7px;padding:6px 12px;border:1px solid var(--rule);border-radius:999px;color:var(--ink);text-decoration:none;font-size:14px;background:var(--sheet)}
+.route a:hover{border-color:var(--accent)}
+.route b{font-family:var(--f-display);font-weight:400;color:var(--accent);font-size:16px}
+.ch{display:grid;gap:16px;padding-block:40px 8px;scroll-margin-top:12px}
+.ch-h{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:end}
+.ch-n{font-family:var(--f-display);font-size:64px;line-height:.8;color:var(--accent)}
+.ch-h > div{display:grid;gap:8px}
+.bench{background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:16px;display:grid;gap:16px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lbl{font-size:13px;color:var(--muted);margin-right:4px}
+button.chip{font:500 14px/1 var(--f-body);color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:999px;padding:9px 13px;cursor:pointer;min-height:36px}
+button.chip .m{font-size:16px}
+button.chip:hover{border-color:var(--accent)}
+button.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.ghost{font:500 13px/1 var(--f-body);background:none;border:1px dashed var(--muted);color:var(--muted);border-radius:999px;padding:8px 12px;cursor:pointer}
+button.op{display:grid;gap:3px;text-align:left;font:400 12px/1.25 var(--f-body);color:var(--muted);background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:8px 10px;cursor:pointer}
+button.op b{font-family:var(--f-math);font-weight:600;font-size:19px;color:var(--ink);line-height:1}
+button.op .m{font-size:13px;color:var(--ink)}
+button.op:hover{border-color:var(--accent)}
+.ops{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:620px){.two{grid-template-columns:1fr}}
+.stack{display:grid;gap:10px;min-width:0}
+svg.plane{width:100%;max-width:300px;height:auto;display:block;margin:0 auto}
+svg .ax{stroke:var(--rule);stroke-width:1}
+svg .ring{fill:none;stroke:var(--muted);stroke-opacity:.45;stroke-dasharray:3 5}
+svg .poly{fill:none;stroke:var(--muted);stroke-opacity:.5}
+svg text{fill:var(--ink);font-family:var(--f-math);font-size:15px}
+svg .axl{fill:var(--muted);font-family:var(--f-body);font-size:11px}
+svg .dl{font-size:15px;paint-order:stroke;stroke:var(--sheet);stroke-width:4px;stroke-linejoin:round}
+svg .dot circle{stroke-width:2}
+svg .dot.out circle{fill-opacity:.12}
+svg .dot.out .dl{fill:var(--muted)}
+.read{font-family:var(--f-math);font-size:19px;line-height:1.45;overflow-wrap:anywhere}
+.read small{font-family:var(--f-body);font-size:12px;color:var(--muted);display:block;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px}
+.out-box{background:var(--paper);border-radius:10px;padding:12px 14px;display:grid;gap:10px;min-width:0}
+.field-in{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-family:var(--f-math);font-size:19px}
+.field-in input{width:4.2em;font:inherit;font-size:17px;padding:6px 8px;border:1px solid var(--rule);border-radius:8px;background:var(--paper);color:var(--ink);text-align:center}
+table.mt{border-collapse:separate;border-spacing:0;font-family:var(--f-math);font-size:18px;font-variant-numeric:tabular-nums}
+table.mt th{font-weight:400;color:var(--muted);font-size:14px;padding:2px 10px}
+table.mt td{padding:4px 14px;text-align:center}
+table.mt tr td:first-of-type{border-left:2px solid var(--ink)}
+table.mt tr td:last-child{border-right:2px solid var(--ink)}
+.scroll{overflow-x:auto;min-width:0}
+.notes{display:grid;gap:12px}
+.notes p{font-size:15.5px}
+.tag{display:inline-block;font:600 10.5px/1 var(--f-body);letter-spacing:.1em;text-transform:uppercase;padding:4px 7px;border-radius:4px;margin-right:8px;vertical-align:2px}
+.tag.thm{background:var(--ink);color:var(--paper)}
+.tag.pic{border:1px solid var(--muted);color:var(--muted);padding:3px 6px}
+.tag.prf{background:var(--accent);color:var(--accent-ink)}
+.lat{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:560px){.lat{grid-template-columns:1fr}}
+.lat figure{margin:0;display:grid;gap:4px;min-width:0}
+.lat figcaption{font-size:13px;color:var(--muted);text-align:center}
+svg.lattice{width:100%;max-width:330px;height:auto;display:block;margin:0 auto}
+svg .edge{stroke:var(--muted);stroke-opacity:.55;stroke-width:1.3}
+svg .deg{font-family:var(--f-body);font-size:12px;fill:var(--muted);paint-order:stroke;stroke:var(--sheet);stroke-width:4px}
+svg .node{cursor:pointer}
+svg .node rect{fill:var(--sheet);stroke:var(--ink);stroke-width:1.2}
+svg .node.nn rect{stroke-dasharray:4 3;stroke:var(--muted)}
+svg .node.sel rect{fill:var(--accent);stroke:var(--accent)}
+svg .node.sel text{fill:var(--accent-ink)}
+svg .node:focus{outline:none}
+svg .node:focus-visible rect{stroke:var(--accent);stroke-width:2.5}
+svg .tnode rect{fill:var(--paper);stroke:var(--rule)}
+svg .tnode.on rect{fill:var(--accent);stroke:var(--accent)}
+svg .tnode.on text{fill:var(--accent-ink)}
+.chain{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.g{font-family:var(--f-math);font-size:18px;padding:6px 11px;border:1px solid var(--ink);border-radius:8px;background:var(--sheet);white-space:nowrap}
+.g small{font-family:var(--f-body);font-size:11px;color:var(--muted);margin-left:5px}
+.q{display:grid;justify-items:center;font-size:11px;line-height:1.2;color:var(--muted)}
+.q span{font-family:var(--f-math);font-size:14px;padding:2px 7px;border-radius:999px;color:var(--sheet);background:var(--good)}
+.q.badq span{background:var(--bad)}
+.cells{display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:3px}
+.cells i{aspect-ratio:1;border-radius:2px;border:1.5px solid var(--c);opacity:.55}
+.cells i.on{background:var(--c);opacity:1}
+.cls{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.cls button{display:grid;gap:2px;text-align:left;padding:9px 11px;border-radius:10px;border:1.5px solid var(--c);background:var(--paper);color:var(--ink);cursor:pointer;font:400 12.5px/1.3 var(--f-body)}
+.cls button b{font-family:var(--f-math);font-size:20px;font-weight:600;color:var(--c)}
+.cls button[aria-pressed="true"]{background:color-mix(in srgb,var(--c) 16%,var(--paper))}
+.cls button[disabled]{cursor:default}
+.verdict{font-family:var(--f-math);font-size:19px}
+.verdict .ok{color:var(--good)} .verdict .no{color:var(--bad)}
+.allsub{display:flex;flex-wrap:wrap;gap:6px}
+.allsub span{font-family:var(--f-math);font-size:14px;padding:3px 8px;border-radius:6px;background:var(--paper);color:var(--muted);font-variant-numeric:tabular-nums}
+.allsub span.ok{background:var(--good);color:var(--sheet)}
+table.cmp{border-collapse:collapse;width:100%;font-size:14.5px;min-width:440px}
+table.cmp th,table.cmp td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+table.cmp thead th{font-family:var(--f-math);font-size:18px;font-weight:600}
+table.cmp td{font-family:var(--f-math);font-size:16px}
+table.cmp tbody th{font-weight:500;color:var(--muted);font-size:13px}
+.yes{color:var(--good);font-weight:600} .no{color:var(--bad);font-weight:600}
+.proof{border-left:3px solid var(--accent);padding:4px 0 4px 14px;display:grid;gap:8px}
+.proof ol{margin:0;padding-left:20px;display:grid;gap:6px;font-size:15.5px}
+.bridge{display:grid;gap:0;border-top:1px solid var(--ink)}
+.bridge div{display:grid;grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr);gap:8px;padding:10px 0;border-bottom:1px solid var(--rule);align-items:center;font-size:15px}
+.bridge div > span:nth-child(2){text-align:center;color:var(--accent);font-family:var(--f-math);font-size:18px}
+.bridge .hd{font:600 11px/1 var(--f-body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+select{font:inherit;font-family:var(--f-math);font-size:17px;padding:5px 8px;border-radius:8px;border:1px solid var(--rule);background:var(--paper);color:var(--ink)}
+footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--rule);display:grid;gap:12px}
+footer p{font-size:15px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<nav class="toprow"><a class="back" href="../../">← Back</a><a class="back" href="../a5/">A₅ viewer →</a></nav>
+
+<header class="hero">
+  <p class="eyebrow">Galois Workbench</p>
+  <h1>Roots, fields and their symmetries</h1>
+  <p class="question">x⁵ − x − 1 = 0 has a real root near 1.1673. Why is there no formula for it?</p>
+  <p class="lede">Seven instruments, in the order of the argument. Each one ends with what is proved and what is only a picture.</p>
+  <ol class="route">
+    <li><a href="#fields"><b>1</b>Fields</a></li>
+    <li><a href="#splitting"><b>2</b>Splitting field</a></li>
+    <li><a href="#group"><b>3</b>Galois group</a></li>
+    <li><a href="#correspondence"><b>4</b>Correspondence</a></li>
+    <li><a href="#radicals"><b>5</b>Radical layers</a></li>
+    <li><a href="#solvable"><b>6</b>Solvability and A₅</a></li>
+    <li><a href="#quintics"><b>7</b>Two quintics</a></li>
+  </ol>
+</header>
+
+<!-- 1 -->
+<section class="ch" id="fields">
+  <div class="ch-h"><span class="ch-n">1</span><div><p class="eyebrow">Field extensions</p><h2>A bigger field is a vector space over a smaller one</h2></div></div>
+  <p>Adjoin <span class="m">√5</span> to <span class="m">ℚ</span> and every number has the form <span class="m">a + b√5</span>. Adding is vector addition in the basis <span class="m">{1, √5}</span>. Multiplying by a fixed number <span class="m"><i>x</i></span> is a linear map, so <span class="m"><i>x</i></span> becomes a matrix. The degree of the extension is the dimension.</p>
+  <div class="bench">
+    <div class="row"><span class="lbl">Field</span>
+      <button class="chip" id="f-s5" aria-pressed="true"><span class="m">ℚ(√5)</span></button>
+      <button class="chip" id="f-c2" aria-pressed="false"><span class="m">ℚ(∛2)</span></button>
+    </div>
+    <div class="field-in"><span><i>x</i> =</span>
+      <input id="fa" type="number" inputmode="numeric" value="3" aria-label="coefficient of 1"><span>·1 +</span>
+      <input id="fb" type="number" inputmode="numeric" value="1" aria-label="coefficient of the second basis vector"><span id="fbl">·√5</span>
+      <span id="fcwrap" hidden>+ <input id="fc" type="number" inputmode="numeric" value="0" aria-label="coefficient of the third basis vector"> <span>·∛4</span></span>
+    </div>
+    <div class="two">
+      <div class="stack">
+        <div class="read"><small>Multiplication by x, as a matrix</small></div>
+        <div class="scroll" id="fmat"></div>
+        <p style="font-size:13px;color:var(--muted)">Column = where a basis vector goes after multiplying by <span class="m"><i>x</i></span>. Degree = number of columns.</p>
+      </div>
+      <div class="out-box" id="fout"></div>
+    </div>
+  </div>
+  <div class="notes">
+    <p><span class="tag thm">Proof</span>In <span class="m">ℚ(√5)</span>, <span class="m">det = a² − 5b²</span>. If it were 0 with <span class="m">b ≠ 0</span>, then <span class="m">√5 = |a/b|</span> would be rational. So every nonzero <span class="m"><i>x</i></span> is an invertible matrix, and its inverse matrix gives <span class="m"><i>x</i>⁻¹</span>. That is why the set is a field and not just a ring.</p>
+    <p><span class="tag pic">Picture</span>The swap <span class="m">√5 ↦ −√5</span> keeps every sum and product intact. It sends <span class="m">φ = (1+√5)/2</span> to <span class="m">(1−√5)/2</span>, the same swap that exchanges the two 3-dimensional characters of A₅.</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="ch" id="splitting">
+  <div class="ch-h"><span class="ch-n">2</span><div><p class="eyebrow">Splitting fields</p><h2>One root does not bring its siblings</h2></div></div>
+  <p>The roots of <span class="m">x³ − 2</span> are <span class="m">α, αω, αω²</span> with <span class="m">α = ∛2</span> and <span class="m">ω = e<sup>2πi/3</sup></span>. Pick a field and see which roots live in it.</p>
+  <div class="bench">
+    <div class="row"><span class="lbl">Field</span>
+      <button class="chip" data-sf="0" aria-pressed="false"><span class="m">ℚ</span></button>
+      <button class="chip" data-sf="1" aria-pressed="true"><span class="m">ℚ(α)</span></button>
+      <button class="chip" data-sf="2" aria-pressed="false"><span class="m">ℚ(ω)</span></button>
+      <button class="chip" data-sf="3" aria-pressed="false"><span class="m">ℚ(α, ω)</span></button>
+    </div>
+    <div class="two">
+      <svg class="plane" id="sp-plane" viewBox="0 0 300 300" role="img" aria-label="Roots of x cubed minus 2 in the complex plane"></svg>
+      <div class="stack">
+        <svg class="lattice" id="sp-tower" viewBox="0 0 260 190" role="img" aria-label="Tower of fields with degrees" style="max-width:260px"></svg>
+        <div class="out-box" id="sp-out"></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <p><span class="tag thm">Proof</span>Tower law: <span class="m">[L:ℚ] = [L:ℚ(α)]·[ℚ(α):ℚ] = 2·3 = 6</span>. The other path gives <span class="m">3·2</span>, the same number. Degrees multiply along a tower because bases multiply: <span class="m">{1, α, α²} × {1, ω}</span> is a basis of <span class="m">L</span>.</p>
+    <p><span class="tag pic">Picture</span><span class="m">ℚ(α)</span> sits inside the real line, and the other two roots are off it. The splitting field has to leave the line.</p>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="ch" id="group">
+  <div class="ch-h"><span class="ch-n">3</span><div><p class="eyebrow">The Galois group</p><h2>Symmetries that cannot tell the roots apart</h2></div></div>
+  <p>An automorphism of <span class="m">L = ℚ(α, ω)</span> fixing <span class="m">ℚ</span> is decided by two choices: where <span class="m">α</span> goes and where <span class="m">ω</span> goes. Tap one to apply it to the roots. Tap several to compose.</p>
+  <div class="bench">
+    <div class="two">
+      <svg class="plane" id="g-plane" viewBox="0 0 300 300" role="img" aria-label="Roots permuted by the chosen automorphism"></svg>
+      <div class="stack">
+        <div class="ops" id="g-ops"></div>
+        <div class="out-box" id="g-out"></div>
+        <div class="row"><button class="ghost" id="g-reset">Reset roots</button></div>
+      </div>
+    </div>
+    <div class="out-box">
+      <div class="row" style="font-family:var(--f-math);font-size:18px">
+        <span class="lbl" style="font-family:var(--f-body)">Does order matter?</span>
+        <select id="g-a" aria-label="first symmetry"></select><span>and</span><select id="g-b" aria-label="second symmetry"></select>
+      </div>
+      <div class="read" id="g-cmp"></div>
+    </div>
+  </div>
+  <div class="notes">
+    <p><span class="tag thm">Proof</span>A symmetry fixing <span class="m">ℚ</span> preserves every polynomial equation with rational coefficients. So <span class="m">α</span> must go to a root of <span class="m">x³ − 2</span> (3 choices) and <span class="m">ω</span> to a root of <span class="m">x² + x + 1</span> (2 choices). At most 6, and <span class="m">|Gal(L/ℚ)| = [L:ℚ] = 6</span>, so all six exist. The group is <span class="m">S₃</span>.</p>
+    <p><span class="tag pic">Picture</span><span class="m">τ</span> is complex conjugation, so here the symmetries happen to look like rotations and reflections. That is luck of this example. For most polynomials a Galois automorphism is not a continuous map of <span class="m">ℂ</span>.</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="ch" id="correspondence">
+  <div class="ch-h"><span class="ch-n">4</span><div><p class="eyebrow">The fundamental theorem</p><h2>Every subgroup fixes exactly one field</h2></div></div>
+  <p>For a subgroup <span class="m">H</span>, collect the numbers in <span class="m">L</span> that every element of <span class="m">H</span> leaves alone. That set is a field. Tap any node: its partner lights up on the other side. Notice that the pictures are upside down relative to each other.</p>
+  <div class="bench">
+    <div class="lat">
+      <figure><svg class="lattice" id="lat-f" viewBox="0 0 280 300" role="img" aria-label="Lattice of intermediate fields"></svg><figcaption>Fields between ℚ and L. Bigger field higher. Edge = degree.</figcaption></figure>
+      <figure><svg class="lattice" id="lat-g" viewBox="0 0 280 300" role="img" aria-label="Lattice of subgroups of S3"></svg><figcaption>Subgroups of S₃. Smaller group higher. Edge = index.</figcaption></figure>
+    </div>
+    <p style="font-size:13px;color:var(--muted)">Solid border: normal subgroup, and its field is Galois over ℚ. Dashed: neither.</p>
+    <div class="out-box" id="lat-out"></div>
+  </div>
+  <div class="notes">
+    <p><span class="tag thm">Theorem</span>For a finite Galois extension <span class="m">L/K</span> with group <span class="m">G</span>, the map <span class="m">H ↦ L<sup>H</sup></span> is a bijection between subgroups and intermediate fields. It reverses inclusion, <span class="m">[L : L<sup>H</sup>] = |H|</span>, and <span class="m">H</span> is normal exactly when <span class="m">L<sup>H</sup>/K</span> is Galois. Then <span class="m">Gal(L<sup>H</sup>/K) ≅ G/H</span>.</p>
+    <p><span class="tag prf">Bridge</span>Read the path <span class="m">ℚ ⊂ ℚ(ω) ⊂ L</span>. It is a radical tower: adjoin <span class="m">√−3</span>, then <span class="m">∛2</span>. Its partner is the chain <span class="m">S₃ ▷ C₃ ▷ {e}</span>. The first step has group <span class="m">S₃/C₃ ≅ C₂</span>, the second <span class="m">C₃</span>. One radical step, one abelian quotient. This is the link between formulas and groups.</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="ch" id="radicals">
+  <div class="ch-h"><span class="ch-n">5</span><div><p class="eyebrow">Radical extensions</p><h2>One radical gives one abelian layer</h2></div></div>
+  <p>Suppose the field already contains <span class="m">ζ = e<sup>2πi/n</sup></span>. Adjoin <span class="m">β = ⁿ√2</span>. The roots of <span class="m">xⁿ − 2</span> sit evenly on a circle, and every symmetry multiplies <span class="m">β</span> by a power of <span class="m">ζ</span>.</p>
+  <div class="bench">
+    <div class="row" id="r-n"><span class="lbl">n</span></div>
+    <div class="two">
+      <svg class="plane" id="r-plane" viewBox="0 0 300 300" role="img" aria-label="Roots of x to the n minus 2 on a circle"></svg>
+      <div class="stack">
+        <div class="ops" id="r-ops"></div>
+        <div class="out-box" id="r-out"></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <p><span class="tag thm">Proof</span>Let <span class="m">K</span> contain <span class="m">ζ</span>, and <span class="m">σ</span> fix <span class="m">K</span>. Then <span class="m">σ(β)ⁿ = 2</span>, so <span class="m">σ(β)/β</span> is an n-th root of unity, which lies in <span class="m">K</span>. The map <span class="m">σ ↦ σ(β)/β</span> is injective (<span class="m">σ</span> is decided by <span class="m">β</span>) and multiplicative, because <span class="m">σ</span> fixes the root of unity <span class="m">τ(β)/β</span>. So the group sits inside the cyclic group <span class="m">⟨ζ⟩</span>.</p>
+    <p><span class="tag thm">Proof</span>Adjoining <span class="m">ζ</span> itself: <span class="m">σ(ζ) = ζᵐ</span>, and <span class="m">σ ↦ m</span> embeds the group into <span class="m">(ℤ/n)<sup>×</sup></span>, which is abelian. So both kinds of radical step have abelian groups.</p>
+    <p><span class="tag pic">Picture</span>Every symmetry of one radical layer is a rotation of its circle of roots. Rotations commute.</p>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="ch" id="solvable">
+  <div class="ch-h"><span class="ch-n">6</span><div><p class="eyebrow">Solvable groups</p><h2>Breaking a group into abelian layers</h2></div></div>
+  <p>A radical formula is a tower of abelian steps. By the correspondence, that is a chain of subgroups, each normal in the one before, with abelian quotients. Pick a group.</p>
+  <div class="bench">
+    <div class="row"><span class="lbl">Group</span>
+      <button class="chip" data-ch="s3" aria-pressed="false"><span class="m">S₃</span> cubic</button>
+      <button class="chip" data-ch="s4" aria-pressed="false"><span class="m">S₄</span> quartic</button>
+      <button class="chip" data-ch="s5" aria-pressed="true"><span class="m">S₅</span> quintic</button>
+    </div>
+    <div class="chain" id="chain"></div>
+    <p id="chain-note" style="font-size:14.5px"></p>
+  </div>
+
+  <p>The quintic chain is stuck at <span class="m">A₅</span>. Here is why no smaller layer exists. A normal subgroup is a union of whole conjugacy classes, includes the identity, and its size must divide 60. These are A₅'s classes, read as rotations of the icosahedron. Try to build one.</p>
+  <div class="bench">
+    <div class="cls" id="a5cls"></div>
+    <div class="cells" id="a5cells" aria-hidden="true"></div>
+    <div class="verdict" id="a5v"></div>
+    <div class="stack">
+      <span class="lbl">All 16 possible unions</span>
+      <div class="allsub" id="a5all"></div>
+    </div>
+  </div>
+  <div class="notes">
+    <p><span class="tag thm">Proof</span>Only 1 and 60 divide 60, so A₅ has no normal subgroup besides <span class="m">{e}</span> and itself. It is simple, and it is not abelian. A chain through A₅ must jump straight to <span class="m">{e}</span> with quotient A₅, which is not abelian. So <span class="m">S₅</span> is not solvable.</p>
+    <p><span class="tag thm">Theorem</span>Over <span class="m">ℚ</span>, a polynomial is solvable by radicals exactly when its Galois group is solvable.</p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="ch" id="quintics">
+  <div class="ch-h"><span class="ch-n">7</span><div><p class="eyebrow">Two fifth-degree polynomials</p><h2>Same degree, different symmetry</h2></div></div>
+  <p>Both polynomials have 5 roots. The roots of the first sit on a regular pentagon. The second has no visible pattern, and its symmetry group is the full <span class="m">S₅</span>.</p>
+  <div class="bench">
+    <div class="two">
+      <figure style="margin:0;display:grid;gap:4px"><svg class="plane" id="q1" viewBox="0 0 300 300" role="img" aria-label="Roots of x to the fifth minus 2"></svg><figcaption class="m" style="text-align:center">x⁵ − 2</figcaption></figure>
+      <figure style="margin:0;display:grid;gap:4px"><svg class="plane" id="q2" viewBox="0 0 300 300" role="img" aria-label="Roots of x to the fifth minus x minus 1"></svg><figcaption class="m" style="text-align:center">x⁵ − x − 1</figcaption></figure>
+    </div>
+    <div class="scroll">
+      <table class="cmp">
+        <thead><tr><th></th><th>x⁵ − 2</th><th>x⁵ − x − 1</th></tr></thead>
+        <tbody>
+          <tr><th>Degree of one root</th><td>5</td><td>5</td></tr>
+          <tr><th>Splitting field degree</th><td>20</td><td>120</td></tr>
+          <tr><th>Galois group</th><td>F₂₀ = C₅ ⋊ C₄</td><td>S₅</td></tr>
+          <tr><th>Chain</th><td>F₂₀ ▷ C₅ ▷ {e}</td><td>S₅ ▷ A₅ ▷ {e}</td></tr>
+          <tr><th>Quotients</th><td>C₄, C₅</td><td>C₂, A₅</td></tr>
+          <tr><th>Radical tower</th><td>ℚ ⊂ ℚ(ζ₅) ⊂ ℚ(ζ₅, ⁵√2)</td><td>none exists</td></tr>
+          <tr><th>Solvable by radicals</th><td class="yes">yes</td><td class="no">no</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="proof">
+      <p><span class="tag thm">Proof</span>Why the group of <span class="m">x⁵ − x − 1</span> is all of <span class="m">S₅</span>. Uses Dedekind's theorem: factoring mod a prime p gives the cycle type of some element of G, when p does not divide the discriminant (here 2869 = 19·151).</p>
+      <ol>
+        <li>Mod 5 it is <span class="m">x⁵ − x − 1</span>, an Artin–Schreier polynomial, irreducible over 𝔽₅. So the polynomial is irreducible over <span class="m">ℚ</span> and G contains a 5-cycle.</li>
+        <li>Mod 2: <span class="m">x⁵ + x + 1 = (x² + x + 1)(x³ + x² + 1)</span>. So G has an element of cycle type (2)(3). Its cube is a transposition.</li>
+        <li>A 5-cycle and a transposition generate <span class="m">S₅</span>, because 5 is prime. So G = S₅.</li>
+      </ol>
+    </div>
+    <p><span class="tag pic">Picture</span>This polynomial has one real root, so complex conjugation swaps two pairs. Geometry alone shows only a small piece of S₅; the reduction mod primes reveals the rest.</p>
+  </div>
+</section>
+
+<footer>
+  <p class="eyebrow" style="color:var(--ink)">The dictionary</p>
+  <div class="bridge">
+    <div><span class="hd">Fields</span><span></span><span class="hd">Groups</span></div>
+    <div><span>Intermediate field F</span><span>↔</span><span>Subgroup H fixing F</span></div>
+    <div><span>Degree [L : F]</span><span>=</span><span>Order |H|</span></div>
+    <div><span>F is Galois over the base</span><span>↔</span><span>H is normal</span></div>
+    <div><span>Adjoin a root of unity, or a radical once ζ is present</span><span>↔</span><span>One abelian quotient</span></div>
+    <div><span>Radical tower reaching the roots</span><span>↔</span><span>Chain with abelian quotients</span></div>
+  </div>
+  <p>Two technical steps of the full proof are not on this bench. A radical tower need not be Galois over ℚ, so the proof first enlarges it to its Galois closure, which is still a radical tower. Then the Galois group of the polynomial is a quotient of the tower's group, and a quotient of a solvable group is solvable.</p>
+</footer>
+</div>
+
+<script>
+(function(){
+const NS='http://www.w3.org/2000/svg';
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const col=i=>['var(--r0)','var(--r1)','var(--r2)','var(--r3)','var(--r4)','var(--accent)','var(--muted)'][i%7];
+const $=s=>document.querySelector(s);
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function txt(parent,x,y,s,attrs){const t=el('text',Object.assign({x,y},attrs||{}),parent);t.textContent=s;return t;}
+const sup=n=>String(n).split('').map(c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[+c]).join('');
+const sub=n=>String(n).split('').map(c=>'₀₁₂₃₄₅₆₇₈₉'[+c]).join('');
+
+/* ---------- plane helpers ---------- */
+function axes(svg,ring){svg.innerHTML='';el('line',{x1:12,y1:150,x2:288,y2:150,class:'ax'},svg);el('line',{x1:150,y1:12,x2:150,y2:288,class:'ax'},svg);
+  if(ring)el('circle',{cx:150,cy:150,r:ring,class:'ring'},svg);txt(svg,286,142,'Re',{class:'axl','text-anchor':'end'});txt(svg,157,24,'Im',{class:'axl'});}
+function dot(svg,c,label){const g=el('g',{class:'dot'},svg);const ci=el('circle',{r:9,style:`fill:${c};stroke:${c}`},g);const t=el('text',{'text-anchor':'middle','dominant-baseline':'central',class:'dl'},g);t.textContent=label;return {g,ci,t};}
+function place(d,a,r){const x=150+r*Math.cos(a),y=150-r*Math.sin(a);d.ci.setAttribute('cx',x);d.ci.setAttribute('cy',y);const lr=r+25;d.t.setAttribute('x',150+lr*Math.cos(a));d.t.setAttribute('y',150-lr*Math.sin(a));}
+function animate(moves,dur){
+  let done=false;
+  const fin=()=>{done=true;moves.forEach(m=>place(m.d,m.a0+m.da,m.r));};
+  if(RM){fin();return {finish(){}};}
+  const t0=performance.now();
+  function f(now){if(done)return;const t=Math.min(1,(now-t0)/dur);const e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    moves.forEach(m=>place(m.d,m.a0+m.da*e,m.r*(1+(m.b||0)*Math.sin(Math.PI*e))));if(t<1)requestAnimationFrame(f);else fin();}
+  requestAnimationFrame(f);return {finish(){if(!done)fin();}};
+}
+function press(group,btn){group.forEach(b=>b.setAttribute('aria-pressed',b===btn?'true':'false'));}
+
+/* ---------- 1. fields ---------- */
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a||1;}
+function fr(p,q){if(q<0){p=-p;q=-q;}const g=gcd(p,q);return {p:p/g,q:q/g};}
+function mag(f){const p=Math.abs(f.p);return f.q===1?String(p):p+'/'+f.q;}
+function elem(fs,labels){let s='';fs.forEach((f,i)=>{if(f.p===0)return;const neg=f.p<0,L=labels[i];let m=mag(f);if(L&&m==='1')m='';let term=(L&&m.includes('/'))?`(${m})${L}`:m+L;s+=s?(neg?' − ':' + ')+term:(neg?'−':'')+term;});return s||'0';}
+const neg=n=>n<0?'−'+Math.abs(n):String(n);
+let fMode='s5';
+const fBtns=[$('#f-s5'),$('#f-c2')];
+function rd(id){let v=parseInt($(id).value,10);if(!isFinite(v))v=0;return Math.max(-50,Math.min(50,v));}
+function renderFields(){
+  const a=rd('#fa'),b=rd('#fb'),c=rd('#fc');
+  let M,det,inv,labels,cols,html='';
+  if(fMode==='s5'){
+    labels=['','√5'];cols=['x·1','x·√5'];M=[[a,5*b],[b,a]];det=a*a-5*b*b;inv=det?[fr(a,det),fr(-b,det)]:null;
+  }else{
+    labels=['','∛2','∛4'];cols=['x·1','x·∛2','x·∛4'];M=[[a,2*c,2*b],[b,a,2*c],[c,b,a]];
+    det=a*a*a+2*b*b*b+4*c*c*c-6*a*b*c;
+    inv=det?[fr(a*a-2*b*c,det),fr(2*c*c-a*b,det),fr(b*b-a*c,det)]:null;
+  }
+  const rows=labels.map(l=>l||'1');
+  let t='<table class="mt"><tr><th></th>'+cols.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+  M.forEach((r,i)=>{t+=`<tr><th>${rows[i]}</th>`+r.map(v=>`<td>${neg(v)}</td>`).join('')+'</tr>';});
+  $('#fmat').innerHTML=t+'</table>';
+  const x=elem([fr(a,1),fr(b,1)].concat(fMode==='c2'?[fr(c,1)]:[]),labels);
+  html+=`<div class="read"><small>Element</small>x = ${x}</div>`;
+  html+=`<div class="read"><small>Norm = det of the matrix</small>N(x) = ${fMode==='s5'?'a² − 5b²':'a³ + 2b³ + 4c³ − 6abc'} = ${neg(det)}</div>`;
+  if(inv){html+=`<div class="read"><small>Inverse, read off the inverse matrix</small>x⁻¹ = ${elem(inv,labels)}</div>`;}
+  else html+=`<div class="read"><small>Inverse</small>x = 0 has none. It is the only one.</div>`;
+  if(fMode==='s5') html+=`<div class="read"><small>Conjugate under √5 ↦ −√5</small>σ(x) = ${elem([fr(a,1),fr(-b,1)],labels)}<br><span style="font-size:15px;color:var(--muted)">x · σ(x) = N(x): the norm multiplies x by its Galois partner.</span></div>`;
+  else html+=`<div class="read"><small>Where are the conjugates?</small><span style="font-size:15.5px">N(x) = x·x′·x″, the product over all three conjugates. Two of them use ω, so they live outside ℚ(∛2).</span></div>`;
+  $('#fout').innerHTML=html;
+}
+fBtns.forEach(btn=>btn.addEventListener('click',()=>{fMode=btn.id==='f-s5'?'s5':'c2';press(fBtns,btn);
+  $('#fcwrap').hidden=fMode==='s5';$('#fbl').textContent=fMode==='s5'?'·√5':'·∛2';
+  if(fMode==='c2'){$('#fa').value=1;$('#fb').value=1;$('#fc').value=0;}else{$('#fa').value=3;$('#fb').value=1;}
+  renderFields();}));
+['#fa','#fb','#fc'].forEach(id=>$(id).addEventListener('input',renderFields));
+renderFields();
+
+/* ---------- 2. splitting field ---------- */
+const RN=['α','αω','αω²'];
+const R3=105, ang3=k=>2*Math.PI*k/3;
+const spPlane=$('#sp-plane');axes(spPlane,R3);
+const spDots=RN.map((n,k)=>{const d=dot(spPlane,col(k),n);place(d,ang3(k),R3);return d;});
+const tower=$('#sp-tower');
+const tn=[{l:'ℚ',x:130,y:168},{l:'ℚ(α)',x:50,y:100},{l:'ℚ(ω)',x:210,y:128},{l:'L = ℚ(α, ω)',x:130,y:22}];
+[[0,1,'3'],[0,2,'2'],[1,3,'2'],[2,3,'3']].forEach(([i,j,d])=>{const A=tn[i],B=tn[j];el('line',{x1:A.x,y1:A.y,x2:B.x,y2:B.y,class:'edge'},tower);
+  const mx=(A.x+B.x)/2,my=(A.y+B.y)/2,dx=B.y-A.y,dy=-(B.x-A.x),L=Math.hypot(dx,dy)||1;txt(tower,mx+dx/L*11,my+dy/L*11+4,d,{class:'deg','text-anchor':'middle'});});
+const tG=tn.map(n=>{const g=el('g',{class:'tnode'},tower);const r=el('rect',{rx:8,height:26},g);const t=txt(g,n.x,n.y,n.l,{'text-anchor':'middle','dominant-baseline':'central'});return {g,r,t,n};});
+function sizeTower(){tG.forEach(o=>{const w=(o.t.getBBox().width||40)+18;o.r.setAttribute('x',o.n.x-w/2);o.r.setAttribute('y',o.n.y-13);o.r.setAttribute('width',w);});}
+sizeTower();
+const SF=[
+ {roots:[],deg:1,f:'x³ − 2 stays irreducible',why:'No root in ℚ: ∛2 is irrational.'},
+ {roots:[0],deg:3,f:'x³ − 2 = (x − α)(x² + αx + α²)',why:'The quadratic has discriminant −3α² < 0. Its roots are not real, and ℚ(α) lies inside ℝ.'},
+ {roots:[],deg:2,f:'x³ − 2 stays irreducible',why:'A root here would generate a subfield of degree 3 inside a field of degree 2. 3 does not divide 2.'},
+ {roots:[0,1,2],deg:6,f:'x³ − 2 = (x − α)(x − αω)(x − αω²)',why:'All three roots, and no smaller field contains them. This is the splitting field.'}];
+const sfBtns=[...document.querySelectorAll('[data-sf]')];
+function renderSF(i){const s=SF[i];spDots.forEach((d,k)=>d.g.classList.toggle('out',!s.roots.includes(k)));tG.forEach((o,k)=>o.g.classList.toggle('on',k===i));
+  $('#sp-out').innerHTML=`<div class="read"><small>Degree over ℚ</small>${s.deg}</div><div class="read"><small>Roots inside</small>${s.roots.length?s.roots.map(k=>RN[k]).join(', '):'none'}</div><div class="read"><small>Factorization here</small>${s.f}</div><p style="font-size:15px">${s.why}</p>`;}
+sfBtns.forEach(b=>b.addEventListener('click',()=>{press(sfBtns,b);renderSF(+b.dataset.sf);}));
+renderSF(1);
+
+/* ---------- 3. Galois group ---------- */
+const S3=[{n:'e',i:0,j:1},{n:'σ',i:1,j:1},{n:'σ²',i:2,j:1},{n:'τ',i:0,j:2},{n:'στ',i:1,j:2},{n:'σ²τ',i:2,j:2}];
+const comp=(g,h)=>({i:(g.i+g.j*h.i)%3,j:(g.j*h.j)%3});
+const nm=g=>S3.find(x=>x.i===g.i&&x.j===g.j).n;
+const act=(g,k)=>(g.i+g.j*k)%3;
+const WN=['','ω','ω²'];
+function cyc(g){const seen=[0,0,0],out=[];for(let k=0;k<3;k++){if(seen[k])continue;const c=[];let x=k;while(!seen[x]){seen[x]=1;c.push(x);x=act(g,x);}if(c.length>1)out.push('('+c.map(x=>RN[x]).join(' ')+')');}return out.join(' ')||'fixes all roots';}
+const gPlane=$('#g-plane');axes(gPlane,R3);
+const gDots=RN.map((n,k)=>{const d=dot(gPlane,col(k),n);place(d,ang3(k),R3);return d;});
+let where=[0,1,2],acc=S3[0],hist=[],gAnim=null;
+function renderG(){const g=acc;$('#g-out').innerHTML=`<div class="read"><small>Applied so far</small>${hist.length?hist.join(', then '):'nothing'}</div><div class="read"><small>Net symmetry</small>${nm(g)}: α ↦ ${RN[g.i]}, ω ↦ ${WN[g.j]}</div><div class="read"><small>On the roots</small>${cyc(g)}</div>`;}
+const ops=$('#g-ops');
+S3.forEach(g=>{const b=document.createElement('button');b.className='op';b.type='button';
+  b.innerHTML=`<b>${g.n}</b><span class="m">α ↦ ${RN[g.i]}</span><span class="m">ω ↦ ${WN[g.j]}</span>`;
+  b.addEventListener('click',()=>{if(gAnim)gAnim.finish();
+    const moves=gDots.map((d,k)=>{const p=where[k],q=act(g,p);const s=(q-p+3)%3;const da=s===0?0:(s===1?1:-1)*2*Math.PI/3;where[k]=q;return {d,a0:ang3(p),da,r:R3,b:da>0?.28:(da<0?-.28:0)};});
+    gAnim=animate(moves,700);acc=comp(g,acc);hist.push(g.n);if(hist.length>5)hist=['…'].concat(hist.slice(-4));renderG();});
+  ops.appendChild(b);});
+$('#g-reset').addEventListener('click',()=>{if(gAnim)gAnim.finish();where=[0,1,2];acc=S3[0];hist=[];gDots.forEach((d,k)=>place(d,ang3(k),R3));renderG();});
+renderG();
+const sa=$('#g-a'),sb=$('#g-b');
+S3.forEach(g=>{[sa,sb].forEach(s=>{const o=document.createElement('option');o.value=g.n;o.textContent=g.n;s.appendChild(o);});});
+sa.value='σ';sb.value='τ';
+function renderCmp(){const g=S3.find(x=>x.n===sa.value),h=S3.find(x=>x.n===sb.value);const gh=nm(comp(g,h)),hg=nm(comp(h,g));
+  $('#g-cmp').innerHTML=`${g.n} ∘ ${h.n} = ${gh}  ·  ${h.n} ∘ ${g.n} = ${hg}<br><span style="font-family:var(--f-body);font-size:14px;color:${gh===hg?'var(--muted)':'var(--bad)'}">${gh===hg?'These two commute.':'Different results: the group is not abelian.'}</span>`;}
+sa.addEventListener('change',renderCmp);sb.addEventListener('change',renderCmp);renderCmp();
+
+/* ---------- 4. correspondence ---------- */
+const FN={L:{x:140,y:26,l:'ℚ(α, ω)'},a:{x:70,y:120,l:'ℚ(α)'},b:{x:140,y:120,l:'ℚ(αω)'},c:{x:210,y:120,l:'ℚ(αω²)'},w:{x:36,y:200,l:'ℚ(ω)'},Q:{x:140,y:276,l:'ℚ'}};
+const GN={L:{l:'{e}'},a:{l:'⟨τ⟩'},b:{l:'⟨σ²τ⟩'},c:{l:'⟨στ⟩'},w:{l:'⟨σ⟩'},Q:{l:'S₃'}};
+const NORMAL={L:1,w:1,Q:1};
+const EDGES=[['L','a',2],['L','b',2],['L','c',2],['L','w',3],['a','Q',3],['b','Q',3],['c','Q',3],['w','Q',2]];
+const INFO={
+ L:'The identity moves nothing, so its fixed field is all of L. |{e}| = 1 = [L : L].',
+ a:'τ is complex conjugation. It fixes the real root α, so L<sup>⟨τ⟩</sup> = ℚ(α). [L : ℚ(α)] = 2 = |⟨τ⟩| and [ℚ(α) : ℚ] = 3 = index. ⟨τ⟩ is not normal: στσ⁻¹ = σ²τ. Matching fact: ℚ(α) has α but not αω or αω², so it is not Galois over ℚ.',
+ b:'σ²τ sends α ↦ αω², ω ↦ ω², so αω ↦ αω²·ω² = αω. Fixed field ℚ(αω), degree 3. Conjugate to ⟨τ⟩, so not normal, and ℚ(αω) is not Galois over ℚ.',
+ c:'στ sends α ↦ αω, ω ↦ ω², so αω² ↦ αω·ω⁴ = αω². Fixed field ℚ(αω²), degree 3. Not normal, not Galois over ℚ.',
+ w:'σ rotates the roots and fixes ω, so the fixed field is ℚ(ω). ⟨σ⟩ ≅ C₃ has index 2, so it is normal. Matching fact: ℚ(ω)/ℚ is Galois, and its group is S₃/C₃ ≅ C₂, the swap ω ↦ ω².',
+ Q:'Only rational numbers survive all six symmetries. This is what makes L/ℚ Galois: the fixed field of the whole group is exactly the base.'};
+const nodes={};
+function buildLat(svg,labels,side){
+  EDGES.forEach(([p,q,d])=>{const A=FN[p],B=FN[q];el('line',{x1:A.x,y1:A.y,x2:B.x,y2:B.y,class:'edge'},svg);
+    const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;const dx=B.y-A.y,dy=-(B.x-A.x);const L=Math.hypot(dx,dy)||1;txt(svg,mx+dx/L*10,my+dy/L*10+4,d,{class:'deg','text-anchor':'middle'});});
+  Object.keys(FN).forEach(k=>{const n=FN[k];const g=el('g',{class:'node'+(NORMAL[k]?'':' nn'),tabindex:0,role:'button','aria-label':labels[k].l},svg);
+    const r=el('rect',{rx:8,height:28},g);const t=txt(g,n.x,n.y,labels[k].l,{'text-anchor':'middle','dominant-baseline':'central'});
+    (nodes[k]=nodes[k]||[]).push({g,r,t,n});
+    const go=()=>selLat(k);g.addEventListener('click',go);g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
+}
+buildLat($('#lat-f'),FN,'f');buildLat($('#lat-g'),GN,'g');
+function sizeLat(){Object.values(nodes).flat().forEach(o=>{const w=(o.t.getBBox().width||30)+18;o.r.setAttribute('x',o.n.x-w/2);o.r.setAttribute('y',o.n.y-14);o.r.setAttribute('width',w);});}
+sizeLat();
+function selLat(k){Object.keys(nodes).forEach(j=>nodes[j].forEach(o=>o.g.classList.toggle('sel',j===k)));
+  const F=FN[k].l,H=GN[k].l;const ord={L:1,a:2,b:2,c:2,w:3,Q:6}[k];
+  $('#lat-out').innerHTML=`<div class="read"><small>Pair</small>${H} ↔ ${F}  ·  |H| = ${ord} = [L : ${F}]</div><p style="font-size:15px">${INFO[k]}</p>`;}
+selLat('w');
+
+/* ---------- 5. radical layer ---------- */
+const rNrow=$('#r-n');let rn=5,rDots=[],rRot=0,rLast=[],rAnim=null;const RR=100;
+const rAng=(k,n)=>2*Math.PI*k/n;
+for(let n=2;n<=7;n++){const b=document.createElement('button');b.className='chip';b.type='button';b.textContent=n;b.dataset.n=n;b.setAttribute('aria-pressed',n===rn?'true':'false');
+  b.addEventListener('click',()=>{rn=n;press([...rNrow.querySelectorAll('button')],b);buildR();});rNrow.appendChild(b);}
+function rootLabel(k){return k===0?'β':(k===1?'βζ':'βζ'+sup(k));}
+function buildR(){if(rAnim)rAnim.finish();const svg=$('#r-plane');axes(svg,RR);rRot=0;rLast=[];
+  const pts=[];for(let k=0;k<rn;k++){const a=rAng(k,rn);pts.push((150+RR*Math.cos(a))+','+(150-RR*Math.sin(a)));}
+  if(rn>2)el('polygon',{points:pts.join(' '),class:'poly'},svg);
+  rDots=[];for(let k=0;k<rn;k++){const d=dot(svg,col(k),rootLabel(k));place(d,rAng(k,rn),RR);rDots.push(d);}
+  const ops=$('#r-ops');ops.innerHTML='';
+  for(let k=1;k<rn;k++){const b=document.createElement('button');b.className='op';b.type='button';
+    b.innerHTML=`<b>ρ${sub(k)}</b><span class="m">β ↦ βζ${k===1?'':sup(k)}</span>`;
+    b.addEventListener('click',()=>{if(rAnim)rAnim.finish();const moves=rDots.map((d,i)=>({d,a0:rAng(i+rRot,rn),da:rAng(k,rn),r:RR}));rRot=(rRot+k)%rn;rAnim=animate(moves,650);rLast.push(k);if(rLast.length>2)rLast.shift();renderR();});
+    ops.appendChild(b);}
+  renderR();}
+function renderR(){let h=`<div class="read"><small>Net rotation</small>${rRot===0?'identity':'ρ'+sub(rRot)} · β ↦ ${rRot===0?'β':'βζ'+(rRot===1?'':sup(rRot))}</div>`;
+  if(rLast.length===2){const [j,k]=rLast;const s=(j+k)%rn;h+=`<div class="read"><small>Last two, either order</small>ρ${sub(k)} ∘ ρ${sub(j)} = ρ${sub(j)} ∘ ρ${sub(k)} = ${s===0?'identity':'ρ'+sub(s)}</div>`;}
+  else h+=`<div class="read"><small>Group</small>C${sub(rn)}: composing adds exponents mod ${rn}</div>`;
+  h+=`<p style="font-size:15px">${rn} symmetries, all rotations. Adding exponents does not care about order, so this layer is abelian.</p>`;
+  $('#r-out').innerHTML=h;}
+buildR();
+
+/* ---------- 6. solvable chains ---------- */
+const CH={
+ s3:{g:[['S₃',6],['C₃',3],['{e}',1]],q:['C₂','C₃'],bad:[],note:"Two abelian layers: adjoin a square root, then a cube root. That is Cardano's formula."},
+ s4:{g:[['S₄',24],['A₄',12],['V₄',4],['C₂',2],['{e}',1]],q:['C₂','C₃','C₂','C₂'],bad:[],note:"Four abelian layers. Ferrari's quartic formula follows this chain: a square root, a resolvent cubic, then square roots."},
+ s5:{g:[['S₅',120],['A₅',60],['{e}',1]],q:['C₂','A₅'],bad:[1],note:'The first layer is fine. Then A₅ has no normal subgroup to step down to, so the last quotient is A₅ itself, which is not abelian. Every chain for S₅ has this problem.'}};
+const chBtns=[...document.querySelectorAll('[data-ch]')];
+function renderChain(key){const c=CH[key];let h='';c.g.forEach((g,i)=>{h+=`<span class="g">${g[0]}<small>${g[1]}</small></span>`;if(i<c.q.length){const bad=c.bad.includes(i);h+=`<span class="q${bad?' badq':''}"><span>${c.q[i]}</span>${bad?'not abelian':'abelian'}</span>`;}});
+  $('#chain').innerHTML=h;$('#chain-note').textContent=c.note;}
+chBtns.forEach(b=>b.addEventListener('click',()=>{press(chBtns,b);renderChain(b.dataset.ch);}));
+renderChain('s5');
+
+const A5=[{s:1,c:'var(--ink)',d:'identity'},{s:15,c:'var(--r1)',d:'180° about an edge midpoint'},{s:20,c:'var(--r3)',d:'120° about a face center'},{s:12,c:'var(--r2)',d:'72° about a vertex'},{s:12,c:'var(--r0)',d:'144° about a vertex'}];
+const on=[true,false,false,false,false];
+const clsBox=$('#a5cls'),cells=$('#a5cells');
+A5.forEach((k,i)=>{const b=document.createElement('button');b.type='button';b.style.setProperty('--c',k.c);b.setAttribute('aria-pressed',on[i]?'true':'false');
+  b.innerHTML=`<b>${k.s}</b><span>${k.d}</span>${i===0?'<span style="color:var(--muted)">always included</span>':''}`;
+  if(i===0)b.disabled=true;else b.addEventListener('click',()=>{on[i]=!on[i];b.setAttribute('aria-pressed',on[i]?'true':'false');renderA5();});clsBox.appendChild(b);
+  for(let j=0;j<k.s;j++){const c=document.createElement('i');c.style.setProperty('--c',k.c);c.dataset.k=i;cells.appendChild(c);}});
+const DIV60=[1,2,3,4,5,6,10,12,15,20,30,60];
+function renderA5(){const tot=A5.reduce((s,k,i)=>s+(on[i]?k.s:0),0);[...cells.children].forEach(c=>c.classList.toggle('on',on[+c.dataset.k]));
+  const ok=DIV60.includes(tot);const parts=A5.filter((k,i)=>on[i]).map(k=>k.s).join(' + ');
+  let msg=ok?(tot===1?'the trivial subgroup {e}':'the whole group A₅'):`60 / ${tot} is not a whole number, so Lagrange rules it out`;
+  $('#a5v').innerHTML=`${parts} = ${tot} → <span class="${ok?'ok':'no'}">${msg}</span>`;}
+renderA5();
+(function(){const others=A5.slice(1).map(k=>k.s);let h='';for(let m=0;m<16;m++){let t=1;const ps=['1'];others.forEach((s,i)=>{if(m&(1<<i)){t+=s;ps.push(s);}});h+=`<span class="${DIV60.includes(t)?'ok':''}">${t}</span>`;}$('#a5all').innerHTML=h;})();
+
+/* ---------- 7. quintics ---------- */
+const cm=(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]];
+const cd=(a,b)=>{const q=b[0]*b[0]+b[1]*b[1];return [(a[0]*b[0]+a[1]*b[1])/q,(a[1]*b[0]-a[0]*b[1])/q];};
+function polyRoots(co){const n=co.length-1;let z=[];for(let k=0;k<n;k++){const a=2*Math.PI*k/n+.4;z.push([.9*Math.cos(a),.9*Math.sin(a)]);}
+  const ev=x=>co.reduce((acc,c)=>{const t=cm(acc,x);return [t[0]+c,t[1]];},[0,0]);
+  for(let it=0;it<400;it++){z=z.map((zi,i)=>{let den=[1,0];z.forEach((zj,j)=>{if(j!==i)den=cm(den,[zi[0]-zj[0],zi[1]-zj[1]]);});const d=cd(ev(zi),den);return [zi[0]-d[0],zi[1]-d[1]];});}
+  return z.sort((a,b)=>Math.atan2(a[1],a[0])-Math.atan2(b[1],b[0]));}
+const QS=91;
+function drawQ(id,co,labeler,poly){const svg=$(id);axes(svg,QS);const rs=polyRoots(co);
+  if(poly){el('polygon',{points:rs.map(r=>(150+r[0]*QS)+','+(150-r[1]*QS)).join(' '),class:'poly'},svg);}
+  rs.forEach((r,k)=>{const d=dot(svg,col(k),labeler(k,r));place(d,Math.atan2(r[1],r[0]),Math.hypot(r[0],r[1])*QS);});}
+drawQ('#q1',[1,0,0,0,0,-2],(k,r)=>{const a=Math.round(Math.atan2(r[1],r[0])/(2*Math.PI/5));const m=((a%5)+5)%5;return m===0?'β':(m===1?'βζ':'βζ'+sup(m));},true);
+drawQ('#q2',[1,0,0,0,-1,-1],(k,r)=>Math.abs(r[1])<1e-6?r[0].toFixed(4):'r'+sub(k+1),false);
+
+/* re-measure label boxes once web fonts arrive */
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{sizeTower();sizeLat();});
+})();
+</script>
+
+</body>
+</html>

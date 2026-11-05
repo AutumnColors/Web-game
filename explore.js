@@ -69,5 +69,12 @@ window.EXPLORE = [
     title: 'Aₙ(q) Lab',
     path: 'explore/an-lab/',
     desc: 'The linear groups PSL(n+1, q). Orders from the Dynkin diagram, the group moving its projective space, and a brute-force element census that tells the 20,160 twins apart.'
+  },
+  {
+    id: 'galois',
+    badge: 'Gal',
+    title: 'Galois Workbench',
+    path: 'explore/galois/',
+    desc: 'From field extensions to the impossible quintic. Watch S₃ permute the roots of x³ − 2, match subgroups to fields, and see why A₅ blocks a formula for x⁵ − x − 1.'
   }
 ];
