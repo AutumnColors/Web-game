@@ -92,6 +92,8 @@ section + section{border-top:1px solid var(--line);padding-top:22px}
 .ech{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:3px 9px;cursor:pointer;font-family:var(--f-math);font-size:16px;line-height:1.3;white-space:nowrap}
 .ech i{width:9px;height:9px;border-radius:2px;flex:none;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--fg) 25%,transparent)}
 .ech[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.ech.at{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+.chips .ghostbtn{border-radius:999px;padding:4px 11px}
 
 .eldet{margin-top:12px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:4px;display:flex;flex-direction:column;gap:6px}
 .eldet .hd2{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
@@ -195,7 +197,8 @@ h4{margin:18px 0 6px;font-size:12px;font-weight:600;letter-spacing:.06em;text-tr
         <span class="deg" id="deg">0°</span>
       </div>
       <div class="chips">
-        <button class="chip-t" id="tGhost" aria-pressed="true">Start position</button>
+        <button class="ghostbtn" id="home" disabled>Back to start</button>
+        <button class="chip-t" id="tGhost" aria-pressed="true">Start outline</button>
         <button class="chip-t" id="tLabels" aria-pressed="true">Labels</button>
       </div>
       <div class="gcard"><h3 id="gTitle"></h3><p id="gDesc"></p></div>
@@ -204,7 +207,7 @@ h4{margin:18px 0 6px;font-size:12px;font-weight:600;letter-spacing:.06em;text-tr
     <div class="panel-col">
       <section>
         <h2>Elements</h2>
-        <p class="sub">Grouped by conjugacy class. Tap one to see its motion. The small square shows which coset of H it sits in.</p>
+        <p class="sub">Grouped by conjugacy class. Tap one to apply it to the solid where it stands now: tapping g at position x takes it to g·x. The underlined element is where the solid is now. Axes stay fixed in space, so numbers in the descriptions are positions, counted where the labels start. The small square shows which coset of H an element sits in.</p>
         <div id="elgrid"></div>
         <div class="eldet" id="eldet"></div>
       </section>
@@ -450,7 +453,7 @@ function loadGroup(i,fromUser){
   mesh=buildMesh(G.spec.solid);view=defaultView(G.spec.solid);
   $('readout').innerHTML='';
   if(fromUser){try{history.replaceState(null,'','#'+G.spec.id);}catch(_){}}
-  renderAll();selectEl(sel,true);
+  renderAll();selectEl(sel,false);resetMotion();
 }
 function renderAll(){renderElements();renderDetail();renderHasse();renderHinfo();renderCay();renderBreak();}
 
@@ -458,11 +461,13 @@ function renderAll(){renderElements();renderDetail();renderHasse();renderHinfo()
 function renderElements(){
   const H=G.subs[Hid],{of,list}=cosetsOf(G,H),dots=H.order>1&&H.order<G.n;
   $('elgrid').innerHTML=G.classes.map(c=>`<div class="crow"><div class="clab"><b>order ${G.ord[c[0]]}</b>${c.length} element${c.length>1?'s':''}</div><div class="cchips">${c.map(i=>`<button class="ech" data-i="${i}" aria-pressed="${i===sel}">${dots?`<i style="background:${cosColor(of[i],list.length)}"></i>`:''}${esc(nm(i))}</button>`).join('')}</div></div>`).join('');
+  updateMarks();
 }
 $('elgrid').addEventListener('click',e=>{const b=e.target.closest('.ech');if(!b)return;hitCell=null;$('readout').innerHTML='';selectEl(+b.dataset.i,true);});
-function selectEl(i,auto){sel=i;
+function selectEl(i,apply){sel=i;
   document.querySelectorAll('.ech').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.i===i?'true':'false'));
-  renderDetail();setSeq([G.els[i]],nm(i),auto);}
+  renderDetail();
+  if(apply){const to=G.T[i][atQ];enqueue({steps:[stepOf(G.els[i])],to,small:`${nm(i)} · ${nm(atQ)}`});}}
 
 function describe(e,solid){
   const {axis,angle}=e.anim,deg=Math.round(angle*180/PI);
@@ -480,26 +485,26 @@ function describe(e,solid){
     const n=solid.n,vs=[];
     for(let k=0;k<n;k++){const a=(360*k/n)%180;if(Math.abs(a-phi)<0.5||Math.abs(a-phi)>179.5)vs.push(k+1);}
     if(!vs.length) return 'Flip over the line through the midpoints of two opposite edges.';
-    return n%2?`Flip over the line through vertex ${vs[0]} and the middle of the opposite edge.`:`Flip over the line through vertices ${vs.join(' and ')}.`;
+    return n%2?`Flip over the line through position ${vs[0]} and the middle of the opposite edge.`:`Flip over the line through positions ${vs.join(' and ')}.`;
   }
   if(solid.type==='tetra'){
     if(deg===180) return 'Half-turn about an axis through the midpoints of two opposite edges.';
     const i=TV.findIndex(v=>Math.abs(dot3(axis,nrm(v)))>0.99);
-    return `Turn ${deg}° about the axis through vertex ${i+1} and the center of the opposite face.`;
+    return `Turn ${deg}° about the axis through position ${i+1} and the center of the opposite face.`;
   }
   if(solid.type==='cube'){
     const nz=ab.filter(x=>x>0.1).length;
     if(nz===1) return deg===90?'Quarter-turn about an axis through two opposite face centers.':'Half-turn about an axis through two opposite face centers.';
     if(nz===2) return 'Half-turn about an axis through the midpoints of two opposite edges.';
     const i=TV.findIndex(v=>Math.abs(dot3(axis,nrm(v)))>0.99);
-    return `Turn ${deg}° about body diagonal ${i+1}.`;
+    return `Turn ${deg}° about diagonal ${i+1} (its start position).`;
   }
   return '';
 }
 function renderDetail(){
   const e=G.els[sel],H=G.subs[Hid],o=G.ord[sel],cs=G.classes[G.clsOf[sel]].length,s=G.spec.solid;
   let html=`<div class="hd2"><span class="en">${esc(e.name)}</span><span class="eo">order ${o} · ${cs} in its class · inverse <span class="m">${esc(nm(G.inv[sel]))}</span></span></div><p>${describe(e,s)}</p>`;
-  if(e.perm){const p=cycStr(e.perm);html+=`<p>${s.type==='cube'?'On the diagonals':'On the vertices'}: <span class="pm">${p==='e'?'nothing moves':esc(p)}</span></p>`;}
+  if(e.perm){const p=cycStr(e.perm);html+=`<p>${s.type==='cube'?'On the diagonal positions':'On the positions'}: <span class="pm">${p==='e'?'nothing moves':esc(p)}</span></p>`;}
   if(H.order>1&&H.order<G.n){
     const L=H.els.map(h=>G.T[sel][h]),R=H.els.map(h=>G.T[h][sel]);
     const same=G.maskOf(L)===G.maskOf(R),show=H.order<=6;
@@ -586,7 +591,7 @@ $('cay').addEventListener('click',e=>{const td=e.target.closest('td[data-a]');if
   document.querySelectorAll('table.cay td.hit').forEach(x=>x.classList.remove('hit'));if(!collapse)td.classList.add('hit');
   $('readout').innerHTML=`<span class="m">${esc(nm(a))} · ${esc(nm(b))} = ${esc(nm(p))}</span> &nbsp;do ${esc(nm(b))}, then ${esc(nm(a))}`;
   sel=p;document.querySelectorAll('.ech').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.i===p?'true':'false'));renderDetail();
-  setSeq([G.els[b],G.els[a]],`${nm(a)}·${nm(b)}`,true);
+  enqueue({steps:[...(atQ!==0?[homeStep(atQ)]:[]),stepOf(G.els[b]),stepOf(G.els[a])],to:p,small:`${nm(a)} · ${nm(b)}: ${nm(b)} first, then ${nm(a)}`});
 });
 
 /* ---------- breakdown ---------- */
@@ -664,33 +669,58 @@ function buildMesh(s){
 function resize(){const r=cv.getBoundingClientRect();DPR=Math.min(2,window.devicePixelRatio||1);W=r.width;Hh=r.height;cv.width=Math.max(1,Math.round(W*DPR));cv.height=Math.max(1,Math.round(Hh*DPR));draw();}
 new ResizeObserver(resize).observe(cv);
 
-/* motion: a sequence of turns, each applied on top of the last (rightmost factor first) */
-let seq=[],prog=1,playing=false,lastT=0,dur=1000,cur=I3,hudBase='';
-function setSeq(list,label,auto){
-  let base=I3;seq=list.map(e=>{const st={axis:e.anim.axis,angle:e.anim.angle,base,name:e.name};base=mm(rotM(st.axis,st.angle),base);return st;});
-  hudBase=label;const tot=seq.reduce((t,s)=>t+s.angle,0);
-  $('play').disabled=tot<1e-6;
-  if(auto&&tot>1e-6&&!reduced){prog=0;dur=Math.min(2800,Math.max(700,450+650*tot/PI));startPlay();}
-  else{prog=1;playing=false;}
-  frame();
+/* motion: the solid keeps its place. Each move turns it from where it stands now, about an axis fixed in space,
+   so applying g to position x lands on g·x. `at` is the element the solid has reached (after the move now playing),
+   `atQ` the element it will reach once queued moves finish, `pose` the exact matrix of `at`. */
+let at=0,atQ=0,pose=I3,cur=I3,seq=[],queue=[],prog=1,playing=false,lastT=0,dur=1000,hudBig='e',hudSmall='start position';
+function resetMotion(){at=atQ=0;pose=I3;cur=I3;seq=[];queue=[];prog=1;playing=false;hudBig=nm(0);hudSmall='start position';updateMarks();frame();}
+function homeStep(x){const g=G.inv[x],aa=axisAngle(G.els[g].M);
+  return aa.angle>1e-6?{axis:aa.axis,angle:aa.angle,name:'back to start'}:{axis:G.els[g].anim.axis,angle:G.els[g].anim.angle,name:'back to start'};}
+const stepOf=e=>({axis:e.anim.axis,angle:e.anim.angle,name:e.name});
+function enqueue(m){
+  m.steps=m.steps.filter(s=>s.angle>1e-6);atQ=m.to;
+  if(reduced){queue=[];at=atQ;pose=G.els[at].M;seq=[];prog=1;playing=false;hudBig=nm(at);hudSmall=m.small;updateMarks();frame();return;}
+  if(queue.length<6)queue.push(m);else{queue[5]=m;}
+  if(!playing){const ok=(seq.length&&prog<1)||startNext();if(ok)kick();else frame();}
+  updateMarks();
 }
+function startNext(){
+  while(queue.length){const m=queue.shift();
+    let base=pose;const steps=m.steps.map(s=>{const st={...s,base};base=mm(rotM(s.axis,s.angle),base);return st;});
+    at=m.to;pose=G.els[at].M;hudBig=nm(at);hudSmall=m.small;updateMarks();
+    if(!steps.length){seq=[];prog=1;continue;}
+    const tot=steps.reduce((t,s)=>t+s.angle,0);
+    seq=steps;prog=0;dur=Math.min(3200,Math.max(650,420+620*tot/PI));return true;}
+  return false;
+}
+function kick(){if(!playing){playing=true;lastT=performance.now();requestAnimationFrame(tick);}}
+function tick(t){if(!playing)return;prog=Math.min(1,prog+(t-lastT)/dur);lastT=t;
+  if(prog>=1&&!startNext())playing=false;
+  frame();if(playing)requestAnimationFrame(tick);}
+function updateMarks(){document.querySelectorAll('.ech').forEach(b=>b.classList.toggle('at',+b.dataset.i===at));$('home').disabled=atQ===0;}
 const ease=u=>u<.5?2*u*u:1-2*(1-u)*(1-u);
 function frame(){
-  const ws=seq.map(s=>Math.max(s.angle,1e-3)),Wt=ws.reduce((a,b)=>a+b,0);let p=prog*Wt,i=0;
-  while(i<seq.length-1&&p>ws[i]){p-=ws[i];i++;}
-  const st=seq[i];let deg='0°';
-  if(st){const u=Math.min(1,Math.max(0,p/ws[i]));const a=st.angle*ease(u);cur=mm(rotM(st.axis,a),st.base);
-    deg=seq.length>1?`step ${i+1}/2 · ${st.name}`:`${Math.round(a*180/PI)}° / ${Math.round(st.angle*180/PI)}°`;}
-  else cur=I3;
-  $('hudName').textContent=hudBase;$('hudAn').textContent=seq.length>1?`do ${seq[0].name}, then ${seq[1].name}`:'';
-  $('deg').textContent=deg;$('scrub').value=Math.round(prog*1000);
-  $('play').textContent=playing?'Pause':prog>=1?'Replay':'Play';
+  let deg='';
+  if(!seq.length||prog>=1){cur=pose;
+    if(seq.length){const tot=seq.reduce((t,s)=>t+s.angle,0);deg=seq.length>1?`${seq.length} steps done`:`${Math.round(tot*180/PI)}° / ${Math.round(tot*180/PI)}°`;}}
+  else{const ws=seq.map(s=>s.angle),Wt=ws.reduce((a,b)=>a+b,0);let p=ease(prog)*Wt,i=0;
+    while(i<seq.length-1&&p>ws[i]){p-=ws[i];i++;}
+    const st=seq[i],a=Math.min(st.angle,Math.max(0,p));cur=mm(rotM(st.axis,a),st.base);
+    deg=seq.length>1?`step ${i+1}/${seq.length} · ${st.name}`:`${Math.round(a*180/PI)}° / ${Math.round(st.angle*180/PI)}°`;}
+  $('hudName').textContent=hudBig;$('hudAn').textContent=hudSmall;
+  $('deg').textContent=deg;$('scrub').value=Math.round((seq.length?prog:1)*1000);$('scrub').disabled=!seq.length;
+  $('play').disabled=!seq.length&&!queue.length;
+  $('play').textContent=playing?'Pause':(seq.length&&prog<1)||queue.length?'Play':'Replay';
   draw();
 }
-function startPlay(){playing=true;lastT=performance.now();requestAnimationFrame(tick);}
-function tick(t){if(!playing)return;prog=Math.min(1,prog+(t-lastT)/dur);lastT=t;if(prog>=1)playing=false;frame();if(playing)requestAnimationFrame(tick);}
-$('play').addEventListener('click',()=>{if(playing){playing=false;frame();return;}if(prog>=1)prog=0;if(reduced){prog=1;frame();return;}startPlay();});
-$('scrub').addEventListener('input',e=>{playing=false;prog=+e.target.value/1000;frame();});
+$('play').addEventListener('click',()=>{
+  if(playing){playing=false;frame();return;}
+  if(seq.length&&prog<1){kick();return;}
+  if(queue.length&&startNext()){kick();return;}
+  if(seq.length){prog=0;if(reduced){prog=1;frame();return;}kick();}
+});
+$('scrub').addEventListener('input',e=>{playing=false;queue=[];atQ=at;updateMarks();prog=+e.target.value/1000;frame();});
+$('home').addEventListener('click',()=>{if(atQ===0)return;hitCell=null;$('readout').innerHTML='';enqueue({steps:[homeStep(atQ)],to:0,small:'back to start'});});
 $('tGhost').addEventListener('click',e=>{showGhost=!showGhost;e.currentTarget.setAttribute('aria-pressed',showGhost);draw();});
 $('tLabels').addEventListener('click',e=>{showLabels=!showLabels;e.currentTarget.setAttribute('aria-pressed',showLabels);draw();});
 
