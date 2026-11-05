@@ -82,6 +82,6 @@ window.EXPLORE = [
     badge: 'D₄',
     title: 'Non-simple groups',
     path: 'explore/nonsimple/',
-    desc: 'C₄, V₄, D₃, D₄, Q₈, D₅, D₆, A₄ and S₄ as turning solids. Pick a subgroup, see its cosets color the multiplication table, collapse to G/H, and find where each group splits.'
+    desc: 'Fourteen groups from C₄ to SL(2,3) as moving solids, mirrors and maps of Z/5. Pick a subgroup, see its cosets color the multiplication table, collapse to G/H, and find where each group splits.'
   }
 ];

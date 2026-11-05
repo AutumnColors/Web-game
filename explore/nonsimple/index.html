@@ -47,17 +47,17 @@ header{display:flex;flex-direction:column;gap:14px;margin-bottom:20px}
 .hd{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 22px}
 h1{font-family:var(--f-math);font-weight:600;font-size:clamp(30px,4.4vw,44px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
 .lede{color:var(--muted);margin:0;max-width:66ch;text-wrap:pretty}
-.gpick{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:6px}
-@media (max-width:720px){.gpick{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.gpick{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .gb{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:7px 4px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0}
-.gb b{font-family:var(--f-math);font-weight:600;font-size:21px;line-height:1.15}
+.gb b{font-family:var(--f-math);font-weight:600;font-size:clamp(13px,3.3vw,21px);line-height:1.15;white-space:nowrap}
 .gb span{font-family:var(--f-num);font-size:11px;color:var(--muted)}
 .gb[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .gb[aria-pressed="true"] span{color:var(--bg);opacity:.75}
 
 .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:32px;align-items:start}
-.stage-col{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:12px;min-width:0}
-@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr);gap:22px}.stage-col{position:static}}
+.stage-col{display:flex;flex-direction:column;gap:12px;min-width:0}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr);gap:22px}}
+.stage-col section{border-top:1px solid var(--line);padding-top:16px;margin-top:4px}
 .stage{position:relative;width:100%;aspect-ratio:1/1;max-width:100%;max-height:min(58vh,640px);background:var(--stage);border-radius:4px;overflow:hidden}
 .stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
 .stage canvas:active{cursor:grabbing}
@@ -74,12 +74,13 @@ h1{font-family:var(--f-math);font-weight:600;font-size:clamp(30px,4.4vw,44px);li
 .chip-t{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 11px;cursor:pointer;font-size:13px}
 .chip-t[aria-pressed="false"]{color:var(--muted);background:transparent}
 .chip-t[aria-pressed="true"]{border-color:var(--fg)}
-.gcard{border-top:1px solid var(--line);padding-top:12px}
+.gcard{border-top:1px solid var(--line);padding-top:14px}
 .gcard h3{margin:0;font-family:var(--f-math);font-weight:600;font-size:22px;line-height:1.2}
 .gcard h3 small{font-family:var(--f-num);font-weight:400;font-size:12.5px;color:var(--muted);margin-left:8px}
 .gcard p{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:62ch;text-wrap:pretty}
 
 .panel-col{display:flex;flex-direction:column;gap:26px;min-width:0}
+.panel-col section:first-child{border-top:0;padding-top:0}
 section h2{font-family:var(--f-math);font-style:italic;font-weight:400;font-size:23px;line-height:1.15;margin:0 0 4px;text-wrap:balance}
 section .sub{color:var(--muted);font-size:13.5px;margin:0 0 12px;max-width:64ch;text-wrap:pretty}
 section + section{border-top:1px solid var(--line);padding-top:22px}
@@ -201,17 +202,16 @@ h4{margin:18px 0 6px;font-size:12px;font-weight:600;letter-spacing:.06em;text-tr
         <button class="chip-t" id="tGhost" aria-pressed="true">Start outline</button>
         <button class="chip-t" id="tLabels" aria-pressed="true">Labels</button>
       </div>
-      <div class="gcard"><h3 id="gTitle"></h3><p id="gDesc"></p></div>
-    </div>
-
-    <div class="panel-col">
-      <section>
+      <section class="els">
         <h2>Elements</h2>
         <p class="sub">Grouped by conjugacy class. Tap one to apply it to the solid where it stands now: tapping g at position x takes it to g·x. The underlined element is where the solid is now. Axes stay fixed in space, so numbers in the descriptions are positions, counted where the labels start. The small square shows which coset of H an element sits in.</p>
         <div id="elgrid"></div>
         <div class="eldet" id="eldet"></div>
       </section>
+      <div class="gcard"><h3 id="gTitle"></h3><p id="gDesc"></p></div>
+    </div>
 
+    <div class="panel-col">
       <section>
         <h2>Subgroups</h2>
         <p class="sub">Every subgroup, by size, with a line where one sits directly inside another. Tap one to make it H.</p>
@@ -284,7 +284,7 @@ function permOf(M,refs,signed){return refs.map(v=>{const w=mv(M,v);
     if(signed&&Math.hypot(w[0]+r[0],w[1]+r[1],w[2]+r[2])<1e-6) return j;}
   return -1;});}
 function cycles(p){const seen=[],out=[];for(let i=0;i<p.length;i++){if(seen[i])continue;const c=[];let j=i;while(!seen[j]){seen[j]=1;c.push(j);j=p[j];}if(c.length>1)out.push(c);}return out;}
-const cycStr=p=>{const c=cycles(p);return c.length?c.map(x=>'('+x.map(i=>i+1).join(' ')+')').join(''):'e';};
+const cycStr=(p,z)=>{const c=cycles(p);return c.length?c.map(x=>'('+x.map(i=>i+(z?0:1)).join(' ')+')').join(''):'e';};
 
 const TV=[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]];
 const polyVerts=n=>[...Array(n)].map((_,k)=>[Math.cos(2*PI*k/n),Math.sin(2*PI*k/n),0]);
@@ -315,11 +315,50 @@ function permEls(gens,signed){
 }
 const qmul=(a,b)=>[a[0]*b[0]-a[1]*b[1]-a[2]*b[2]-a[3]*b[3], a[0]*b[1]+a[1]*b[0]+a[2]*b[3]-a[3]*b[2],
   a[0]*b[2]-a[1]*b[3]+a[2]*b[0]+a[3]*b[1], a[0]*b[3]+a[1]*b[2]-a[2]*b[1]+a[3]*b[0]];
+/* unit quaternions act on space by v ↦ qvq⁻¹: a turn by 2·acos(q₀) about (q₁,q₂,q₃); q and −q give the same turn */
+function quatEls(list,refs){
+  return list.map(([q,name])=>{const angle=2*Math.acos(Math.max(-1,Math.min(1,q[0]))),v=[q[1],q[2],q[3]],l=Math.hypot(...v);
+    const axis=l>1e-9?nrm(v):nrm([.35,.55,1]),M=rotM(axis,angle);
+    return {f:q,name,anim:{axis,angle},M,perm:refs?permOf(M,refs):undefined};});
+}
+const qkey=q=>q.map(x=>Math.round(x*1e6)).join(',');
 function q8Els(){
-  return [[[1,0,0,0],'1'],[[-1,0,0,0],'−1'],[[0,1,0,0],'i'],[[0,-1,0,0],'−i'],[[0,0,1,0],'j'],[[0,0,-1,0],'−j'],[[0,0,0,1],'k'],[[0,0,0,-1],'−k']]
-    .map(([q,name])=>{const angle=2*Math.acos(q[0]),v=[q[1],q[2],q[3]],l=Math.hypot(...v);
-      const axis=l>1e-9?nrm(v):nrm([.35,.55,1]);
-      return {f:q,name,anim:{axis,angle},M:rotM(axis,angle)};});
+  return quatEls([[[1,0,0,0],'1'],[[-1,0,0,0],'−1'],[[0,1,0,0],'i'],[[0,-1,0,0],'−i'],[[0,0,1,0],'j'],[[0,0,-1,0],'−j'],[[0,0,0,1],'k'],[[0,0,0,-1],'−k']]);
+}
+function dic3Els(){
+  const L=[];for(let x=0;x<2;x++)for(let m=0;m<6;m++){const a=[Math.cos(PI*m/3),0,0,Math.sin(PI*m/3)];
+    L.push([x?qmul(a,[0,1,0,0]):a,(m===0?(x?'':'1'):'a'+(m>1?sup(m):''))+(x?'x':'')]);}
+  return quatEls(L,polyVerts(3));
+}
+function sl23Els(){
+  const L=[[[1,0,0,0],'1'],[[-1,0,0,0],'−1']];
+  ['i','j','k'].forEach((u,t)=>{const q=[0,0,0,0];q[t+1]=1;L.push([q,u]);L.push([q.map(x=>-x),'−'+u]);});
+  for(const a of [1,-1])for(const b of [1,-1])for(const c of [1,-1])for(const d of [1,-1])
+    L.push([[a/2,b/2,c/2,d/2],`½(${a<0?'−':''}1${b<0?'−':'+'}i${c<0?'−':'+'}j${d<0?'−':'+'}k)`]);
+  return quatEls(L,TV);
+}
+/* an improper orthogonal matrix is a rotoreflection: turn by θ about n, then mirror in the plane ⊥ n */
+function rotoref(M){const aa=axisAngle(M.map(x=>-x));
+  return aa.angle<1e-6?{axis:Z,theta:PI}:{axis:aa.axis.map(x=>-x),theta:PI-aa.angle};}
+function boxEls(){
+  return [[1,1,1],[-1,1,1],[1,-1,1],[1,1,-1],[1,-1,-1],[-1,1,-1],[-1,-1,1],[-1,-1,-1]].map(sg=>{
+    const M=[sg[0],0,0,0,sg[1],0,0,0,sg[2]],name=sg.map(x=>x>0?'+':'−').join('');
+    let anim;if(sg[0]*sg[1]*sg[2]>0){anim=axisAngle(M);}else{const r=rotoref(M);anim={kind:'imp',axis:r.axis,theta:r.theta};}
+    return {f:M,M,name,anim,sg};});
+}
+/* F20: x ↦ ax + b on Z/5. a = ±1 are rigid (pentagon turns and flips); a = 2, 3 move the points along the circle */
+const ringPt=p=>{const t=PI/2+2*PI*p/5;return [Math.cos(t),Math.sin(t),0];};
+function f20Els(){
+  const L=[];
+  for(const a of [1,4,2,3])for(let b=0;b<5;b++){
+    const perm=[0,1,2,3,4].map(p=>(a*p+b)%5);
+    const name=a===1&&b===0?'e':({1:'x',4:'−x',2:'2x',3:'3x'})[a]+(b?'+'+b:'');
+    let anim,M;
+    if(a===1){const d=(b+2)%5-2;M=rotM(Z,2*PI*b/5);anim={axis:d<0?[0,0,-1]:Z,angle:Math.abs(d)*2*PI/5};}
+    else if(a===4){const al=PI/2+PI*b/5;M=rotM([Math.cos(al),Math.sin(al),0],PI);anim={axis:[Math.cos(al),Math.sin(al),0],angle:PI};}
+    else anim={kind:'arc'};
+    L.push({f:[a,b],name,perm,anim,M,ab:[a,b]});}
+  return L;
 }
 
 const MAT={mul:mm,key:keyM};
@@ -330,18 +369,28 @@ const GROUPS=[
    desc:'Symmetries of a rectangle you can pick up and flip: the identity, two flips and a half-turn. Every element is its own inverse. This is the smallest group that is not cyclic.'},
   {id:'d3',short:'D₃',title:'D₃ ≅ S₃',solid:{type:'poly',n:3},build:()=>polyEls(3,true),...MAT,defH:'derived',
    desc:'Symmetries of a triangle, which are all six permutations of its vertices. The smallest non-abelian group. The turns form a normal C₃; each flip generates a C₂ that is not normal.'},
+  {id:'c2-3',short:'C₂³',title:'C₂³ ≅ C₂ × C₂ × C₂',solid:{type:'box'},build:boxEls,...MAT,defH:'comp',
+   desc:'Symmetries of a box with three different side lengths, mirrors included. Each one flips some of the three axes, so it is a sign vector like −+−, and composing two of them multiplies the signs. Every element has order 2. This is the vector space F₂³: its 7 subgroups of order 2 and 7 of order 4 are the points and lines of the Fano plane. Mirrors are shown as the box squashing flat through the mirror plane.'},
   {id:'d4',short:'D₄',title:'D₄',solid:{type:'poly',n:4},build:()=>polyEls(4,true),...MAT,defH:'center',
    desc:'Symmetries of a square. Its center {e, r²} is normal, and D₄ modulo its center is V₄. The center has no complement, so D₄ is not a product built on it.'},
-  {id:'q8',short:'Q₈',title:'Q₈',solid:{type:'brick'},build:q8Els,mul:qmul,key:q=>q.join(','),defH:'center',
+  {id:'q8',short:'Q₈',title:'Q₈',solid:{type:'brick'},quat:true,build:q8Els,mul:qmul,key:qkey,defH:'center',
    desc:'The quaternion units ±1, ±i, ±j, ±k with i² = j² = k² = ijk = −1. Every subgroup is normal although Q₈ is not abelian, and no normal subgroup has a complement. The solid shows q acting by v ↦ qvq⁻¹: i is a half-turn and −1 is a full 360° turn, so the brick only sees Q₈/{±1} ≅ V₄.'},
   {id:'d5',short:'D₅',title:'D₅',solid:{type:'poly',n:5},build:()=>polyEls(5,true),...MAT,defH:'derived',
    desc:'Symmetries of a pentagon. The only proper nontrivial normal subgroup is the rotation group C₅, and D₅ ≅ C₅ ⋊ C₂.'},
   {id:'d6',short:'D₆',title:'D₆',solid:{type:'poly',n:6},build:()=>polyEls(6,true),...MAT,defH:'center',
    desc:'Symmetries of a hexagon. The half-turn r³ commutes with everything, and D₆ splits as a direct product S₃ × C₂ along it.'},
+  {id:'dic3',short:'Dic₃',title:'Dic₃ ≅ C₃ ⋊ C₄',solid:{type:'poly',n:3},quat:true,build:dic3Els,mul:qmul,key:qkey,defH:'derived',
+   desc:'The dicyclic group of order 12: unit quaternions generated by a = cos 60° + k sin 60° (order 6) and x = i, with x² = a³ = −1 and xax⁻¹ = a⁻¹. It is the third non-abelian group of order 12, next to D₆ and A₄. Like Q₈ it moves the solid by v ↦ qvq⁻¹, so the triangle only sees Dic₃/{±1} ≅ S₃, and a³ = −1 is a full 360° turn.'},
   {id:'a4',short:'A₄',title:'A₄',solid:{type:'tetra'},build:()=>permEls([rotM([1,1,1],2*PI/3),rotM(Z,PI)],false),...MAT,defH:'derived',
    desc:'Rotations of a tetrahedron, read as even permutations of its four vertices. The three edge-axis half-turns form a normal V₄ with A₄/V₄ ≅ C₃. A₄ has no subgroup of order 6, so the converse of Lagrange’s theorem fails.'},
+  {id:'d8',short:'D₈',title:'D₈',solid:{type:'poly',n:8},build:()=>polyEls(8,true),...MAT,defH:'center',
+   desc:'Symmetries of an octagon, order 16. Its center {e, r⁴} is normal and D₈/Z ≅ D₄. It is a 2-group: every element has order a power of 2, so every composition factor is C₂, four of them.'},
+  {id:'f20',short:'F₂₀',title:'F₂₀ ≅ C₅ ⋊ C₄',solid:{type:'ring'},ring:true,build:f20Els,mul:(p,q)=>[(p[0]*q[0])%5,(p[0]*q[1]+p[1])%5],key:q=>q.join(','),defH:'derived',
+   desc:'All maps x ↦ ax + b on the five points of Z/5 with a ≠ 0. With a = ±1 they are the turns and flips of the pentagon, D₅. Multiplying by 2 is not a rigid motion: it fixes one point and carries the blue pentagon onto the orange star. F₂₀ is the Galois group of x⁵ − 2. It is solvable, which is why x⁵ − 2 can be solved by radicals.'},
   {id:'s4',short:'S₄',title:'S₄',solid:{type:'cube'},build:()=>permEls([rotM(Z,PI/2),rotM([1,1,1],2*PI/3)],true),...MAT,defH:'derived',
    desc:'Rotations of a cube, read as permutations of its four body diagonals. One composition series is S₄ ▷ A₄ ▷ V₄ ▷ C₂ ▷ 1.'},
+  {id:'sl23',short:'SL(2,3)',title:'SL(2,3) ≅ Q₈ ⋊ C₃',solid:{type:'tetra'},quat:true,build:sl23Els,mul:qmul,key:qkey,defH:'center',
+   desc:'The binary tetrahedral group: the 24 unit quaternions ±1, ±i, ±j, ±k and ½(±1 ± i ± j ± k). It is also SL(2,3), the 2×2 matrices of determinant 1 over F₃. It turns the tetrahedron by v ↦ qvq⁻¹ with kernel {±1}, so SL(2,3)/{±1} ≅ A₄. It has the same order as S₄ but is a different group: it has only one element of order 2, and, like A₄, no subgroup of order 12.'},
 ];
 
 function identify(size,orders,abelian){
@@ -354,7 +403,10 @@ function identify(size,orders,abelian){
   if(size===8) return c(2)===5?'D₄':c(2)===1?'Q₈':'order 8';
   if(size===10) return 'D₅';
   if(size===12) return c(2)===7?'D₆':c(2)===3?'A₄':'Dic₃';
+  if(size===16) return c(2)===9?'D₈':c(2)===1?'Q₁₆':'order 16';
+  if(size===20) return c(2)===5?'F₂₀':c(2)===11?'D₁₀':c(2)===1?'Dic₅':'order 20';
   if(size===24&&c(2)===9&&c(4)===6) return 'S₄';
+  if(size===24&&c(2)===1&&c(3)===8) return 'SL(2,3)';
   return 'order '+size;
 }
 
@@ -446,7 +498,7 @@ function loadGroup(i,fromUser){
   gi=i;G=analyze(GROUPS[i]);
   const d=GROUPS[i].defH;
   Hid=(d==='center'?G.center:d==='derived'?G.derived:d==='first2'?G.subs.find(s=>s.order===2):G.comp[1]).id;
-  sel=G.spec.id==='q8'?2:1;collapse=false;hitCell=null;
+  sel=Math.max(1,G.els.findIndex((e,i)=>i>0&&(e.anim.kind||(e.anim.angle>1e-6&&e.anim.angle<2*PI-1e-3))));collapse=false;hitCell=null;
   document.querySelectorAll('.gb').forEach((b,j)=>b.setAttribute('aria-pressed',j===i?'true':'false'));
   $('gTitle').innerHTML=`${esc(G.spec.title)}<small>order ${G.n}</small>`;
   $('gDesc').textContent=G.spec.desc;
@@ -460,23 +512,44 @@ function renderAll(){renderElements();renderDetail();renderHasse();renderHinfo()
 /* ---------- elements ---------- */
 function renderElements(){
   const H=G.subs[Hid],{of,list}=cosetsOf(G,H),dots=H.order>1&&H.order<G.n;
-  $('elgrid').innerHTML=G.classes.map(c=>`<div class="crow"><div class="clab"><b>order ${G.ord[c[0]]}</b>${c.length} element${c.length>1?'s':''}</div><div class="cchips">${c.map(i=>`<button class="ech" data-i="${i}" aria-pressed="${i===sel}">${dots?`<i style="background:${cosColor(of[i],list.length)}"></i>`:''}${esc(nm(i))}</button>`).join('')}</div></div>`).join('');
+  let rows=G.classes.map(c=>({c,lab:`${c.length} element${c.length>1?'s':''}`}));
+  if(G.whole.abelian){const os=[...new Set(G.els.map((_,i)=>G.ord[i]))].sort((a,b)=>a-b);
+    rows=os.map(o=>{const c=G.els.map((_,i)=>i).filter(i=>G.ord[i]===o);return {c,lab:c.length>1?`${c.length} elements, one per class`:'1 element'};});}
+  $('elgrid').innerHTML=rows.map(({c,lab})=>`<div class="crow"><div class="clab"><b>order ${G.ord[c[0]]}</b>${lab}</div><div class="cchips">${c.map(i=>`<button class="ech" data-i="${i}" aria-pressed="${i===sel}">${dots?`<i style="background:${cosColor(of[i],list.length)}"></i>`:''}${esc(nm(i))}</button>`).join('')}</div></div>`).join('');
   updateMarks();
 }
 $('elgrid').addEventListener('click',e=>{const b=e.target.closest('.ech');if(!b)return;hitCell=null;$('readout').innerHTML='';selectEl(+b.dataset.i,true);});
 function selectEl(i,apply){sel=i;
   document.querySelectorAll('.ech').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.i===i?'true':'false'));
   renderDetail();
-  if(apply){const to=G.T[i][atQ];enqueue({steps:[stepOf(G.els[i])],to,small:`${nm(i)} · ${nm(atQ)}`});}}
+  if(apply){const to=G.T[i][atQ];enqueue({steps:[stepOf(i)],to,small:`${nm(i)} · ${nm(atQ)}`});}}
 
 function describe(e,solid){
+  if(solid.type==='ring'){const [a,b]=e.ab;if(a===1&&b===0) return 'Leaves every point where it is.';
+    const fix=[0,1,2,3,4].find(p=>(a*p+b)%5===p);
+    if(a===1) return `Turn ${b*72}° around the circle: every point moves ${b} step${b>1?'s':''} forward.`;
+    if(a===4) return `Flip of the pentagon that fixes position ${fix}.`;
+    return `Multiply by ${a}${b?`, then add ${b}`:''}. Not a rigid motion: it fixes position ${fix}, and the points travel along the circle so that the pentagon lands on the star.`;}
+  if(e.anim.kind==='imp'){const sg=e.sg,neg=['x','y','z'].filter((_,i)=>sg[i]<0);
+    if(neg.length===1) return `Mirror in the plane ${neg[0]} = 0: the two ${neg[0]} faces swap. Shown as the box squashing flat through the mirror.`;
+    return 'Point inversion: every point goes to the opposite point. Shown as a half-turn about z while the box squashes through its middle.';}
   const {axis,angle}=e.anim,deg=Math.round(angle*180/PI);
   if(angle<1e-6) return 'Leaves everything where it is.';
+  let note='';
+  if(G.spec.quat){
+    if(deg===360) return `A full 360° turn. The solid ends exactly where ${nm(0)} leaves it, yet ${e.name} ≠ ${nm(0)}: the picture cannot tell them apart.`;
+    const neg=G.els.findIndex(x=>G.spec.key(x.f)===G.spec.key(e.f.map(v=>-v))),m1=G.els.findIndex(x=>x.f[0]<-0.999);
+    if(neg>=0) note=` It lands where ${nm(neg)} lands; the two differ by ${nm(m1)}${nm(m1)==='−1'?'':' = −1'}.`;
+  }
+  return describeTurn(e,solid,axis,angle,deg)+note;
+}
+function describeTurn(e,solid,axis,angle,deg){
   const ab=axis.map(Math.abs);
+  if(solid.type==='box'){const keep=['x','y','z'][ab.indexOf(Math.max(...ab))];
+    return `Half-turn about the ${keep} axis: it flips the other two axes, so it is the product of those two mirrors.`;}
   if(solid.type==='brick'){
-    if(deg===360) return 'A full 360° turn. The brick ends exactly where 1 leaves it, yet −1 ≠ 1: the picture cannot tell them apart.';
     const ax=['i','j','k'][ab.indexOf(Math.max(...ab))];
-    return `Half-turn about the ${ax} axis.`+(e.name.startsWith('−')?` It ends in the same place as ${e.name.slice(1)}; in Q₈ the two still differ by −1.`:'');
+    return `Half-turn about the ${ax} axis.`;
   }
   if(solid.type==='poly'||solid.type==='rect'){
     if(ab[2]>0.99) return solid.type==='rect'?'Half-turn in the plane.':`Turn ${deg}° in the plane.`;
@@ -504,7 +577,7 @@ function describe(e,solid){
 function renderDetail(){
   const e=G.els[sel],H=G.subs[Hid],o=G.ord[sel],cs=G.classes[G.clsOf[sel]].length,s=G.spec.solid;
   let html=`<div class="hd2"><span class="en">${esc(e.name)}</span><span class="eo">order ${o} · ${cs} in its class · inverse <span class="m">${esc(nm(G.inv[sel]))}</span></span></div><p>${describe(e,s)}</p>`;
-  if(e.perm){const p=cycStr(e.perm);html+=`<p>${s.type==='cube'?'On the diagonal positions':'On the positions'}: <span class="pm">${p==='e'?'nothing moves':esc(p)}</span></p>`;}
+  if(e.perm){const p=cycStr(e.perm,G.spec.ring);html+=`<p>${s.type==='cube'?'On the diagonal positions':'On the positions'}: <span class="pm">${p==='e'?'nothing moves':esc(p)}</span></p>`;}
   if(H.order>1&&H.order<G.n){
     const L=H.els.map(h=>G.T[sel][h]),R=H.els.map(h=>G.T[h][sel]);
     const same=G.maskOf(L)===G.maskOf(R),show=H.order<=6;
@@ -591,7 +664,7 @@ $('cay').addEventListener('click',e=>{const td=e.target.closest('td[data-a]');if
   document.querySelectorAll('table.cay td.hit').forEach(x=>x.classList.remove('hit'));if(!collapse)td.classList.add('hit');
   $('readout').innerHTML=`<span class="m">${esc(nm(a))} · ${esc(nm(b))} = ${esc(nm(p))}</span> &nbsp;do ${esc(nm(b))}, then ${esc(nm(a))}`;
   sel=p;document.querySelectorAll('.ech').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.i===p?'true':'false'));renderDetail();
-  enqueue({steps:[...(atQ!==0?[homeStep(atQ)]:[]),stepOf(G.els[b]),stepOf(G.els[a])],to:p,small:`${nm(a)} · ${nm(b)}: ${nm(b)} first, then ${nm(a)}`});
+  enqueue({steps:[...(atQ!==0?[homeStep(atQ)]:[]),stepOf(b),stepOf(a)],to:p,small:`${nm(a)} · ${nm(b)}: ${nm(b)} first, then ${nm(a)}`});
 });
 
 /* ---------- breakdown ---------- */
@@ -632,7 +705,7 @@ new MutationObserver(readCols).observe(document.documentElement,{attributes:true
 const hexRGB=h=>{h=(h||'#888').replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];};
 const shade=(hex,f,a=1)=>{const [r,g,b]=hexRGB(hex);return `rgba(${Math.min(255,r*f)|0},${Math.min(255,g*f)|0},${Math.min(255,b*f)|0},${a})`;};
 
-function defaultView(s){return s.type==='poly'||s.type==='rect'?mm(rotM(Y,-0.18),rotM(X,-0.78)):mm(rotM(X,0.42),rotM(Y,-0.62));}
+function defaultView(s){return s.type==='poly'||s.type==='rect'||s.type==='ring'?mm(rotM(Y,-0.18),rotM(X,-0.78)):mm(rotM(X,0.42),rotM(Y,-0.62));}
 function buildMesh(s){
   const m={verts:[],faces:[],labels:[],lines:[],ghost:[]};
   if(s.type==='poly'||s.type==='rect'){
@@ -658,11 +731,14 @@ function buildMesh(s){
     for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const d=i^j;if(d===1||d===2||d===4)m.ghost.push([m.verts[i],m.verts[j]]);}
     TV.forEach((v,i)=>{const p=v.map(x=>x*a),q=v.map(x=>-x*a);m.lines.push({a:p,b:q,col:'c'+(i+1)});
       m.labels.push({p:v.map(x=>x*a*1.28),t:String(i+1),col:'c'+(i+1),dot:true});m.labels.push({p:v.map(x=>-x*a*1.28),t:String(i+1),col:'c'+(i+1),dot:true});});
-  }else if(s.type==='brick'){
+  }else if(s.type==='ring'){
+    m.ring=true;for(let p=0;p<5;p++)m.ghost.push([ringPt(p),ringPt((p+1)%5)]);
+  }else if(s.type==='brick'||s.type==='box'){
     const e=[.92,.6,.36];for(let i=0;i<8;i++)m.verts.push([(i&1?1:-1)*e[0],(i&2?1:-1)*e[1],(i&4?1:-1)*e[2]]);
     m.faces.push({idx:[1,3,7,5],col:'c1'},{idx:[0,4,6,2],col:'c1',dim:true},{idx:[2,6,7,3],col:'c3'},{idx:[0,1,5,4],col:'c3',dim:true},{idx:[4,5,7,6],col:'c4'},{idx:[0,2,3,1],col:'c4',dim:true});
     for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const d=i^j;if(d===1||d===2||d===4)m.ghost.push([m.verts[i],m.verts[j]]);}
-    m.labels.push({p:[e[0]+.26,0,0],t:'i',col:'c1',dot:true},{p:[0,e[1]+.26,0],t:'j',col:'c3',dot:true},{p:[0,0,e[2]+.26],t:'k',col:'c4',dot:true});
+    const L=s.type==='box'?['x','y','z']:['i','j','k'];
+    m.labels.push({p:[e[0]+.26,0,0],t:L[0],col:'c1',dot:true},{p:[0,e[1]+.26,0],t:L[1],col:'c3',dot:true},{p:[0,0,e[2]+.26],t:L[2],col:'c4',dot:true});
   }
   return m;
 }
@@ -673,24 +749,35 @@ new ResizeObserver(resize).observe(cv);
    so applying g to position x lands on g·x. `at` is the element the solid has reached (after the move now playing),
    `atQ` the element it will reach once queued moves finish, `pose` the exact matrix of `at`. */
 let at=0,atQ=0,pose=I3,cur=I3,seq=[],queue=[],prog=1,playing=false,lastT=0,dur=1000,hudBig='e',hudSmall='start position';
-function resetMotion(){at=atQ=0;pose=I3;cur=I3;seq=[];queue=[];prog=1;playing=false;hudBig=nm(0);hudSmall='start position';updateMarks();frame();}
-function homeStep(x){const g=G.inv[x],aa=axisAngle(G.els[g].M);
-  return aa.angle>1e-6?{axis:aa.axis,angle:aa.angle,name:'back to start'}:{axis:G.els[g].anim.axis,angle:G.els[g].anim.angle,name:'back to start'};}
-const stepOf=e=>({axis:e.anim.axis,angle:e.anim.angle,name:e.name});
+function resetMotion(){ringNow=null;at=atQ=0;pose=I3;cur=I3;seq=[];queue=[];prog=1;playing=false;hudBig=nm(0);hudSmall='start position';updateMarks();frame();}
+/* a step is one element's motion: 'rot' a turn, 'imp' a turn plus a squash through a mirror, 'arc' points sliding on the ring */
+function stepOf(i){const e=G.els[i],a=e.anim;
+  if(a.kind==='imp') return {kind:'imp',axis:a.axis,theta:a.theta,w:a.theta+2.2,name:e.name,el:i};
+  if(a.kind==='arc') return {kind:'arc',perm:e.perm,w:2.6,name:e.name,el:i};
+  return {kind:'rot',axis:a.axis,angle:a.angle,w:a.angle,name:e.name,el:i};}
+function homeStep(x){const g=G.inv[x],s={...stepOf(g),name:'back to start'};
+  if(s.kind==='rot'&&!G.spec.ring){const aa=axisAngle(G.els[g].M);if(aa.angle>1e-6)return {...s,axis:aa.axis,angle:aa.angle,w:aa.angle};}
+  return s;}
+function stepMat(s,u){
+  if(s.kind==='rot') return rotM(s.axis,s.angle*u);
+  if(s.kind==='imp'){const n=s.axis,k=1-Math.cos(PI*u),S=[1-k*n[0]*n[0],-k*n[0]*n[1],-k*n[0]*n[2],-k*n[1]*n[0],1-k*n[1]*n[1],-k*n[1]*n[2],-k*n[2]*n[0],-k*n[2]*n[1],1-k*n[2]*n[2]];
+    return mm(rotM(n,s.theta*u),S);}
+  return I3;}
+let active=null,activeU=0,ringNow=null;
 function enqueue(m){
-  m.steps=m.steps.filter(s=>s.angle>1e-6);atQ=m.to;
-  if(reduced){queue=[];at=atQ;pose=G.els[at].M;seq=[];prog=1;playing=false;hudBig=nm(at);hudSmall=m.small;updateMarks();frame();return;}
+  m.steps=m.steps.filter(s=>s.w>1e-6);atQ=m.to;
+  if(reduced){queue=[];at=atQ;pose=G.els[at].M||I3;seq=[];prog=1;playing=false;hudBig=nm(at);hudSmall=m.small;updateMarks();frame();return;}
   if(queue.length<6)queue.push(m);else{queue[5]=m;}
   if(!playing){const ok=(seq.length&&prog<1)||startNext();if(ok)kick();else frame();}
   updateMarks();
 }
 function startNext(){
   while(queue.length){const m=queue.shift();
-    let base=pose;const steps=m.steps.map(s=>{const st={...s,base};base=mm(rotM(s.axis,s.angle),base);return st;});
-    at=m.to;pose=G.els[at].M;hudBig=nm(at);hudSmall=m.small;updateMarks();
+    let base=pose,bel=at;const steps=m.steps.map(s=>{const st={...s,base,bel};base=mm(stepMat(s,1),base);bel=G.T[s.el][bel];return st;});
+    at=m.to;pose=G.els[at].M||I3;hudBig=nm(at);hudSmall=m.small;updateMarks();
     if(!steps.length){seq=[];prog=1;continue;}
-    const tot=steps.reduce((t,s)=>t+s.angle,0);
-    seq=steps;prog=0;dur=Math.min(3200,Math.max(650,420+620*tot/PI));return true;}
+    const tot=steps.reduce((t,s)=>t+s.w,0);
+    seq=steps;prog=0;dur=Math.min(5200,Math.max(650,420+620*tot/PI));return true;}
   return false;
 }
 function kick(){if(!playing){playing=true;lastT=performance.now();requestAnimationFrame(tick);}}
@@ -701,12 +788,14 @@ function updateMarks(){document.querySelectorAll('.ech').forEach(b=>b.classList.
 const ease=u=>u<.5?2*u*u:1-2*(1-u)*(1-u);
 function frame(){
   let deg='';
-  if(!seq.length||prog>=1){cur=pose;
-    if(seq.length){const tot=seq.reduce((t,s)=>t+s.angle,0);deg=seq.length>1?`${seq.length} steps done`:`${Math.round(tot*180/PI)}° / ${Math.round(tot*180/PI)}°`;}}
-  else{const ws=seq.map(s=>s.angle),Wt=ws.reduce((a,b)=>a+b,0);let p=ease(prog)*Wt,i=0;
+  const lab=(st,u)=>st.kind==='rot'?`${Math.round(st.angle*u*180/PI)}° / ${Math.round(st.angle*180/PI)}°`:`${Math.round(u*100)}%`;
+  if(!seq.length||prog>=1){cur=pose;active=null;
+    if(seq.length)deg=seq.length>1?`${seq.length} steps done`:lab(seq[0],1);}
+  else{const ws=seq.map(s=>s.w),Wt=ws.reduce((a,b)=>a+b,0);let p=ease(prog)*Wt,i=0;
     while(i<seq.length-1&&p>ws[i]){p-=ws[i];i++;}
-    const st=seq[i],a=Math.min(st.angle,Math.max(0,p));cur=mm(rotM(st.axis,a),st.base);
-    deg=seq.length>1?`step ${i+1}/${seq.length} · ${st.name}`:`${Math.round(a*180/PI)}° / ${Math.round(st.angle*180/PI)}°`;}
+    const st=seq[i],u=Math.min(1,Math.max(0,p/ws[i]));cur=mm(stepMat(st,u),st.base);active=st;activeU=u;
+    deg=seq.length>1?`step ${i+1}/${seq.length} · ${st.name}`:lab(st,u);}
+  if(G.spec.ring)ringNow=ringCoords();
   $('hudName').textContent=hudBig;$('hudAn').textContent=hudSmall;
   $('deg').textContent=deg;$('scrub').value=Math.round((seq.length?prog:1)*1000);$('scrub').disabled=!seq.length;
   $('play').disabled=!seq.length&&!queue.length;
@@ -738,6 +827,7 @@ function draw(){
   const P=p=>{const k=5/(5-p[2]);return [cx+p[0]*S*k,cy-p[1]*S*k,p[2]];};
   if(showGhost){ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle=shade(COL.ghost,1,.7);ctx.lineWidth=1.2;
     for(const [a,b] of mesh.ghost){const A=P(mv(view,a)),B=P(mv(view,b));ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke();}ctx.restore();}
+  if(mesh.ring){drawRing(P);return;}
   const R=mm(view,cur),tv=mesh.verts.map(v=>mv(R,v)),pv=tv.map(P);
   const fs=mesh.faces.map(f=>({f,z:f.idx.reduce((t,i)=>t+tv[i][2],0)/f.idx.length})).sort((a,b)=>a.z-b.z);
   ctx.lineJoin='round';
@@ -755,6 +845,24 @@ function draw(){
         ctx.fillStyle='#fff';ctx.font=`600 ${l.t.length>1?10:12}px "IBM Plex Sans",system-ui,sans-serif`;ctx.fillText(l.t,q[0],q[1]+.5);}
       else{ctx.fillStyle=l.col?COL[l.col]:COL.fg;ctx.font='600 13px "IBM Plex Sans",system-ui,sans-serif';ctx.fillText(l.t,q[0],q[1]);}}
     ctx.globalAlpha=1;}
+}
+
+function ringCoords(){
+  if(active){const bp=G.els[active.bel].perm;
+    if(active.kind==='arc') return bp.map(p=>{let d=((active.perm[p]-p)%5+5)%5;if(d>2)d-=5;return ringPt(p+d*activeU);});
+    const M=stepMat(active,activeU);return bp.map(p=>mv(M,ringPt(p)));}
+  return G.els[at].perm.map(ringPt);
+}
+function drawRing(P){
+  const c=(ringNow||ringCoords()).map(v=>{const w=mv(view,v);return {w,q:P(w)};});
+  ctx.lineCap='round';
+  const edge=(a,b,col,wd)=>{ctx.strokeStyle=col;ctx.lineWidth=wd;ctx.beginPath();ctx.moveTo(c[a].q[0],c[a].q[1]);ctx.lineTo(c[b].q[0],c[b].q[1]);ctx.stroke();};
+  for(let j=0;j<5;j++)edge(j,(j+2)%5,shade(COL.c2,1,.9),2.2);
+  for(let j=0;j<5;j++)edge(j,(j+1)%5,shade(COL.c4,1,.95),3.2);
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  c.map((x,j)=>({x,j})).sort((a,b)=>a.x.w[2]-b.x.w[2]).forEach(({x,j})=>{
+    ctx.fillStyle=COL['c'+(j+1)];ctx.beginPath();ctx.arc(x.q[0],x.q[1],11,0,2*PI);ctx.fill();
+    if(showLabels){ctx.fillStyle='#fff';ctx.font='600 12.5px "IBM Plex Sans",system-ui,sans-serif';ctx.fillText(String(j),x.q[0],x.q[1]+.5);}});
 }
 
 /* ---------- boot ---------- */
