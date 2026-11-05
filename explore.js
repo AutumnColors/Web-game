@@ -76,5 +76,12 @@ window.EXPLORE = [
     title: 'Galois Workbench',
     path: 'explore/galois/',
     desc: 'From field extensions to the impossible quintic. Watch S₃ permute the roots of x³ − 2, match subgroups to fields, and see why A₅ blocks a formula for x⁵ − x − 1.'
+  },
+  {
+    id: 'nonsimple',
+    badge: 'D₄',
+    title: 'Non-simple groups',
+    path: 'explore/nonsimple/',
+    desc: 'C₄, V₄, D₃, D₄, Q₈, D₅, D₆, A₄ and S₄ as turning solids. Pick a subgroup, see its cosets color the multiplication table, collapse to G/H, and find where each group splits.'
   }
 ];

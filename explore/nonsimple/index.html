@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Non-Simple Group Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+/* Layout: sibling of the A5 Viewer. Solid on the left (sticky on wide screens); the algebra reads top-to-bottom beside it.
+   Coset colors are the page's only hue family; everything else is ink on cool paper. */
+:root{
+  --bg:#ECEFF3; --panel:#F7F8FA; --stage:#E1E5EB; --fg:#17202C; --muted:#586374; --line:#C8CFD9; --soft:#DCE1E8;
+  --edge:#2A3342; --face:#93A0B4; --side:#6E7A8C; --ghost:#6E7A8C;
+  --c1:#D0403A; --c2:#D38A0C; --c3:#22905C; --c4:#2B67CF; --c5:#8445C9;
+  --cl:86%; --cc:0.085;
+  --f-math:"STIX Two Text","Times New Roman",Times,serif;
+  --f-ui:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F131A; --panel:#151A23; --stage:#0A0D12; --fg:#E3E7EE; --muted:#8D97A7; --line:#283041; --soft:#1C2330;
+    --edge:#C3CBD8; --face:#5F6D83; --side:#3E4859; --ghost:#8792A4;
+    --c1:#EE6A61; --c2:#F0B03E; --c3:#47C285; --c4:#5E94F0; --c5:#AE7BEA;
+    --cl:41%; --cc:0.08;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F131A; --panel:#151A23; --stage:#0A0D12; --fg:#E3E7EE; --muted:#8D97A7; --line:#283041; --soft:#1C2330;
+  --edge:#C3CBD8; --face:#5F6D83; --side:#3E4859; --ghost:#8792A4;
+  --c1:#EE6A61; --c2:#F0B03E; --c3:#47C285; --c4:#5E94F0; --c5:#AE7BEA;
+  --cl:41%; --cc:0.08;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-ui);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1260px;margin:0 auto}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.m{font-family:var(--f-math)}
+
+header{display:flex;flex-direction:column;gap:14px;margin-bottom:20px}
+.hd{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 22px}
+h1{font-family:var(--f-math);font-weight:600;font-size:clamp(30px,4.4vw,44px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.lede{color:var(--muted);margin:0;max-width:66ch;text-wrap:pretty}
+.gpick{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:6px}
+@media (max-width:720px){.gpick{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.gb{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:7px 4px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0}
+.gb b{font-family:var(--f-math);font-weight:600;font-size:21px;line-height:1.15}
+.gb span{font-family:var(--f-num);font-size:11px;color:var(--muted)}
+.gb[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.gb[aria-pressed="true"] span{color:var(--bg);opacity:.75}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:32px;align-items:start}
+.stage-col{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:12px;min-width:0}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr);gap:22px}.stage-col{position:static}}
+.stage{position:relative;width:100%;aspect-ratio:1/1;max-width:100%;max-height:min(58vh,640px);background:var(--stage);border-radius:4px;overflow:hidden}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.hud{position:absolute;left:14px;top:12px;pointer-events:none;display:flex;align-items:baseline;gap:10px}
+.hud .cl{font-family:var(--f-math);font-size:28px;font-weight:600;line-height:1}
+.hud .an{font-family:var(--f-num);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hint{position:absolute;right:12px;bottom:10px;font-size:11.5px;color:var(--muted);pointer-events:none;letter-spacing:.02em}
+.player{display:flex;align-items:center;gap:10px}
+.play{border:1px solid var(--fg);background:var(--fg);color:var(--bg);border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:500;font-size:13.5px;white-space:nowrap;min-width:72px}
+.play:disabled{opacity:.35;cursor:default}
+.player input[type=range]{flex:1;min-width:0;accent-color:var(--fg)}
+.deg{font-family:var(--f-num);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;min-width:10ch;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip-t{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 11px;cursor:pointer;font-size:13px}
+.chip-t[aria-pressed="false"]{color:var(--muted);background:transparent}
+.chip-t[aria-pressed="true"]{border-color:var(--fg)}
+.gcard{border-top:1px solid var(--line);padding-top:12px}
+.gcard h3{margin:0;font-family:var(--f-math);font-weight:600;font-size:22px;line-height:1.2}
+.gcard h3 small{font-family:var(--f-num);font-weight:400;font-size:12.5px;color:var(--muted);margin-left:8px}
+.gcard p{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:62ch;text-wrap:pretty}
+
+.panel-col{display:flex;flex-direction:column;gap:26px;min-width:0}
+section h2{font-family:var(--f-math);font-style:italic;font-weight:400;font-size:23px;line-height:1.15;margin:0 0 4px;text-wrap:balance}
+section .sub{color:var(--muted);font-size:13.5px;margin:0 0 12px;max-width:64ch;text-wrap:pretty}
+section + section{border-top:1px solid var(--line);padding-top:22px}
+
+.crow{display:grid;grid-template-columns:92px minmax(0,1fr);gap:8px 12px;padding:7px 0;border-top:1px solid var(--soft);align-items:start}
+.crow:first-child{border-top:0}
+.clab{font-size:12.5px;color:var(--muted);line-height:1.3;padding-top:5px}
+.clab b{display:block;color:var(--fg);font-weight:500;font-size:13px}
+.cchips{display:flex;flex-wrap:wrap;gap:5px;min-width:0}
+.ech{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:3px 9px;cursor:pointer;font-family:var(--f-math);font-size:16px;line-height:1.3;white-space:nowrap}
+.ech i{width:9px;height:9px;border-radius:2px;flex:none;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--fg) 25%,transparent)}
+.ech[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+
+.eldet{margin-top:12px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:4px;display:flex;flex-direction:column;gap:6px}
+.eldet .hd2{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.eldet .en{font-family:var(--f-math);font-size:24px;font-weight:600;line-height:1.1}
+.eldet .eo{font-size:12.5px;color:var(--muted)}
+.eldet p{margin:0;font-size:14px;text-wrap:pretty}
+.eldet .pm{font-family:var(--f-math);font-size:16px}
+.cosrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;font-size:14px;align-items:baseline}
+.cosrow .k{font-family:var(--f-math);font-size:16px;white-space:nowrap}
+.cosrow .v{font-family:var(--f-math);font-size:16px;overflow-wrap:anywhere}
+.verdict{font-size:13px;color:var(--muted)}
+.verdict b{color:var(--fg);font-weight:600}
+
+.hasse-wrap{overflow-x:auto}
+#hasse{display:block;width:100%;max-width:560px;height:auto;margin:0 auto}
+#hasse .nd{cursor:pointer}
+#hasse .nd:focus{outline:none}
+#hasse .nd:focus-visible .ring{stroke:var(--fg);stroke-width:1.5;stroke-dasharray:3 2}
+.hinfo{margin-top:10px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:4px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.hinfo .ttl{font-family:var(--f-math);font-size:20px;font-weight:600}
+.hinfo .ttl small{font-family:var(--f-ui);font-weight:400;font-size:12.5px;color:var(--muted);margin-left:8px}
+.pill{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:1px 9px;color:var(--muted);vertical-align:2px}
+.pill.yes{border-color:var(--fg);color:var(--fg)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);margin-top:6px;align-items:center}
+.legend svg{vertical-align:-2px;margin-right:5px}
+
+.tbl-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.ghostbtn{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:5px 11px;cursor:pointer;font-size:13px}
+.ghostbtn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.ghostbtn:disabled{opacity:.4;cursor:default}
+.hlabel{font-family:var(--f-math);font-size:16px}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--panel);padding:6px}
+table.cay{border-collapse:collapse;margin:0 auto;font-family:var(--f-math)}
+table.cay th,table.cay td{padding:0;text-align:center;white-space:nowrap}
+table.cay td{cursor:pointer;color:var(--fg)}
+table.cay td:hover{outline:2px solid var(--fg);outline-offset:-2px}
+table.cay td.hit{outline:2px solid var(--fg);outline-offset:-2px}
+table.cay thead th{font-weight:600;color:var(--fg);padding-bottom:3px}
+table.cay tbody th{font-weight:600;padding-right:6px;text-align:right}
+table.cay .corner{color:var(--muted);font-weight:400}
+table.cay .bl{border-left:3px solid var(--panel)}
+table.cay tr.bt>*{border-top:3px solid var(--panel)}
+table.cay.lg td{min-width:40px;height:34px;font-size:16px}
+table.cay.lg th{font-size:16px}
+table.cay.md td{min-width:30px;height:28px;font-size:13px}
+table.cay.md th{font-size:13px}
+table.cay.sm td{width:15px;min-width:15px;height:15px}
+table.cay.sm thead th{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11.5px;font-weight:400;padding:0 0 4px;text-align:left;height:auto}
+table.cay.sm tbody th{font-size:11.5px;font-weight:400}
+table.cay.q td{min-width:58px;height:40px;font-size:16px}
+table.cay.q th{font-size:16px;padding:0 6px}
+.cmsg{margin:10px 0 0;font-size:14px;max-width:64ch;text-wrap:pretty}
+.readout{margin:6px 0 0;font-size:14px;color:var(--muted);min-height:1.5em}
+.readout .m{color:var(--fg);font-size:16px}
+
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0}
+@media (max-width:480px){.facts{grid-template-columns:minmax(0,1fr)}}
+.facts div{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--soft);font-size:14px}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;font-family:var(--f-math);font-size:16px;text-align:right}
+.lnk{border:0;background:none;padding:0;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;font-family:var(--f-math);font-size:16px}
+.lnk:hover{text-decoration-color:var(--fg)}
+.lnk.on{font-weight:600;text-decoration-color:var(--fg)}
+h4{margin:18px 0 6px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.chain{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px 4px}
+.chain .node{display:flex;flex-direction:column;align-items:center}
+.chain .gt{display:flex;flex-direction:column;align-items:center;font-family:var(--f-math);font-size:18px;color:var(--muted);padding:0 2px;line-height:1.2}
+.chain .gt small{font-size:12px;color:var(--muted);white-space:nowrap}
+.chain .gt small b{font-weight:600;color:var(--fg)}
+.chain .lnk{font-size:19px}
+.note{font-size:14px;margin:8px 0 0;max-width:64ch;text-wrap:pretty}
+.note.dim{color:var(--muted)}
+.note a{color:inherit}
+.toprow{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px}
+.back{font:13px var(--f-num);color:var(--muted);text-decoration:none}
+.back:hover{color:var(--fg)}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="toprow"><a class="back" href="../../">← Back</a><a class="back" href="../a5/">A₅ viewer →</a></nav>
+  <header>
+    <div class="hd">
+      <h1>Non-simple groups</h1>
+      <p class="lede">Each group here has a proper normal subgroup, so it can be cut into a smaller group and a quotient. Pick a subgroup H and check whether its cosets multiply cleanly.</p>
+    </div>
+    <div class="gpick" id="gpick" role="group" aria-label="Group"></div>
+  </header>
+
+  <div class="grid">
+    <div class="stage-col">
+      <div class="stage">
+        <canvas id="cv" aria-label="3D view of the solid whose symmetries form the group"></canvas>
+        <div class="hud"><span class="cl" id="hudName">r</span><span class="an" id="hudAn"></span></div>
+        <div class="hint">drag to turn</div>
+      </div>
+      <div class="player">
+        <button class="play" id="play">Play</button>
+        <input type="range" id="scrub" min="0" max="1000" value="1000" aria-label="Motion progress">
+        <span class="deg" id="deg">0°</span>
+      </div>
+      <div class="chips">
+        <button class="chip-t" id="tGhost" aria-pressed="true">Start position</button>
+        <button class="chip-t" id="tLabels" aria-pressed="true">Labels</button>
+      </div>
+      <div class="gcard"><h3 id="gTitle"></h3><p id="gDesc"></p></div>
+    </div>
+
+    <div class="panel-col">
+      <section>
+        <h2>Elements</h2>
+        <p class="sub">Grouped by conjugacy class. Tap one to see its motion. The small square shows which coset of H it sits in.</p>
+        <div id="elgrid"></div>
+        <div class="eldet" id="eldet"></div>
+      </section>
+
+      <section>
+        <h2>Subgroups</h2>
+        <p class="sub">Every subgroup, by size, with a line where one sits directly inside another. Tap one to make it H.</p>
+        <div class="hasse-wrap"><svg id="hasse" role="group" aria-label="Subgroup lattice"></svg></div>
+        <div class="legend">
+          <span><svg width="14" height="14"><circle cx="7" cy="7" r="5.5" fill="var(--fg)"/></svg>normal</span>
+          <span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="var(--panel)" stroke="var(--fg)" stroke-width="1.4"/></svg>not normal</span>
+        </div>
+        <div class="hinfo" id="hinfo"></div>
+      </section>
+
+      <section>
+        <h2>Multiplication table, cut by H</h2>
+        <p class="sub">Rows and columns are sorted into left cosets gH. Each cell is colored by the coset its product lands in. a·b means do b first, then a. Tap a cell to watch it.</p>
+        <div class="tbl-ctl">
+          <button class="ghostbtn" id="collapse" aria-pressed="false">Collapse to G/H</button>
+          <span class="hlabel" id="hlabel"></span>
+        </div>
+        <div class="tbl-wrap" id="cay"></div>
+        <p class="cmsg" id="cmsg"></p>
+        <p class="readout" id="readout"></p>
+      </section>
+
+      <section>
+        <h2>How it breaks apart</h2>
+        <p class="sub">Computed from the multiplication table above. Underlined subgroups can be tapped to make them H.</p>
+        <dl class="facts" id="facts"></dl>
+        <h4>Composition series</h4>
+        <div class="chain" id="comp"></div>
+        <p class="note dim" id="compNote"></p>
+        <h4>Derived series</h4>
+        <div class="chain" id="derived"></div>
+        <p class="note dim" id="derNote"></p>
+        <h4>Splitting along H</h4>
+        <p class="note" id="split"></p>
+        <p class="note dim">Every group here has only prime-order cyclic composition factors, so all of them are solvable. The smallest group that is not solvable is A₅, order 60, the one in your <a href="../a5/">A₅ Viewer</a>.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script id="engine">
+/* ---------- algebra: every table, class and subgroup below is computed from the geometry ---------- */
+const PI=Math.PI, X=[1,0,0], Y=[0,1,0], Z=[0,0,1], I3=[1,0,0,0,1,0,0,0,1];
+const nrm=a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l]};
+const dot3=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+function rotM(a,t){const [x,y,z]=nrm(a),c=Math.cos(t),s=Math.sin(t),C=1-c;
+  return [c+x*x*C,x*y*C-z*s,x*z*C+y*s, y*x*C+z*s,c+y*y*C,y*z*C-x*s, z*x*C-y*s,z*y*C+x*s,c+z*z*C];}
+function mm(A,B){const R=new Array(9);for(let i=0;i<3;i++)for(let j=0;j<3;j++)R[i*3+j]=A[i*3]*B[j]+A[i*3+1]*B[3+j]+A[i*3+2]*B[6+j];return R;}
+const mv=(M,v)=>[M[0]*v[0]+M[1]*v[1]+M[2]*v[2],M[3]*v[0]+M[4]*v[1]+M[5]*v[2],M[6]*v[0]+M[7]*v[1]+M[8]*v[2]];
+const keyM=M=>M.map(x=>{const r=Math.round(x*1000);return r===0?0:r;}).join(',');
+const snap=M=>M.map(x=>Math.abs(x-Math.round(x))<1e-9?Math.round(x)+0:x);
+function axisAngle(M){
+  const c=Math.max(-1,Math.min(1,(M[0]+M[4]+M[8]-1)/2)), t=Math.acos(c);
+  if(t<1e-6) return {axis:Z,angle:0};
+  if(PI-t<1e-4){const xx=(M[0]+1)/2,yy=(M[4]+1)/2,zz=(M[8]+1)/2;let a;
+    if(xx>=yy&&xx>=zz){const x=Math.sqrt(xx);a=[x,M[1]/(2*x),M[2]/(2*x)];}
+    else if(yy>=zz){const y=Math.sqrt(yy);a=[M[1]/(2*y),y,M[5]/(2*y)];}
+    else{const z=Math.sqrt(zz);a=[M[2]/(2*z),M[5]/(2*z),z];}
+    return {axis:nrm(a),angle:PI};}
+  return {axis:nrm([M[7]-M[5],M[2]-M[6],M[3]-M[1]]),angle:t};
+}
+const SUP='⁰¹²³⁴⁵⁶⁷⁸⁹', SUB='₀₁₂₃₄₅₆₇₈₉';
+const sup=k=>String(k).split('').map(d=>SUP[d]).join('');
+const sb=k=>String(k).split('').map(d=>SUB[d]).join('');
+
+function permOf(M,refs,signed){return refs.map(v=>{const w=mv(M,v);
+  for(let j=0;j<refs.length;j++){const r=refs[j];
+    if(Math.hypot(w[0]-r[0],w[1]-r[1],w[2]-r[2])<1e-6) return j;
+    if(signed&&Math.hypot(w[0]+r[0],w[1]+r[1],w[2]+r[2])<1e-6) return j;}
+  return -1;});}
+function cycles(p){const seen=[],out=[];for(let i=0;i<p.length;i++){if(seen[i])continue;const c=[];let j=i;while(!seen[j]){seen[j]=1;c.push(j);j=p[j];}if(c.length>1)out.push(c);}return out;}
+const cycStr=p=>{const c=cycles(p);return c.length?c.map(x=>'('+x.map(i=>i+1).join(' ')+')').join(''):'e';};
+
+const TV=[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]];
+const polyVerts=n=>[...Array(n)].map((_,k)=>[Math.cos(2*PI*k/n),Math.sin(2*PI*k/n),0]);
+const RECT=[[1,.55,0],[-1,.55,0],[-1,-.55,0],[1,-.55,0]];
+
+function polyEls(n,flips){
+  const V=polyVerts(n), els=[];
+  for(let k=0;k<n;k++){const M=rotM(Z,2*PI*k/n);
+    els.push({f:M,M,name:k===0?'e':'r'+(k>1?sup(k):''),anim:{axis:Z,angle:2*PI*k/n},perm:permOf(M,V)});}
+  if(flips){const S=rotM(X,PI);
+    for(let k=0;k<n;k++){const M=mm(S,rotM(Z,2*PI*k/n));
+      els.push({f:M,M,name:'s'+(k===0?'':'r'+(k>1?sup(k):'')),anim:axisAngle(M),perm:permOf(M,V)});}}
+  return els;
+}
+function v4Els(){
+  return [['e',I3,{axis:Z,angle:0}],['a',rotM(X,PI),{axis:X,angle:PI}],['b',rotM(Y,PI),{axis:Y,angle:PI}],['c',rotM(Z,PI),{axis:Z,angle:PI}]]
+    .map(([name,M,anim])=>({f:M,M,name,anim,perm:permOf(M,RECT)}));
+}
+function closureM(gens){const L=[I3],seen=new Set([keyM(I3)]);
+  for(let q=0;q<L.length;q++)for(const g of gens){const P=snap(mm(g,L[q])),k=keyM(P);if(!seen.has(k)){seen.add(k);L.push(P);}}
+  return L;}
+function permEls(gens,signed){
+  const ordM=M=>{let k=1,P=M;while(keyM(P)!==keyM(I3)){P=mm(P,M);k++;}return k;};
+  const els=closureM(gens.map(snap)).map(M=>{const p=permOf(M,TV,signed);
+    return {f:M,M,name:cycStr(p),perm:p,anim:axisAngle(M),o:ordM(M),ct:cycles(p).map(c=>c.length).sort().join(',')};});
+  els.sort((a,b)=>(a.name==='e'?-1:b.name==='e'?1:0)||a.o-b.o||a.ct.localeCompare(b.ct)||a.name.localeCompare(b.name));
+  return els;
+}
+const qmul=(a,b)=>[a[0]*b[0]-a[1]*b[1]-a[2]*b[2]-a[3]*b[3], a[0]*b[1]+a[1]*b[0]+a[2]*b[3]-a[3]*b[2],
+  a[0]*b[2]-a[1]*b[3]+a[2]*b[0]+a[3]*b[1], a[0]*b[3]+a[1]*b[2]-a[2]*b[1]+a[3]*b[0]];
+function q8Els(){
+  return [[[1,0,0,0],'1'],[[-1,0,0,0],'−1'],[[0,1,0,0],'i'],[[0,-1,0,0],'−i'],[[0,0,1,0],'j'],[[0,0,-1,0],'−j'],[[0,0,0,1],'k'],[[0,0,0,-1],'−k']]
+    .map(([q,name])=>{const angle=2*Math.acos(q[0]),v=[q[1],q[2],q[3]],l=Math.hypot(...v);
+      const axis=l>1e-9?nrm(v):nrm([.35,.55,1]);
+      return {f:q,name,anim:{axis,angle},M:rotM(axis,angle)};});
+}
+
+const MAT={mul:mm,key:keyM};
+const GROUPS=[
+  {id:'c4',short:'C₄',title:'C₄',solid:{type:'poly',n:4,pin:true},build:()=>polyEls(4,false),...MAT,defH:'comp',
+   desc:'Rotations of a pinwheel square. The teeth rule out flips, so only the four turns remain. Every subgroup of an abelian group is normal, so C₄ ▷ C₂ ▷ 1, yet that C₂ has no complement: C₄ is not C₂ × C₂.'},
+  {id:'v4',short:'V₄',title:'V₄ ≅ C₂ × C₂',solid:{type:'rect'},build:v4Els,...MAT,defH:'first2',
+   desc:'Symmetries of a rectangle you can pick up and flip: the identity, two flips and a half-turn. Every element is its own inverse. This is the smallest group that is not cyclic.'},
+  {id:'d3',short:'D₃',title:'D₃ ≅ S₃',solid:{type:'poly',n:3},build:()=>polyEls(3,true),...MAT,defH:'derived',
+   desc:'Symmetries of a triangle, which are all six permutations of its vertices. The smallest non-abelian group. The turns form a normal C₃; each flip generates a C₂ that is not normal.'},
+  {id:'d4',short:'D₄',title:'D₄',solid:{type:'poly',n:4},build:()=>polyEls(4,true),...MAT,defH:'center',
+   desc:'Symmetries of a square. Its center {e, r²} is normal, and D₄ modulo its center is V₄. The center has no complement, so D₄ is not a product built on it.'},
+  {id:'q8',short:'Q₈',title:'Q₈',solid:{type:'brick'},build:q8Els,mul:qmul,key:q=>q.join(','),defH:'center',
+   desc:'The quaternion units ±1, ±i, ±j, ±k with i² = j² = k² = ijk = −1. Every subgroup is normal although Q₈ is not abelian, and no normal subgroup has a complement. The solid shows q acting by v ↦ qvq⁻¹: i is a half-turn and −1 is a full 360° turn, so the brick only sees Q₈/{±1} ≅ V₄.'},
+  {id:'d5',short:'D₅',title:'D₅',solid:{type:'poly',n:5},build:()=>polyEls(5,true),...MAT,defH:'derived',
+   desc:'Symmetries of a pentagon. The only proper nontrivial normal subgroup is the rotation group C₅, and D₅ ≅ C₅ ⋊ C₂.'},
+  {id:'d6',short:'D₆',title:'D₆',solid:{type:'poly',n:6},build:()=>polyEls(6,true),...MAT,defH:'center',
+   desc:'Symmetries of a hexagon. The half-turn r³ commutes with everything, and D₆ splits as a direct product S₃ × C₂ along it.'},
+  {id:'a4',short:'A₄',title:'A₄',solid:{type:'tetra'},build:()=>permEls([rotM([1,1,1],2*PI/3),rotM(Z,PI)],false),...MAT,defH:'derived',
+   desc:'Rotations of a tetrahedron, read as even permutations of its four vertices. The three edge-axis half-turns form a normal V₄ with A₄/V₄ ≅ C₃. A₄ has no subgroup of order 6, so the converse of Lagrange’s theorem fails.'},
+  {id:'s4',short:'S₄',title:'S₄',solid:{type:'cube'},build:()=>permEls([rotM(Z,PI/2),rotM([1,1,1],2*PI/3)],true),...MAT,defH:'derived',
+   desc:'Rotations of a cube, read as permutations of its four body diagonals. One composition series is S₄ ▷ A₄ ▷ V₄ ▷ C₂ ▷ 1.'},
+];
+
+function identify(size,orders,abelian){
+  const c=o=>orders.filter(x=>x===o).length;
+  const isP=k=>{if(k<2)return false;for(let d=2;d*d<=k;d++)if(k%d===0)return false;return true;};
+  if(size===1) return '1';
+  if(isP(size)) return 'C'+sb(size);
+  if(abelian){ if(c(size)) return 'C'+sb(size); if(size===4) return 'V₄'; if(size===8) return c(4)?'C₄×C₂':'C₂³'; if(size===12) return 'C₆×C₂'; return 'abelian, order '+size; }
+  if(size===6) return 'S₃';
+  if(size===8) return c(2)===5?'D₄':c(2)===1?'Q₈':'order 8';
+  if(size===10) return 'D₅';
+  if(size===12) return c(2)===7?'D₆':c(2)===3?'A₄':'Dic₃';
+  if(size===24&&c(2)===9&&c(4)===6) return 'S₄';
+  return 'order '+size;
+}
+
+function analyze(spec){
+  const els=spec.build(), n=els.length;
+  const kmap=new Map(els.map((e,i)=>[spec.key(e.f),i]));
+  const T=els.map(a=>els.map(b=>kmap.get(spec.key(spec.mul(a.f,b.f)))));
+  const inv=T.map(r=>r.indexOf(0));
+  const ord=els.map((_,i)=>{let k=1,x=i;while(x!==0){x=T[x][i];k++;}return k;});
+  const conj=(g,h)=>T[T[g][h]][inv[g]];
+  const clsOf=Array(n).fill(-1), classes=[];
+  for(let i=0;i<n;i++) if(clsOf[i]<0){const c=[...new Set([...Array(n).keys()].map(g=>conj(g,i)))].sort((a,b)=>a-b);c.forEach(x=>clsOf[x]=classes.length);classes.push(c);}
+  const closure=gens=>{const seen=new Uint8Array(n);seen[0]=1;const L=[0];
+    for(let q=0;q<L.length;q++)for(const g of gens){const y=T[L[q]][g];if(!seen[y]){seen[y]=1;L.push(y);}}
+    return L.sort((a,b)=>a-b);};
+  const maskOf=L=>L.reduce((m,i)=>m|(1<<i),0);
+  const has=(mask,i)=>(mask>>>i)&1;
+  const abelianSet=L=>L.every(a=>L.every(b=>T[a][b]===T[b][a]));
+  // all subgroups: grow from {e} by adjoining one element at a time
+  let subs=[]; const byMask=new Map();
+  const add=L=>{const m=maskOf(L);if(byMask.has(m))return;const H={els:L,mask:m,order:L.length};subs.push(H);byMask.set(m,H);};
+  add([0]);
+  for(let q=0;q<subs.length;q++){const H=subs[q];for(let c=0;c<n;c++){if(has(H.mask,c))continue;add(closure([...H.els,c]));}}
+  subs.sort((a,b)=>a.order-b.order||a.els.join(',').localeCompare(b.els.join(','),undefined,{numeric:true}));
+  subs.forEach((H,i)=>{H.id=i;});
+  const normalIn=(H,K)=>K.els.every(g=>H.els.every(h=>has(H.mask,conj(g,h))));
+  const G={spec,els,n,T,inv,ord,classes,clsOf,subs,byMask,closure,maskOf,has,conj};
+  const whole=byMask.get(maskOf([...Array(n).keys()]));
+  G.whole=whole; G.trivial=subs[0];
+  for(const H of subs){
+    H.normal=normalIn(H,whole);
+    H.abelian=abelianSet(H.els);
+    H.iso=identify(H.order,H.els.map(i=>ord[i]),H.abelian);
+    // greedy generators
+    const gens=[];let cur=[0];
+    while(cur.length<H.order){let best=null,bl=null;
+      for(const x of H.els){if(cur.includes(x))continue;const L=closure([...gens,x]);if(!bl||L.length>bl.length||(L.length===bl.length&&ord[x]>ord[best])){best=x;bl=L;}}
+      gens.push(best);cur=bl;}
+    H.gens=gens;
+    H.conjMasks=new Set([...Array(n).keys()].map(g=>maskOf(H.els.map(h=>conj(g,h)))));
+  }
+  // covering relation
+  const below=s=>subs.filter(t=>t!==s&&(t.mask&s.mask)===t.mask);
+  for(const K of subs){const lo=below(K);K.covers=lo.filter(H=>!lo.some(L=>L!==H&&(H.mask&L.mask)===H.mask));}
+  G.normalIn=normalIn;
+  G.center=byMask.get(maskOf([...Array(n).keys()].filter(a=>T[a].every((x,b)=>x===T[b][a]))));
+  const derivedOf=K=>{const cm=[];for(const a of K.els)for(const b of K.els)cm.push(T[T[T[a][b]][inv[a]]][inv[b]]);return byMask.get(maskOf(closure([...new Set(cm)])));};
+  G.derivedOf=derivedOf;
+  G.derived=derivedOf(whole);
+  // composition series: repeatedly drop to a largest proper normal subgroup of the current term
+  const comp=[whole];let K=whole;
+  while(K.order>1){const cand=below(K).filter(H=>normalIn(H,K));
+    cand.sort((a,b)=>b.order-a.order||(b.normal-a.normal)||a.id-b.id);K=cand[0];comp.push(K);}
+  G.comp=comp;
+  const der=[whole];K=whole;
+  while(true){const D=derivedOf(K);if(D===K)break;der.push(D);K=D;if(D.order===1)break;}
+  G.der=der;
+  return G;
+}
+function cosetsOf(G,H){const of=Array(G.n).fill(-1),list=[];
+  for(let g=0;g<G.n;g++)if(of[g]<0){const c=H.els.map(h=>G.T[g][h]);c.forEach(x=>{of[x]=list.length;});list.push({rep:g,els:c});}
+  return {of,list};}
+function quotient(G,N){const {of,list}=cosetsOf(G,N),k=list.length;
+  const Q=list.map(a=>list.map(b=>of[G.T[a.rep][b.rep]]));
+  const orders=list.map(c=>{let s=1,x=c.rep;while(of[x]!==0){x=G.T[x][c.rep];s++;}return s;});
+  const ab=Q.every((r,i)=>r.every((x,j)=>x===Q[j][i]));
+  return {of,list,Q,k,iso:identify(k,orders,ab)};}
+function complementOf(G,N){
+  const c=G.subs.filter(K=>K.order*N.order===G.n&&(K.mask&N.mask)===1);
+  c.sort((a,b)=>b.normal-a.normal);return c[0]||null;}
+</script>
+
+<script id="ui">
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let G,gi=0,sel=1,Hid=0,collapse=false,showGhost=true,showLabels=true,hitCell=null;
+const nm=i=>G.els[i].name;
+const setName=L=>'{'+L.map(nm).join(', ')+'}';
+const genName=H=>H.order===1?'{'+nm(0)+'}':H===G.whole&&H.gens.length>2?G.spec.short:'⟨'+H.gens.map(nm).join(', ')+'⟩';
+function cosColor(i,k){if(k<=1)return 'var(--soft)';const h=(28+i*360/k)%360;return `oklch(var(--cl) var(--cc) ${h.toFixed(1)})`;}
+const cosName=(c,H)=>c.rep===0?'H':nm(c.rep)+'H';
+
+/* ---------- group picker ---------- */
+$('gpick').innerHTML=GROUPS.map((g,i)=>`<button class="gb" data-g="${i}" aria-pressed="false"><b>${g.short}</b><span>${g.build().length}</span></button>`).join('');
+$('gpick').addEventListener('click',e=>{const b=e.target.closest('.gb');if(b)loadGroup(+b.dataset.g,true);});
+
+function loadGroup(i,fromUser){
+  gi=i;G=analyze(GROUPS[i]);
+  const d=GROUPS[i].defH;
+  Hid=(d==='center'?G.center:d==='derived'?G.derived:d==='first2'?G.subs.find(s=>s.order===2):G.comp[1]).id;
+  sel=G.spec.id==='q8'?2:1;collapse=false;hitCell=null;
+  document.querySelectorAll('.gb').forEach((b,j)=>b.setAttribute('aria-pressed',j===i?'true':'false'));
+  $('gTitle').innerHTML=`${esc(G.spec.title)}<small>order ${G.n}</small>`;
+  $('gDesc').textContent=G.spec.desc;
+  mesh=buildMesh(G.spec.solid);view=defaultView(G.spec.solid);
+  $('readout').innerHTML='';
+  if(fromUser){try{history.replaceState(null,'','#'+G.spec.id);}catch(_){}}
+  renderAll();selectEl(sel,true);
+}
+function renderAll(){renderElements();renderDetail();renderHasse();renderHinfo();renderCay();renderBreak();}
+
+/* ---------- elements ---------- */
+function renderElements(){
+  const H=G.subs[Hid],{of,list}=cosetsOf(G,H),dots=H.order>1&&H.order<G.n;
+  $('elgrid').innerHTML=G.classes.map(c=>`<div class="crow"><div class="clab"><b>order ${G.ord[c[0]]}</b>${c.length} element${c.length>1?'s':''}</div><div class="cchips">${c.map(i=>`<button class="ech" data-i="${i}" aria-pressed="${i===sel}">${dots?`<i style="background:${cosColor(of[i],list.length)}"></i>`:''}${esc(nm(i))}</button>`).join('')}</div></div>`).join('');
+}
+$('elgrid').addEventListener('click',e=>{const b=e.target.closest('.ech');if(!b)return;hitCell=null;$('readout').innerHTML='';selectEl(+b.dataset.i,true);});
+function selectEl(i,auto){sel=i;
+  document.querySelectorAll('.ech').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.i===i?'true':'false'));
+  renderDetail();setSeq([G.els[i]],nm(i),auto);}
+
+function describe(e,solid){
+  const {axis,angle}=e.anim,deg=Math.round(angle*180/PI);
+  if(angle<1e-6) return 'Leaves everything where it is.';
+  const ab=axis.map(Math.abs);
+  if(solid.type==='brick'){
+    if(deg===360) return 'A full 360° turn. The brick ends exactly where 1 leaves it, yet −1 ≠ 1: the picture cannot tell them apart.';
+    const ax=['i','j','k'][ab.indexOf(Math.max(...ab))];
+    return `Half-turn about the ${ax} axis.`+(e.name.startsWith('−')?` It ends in the same place as ${e.name.slice(1)}; in Q₈ the two still differ by −1.`:'');
+  }
+  if(solid.type==='poly'||solid.type==='rect'){
+    if(ab[2]>0.99) return solid.type==='rect'?'Half-turn in the plane.':`Turn ${deg}° in the plane.`;
+    let phi=(Math.atan2(axis[1],axis[0])*180/PI+360)%180;
+    if(solid.type==='rect') return phi<1||phi>179?'Flip over the long axis.':'Flip over the short axis.';
+    const n=solid.n,vs=[];
+    for(let k=0;k<n;k++){const a=(360*k/n)%180;if(Math.abs(a-phi)<0.5||Math.abs(a-phi)>179.5)vs.push(k+1);}
+    if(!vs.length) return 'Flip over the line through the midpoints of two opposite edges.';
+    return n%2?`Flip over the line through vertex ${vs[0]} and the middle of the opposite edge.`:`Flip over the line through vertices ${vs.join(' and ')}.`;
+  }
+  if(solid.type==='tetra'){
+    if(deg===180) return 'Half-turn about an axis through the midpoints of two opposite edges.';
+    const i=TV.findIndex(v=>Math.abs(dot3(axis,nrm(v)))>0.99);
+    return `Turn ${deg}° about the axis through vertex ${i+1} and the center of the opposite face.`;
+  }
+  if(solid.type==='cube'){
+    const nz=ab.filter(x=>x>0.1).length;
+    if(nz===1) return deg===90?'Quarter-turn about an axis through two opposite face centers.':'Half-turn about an axis through two opposite face centers.';
+    if(nz===2) return 'Half-turn about an axis through the midpoints of two opposite edges.';
+    const i=TV.findIndex(v=>Math.abs(dot3(axis,nrm(v)))>0.99);
+    return `Turn ${deg}° about body diagonal ${i+1}.`;
+  }
+  return '';
+}
+function renderDetail(){
+  const e=G.els[sel],H=G.subs[Hid],o=G.ord[sel],cs=G.classes[G.clsOf[sel]].length,s=G.spec.solid;
+  let html=`<div class="hd2"><span class="en">${esc(e.name)}</span><span class="eo">order ${o} · ${cs} in its class · inverse <span class="m">${esc(nm(G.inv[sel]))}</span></span></div><p>${describe(e,s)}</p>`;
+  if(e.perm){const p=cycStr(e.perm);html+=`<p>${s.type==='cube'?'On the diagonals':'On the vertices'}: <span class="pm">${p==='e'?'nothing moves':esc(p)}</span></p>`;}
+  if(H.order>1&&H.order<G.n){
+    const L=H.els.map(h=>G.T[sel][h]),R=H.els.map(h=>G.T[h][sel]);
+    const same=G.maskOf(L)===G.maskOf(R),show=H.order<=6;
+    html+=`<div class="cosrow"><span class="k">${esc(e.name)}H</span><span class="v">${show?esc(setName(L)):''}</span><span class="k">H${esc(e.name)}</span><span class="v">${show?esc(setName(R)):''}</span></div>
+      <p class="verdict">${same?`<b>Equal.</b> Left and right cosets of ${esc(e.name)} agree.`:`<b>Different.</b> So H is not normal: ${esc(e.name)} does not commute with H as a set.`}</p>`;
+  }
+  $('eldet').innerHTML=html;
+}
+
+/* ---------- subgroup lattice ---------- */
+function renderHasse(){
+  const subs=G.subs,levels=[...new Set(subs.map(s=>s.order))].sort((a,b)=>a-b);
+  const W=440,gap=Math.max(46,Math.min(64,300/(levels.length-1||1))),top=24,Ht=top+gap*(levels.length-1)+34,left=44;
+  const lv=levels.map(o=>subs.filter(s=>s.order===o));
+  const cls=s=>[...s.conjMasks].sort((a,b)=>a-b)[0];
+  lv.forEach(L=>L.sort((a,b)=>cls(a)-cls(b)||a.id-b.id));
+  const X={};
+  const place=()=>lv.forEach(L=>L.forEach((s,j)=>{X[s.id]=left+(W-left-14)*(j+1)/(L.length+1);}));
+  place();
+  for(let pass=0;pass<3;pass++){
+    for(let li=1;li<lv.length;li++){lv[li].forEach(s=>{const nb=s.covers;s._b=nb.length?nb.reduce((t,h)=>t+X[h.id],0)/nb.length:X[s.id];});
+      lv[li].sort((a,b)=>a._b-b._b||a.id-b.id);lv[li].forEach((s,j)=>{X[s.id]=left+(W-left-14)*(j+1)/(lv[li].length+1);});}
+    for(let li=lv.length-2;li>=0;li--){lv[li].forEach(s=>{const up=subs.filter(K=>K.covers.includes(s));s._b=up.length?up.reduce((t,h)=>t+X[h.id],0)/up.length:X[s.id];});
+      lv[li].sort((a,b)=>a._b-b._b||a.id-b.id);lv[li].forEach((s,j)=>{X[s.id]=left+(W-left-14)*(j+1)/(lv[li].length+1);});}
+  }
+  const Yof=s=>Ht-26-levels.indexOf(s.order)*gap;
+  const H=G.subs[Hid];let out='';
+  levels.forEach((o,li)=>{const y=Ht-26-li*gap;out+=`<text x="4" y="${y+4}" font-family="var(--f-num)" font-size="11" fill="var(--muted)">${o}</text>`;});
+  for(const K of subs)for(const s of K.covers){const on=K===H||s===H;
+    out+=`<line x1="${X[s.id].toFixed(1)}" y1="${Yof(s)}" x2="${X[K.id].toFixed(1)}" y2="${Yof(K)}" stroke="${on?'var(--fg)':'var(--line)'}" stroke-width="${on?1.6:1.1}"/>`;}
+  for(const s of subs){const x=X[s.id].toFixed(1),y=Yof(s),on=s===H;
+    out+=`<g class="nd" data-h="${s.id}" tabindex="0" role="button" aria-label="${esc(s.iso)}, order ${s.order}${s.normal?', normal':''}">
+      <circle cx="${x}" cy="${y}" r="13" fill="transparent" class="ring" ${on?'stroke="var(--fg)" stroke-width="1.6"':''}/>
+      <circle cx="${x}" cy="${y}" r="${s.normal?6.5:6}" fill="${s.normal?'var(--fg)':'var(--panel)'}" stroke="var(--fg)" stroke-width="1.5"/>
+      <text x="${x}" y="${y+(y<30?24:-17)}" text-anchor="middle" font-family="var(--f-math)" font-size="13" fill="${on?'var(--fg)':'var(--muted)'}" font-weight="${on?600:400}">${esc(s.iso)}</text></g>`;}
+  const svg=$('hasse');svg.setAttribute('viewBox',`0 0 ${W} ${Ht}`);svg.innerHTML=out;
+}
+$('hasse').addEventListener('click',e=>{const g=e.target.closest('.nd');if(g)setH(+g.dataset.h);});
+$('hasse').addEventListener('keydown',e=>{const g=e.target.closest('.nd');if(g&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setH(+g.dataset.h);}});
+function setH(id){Hid=id;collapse=false;hitCell=null;renderElements();renderDetail();renderHasse();renderHinfo();renderCay();renderBreak();
+  const f=document.querySelector(`#hasse .nd[data-h="${id}"]`);}
+
+function renderHinfo(){
+  const H=G.subs[Hid],idx=G.n/H.order,nconj=H.conjMasks.size;
+  let html=`<div class="ttl">H = ${esc(genName(H))} ≅ ${esc(H.iso)}<small>order ${H.order} · index ${idx}</small></div>`;
+  if(H.order<=8&&H.order>1&&H.order<G.n) html+=`<div class="m" style="font-size:16px">${esc(setName(H.els))}</div>`;
+  if(H.order===1) html+=`<p style="margin:0">The trivial subgroup. Normal, but cutting by it changes nothing: G/1 ≅ G.</p>`;
+  else if(H===G.whole) html+=`<p style="margin:0">All of G. Normal, and G/G is trivial.</p>`;
+  else if(H.normal){const q=quotient(G,H);
+    html+=`<p style="margin:0"><span class="pill yes">normal</span> &nbsp;gH = Hg for every g. The cosets form a group: <span class="m">G/H ≅ ${esc(q.iso)}</span>.</p>`;}
+  else{let w=-1;for(let g=0;g<G.n;g++){const L=G.maskOf(H.els.map(h=>G.T[g][h])),R=G.maskOf(H.els.map(h=>G.T[h][g]));if(L!==R){w=g;break;}}
+    html+=`<p style="margin:0"><span class="pill">not normal</span> &nbsp;One of ${nconj} conjugate copies of ${esc(H.iso)}. Witness: <button class="lnk" data-el="${w}">${esc(nm(w))}</button>H ≠ H${esc(nm(w))}.</p>`;}
+  $('hinfo').innerHTML=html;
+}
+$('hinfo').addEventListener('click',e=>{const b=e.target.closest('[data-el]');if(b)selectEl(+b.dataset.el,true);});
+
+/* ---------- Cayley table ---------- */
+function renderCay(){
+  const H=G.subs[Hid],n=G.n,{of,list}=cosetsOf(G,H),k=list.length;
+  const can=H.normal&&H.order>1&&H.order<n;
+  if(!can)collapse=false;
+  const cb=$('collapse');cb.disabled=!can;cb.setAttribute('aria-pressed',collapse?'true':'false');
+  $('hlabel').textContent=`H ≅ ${H.iso}, ${k} coset${k>1?'s':''}`;
+  let html='',msg='';
+  if(collapse){const q=quotient(G,H);
+    html=`<table class="cay q"><thead><tr><th class="corner">·</th>${list.map(c=>`<th>${esc(cosName(c,H))}</th>`).join('')}</tr></thead><tbody>${list.map((a,i)=>`<tr><th>${esc(cosName(a,H))}</th>${list.map((b,j)=>`<td data-a="${a.rep}" data-b="${b.rep}" style="background:${cosColor(q.Q[i][j],k)}">${esc(cosName(list[q.Q[i][j]],H))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    msg=`Each block of the full table has become one cell. This ${k}×${k} table is G/H ≅ ${q.iso}. Its cells are named by a representative of each coset.`;
+  }else{
+    const order=list.flatMap(c=>c.els),starts=new Set(list.slice(1).map(c=>c.els[0]));
+    const size=n<=8?'lg':n<=12?'md':'sm',txt=n<=12;
+    html=`<table class="cay ${size}"><thead><tr><th class="corner">·</th>${order.map(b=>`<th class="${starts.has(b)?'bl':''}">${esc(nm(b))}</th>`).join('')}</tr></thead><tbody>${order.map(a=>`<tr class="${starts.has(a)?'bt':''}"><th>${esc(nm(a))}</th>${order.map(b=>{const p=G.T[a][b];return `<td data-a="${a}" data-b="${b}" class="${starts.has(b)?'bl':''}${hitCell&&hitCell[0]===a&&hitCell[1]===b?' hit':''}" style="background:${cosColor(of[p],k)}" title="${esc(nm(a))} · ${esc(nm(b))} = ${esc(nm(p))}">${txt?esc(nm(p)):''}</td>`;}).join('')}</tr>`).join('')}</tbody></table>`;
+    if(H.order===1) msg='H is trivial, so every element is its own coset and this is just the multiplication table of G.';
+    else if(H===G.whole) msg='H is all of G: one coset, one color. G/G is the trivial group.';
+    else if(H.normal) msg=`Every block is a single color. That is what normal means here: the coset of a·b depends only on the cosets of a and b. The blocks form the table of G/H ≅ ${quotient(G,H).iso}.`;
+    else{let found=null;
+      outer:for(const A of list)for(const B of list){const s=new Set();for(const a of A.els)for(const b of B.els)s.add(of[G.T[a][b]]);if(s.size>1){found=[A,B,s.size];break outer;}}
+      msg=found?`The block (${cosName(found[0],H)}) · (${cosName(found[1],H)}) holds products from ${found[2]} different cosets, so “coset times coset” has no single answer. H is not normal, and there is no quotient G/H.`:'';}
+  }
+  $('cay').innerHTML=html;$('cmsg').textContent=msg;
+}
+$('collapse').addEventListener('click',()=>{collapse=!collapse;renderCay();});
+$('cay').addEventListener('click',e=>{const td=e.target.closest('td[data-a]');if(!td)return;
+  const a=+td.dataset.a,b=+td.dataset.b,p=G.T[a][b];hitCell=collapse?null:[a,b];
+  document.querySelectorAll('table.cay td.hit').forEach(x=>x.classList.remove('hit'));if(!collapse)td.classList.add('hit');
+  $('readout').innerHTML=`<span class="m">${esc(nm(a))} · ${esc(nm(b))} = ${esc(nm(p))}</span> &nbsp;do ${esc(nm(b))}, then ${esc(nm(a))}`;
+  sel=p;document.querySelectorAll('.ech').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.i===p?'true':'false'));renderDetail();
+  setSeq([G.els[b],G.els[a]],`${nm(a)}·${nm(b)}`,true);
+});
+
+/* ---------- breakdown ---------- */
+const hBtn=(H,txt)=>`<button class="lnk${H.id===Hid?' on':''}" data-h="${H.id}">${esc(txt||H.iso)}</button>`;
+function renderBreak(){
+  const nN=G.subs.filter(s=>s.normal).length,ab=G.whole.abelian,Q=quotient(G,G.derived);
+  const f=[['Order',G.n],['Abelian',ab?'yes':'no'],['Conjugacy classes',G.classes.length],['Subgroups',`${G.subs.length} (${nN} normal)`],
+    ['Center Z(G)',hBtn(G.center)],['Commutator [G,G]',hBtn(G.derived)],['G/[G,G]',esc(Q.iso)],['Proper nontrivial normal',nN-2]];
+  $('facts').innerHTML=f.map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  const chain=(S,sym)=>S.map((H,i)=>{let s=`<span class="node">${hBtn(H,H===G.whole?G.spec.short:H.iso)}</span>`;
+    if(i<S.length-1){const f=quotient(G,S[i+1]);const k=H.order/S[i+1].order;const fi=identifyFactor(H,S[i+1]);s+=`<span class="gt">${sym}<small>${esc(fi)}</small></span>`;}return s;}).join('');
+  $('comp').innerHTML=chain(G.comp,'▷');
+  const facs=G.comp.slice(1).map((K,i)=>G.comp[i].order/K.order);
+  $('compNote').textContent=`Each step is a largest normal subgroup of the step before, so each factor (shown under ▷) is simple. Jordan–Hölder: any composition series gives the same factors. Their orders multiply back to ${facs.join(' · ')} = ${G.n}.`;
+  $('derived').innerHTML=chain(G.der,'⊵');
+  const last=G.der[G.der.length-1];
+  $('derNote').textContent=last.order===1?`Take commutators again and again. It reaches 1 after ${G.der.length-1} step${G.der.length>2?'s':''}, so the group is solvable with derived length ${G.der.length-1}. Each factor is abelian.`:'The derived series stops before reaching 1.';
+  const H=G.subs[Hid];let s;
+  if(H.order===1||H===G.whole) s='Choose a proper, nontrivial normal subgroup as H to test whether G splits along it.';
+  else if(!H.normal) s=`H is not normal, so G/H is not a group and there is nothing to split along. Choose a filled dot.`;
+  else{const K=complementOf(G,H),q=quotient(G,H).iso;
+    if(!K) s=`No subgroup meets H only in the identity with |H|·|K| = |G|. So G is not H ⋊ (G/H): it is a non-split extension of ${H.iso} by ${q}. Knowing H and G/H ≅ ${q} is not enough to rebuild G.`;
+    else if(K.normal) s=`Complement K = ${genName(K)} ≅ ${K.iso} is also normal, so G ≅ H × K = ${H.iso} × ${K.iso}.`;
+    else s=`Complement K = ${genName(K)} ≅ ${K.iso} meets H only in the identity but is not normal, so G ≅ H ⋊ K = ${H.iso} ⋊ ${K.iso}, a semidirect product: K acts on H by conjugation.`;}
+  $('split').innerHTML=s.replace(/K = ([^≅]+)≅/,(m,g)=>`K = <span class="m">${esc(g)}</span>≅`);
+}
+function identifyFactor(A,B){const els=A.els,{of,list}=cosetsOf(G,B);const reps=list.filter(c=>A.els.includes(c.rep));
+  const orders=reps.map(c=>{let s=1,x=c.rep;while(of[x]!==0){x=G.T[x][c.rep];s++;}return s;});
+  const ab=reps.every(a=>reps.every(b=>of[G.T[a.rep][b.rep]]===of[G.T[b.rep][a.rep]]));
+  return identify(reps.length,orders,ab);}
+document.querySelector('.panel-col').addEventListener('click',e=>{const b=e.target.closest('.lnk[data-h]');if(b)setH(+b.dataset.h);});
+
+/* ---------- 3D stage ---------- */
+const cv=$('cv'),ctx=cv.getContext('2d');let W=0,Hh=0,DPR=1,mesh=null,view=I3,COL={};
+function readCols(){const cs=getComputedStyle(document.documentElement);['face','edge','side','ghost','muted','c1','c2','c3','c4','c5','fg','bg','stage'].forEach(k=>COL[k]=cs.getPropertyValue('--'+k).trim());draw();}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',readCols);
+new MutationObserver(readCols).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+const hexRGB=h=>{h=(h||'#888').replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];};
+const shade=(hex,f,a=1)=>{const [r,g,b]=hexRGB(hex);return `rgba(${Math.min(255,r*f)|0},${Math.min(255,g*f)|0},${Math.min(255,b*f)|0},${a})`;};
+
+function defaultView(s){return s.type==='poly'||s.type==='rect'?mm(rotM(Y,-0.18),rotM(X,-0.78)):mm(rotM(X,0.42),rotM(Y,-0.62));}
+function buildMesh(s){
+  const m={verts:[],faces:[],labels:[],lines:[],ghost:[]};
+  if(s.type==='poly'||s.type==='rect'){
+    const V=(s.type==='rect'?RECT:polyVerts(s.n)).map(v=>[v[0],v[1]]);let pts=V;
+    if(s.pin){pts=[];const n=V.length;for(let k=0;k<n;k++){const a=V[k],b=V[(k+1)%n],ex=b[0]-a[0],ey=b[1]-a[1],L=Math.hypot(ex,ey),nx=ey/L,ny=-ex/L;
+      pts.push(a,[a[0]+ex*.05+nx*.3,a[1]+ey*.05+ny*.3],[a[0]+ex*.42,a[1]+ey*.42]);}}
+    const N=pts.length,h=.06;
+    pts.forEach(p=>m.verts.push([p[0],p[1],h]));pts.forEach(p=>m.verts.push([p[0],p[1],-h]));
+    m.faces.push({idx:[...Array(N).keys()],col:'face'});
+    m.faces.push({idx:[...Array(N).keys()].map(i=>N+i).reverse(),col:'c2'});
+    for(let i=0;i<N;i++){const j=(i+1)%N;m.faces.push({idx:[i,j,N+j,N+i],col:'side'});}
+    for(let i=0;i<N;i++){const j=(i+1)%N;m.ghost.push([[pts[i][0],pts[i][1],0],[pts[j][0],pts[j][1],0]]);}
+    const f=s.type==='rect'?1.16:s.pin?1.32:1.2;
+    V.forEach((v,i)=>m.labels.push({p:[v[0]*f,v[1]*f,0],t:String(i+1),col:i===0?'c1':null}));
+  }else if(s.type==='tetra'){
+    const k=1.08/Math.sqrt(3);m.verts=TV.map(v=>v.map(x=>x*k));
+    for(let i=0;i<4;i++)m.faces.push({idx:[0,1,2,3].filter(j=>j!==i),col:'face'});
+    for(let i=0;i<4;i++)for(let j=i+1;j<4;j++)m.ghost.push([m.verts[i],m.verts[j]]);
+    TV.forEach((v,i)=>m.labels.push({p:v.map(x=>x*k*1.2),t:String(i+1),col:'c'+(i+1),dot:true}));
+  }else if(s.type==='cube'){
+    const a=.6;for(let i=0;i<8;i++)m.verts.push([(i&1?1:-1)*a,(i&2?1:-1)*a,(i&4?1:-1)*a]);
+    [[0,1,3,2],[4,5,7,6],[0,1,5,4],[2,3,7,6],[0,2,6,4],[1,3,7,5]].forEach(f=>m.faces.push({idx:f,col:'face',alpha:.2}));
+    for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const d=i^j;if(d===1||d===2||d===4)m.ghost.push([m.verts[i],m.verts[j]]);}
+    TV.forEach((v,i)=>{const p=v.map(x=>x*a),q=v.map(x=>-x*a);m.lines.push({a:p,b:q,col:'c'+(i+1)});
+      m.labels.push({p:v.map(x=>x*a*1.28),t:String(i+1),col:'c'+(i+1),dot:true});m.labels.push({p:v.map(x=>-x*a*1.28),t:String(i+1),col:'c'+(i+1),dot:true});});
+  }else if(s.type==='brick'){
+    const e=[.92,.6,.36];for(let i=0;i<8;i++)m.verts.push([(i&1?1:-1)*e[0],(i&2?1:-1)*e[1],(i&4?1:-1)*e[2]]);
+    m.faces.push({idx:[1,3,7,5],col:'c1'},{idx:[0,4,6,2],col:'c1',dim:true},{idx:[2,6,7,3],col:'c3'},{idx:[0,1,5,4],col:'c3',dim:true},{idx:[4,5,7,6],col:'c4'},{idx:[0,2,3,1],col:'c4',dim:true});
+    for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const d=i^j;if(d===1||d===2||d===4)m.ghost.push([m.verts[i],m.verts[j]]);}
+    m.labels.push({p:[e[0]+.26,0,0],t:'i',col:'c1',dot:true},{p:[0,e[1]+.26,0],t:'j',col:'c3',dot:true},{p:[0,0,e[2]+.26],t:'k',col:'c4',dot:true});
+  }
+  return m;
+}
+function resize(){const r=cv.getBoundingClientRect();DPR=Math.min(2,window.devicePixelRatio||1);W=r.width;Hh=r.height;cv.width=Math.max(1,Math.round(W*DPR));cv.height=Math.max(1,Math.round(Hh*DPR));draw();}
+new ResizeObserver(resize).observe(cv);
+
+/* motion: a sequence of turns, each applied on top of the last (rightmost factor first) */
+let seq=[],prog=1,playing=false,lastT=0,dur=1000,cur=I3,hudBase='';
+function setSeq(list,label,auto){
+  let base=I3;seq=list.map(e=>{const st={axis:e.anim.axis,angle:e.anim.angle,base,name:e.name};base=mm(rotM(st.axis,st.angle),base);return st;});
+  hudBase=label;const tot=seq.reduce((t,s)=>t+s.angle,0);
+  $('play').disabled=tot<1e-6;
+  if(auto&&tot>1e-6&&!reduced){prog=0;dur=Math.min(2800,Math.max(700,450+650*tot/PI));startPlay();}
+  else{prog=1;playing=false;}
+  frame();
+}
+const ease=u=>u<.5?2*u*u:1-2*(1-u)*(1-u);
+function frame(){
+  const ws=seq.map(s=>Math.max(s.angle,1e-3)),Wt=ws.reduce((a,b)=>a+b,0);let p=prog*Wt,i=0;
+  while(i<seq.length-1&&p>ws[i]){p-=ws[i];i++;}
+  const st=seq[i];let deg='0°';
+  if(st){const u=Math.min(1,Math.max(0,p/ws[i]));const a=st.angle*ease(u);cur=mm(rotM(st.axis,a),st.base);
+    deg=seq.length>1?`step ${i+1}/2 · ${st.name}`:`${Math.round(a*180/PI)}° / ${Math.round(st.angle*180/PI)}°`;}
+  else cur=I3;
+  $('hudName').textContent=hudBase;$('hudAn').textContent=seq.length>1?`do ${seq[0].name}, then ${seq[1].name}`:'';
+  $('deg').textContent=deg;$('scrub').value=Math.round(prog*1000);
+  $('play').textContent=playing?'Pause':prog>=1?'Replay':'Play';
+  draw();
+}
+function startPlay(){playing=true;lastT=performance.now();requestAnimationFrame(tick);}
+function tick(t){if(!playing)return;prog=Math.min(1,prog+(t-lastT)/dur);lastT=t;if(prog>=1)playing=false;frame();if(playing)requestAnimationFrame(tick);}
+$('play').addEventListener('click',()=>{if(playing){playing=false;frame();return;}if(prog>=1)prog=0;if(reduced){prog=1;frame();return;}startPlay();});
+$('scrub').addEventListener('input',e=>{playing=false;prog=+e.target.value/1000;frame();});
+$('tGhost').addEventListener('click',e=>{showGhost=!showGhost;e.currentTarget.setAttribute('aria-pressed',showGhost);draw();});
+$('tLabels').addEventListener('click',e=>{showLabels=!showLabels;e.currentTarget.setAttribute('aria-pressed',showLabels);draw();});
+
+let drag=null;
+cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag={x:e.clientX,y:e.clientY};
+  view=mm(mm(rotM(Y,dx*0.01),rotM(X,dy*0.01)),view);draw();});
+['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,()=>{drag=null;}));
+
+const LIGHT=nrm([.35,.55,.9]);
+function draw(){
+  if(!mesh||!W)return;
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,Hh);
+  const S=Math.min(W,Hh)*.34,cx=W/2,cy=Hh/2+6;
+  const P=p=>{const k=5/(5-p[2]);return [cx+p[0]*S*k,cy-p[1]*S*k,p[2]];};
+  if(showGhost){ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle=shade(COL.ghost,1,.7);ctx.lineWidth=1.2;
+    for(const [a,b] of mesh.ghost){const A=P(mv(view,a)),B=P(mv(view,b));ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke();}ctx.restore();}
+  const R=mm(view,cur),tv=mesh.verts.map(v=>mv(R,v)),pv=tv.map(P);
+  const fs=mesh.faces.map(f=>({f,z:f.idx.reduce((t,i)=>t+tv[i][2],0)/f.idx.length})).sort((a,b)=>a.z-b.z);
+  ctx.lineJoin='round';
+  for(const {f} of fs){const a=tv[f.idx[0]],b=tv[f.idx[1]],c=tv[f.idx[2]];
+    const n=nrm([(b[1]-a[1])*(c[2]-a[2])-(b[2]-a[2])*(c[1]-a[1]),(b[2]-a[2])*(c[0]-a[0])-(b[0]-a[0])*(c[2]-a[2]),(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0])]);
+    const lit=.62+.42*Math.abs(dot3(n,LIGHT));const al=f.alpha??1;
+    ctx.beginPath();f.idx.forEach((i,j)=>{const q=pv[i];j?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});ctx.closePath();
+    ctx.fillStyle=shade(COL[f.col],lit*(f.dim?.62:1),al);ctx.fill();
+    ctx.strokeStyle=shade(COL.edge,1,al<1?.75:.55);ctx.lineWidth=1;ctx.stroke();}
+  for(const l of mesh.lines){const A=P(mv(R,l.a)),B=P(mv(R,l.b));ctx.strokeStyle=COL[l.col];ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke();}
+  if(showLabels){ctx.textAlign='center';ctx.textBaseline='middle';
+    const ls=mesh.labels.map(l=>{const w=mv(R,l.p);return {l,w,q:P(w)};}).sort((a,b)=>a.w[2]-b.w[2]);
+    for(const {l,w,q} of ls){const back=w[2]<-0.12;ctx.globalAlpha=back?.45:1;
+      if(l.dot){ctx.fillStyle=COL[l.col];ctx.beginPath();ctx.arc(q[0],q[1],9.5,0,2*PI);ctx.fill();
+        ctx.fillStyle='#fff';ctx.font=`600 ${l.t.length>1?10:12}px "IBM Plex Sans",system-ui,sans-serif`;ctx.fillText(l.t,q[0],q[1]+.5);}
+      else{ctx.fillStyle=l.col?COL[l.col]:COL.fg;ctx.font='600 13px "IBM Plex Sans",system-ui,sans-serif';ctx.fillText(l.t,q[0],q[1]);}}
+    ctx.globalAlpha=1;}
+}
+
+/* ---------- boot ---------- */
+readCols();
+const hi=GROUPS.findIndex(g=>'#'+g.id===location.hash);
+loadGroup(hi>=0?hi:3,false);
+window.addEventListener('hashchange',()=>{const i=GROUPS.findIndex(g=>'#'+g.id===location.hash);if(i>=0&&i!==gi)loadGroup(i,false);});
+document.fonts&&document.fonts.ready.then(draw);
+</script>
+
+</body>
+</html>
