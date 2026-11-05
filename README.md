@@ -1,17 +1,18 @@
 # Web-game
 
-A collection of small browser puzzle games, plus interactive math pages, a world map viewer and 3D models of sketches. Open the landing page, pick a level, play, come back.
+A collection of small browser puzzle games, plus interactive math pages, a world map viewer, 3D models of sketches and music made from symmetry. Open the landing page, pick a level, play, come back.
 
 Plain static HTML — no build step. Progress (played / best score / cleared) is saved in the player's browser.
 
 ## Structure
 
 ```
-index.html            landing page (levels, explore, world, sketches)
+index.html            landing page (levels, explore, world, sketches, music)
 levels.js             level registry
 explore.js            explore registry (interactive math, no score)
 world.js              world registry (map layers)
 sketches.js           sketches registry (drawings rebuilt as 3D models)
+music.js              music registry (groups played as sound)
 shared/progress.js    progress store used by every level
 levels/
   01-smiley-paths/    Smiley Paths
@@ -38,6 +39,8 @@ world/
 sketches/
   pineapple-umbrella/ Pineapple Umbrella (colored-pencil umbrella with a pineapple crown, as a three.js model; the original drawing is embedded)
   corn-cob/           Corn Cob (an ear of corn in its husk: instanced kernels, silk, peeling husk leaves; the original drawing is embedded)
+music/
+  sound-of-a5/        Sound of A₅ (60 elements played by a band: irreps 1, 3, 3′, 4, 5 as bass, drums, piano, violin, gamelan; Web Audio, octave clock)
 tools/
   chartable_convert.py  Regenerates explore/simple-groups/chartables from CTblLib data files
   j1/build_action.py  Rebuilds J1's 266-point action from Janko's 7×7 matrices over F11 (the generators in explore/j1)
@@ -69,6 +72,11 @@ Minesweeper keeps its own level list in the `LEVELS` array at the top of the scr
 
 1. Create `sketches/name/index.html` (self-contained, back link to `../../`).
 2. Add an entry to `sketches.js` with a short `badge`.
+
+## Add a music page
+
+1. Create `music/name/index.html` (self-contained, back link to `../../`). Sound must start from a button (browsers block autoplay).
+2. Add an entry to `music.js` with a short `badge`.
 
 ## Add a world layer
 
