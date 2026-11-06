@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The table of physical constants</title>
+<style>
+:root{--bg:#faf9f6;--card:#fff;--ink:#1f1e1b;--mute:#6b6962;--line:#e3e0d8;
+--teal:#e1f5ee;--teal-i:#085041;--amber:#faeeda;--amber-i:#633806;--coral:#faece7;--coral-i:#712b13;
+--purple:#eeedfe;--purple-i:#3c3489;--gray:#f1efe8;--gray-i:#444441;--blue:#e6f1fb;--blue-i:#0c447c;--sel:#1f1e1b;--blank:#efede7}
+@media (prefers-color-scheme:dark){:root{--bg:#1a1a18;--card:#242422;--ink:#ecebe6;--mute:#a19f97;--line:#3a3935;
+--teal:#0d3b30;--teal-i:#9fe1cb;--amber:#4a3008;--amber-i:#fac775;--coral:#4a1f10;--coral-i:#f5c4b3;
+--purple:#2a2560;--purple-i:#cecbf6;--gray:#33332f;--gray-i:#d3d1c7;--blue:#0c2e50;--blue-i:#b5d4f4;--sel:#ecebe6;--blank:#21211f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto;padding:16px 10px 70vh}
+h1{font-size:19px;font-weight:600;margin:0 0 4px}
+.sub{color:var(--mute);font-size:13px;margin:0 0 12px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:none;color:var(--mute);font:inherit;font-size:12.5px;padding:7px 11px;cursor:pointer}
+.seg button.on{background:var(--ink);color:var(--bg)}
+.grid{display:grid;gap:3px}
+.h,.cell{border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:46px;padding:3px 2px}
+.h{background:var(--card);border:1px solid var(--line);font-weight:600;font-size:14px}
+.h small{display:block;font-size:9.5px;font-weight:400;color:var(--mute);line-height:1.1}
+.h.corner{font-size:9.5px;font-weight:400;color:var(--mute);line-height:1.2}
+.cell{cursor:pointer;font-size:10.5px;font-weight:600;line-height:1.12;word-break:break-word;hyphens:auto;border:2px solid transparent}
+.cell small{font-weight:400;font-size:9px;opacity:.8;margin-top:2px}
+.g{display:block;margin-top:3px;font:500 9.5px/1.1 ui-monospace,Menlo,monospace;opacity:.9}
+.g.unknown,.g.none{font-size:13px;font-weight:700}
+.gbox{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-top:4px}
+.gname{font:600 15px ui-monospace,Menlo,monospace}
+.conf{font-size:11px;color:var(--mute)}
+.cell:active{transform:scale(.96)}
+.cell.sel{border-color:var(--sel)}
+.cell.sib{border:2px dashed var(--mute)}
+.blank{background:repeating-linear-gradient(45deg,var(--blank) 0 4px,transparent 4px 8px);border:1px solid var(--line);cursor:default}
+.solved{background:var(--teal);color:var(--teal-i)}
+.broke{background:var(--amber);color:var(--amber-i)}
+.open{background:var(--coral);color:var(--coral-i)}
+.disputed{background:var(--purple);color:var(--purple-i)}
+.partial{background:var(--blue);color:var(--blue-i)}
+.k-e{background:var(--gray);color:var(--gray-i)}
+.k-22{background:var(--purple);color:var(--purple-i)}
+.k-3{background:var(--teal);color:var(--teal-i)}
+.k-5A{background:var(--coral);color:var(--coral-i)}
+.k-5B{background:var(--amber);color:var(--amber-i)}
+.legend{display:flex;flex-wrap:wrap;gap:5px 12px;margin:10px 0 14px;font-size:12px;color:var(--mute)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:62vh;overflow-y:auto;background:var(--card);border-top:1px solid var(--line);border-radius:16px 16px 0 0;padding:14px 16px 24px;box-shadow:0 -6px 24px rgba(0,0,0,.12);transform:translateY(105%);transition:transform .22s}
+.sheet.show{transform:none}
+.sheet .in{max-width:740px;margin:0 auto}
+.x{float:right;border:1px solid var(--line);background:none;color:var(--ink);border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer}
+.path{font-size:13px;color:var(--mute);margin:0}
+.word{font-size:23px;font-weight:700;margin:0}
+.theory{font-size:14.5px;margin:2px 0 8px;color:var(--mute)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.chip{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px}
+.sec{margin:11px 0 0}
+.sec h3{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 3px;font-weight:600}
+.sec p,.sec ul{margin:0}.sec ul{padding-left:18px}
+.f{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:var(--gray);padding:1px 5px;border-radius:4px}
+.sibs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.sibs button{border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:11.5px;padding:6px 4px;cursor:pointer;line-height:1.25}
+.sibs button.me{border:2px solid var(--sel)}
+.sibs b{display:block;font-size:12px}
+.notes{margin-top:8px}
+.notes h2{font-size:15px;margin:14px 0 6px}
+.note{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:8px;font-size:14px}
+.tag{font-size:11px;font-weight:600;color:var(--mute)}
+
+
+.intro h2{font-size:16px;margin:4px 0 4px}
+.intro .lead{font-size:13.5px;color:var(--mute);margin:0 0 10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:16px}
+.kc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.kc .sym{font:700 22px ui-monospace,Menlo,monospace;margin-right:8px}
+.kc .nm{font-weight:600;font-size:15px}
+.kc .hook{font-size:12px;color:var(--mute);display:block;margin-top:1px}
+.kc p{margin:6px 0 0;font-size:13.5px;line-height:1.5}
+.kc .val{font:12px ui-monospace,Menlo,monospace;color:var(--mute);margin-top:6px}
+.kc .btn{margin-top:8px;font-size:12.5px;padding:6px 10px}
+.h small.nm{font-size:8.5px}
+[hidden]{display:none!important}
+.base{background:var(--gray);color:var(--gray-i)}
+.hc{cursor:pointer}
+.fh{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.fh small{color:var(--bg)}
+.cell.focus{border-color:var(--sel);box-shadow:0 0 0 1px var(--sel)}
+.cell.dim{opacity:.28}
+#grid2{grid-template-columns:40px repeat(5,minmax(0,1fr))}
+#grid2 .cell{min-height:58px;font-size:11.5px}
+#grid2 .h{min-height:58px}
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0 8px;margin-bottom:6px}
+.btn{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 12px;font:inherit;font-size:13px;cursor:pointer;width:100%;margin-top:8px}
+.btn.sm{width:auto;margin:0;padding:5px 10px;font-size:12.5px}
+.ctx{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px}
+.ctxtop{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:6px}
+.hint{font-size:12.5px;color:var(--mute);margin:4px 0 0}
+.gname.sm{font-size:13px;font-weight:500;color:var(--mute);margin-left:4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.two .btn{margin-top:6px;font-size:12px;padding:7px 6px}
+.linkrow{font-size:12.5px;color:var(--mute);margin:0 0 10px}
+</style>
+</head>
+<body>
+<main>
+<a href="../../" style="font-size:13px;color:var(--mute);text-decoration:none">← Home</a>
+<h1>The table of physical constants</h1>
+<div class="top"><div class="seg" id="layers"><button data-l="l2" class="on">5 × 5 table</button><button data-l="l3">A5 table · 60</button></div></div>
+
+<section id="v2">
+<div class="intro">
+<h2>The five constants</h2>
+<p class="lead">Each one is a switch for a whole area of physics: speed, quanta, gravity, heat and charge. Together they are the constants Planck built his natural units from. Turn a switch off by taking a limit, and that area of physics disappears.</p>
+<div class="cards" id="cards"></div>
+</div>
+<h2 style="font-size:16px;margin:4px 0 4px">The 5 × 5 table</h2>
+<p class="sub">Row = the constant you start with. Column = the one you add second. Tap any cell to jump to its row in the A5 table; tap a constant to jump to its column.</p>
+<div class="grid" id="grid2"></div>
+<div class="legend">
+<span><i class="base"></i>Constant alone</span><span><i class="solved"></i>Solved</span><span><i class="broke"></i>Broke, fixed by ħ</span><span><i class="disputed"></i>Disputed</span><span><i class="open"></i>Open</span>
+<span style="width:100%"><b>Groups:</b>&nbsp;name = known · <b>?</b> = nobody knows · <b>…</b> = not looked up yet</span>
+</div>
+<div class="notes">
+<h2>Patterns in the 5 × 5 table</h2>
+<div class="note"><div class="tag">Observation</div><p><b>ħ has repaired three broken cells.</b> Heat + light gave the ultraviolet catastrophe, charge + light made atoms collapse, and classical heat capacities failed at low temperature. Each was fixed by adding ħ, a constant outside the pair. Intuition, not proof: a broken cell may point to a missing constant.</p></div>
+<div class="note"><div class="tag">Observation</div><p><b>Every open cell contains G.</b> G–ħ (quantum gravity) and G–k<sub>e</sub> (the hierarchy) are the unsolved pairs. G is also the least precisely measured constant here (about 2 parts in 100,000), while c, h and k<sub>B</sub> are now exact by definition.</p></div>
+<div class="note"><div class="tag">Observation</div><p><b>Direction matters only in some pairs.</b> c–ħ and c–G have two historical routes that meet at the same theory. G–ħ has two routes that have not met. c–k<sub>B</sub> asks two different questions. The rest give the same physics either way.</p></div>
+<div class="note"><div class="tag">Groups</div><p><b>Gravity and charge share one group.</b> Both are 1/r² forces with the same hidden SO(4). Group theory can't see the 10³⁶ difference between them; only the number does. And the only cells with <b>?</b> are the G–ħ cells.</p></div>
+<div class="note"><div class="tag">Caveats</div><ul>
+<li>"Start with X, add Y" here means a historical or logical route, not a defined mathematical operation. This is not yet a group table.</li>
+<li>k<sub>B</sub> and k<sub>e</sub> are arguably unit conversions. The unit-free strength of charge is α = k<sub>e</sub>e²/(ħc) ≈ 1/137, which already mixes three switches.</li>
+<li>Switching a constant off really means taking a limit (c → ∞, ħ → 0, G → 0). Order-of-limits questions are the precise version of "direction".</li>
+</ul></div>
+</div>
+</section>
+
+<section id="v3" hidden>
+<div class="ctx" id="ctx" hidden></div>
+<p class="sub">Row = the first two steps (a 5 × 5 cell). Column = the third constant. Repeats are blank. 60 cells, one per element of A5. Tap a cell for details, a row or column header to focus it.</p>
+<div class="bar">
+<div class="seg" id="view"><button data-v="grid" class="on">Grid 20 × 5</button><button data-v="triple">By triple 10 × 6</button></div>
+<div class="seg" id="color"><button data-c="status" class="on">Status</button><button data-c="a5">A5 class</button></div>
+<button class="btn sm" id="clear">Clear focus</button>
+</div>
+<div class="grid" id="grid3"></div>
+<div class="legend" id="legend"></div>
+<div class="notes">
+<h2>Patterns in layer 3</h2>
+<div class="note"><div class="tag">Groups</div><b>Unknown physics = unknown symmetry.</b> Every cell marked <b>?</b> is an open cell, and every one involves G. Where physics is solved, a symmetry group is known.</div>
+<div class="note"><div class="tag">Groups</div><b>SO(4) keeps appearing.</b> Any 1/r² force has a hidden SO(4) symmetry, so gravity and charge share it: Atoms, Hierarchy, Giant atom. The group can't tell gravity from charge; only the 10³⁶ strength ratio does. Relativity breaks SO(4) down to SO(3) (Fine structure).</div>
+<div class="note"><div class="tag">Groups</div><b>The only finite group in the table is S_N</b>, in quantum statistics (Condensation, White dwarf, Halt). A5 lives inside S5, so this is the one place where your A5 world touches the physics directly. That's intuition, not a result.</div>
+<div class="note"><div class="tag">Observation</div><b>Every open cell still contains G.</b> The pattern from the 2D table survives into 3D: Quantum GR?, Planck, Unification?, Heating? and Weakest all involve gravity.</div>
+<div class="note"><div class="tag">Observation</div><b>ħ keeps repairing.</b> Blackbody (heat + light + ħ), Lamb shift (Maxwell + ħ) and Halt (clumping + ħ) each fix a broken or incomplete pair. The one broken cell left, Catastrophe (Maxwell + heat), is fixed only one layer up, when ħ is added as a fourth constant.</div>
+<div class="note"><div class="tag">Observation</div><b>The last step decides the content.</b> Most of the time, the order of the first two steps changes the history but not the physics. Sibling cells that share the last constant usually share the word.</div>
+<div class="note"><div class="tag">Correction</div>In chat I listed ħ–G–k<sub>B</sub> and ħ–G–k<sub>e</sub> as empty triples. They aren't: white dwarfs (Fowler, 1926) live in the first, and the "giant gravitational atom" thought experiment and atom gravimetry live in the second.</div>
+<div class="note"><div class="tag">Proof vs intuition</div>Proven: the 60 ordered triples match the 60 elements of A5 one to one (A5 is sharply 3-transitive on 5 objects), once (c, ħ, G) is chosen as the identity. Not proven: that the A5 class of a cell means anything physically. The "A5 class" coloring is there so you can look for a pattern, not because one is known.</div>
+</div>
+</section>
+</main>
+
+<div class="sheet" id="sheet"><div class="in" id="panel"></div></div>
+<script>
+const K=['c','h','G','kB','ke'];
+const L={c:'c',h:'ħ',G:'G',kB:'k<sub>B</sub>',ke:'k<sub>e</sub>'};
+const ST={solved:'Solved',broke:'Broke',open:'Open',disputed:'Disputed',partial:'Works in a limit'};
+const KN={e:'Identity','22':'Double swap','3':'3-cycle','5A':'5-cycle (class A)','5B':'5-cycle (class B)'};
+const KS={e:1,22:15,3:20,'5A':12,'5B':12};
+
+const P={'c|h':'Creation','h|c':'Antimatter','c|G':'Curvature','G|c':'Waves','c|kB':'Disputed','kB|c':'Catastrophe',
+'h|G':'Collapse?','G|h':'Graviton?','h|kB':'Condensation','kB|h':'Freeze-out','G|kB':'Clumping','kB|G':'Clumping',
+'c|ke':'Light','ke|c':'Magnetism','h|ke':'Atoms','ke|h':'Stability','G|ke':'Hierarchy','ke|G':'Hierarchy','kB|ke':'Screening','ke|kB':'Screening'};
+const PT={'c|h':'quantum field theory','h|c':'quantum field theory','c|G':'general relativity','G|c':'general relativity',
+'c|kB':'relativistic thermodynamics','kB|c':'classical thermal radiation','h|G':'Newtonian quantum gravity','G|h':'Newtonian quantum gravity',
+'h|kB':'quantum statistics','kB|h':'quantum statistics','G|kB':'self-gravitating thermodynamics','kB|G':'self-gravitating thermodynamics',
+'c|ke':'Maxwell\'s electrodynamics','ke|c':'Maxwell\'s electrodynamics','h|ke':'the quantum atom','ke|h':'the quantum atom',
+'G|ke':'the gravity–charge comparison','ke|G':'the gravity–charge comparison','kB|ke':'plasma physics','ke|kB':'plasma physics'};
+
+const TRI={
+'c,h,G':{end:'The Planck scale: quantum gravity',status:'open',sum:'All three constants together define the Planck length, mass and time. No complete theory exists.'},
+'c,h,kB':{end:'Quantum thermal radiation',status:'solved',sum:'Planck\'s law, the photon gas and the Unruh effect. The cure for the ultraviolet catastrophe.'},
+'c,h,ke':{end:'Quantum electrodynamics',status:'solved',sum:'The most precisely tested theory in physics. Its strength is α = k_e e²/(ħc) ≈ 1/137.036.'},
+'c,G,kB':{end:'Relativistic gravitational thermodynamics',status:'solved',sum:'Heat in curved spacetime: temperature depends on height, and the universe cools as it expands.'},
+'c,G,ke':{end:'Einstein–Maxwell theory',status:'solved',sum:'Charge and light in curved spacetime: charged black holes, gravitational redshift, and the first unification attempt.'},
+'h,kB,ke':{end:'Condensed matter and chemistry',status:'solved',sum:'Most of everyday physics: metals, semiconductors, chemical reactions, ionization.'},
+'G,kB,ke':{end:'Classical stellar plasma',status:'solved',sum:'Hot charged gas held by gravity: stellar balance, solar wind. A full star also needs ħ (fusion) and c.'},
+'c,kB,ke':{end:'Relativistic classical plasma',status:'solved',sum:'Hot charges at near-light speed: braking radiation and relativistic gas statistics. Also contains the ultraviolet catastrophe.'},
+'h,G,kB':{end:'Quantum matter under gravity',status:'partial',sum:'Degenerate stars such as white dwarfs. The ħ–G core remains open.'},
+'h,G,ke':{end:'Quantum atoms and gravity',status:'partial',sum:'Atoms used as gravity sensors, and why gravity is so weak at the quantum level.'}
+};
+
+const T={
+'c,h,G':{
+ G:{word:'Hawking',theory:'Quantum fields in curved spacetime',status:'partial',
+  abs:'Take quantum fields and let them live on curved spacetime, keeping gravity classical. Black holes glow.',
+  spec:['Hawking (1974): <span class="f">T = ħc³/(8πGMk_B)</span>','Works only while spacetime itself is not quantized','A solar-mass black hole is about 60 billionths of a kelvin: far too cold to observe']},
+ h:{word:'Quantum GR?',theory:'Quantizing spacetime itself',status:'open',
+  abs:'Take general relativity and quantize the geometry. The graviton is predicted, but the straightforward theory breaks down at high energy.',
+  spec:['Diverges at two loops (Goroff–Sagnotti, 1986)','Candidates: string theory, loop quantum gravity, asymptotic safety','No experimental signal yet']},
+ c:{word:'Planck',theory:'Planck units',status:'open',
+  abs:'Take the open ħ–G corner and add the speed limit. Natural units of length, mass and time appear, where quantum and gravity become equally important.',
+  spec:['Planck length <span class="f">√(ħG/c³) ≈ 1.6 × 10⁻³⁵ m</span>','Planck mass ≈ 2.2 × 10⁻⁸ kg; Planck time ≈ 5.4 × 10⁻⁴⁴ s','Planck proposed these units in 1899']}
+},
+'c,h,kB':{
+ kB:{word:'Unruh',theory:'Thermal quantum field theory',status:'solved',
+  abs:'Take quantum fields and add temperature. Even empty space looks hot to an accelerating observer.',
+  spec:['Unruh (1976): <span class="f">T = ħa/(2πck_B)</span>','Predicted theoretically; not yet observed directly','Close relative of Hawking radiation']},
+ h:{word:'Blackbody',theory:'Planck\'s radiation law (1900)',status:'solved',
+  abs:'Take the broken or disputed c–k_B corner and add quanta. Infinite energy becomes a finite curve: the repair that started quantum physics.',
+  spec:['<span class="f">u = (8πhν³/c³) / (e^(hν/k_BT) − 1)</span>','The cosmic microwave background is the most perfect blackbody ever measured (COBE, 1990s)']},
+ c:{word:'Photons',theory:'Relativistic quantum gas',status:'solved',
+  abs:'Take quantum statistics and make the particles massless and moving at c. A box of light becomes a gas with a fixed law of brightness.',
+  spec:['Stefan–Boltzmann constant from the three: <span class="f">σ = π²k_B⁴/(60ħ³c²)</span>','Explains why hot objects glow ∝ T⁴']}
+},
+'c,h,ke':{
+ ke:{word:'QED',theory:'Quantum electrodynamics (1940s)',status:'solved',
+  abs:'Take quantum fields and add charge. Light and electrons become one theory.',
+  spec:['Feynman, Schwinger, Tomonaga, Dyson','Electron magnetic moment agrees with experiment to about 1 part in a trillion']},
+ h:{word:'Lamb shift',theory:'Quantized Maxwell theory, renormalization',status:'solved',
+  abs:'Take Maxwell\'s theory with its infinite point-electron energy and add quanta. The infinities are tamed, and tiny new effects appear.',
+  spec:['Lamb shift measured in 1947: hydrogen levels split where Dirac said they shouldn\'t','Renormalization absorbs the classical infinity']},
+ c:{word:'Fine structure',theory:'Relativistic atoms (Sommerfeld 1916, Dirac 1928)',status:'solved',
+  abs:'Take the quantum atom and add the speed limit. Spectral lines split into fine pairs, and the number α appears.',
+  spec:['In hydrogen\'s ground state the electron moves at about v = αc ≈ c/137','Spin–orbit splitting']}
+},
+'c,G,kB':{
+ kB:{word:'Tolman',theory:'Tolman–Ehrenfest effect (1930)',status:'solved',
+  abs:'Take curved spacetime and add heat. In equilibrium, it is hotter lower down in a gravitational field.',
+  spec:['<span class="f">T √g₀₀ = constant</span>','Heat has energy, and energy gravitates']},
+ G:{word:'Cooling',theory:'Thermal history of the universe',status:'solved',
+  abs:'Take relativistic heat and add gravity on cosmic scales. An expanding universe cools.',
+  spec:['Radiation temperature falls as T ∝ 1/a, where a is the size of the universe','The cosmic background is now about 2.7 K']},
+ c:{word:'Implosion',theory:'Relativistic gravitational collapse',status:'solved',
+  abs:'Take clumping gravity with negative heat capacity and add the speed limit. Pressure itself gravitates, so beyond a point nothing can stop collapse.',
+  spec:['Buchdahl limit (1959): a static star must have R > 9GM/(4c²)','Tolman–Oppenheimer–Volkoff equation (1939)']}
+},
+'c,G,ke':{
+ ke:{word:'Charged BH',theory:'Reissner–Nordström black hole (1916–18)',status:'solved',
+  abs:'Take general relativity and add charge. Black holes can carry electric charge, and the charge changes their horizons.',
+  spec:['Two horizons instead of one','Real black holes are expected to be almost neutral']},
+ G:{word:'Redshift',theory:'Light in a gravitational field',status:'solved',
+  abs:'Take Maxwell\'s light and add gravity. Light loses energy as it climbs out of a gravity well and bends near mass.',
+  spec:['Pound–Rebka (1959): measured over 22.5 m of a Harvard tower','GPS clocks must correct for it']},
+ c:{word:'Unification?',theory:'Kaluza–Klein theory (1921)',status:'open',
+  abs:'Take the unexplained gravity–charge hierarchy and add relativity. Kaluza found that general relativity in 5 dimensions automatically contains Maxwell\'s equations.',
+  spec:['Charge becomes motion around a tiny hidden dimension','Lives on in string theory','Does not explain the 10³⁶ ratio']}
+},
+'h,kB,ke':{
+ ke:{word:'Metals',theory:'Quantum electrons in solids',status:'solved',
+  abs:'Take quantum statistics and add charge. Electrons in a metal form a quantum gas, and conductors, semiconductors and superconductors follow.',
+  spec:['Sommerfeld model (1928)','BCS theory of superconductivity (1957)','Basis of every transistor']},
+ kB:{word:'Chemistry',theory:'Thermal chemistry',status:'solved',
+  abs:'Take the quantum atom and add temperature. Molecules form and react at rates set by heat.',
+  spec:['Arrhenius factor <span class="f">e^(−E/k_BT)</span>','Most of chemistry lives in this cell']},
+ h:{word:'Ionization',theory:'Saha equation (1920)',status:'solved',
+  abs:'Take a hot plasma and add quanta. The balance between atoms and free ions follows a precise law.',
+  spec:['Let astronomers read stellar temperatures from spectra','Payne (1925) used it to show stars are mostly hydrogen']}
+},
+'G,kB,ke':{
+ ke:{word:'Neutrality',theory:'Charge balance of stars',status:'solved',
+  abs:'Take a self-gravitating hot gas and add charge. Gravity is so weak that the star must stay almost perfectly neutral.',
+  spec:['Rosseland (1924): electrons escape slightly, leaving a tiny positive charge','About 100 coulombs per solar mass']},
+ kB:{word:'Equilibrium',theory:'Hydrostatic balance of stars',status:'solved',
+  abs:'Take the gravity–charge comparison and add heat. Hot ionized gas pushes outward while gravity pulls in, and a star balances.',
+  spec:['Eddington\'s stellar models (1926)','Virial theorem: thermal energy ≈ half the gravitational energy']},
+ G:{word:'Solar wind',theory:'Astrophysical plasma flow',status:'solved',
+  abs:'Take a screened plasma and add gravity. The Sun\'s hot corona cannot be held by gravity and streams outward.',
+  spec:['Parker (1958) predicted it','Confirmed by Mariner 2 (1962)']}
+},
+'c,kB,ke':{
+ ke:{word:'Bremsstrahlung',theory:'Thermal braking radiation',status:'solved',
+  abs:'Take relativistic heat and add charge. Hot charges deflected by each other emit light.',
+  spec:['Main X-ray glow of galaxy clusters','"Braking radiation" in German']},
+ kB:{word:'Catastrophe',theory:'Classical cavity radiation',status:'broke',
+  abs:'Take Maxwell\'s light and add heat. Every one of infinitely many light modes gets energy k_BT, and the total diverges.',
+  spec:['Rayleigh–Jeans law (1900, 1905)','Repaired only by adding ħ: that cell is in layer 4']},
+ c:{word:'Jüttner',theory:'Relativistic gas statistics (1911)',status:'solved',
+  abs:'Take a hot plasma and let particles approach c. The speed distribution bends so that nothing exceeds light.',
+  spec:['Maxwell–Jüttner distribution','Used for gas near black holes and in particle accelerators']}
+},
+'h,G,kB':{
+ kB:{word:'Heating?',theory:'Gravity-driven collapse with thermal effects',status:'open',
+  abs:'Take the open ħ–G corner and add heat. If gravity collapses superpositions (Diósi–Penrose), matter should heat up very slightly on its own.',
+  spec:['An underground experiment at Gran Sasso (published 2020–21) ruled out the simplest version','Modified versions remain untested']},
+ G:{word:'White dwarf',theory:'Degenerate stars (Fowler, 1926)',status:'solved',
+  abs:'Take quantum statistics and add gravity. Electron degeneracy pressure, not heat, holds up a dead star.',
+  spec:['Fowler applied Fermi–Dirac statistics within months of its discovery','Heavier white dwarfs are smaller: R ∝ M^(−1/3)','The maximum mass (Chandrasekhar) also needs c']},
+ h:{word:'Halt',theory:'Degeneracy stops gravothermal contraction',status:'solved',
+  abs:'Take clumping gravity, where a cooling star shrinks forever, and add quanta. Contraction stops: another ħ repair.',
+  spec:['Classically a star loses heat and contracts without limit','Quantum degeneracy sets a final size']}
+},
+'h,G,ke':{
+ ke:{word:'Giant atom',theory:'Gravitational atom thought experiment',status:'solved',
+  abs:'Take the ħ–G corner and add charge for comparison. A hydrogen atom held only by gravity would be bigger than the observable universe.',
+  spec:['Gravitational Bohr radius <span class="f">ħ²/(G m_p m_e²) ≈ 10²⁹ m</span>','The observable universe is about 4 × 10²⁶ m in radius']},
+ G:{word:'Gravimetry',theory:'Atoms as gravity sensors',status:'solved',
+  abs:'Take quantum atoms and add gravity. Matter waves of cold atoms measure gravity with extreme precision.',
+  spec:['Atom interferometers have been used to measure G itself (2014)','Neutron interference in gravity (1975)']},
+ h:{word:'Weakest',theory:'Weak gravity conjecture (2006)',status:'open',
+  abs:'Take the gravity–charge hierarchy and add quanta. Conjecture: in any consistent quantum gravity, gravity must be the weakest force.',
+  spec:['Arkani-Hamed, Motl, Nicolis, Vafa (2006)','Unproven; part of the "swampland" program']}
+}
+};
+
+// Groups. k: std = standard physics, reading = my interpretation, unknown = nobody knows, none = not looked up / no standard group
+const U=(n)=>({s:'?',f:'Unknown',n,k:'unknown'}), N=(n)=>({s:'…',f:'Not looked up',n:n||'No standard group that I can state with confidence. Worth researching.',k:'none'});
+const G2={
+'c|h':{s:'Poincaré',f:'Poincaré group ISO(3,1)',n:'Wigner (1939): every elementary particle is an irreducible representation of the Poincaré group, labeled by mass and spin.',k:'std'},
+'h|c':{s:'SL(2,ℂ)',f:'SL(2,ℂ), double cover of the Lorentz group',n:'Spin ½ and Dirac spinors are its representations. Starting from quanta forces the double cover.',k:'std'},
+'c|G':{s:'Diff',f:'Diff(M), diffeomorphisms',n:'General covariance: physics is the same in every coordinate system.',k:'std'},
+'G|c':{s:'Diff',f:'Diff(M), diffeomorphisms',n:'The gauge symmetry of a massless spin-2 field, completed, becomes the full diffeomorphism group.',k:'std'},
+'c|kB':{s:'SO(3,1)?',f:'Lorentz group SO(3,1), representation disputed',n:'The group is known. Which representation temperature carries under it is exactly the 100-year dispute.',k:'reading'},
+'kB|c':{s:'SO(4,2)',f:'Conformal group SO(4,2)',n:'Maxwell\'s equations are conformally invariant (Bateman, Cunningham 1909–10). With no length scale available, the spectrum can only grow like ν², and it diverges. ħ supplies the missing scale.',k:'reading'},
+'h|G':U('No accepted symmetry group for quantum matter coupled to gravity.'),
+'G|h':U('No accepted symmetry group for quantized gravity.'),
+'h|kB':{s:'S_N',f:'Permutation group S_N',n:'Bosons carry the symmetric representation, fermions the antisymmetric one. A finite group, like A5, which sits inside S5.',k:'std'},
+'kB|h':N(),
+'G|kB':N(),'kB|G':N(),
+'c|ke':{s:'U(1)×P',f:'U(1) gauge × Poincaré',n:'Gauge symmetry plus spacetime symmetry. Maxwell\'s equations are even conformally invariant, SO(4,2).',k:'std'},
+'ke|c':{s:'SO(3,1)',f:'Lorentz group SO(3,1)',n:'Boosts mix E and B: they are one object, the field tensor.',k:'std'},
+'h|ke':{s:'SO(4)',f:'SO(4), hidden symmetry of hydrogen',n:'Pauli (1926) and Fock (1935): a hidden SO(4) explains why levels such as 2s and 2p have the same energy.',k:'std'},
+'ke|h':{s:'SO(4)',f:'SO(4), hidden symmetry of hydrogen',n:'Same group. Its representations start at n = 1, so there is a lowest level.',k:'std'},
+'G|ke':{s:'SO(4)',f:'SO(4), hidden symmetry of 1/r² forces',n:'Gravity and Coulomb are both 1/r², so they share the same hidden SO(4) (Laplace–Runge–Lenz vector). Group theory cannot see the 10³⁶; only the number tells them apart.',k:'std'},
+'ke|G':{s:'SO(4)',f:'SO(4), hidden symmetry of 1/r² forces',n:'Same as the reverse cell: same group, different strength.',k:'std'},
+'kB|ke':N(),'ke|kB':N()
+};
+const G3={
+'c,h,G|G':{s:'Diff',f:'Diff(M) only',n:'No global Poincaré symmetry is left, so different observers disagree on what a particle is.',k:'std'},
+'c,h,G|h':U('No accepted symmetry group for quantum spacetime.'),
+'c,h,G|c':U('Candidates: a deformed Poincaré group (κ-Poincaré, a "quantum group") in doubly special relativity. Unconfirmed.'),
+'c,h,kB|kB':{s:'SO(1,1)',f:'SO(1,1), Lorentz boosts',n:'Bisognano–Wichmann theorem (1975): for an accelerating observer the vacuum is thermal, and the heat bath\'s "time" is the boost.',k:'std'},
+'c,h,kB|h':{s:'ℝ⁺',f:'ℝ⁺ scaling group',n:'Planck\'s law is unchanged under ν → λν, T → λT (with u → λ³u). That is Wien\'s displacement law.',k:'std'},
+'c,h,kB|c':{s:'ISO(2)',f:'ISO(2), Wigner little group for massless particles',n:'Explains why light has only two polarizations.',k:'std'},
+'c,h,ke|ke':{s:'U(1)',f:'U(1) gauge group',n:'Gauge group of electromagnetism. Charge conservation follows by Noether\'s theorem.',k:'std'},
+'c,h,ke|h':{s:'RG',f:'Renormalization "group"',n:'Despite the name, only a semigroup: you can zoom out but not uniquely back in.',k:'std'},
+'c,h,ke|c':{s:'SO(3)',f:'SO(3), left after SO(4) breaks',n:'Relativity breaks hydrogen\'s hidden SO(4) and splits the levels. Ordinary rotations survive.',k:'std'},
+'c,G,kB|kB':{s:'ℝ',f:'ℝ, time translations (timelike Killing symmetry)',n:'Requires a static spacetime. Without this symmetry, equilibrium temperature is not defined.',k:'std'},
+'c,G,kB|G':{s:'ISO(3)',f:'ISO(3), spatial translations and rotations',n:'A homogeneous, isotropic universe (flat case).',k:'std'},
+'c,G,kB|c':{s:'SO(3)',f:'SO(3), spherical symmetry',n:'Birkhoff\'s theorem: outside any spherical collapse, spacetime is the same Schwarzschild geometry.',k:'std'},
+'c,G,ke|ke':{s:'U(1)×Diff',f:'U(1) gauge × Diff(M)',n:'Charge symmetry plus general covariance.',k:'std'},
+'c,G,ke|G':{s:'Diff',f:'Diff(M)',n:'Equivalence principle: light follows spacetime geometry.',k:'std'},
+'c,G,ke|c':{s:'U(1)⊂5D',f:'U(1) from the circle of a 5th dimension',n:'In 5D, the circle symmetry of the hidden dimension becomes electromagnetism\'s U(1). The math is exact; whether nature works this way is open.',k:'std'},
+'h,kB,ke|ke':{s:'230 sp.',f:'The 230 crystallographic space groups',n:'Classify all crystals. Bloch\'s theorem uses their translations to give electron bands.',k:'std'},
+'h,kB,ke|kB':{s:'Point',f:'Molecular point groups',n:'Water is C₂ᵥ, for example. They decide which transitions and reactions are allowed.',k:'std'},
+'h,kB,ke|h':N(),
+'G,kB,ke|ke':N(),
+'G,kB,ke|kB':{s:'SO(3)',f:'SO(3), spherical symmetry',n:'Spherical symmetry, but as a modeling assumption, not a law of nature.',k:'reading'},
+'G,kB,ke|G':N(),
+'c,kB,ke|ke':N(),
+'c,kB,ke|kB':{s:'SO(4,2)',f:'Conformal group SO(4,2)',n:'Same as the 2D Catastrophe cell: no scale, so the spectrum grows as ν² and diverges.',k:'reading'},
+'c,kB,ke|c':{s:'SO(3,1)',f:'Lorentz group SO(3,1)',n:'The Jüttner distribution is the Lorentz-covariant form of a hot gas.',k:'std'},
+'h,G,kB|kB':U('No accepted group: the underlying collapse theory is unconfirmed.'),
+'h,G,kB|G':{s:'S_N',f:'Permutation group S_N, antisymmetric representation',n:'Electrons are fermions, so Pauli exclusion holds the star up.',k:'std'},
+'h,G,kB|h':{s:'S_N',f:'Permutation group S_N, antisymmetric representation',n:'Same as White dwarf: fermion statistics stops the contraction.',k:'std'},
+'h,G,ke|ke':{s:'SO(4)',f:'SO(4), hidden symmetry of 1/r² forces',n:'A gravitational atom has the same level pattern as hydrogen, just enormously larger.',k:'std'},
+'h,G,ke|G':{s:'Bargmann',f:'Bargmann group (central extension of Galilei)',n:'Mass appears in quantum phases, which is what atom interferometers measure in gravity.',k:'std'},
+'h,G,ke|h':U('No accepted group: the conjecture itself is unproven.')
+};
+const CONF={std:'Standard physics',reading:'My interpretation, not a textbook statement',unknown:'Nobody knows',none:'Not looked up yet'};
+const gspan=g=>`<span class="g ${g.k}">${g.s}</span>`;
+function gbox(g){return `<div class="gbox"><div class="gname">${g.k==='unknown'||g.k==='none'?g.s+' '+g.f:g.f}</div><p>${g.n}</p><div class="conf">${CONF[g.k]}</div></div>`}
+
+// A5 element for ordered triple, with base (c, ħ, G) = identity
+function parity(s){let seen=[],cyc=0;for(let i=0;i<5;i++)if(!seen[i]){cyc++;let j=i;while(!seen[j]){seen[j]=1;j=s[j]}}return (5-cyc)%2}
+function a5(tr){
+ const idx=tr.map(k=>K.indexOf(k)),rest=[0,1,2,3,4].filter(i=>!idx.includes(i));
+ let s=[...idx,rest[0],rest[1]];if(parity(s))s=[...idx,rest[1],rest[0]];
+ let seen=[],cycles=[];
+ for(let i=0;i<5;i++)if(!seen[i]){let c=[],j=i;while(!seen[j]){seen[j]=1;c.push(j);j=s[j]}if(c.length>1)cycles.push(c)}
+ const lens=cycles.map(c=>c.length).sort().join(',');
+ let cls=lens===''?'e':lens==='2,2'?'22':lens==='3'?'3':'5';
+ if(cls==='5'){const a=[0];for(let i=1;i<5;i++)a.push(s[a[i-1]]);cls=parity(a)?'5B':'5A'}
+ const txt=cycles.length?cycles.map(c=>'('+c.map(i=>L[K[i]]).join(' ')+')').join(''):'e';
+ return {cls,txt};
+}
+const key3=tr=>[...tr].sort((a,b)=>K.indexOf(a)-K.indexOf(b)).join(',');
+function cell(tr){const t=key3(tr),d=T[t][tr[2]];return {...d,tri:t,a:a5(tr),grp:G3[t+'|'+tr[2]]}}
+
+
+const CONST={
+c:{word:'Causality',theory:'Special relativity (Einstein, 1905)',status:'base',
+ abstract:'A universal speed limit. Space and time merge into one spacetime, and mass is a form of energy.',
+ specific:['Value: 299,792,458 m/s, exact by definition','<span class="f">E = mc²</span>; moving clocks run slow by γ = 1/√(1 − v²/c²)'],
+ off:'c → ∞ gives Newtonian (Galilean) mechanics.'},
+h:{word:'Quanta',theory:'Quantum mechanics (1925–26)',status:'base',
+ abstract:'Nature comes in discrete packets. Superposition, interference and uncertainty.',
+ specific:['Value: ħ = 1.054571817 × 10⁻³⁴ J·s, exact since 2019','<span class="f">Δx · Δp ≥ ħ/2</span>'],
+ off:'ħ → 0 gives classical mechanics.'},
+G:{word:'Attraction',theory:'Newtonian gravity (1687)',status:'base',
+ abstract:'Every mass attracts every other mass. Alone, G gives a force, not curvature. Curvature only appears when c joins.',
+ specific:['Value: 6.67430 × 10⁻¹¹ m³ kg⁻¹ s⁻²','The least precise constant: known to about 22 parts per million','<span class="f">F = G m₁m₂ / r²</span>'],
+ off:'G → 0 switches gravity off.'},
+kB:{word:'Entropy',theory:'Thermodynamics and statistical mechanics',status:'base',
+ abstract:'Connects temperature to energy and counts hidden microscopic states. The arrow of time lives here.',
+ specific:['Value: 1.380649 × 10⁻²³ J/K, exact since 2019','<span class="f">S = k_B ln W</span> (Boltzmann)','Arguably a unit conversion between kelvin and joules'],
+ off:'k_B → 0 removes thermal fluctuations relative to mechanical energy.'},
+ke:{word:'Charge',theory:'Electrostatics (Coulomb, 1785)',status:'base',
+ abstract:'Charges attract and repel. The force behind chemistry, light and almost everything you touch.',
+ specific:['Value: 8.988 × 10⁹ N·m²/C²','<span class="f">F = k_e q₁q₂ / r²</span>','The unit-free strength is α = k_e e²/(ħc) ≈ 1/137'],
+ off:'k_e → 0 switches electromagnetism off.'}
+};
+
+const C={
+'c|h':{word:'Creation',theory:'Quantum field theory, by quantizing relativistic fields',status:'solved',
+ abstract:'Relativity says energy can become mass. Add quanta, and particles can be created and destroyed: the number of particles is no longer fixed, and fields are the real objects.',
+ specific:['Dirac quantized the electromagnetic field in 1927','QED (Feynman, Schwinger, Tomonaga, 1940s)','The electron\'s magnetic moment matches QED to about 1 part in a trillion, the most precise test in physics'],
+ dir:'Meets the reverse route at the same theory: this pair commutes.'},
+'h|c':{word:'Antimatter',theory:'Relativistic quantum mechanics (Dirac equation, 1928)',status:'solved',
+ abstract:'Start with one quantum particle and demand it obey relativity. The equation forces in spin and negative-energy states, which means antimatter.',
+ specific:['Klein–Gordon equation first gave negative probabilities','Dirac\'s equation predicted the positron, found by Anderson in 1932','The one-particle picture breaks down and forces you to fields'],
+ dir:'Hits an inconsistency on the way, then arrives at the same QFT as the reverse route.'},
+'c|G':{word:'Curvature',theory:'General relativity, Einstein\'s route (1915)',status:'solved',
+ abstract:'Start from spacetime and demand that falling feels like floating (the equivalence principle). Gravity becomes the curvature of spacetime.',
+ specific:['<span class="f">G_μν = (8πG/c⁴) T_μν</span>','Mercury\'s orbit: extra 43″ per century','1919 eclipse light bending; LIGO detected gravitational waves in 2015'],
+ dir:'Meets the reverse route at the same theory.'},
+'G|c':{word:'Waves',theory:'Gravity as a field in flat spacetime → general relativity',status:'solved',
+ abstract:'Start with Newton\'s attraction and demand it travel at speed c. Gravity must be a field that carries waves, and only one kind of field works.',
+ specific:['A scalar version (Nordström, 1913) failed: no light bending','A self-consistent massless spin-2 field rebuilds GR (Gupta, Kraichnan, Feynman, Deser)','Neutron-star merger in 2017: gravity moves at c to about 1 part in 10¹⁵'],
+ dir:'Different route, same endpoint as Einstein\'s.'},
+'c|kB':{word:'Disputed',theory:'Relativistic thermodynamics',status:'disputed',
+ abstract:'Start from relativity, add heat. How hot does a moving body look? Over 100 years later there is still no agreed answer.',
+ specific:['Planck and Einstein (1907): moving body looks cooler, T′ = T/γ','Ott (1963): hotter, T′ = γT','Landsberg (1966): unchanged, T′ = T','Many now say temperature is only defined in the rest frame of the heat bath'],
+ dir:'Asks a different question from the reverse cell: the pair does not commute even as a question.'},
+'kB|c':{word:'Catastrophe',theory:'Classical thermal radiation',status:'broke',
+ abstract:'Start from heat, where every mode gets equal energy, and add light waves moving at c. There are infinitely many high-frequency modes, so the energy is infinite.',
+ specific:['Rayleigh–Jeans: <span class="f">u = 8πν²k_BT / c³</span>, diverges as ν grows','Planck fixed it in 1900 by introducing h: the birth of quantum physics','Planck\'s law needs c, ħ and k_B together'],
+ dir:'Broken cell repaired by a third constant, ħ.'},
+'h|G':{word:'Collapse?',theory:'Gravitizing quantum mechanics (Penrose, Diósi)',status:'open',
+ abstract:'Start from superposition and add gravity. What is the gravitational field of a mass that is in two places at once? Maybe gravity makes such states collapse.',
+ specific:['Penrose: superposition lasts about τ ≈ ħ / E_G, where E_G is the gravitational self-energy of the difference','Schrödinger–Newton equation','Established: neutrons interfere in Earth\'s gravity (1975) and bounce in quantized levels (2002)','Proposed test (2017): can gravity entangle two masses?'],
+ dir:'Has not met the reverse route. This is the open problem.'},
+'G|h':{word:'Graviton?',theory:'Quantizing gravity (graviton, loop quantum gravity)',status:'open',
+ abstract:'Start from gravity and quantize it like every other field. The quantum of gravity would be the graviton, and space itself might be grainy.',
+ specific:['Perturbative quantum GR diverges at two loops (Goroff–Sagnotti, 1986)','Loop quantum gravity predicts discrete areas of about one Planck area','Planck length <span class="f">√(ħG/c³) ≈ 1.6 × 10⁻³⁵ m</span>: needs c too','Nothing measured yet'],
+ dir:'Has not met the reverse route. The honest versions need c as well.'},
+'h|kB':{word:'Condensation',theory:'Quantum statistics (Bose–Einstein, Fermi–Dirac)',status:'solved',
+ abstract:'Start from quantum, add temperature. Identical particles can\'t be told apart, so they count differently: bosons pile into one state, fermions refuse to share.',
+ specific:['Bose–Einstein condensate predicted 1924–25, made in 1995','Fermi–Dirac statistics (1926): metals, white dwarfs, neutron stars'],
+ dir:'Meets the reverse route at quantum statistical mechanics.'},
+'kB|h':{word:'Freeze-out',theory:'Quantum heat capacity (Einstein solid, 1907)',status:'solved',
+ abstract:'Start from thermodynamics, add quanta. At low temperature, motions freeze because there isn\'t enough energy for one quantum. This repaired a classical failure.',
+ specific:['Classical Dulong–Petit law failed for cold solids','Einstein (1907) and Debye (1912) fixed it with quanta','Explains the third law: entropy → 0 at absolute zero'],
+ dir:'Broken classical result repaired by ħ, then meets the reverse route.'},
+'G|kB':{word:'Clumping',theory:'Thermodynamics of self-gravitating systems',status:'solved',
+ abstract:'With gravity, heat runs backwards: a star that loses energy gets hotter. Entropy grows by clumping, the opposite of a gas in a box.',
+ specific:['Virial theorem gives negative heat capacity','Gravothermal catastrophe (Antonov 1962; Lynden-Bell and Wood 1968)','Add c and ħ to reach black-hole thermodynamics: <span class="f">T = ħc³/(8πGMk_B)</span>'],
+ dir:'Same physics in both directions.'},
+'kB|G':{word:'Clumping',theory:'Thermodynamics of self-gravitating systems',status:'solved',
+ abstract:'Start from heat, add gravity: same result as the reverse cell. Gravitating systems have negative heat capacity.',
+ specific:['Bekenstein–Hawking entropy <span class="f">S = k_B c³A/(4Għ)</span> uses four of the five constants'],
+ dir:'Same physics in both directions.'},
+'c|ke':{word:'Light',theory:'Maxwell\'s electrodynamics (1865)',status:'solved',
+ abstract:'Start with a speed limit, add charge. Fields must carry waves, and light is one of them.',
+ specific:['<span class="f">c = 1/√(ε₀μ₀)</span>','Maxwell\'s equations were already relativistic, which is how Einstein found relativity (1905, "On the electrodynamics of moving bodies")','Hidden crack: an orbiting classical electron radiates and spirals in within about 10⁻¹¹ s'],
+ dir:'Meets the reverse route at Maxwell\'s theory.'},
+'ke|c':{word:'Magnetism',theory:'Electrostatics + finite speed',status:'solved',
+ abstract:'Start from Coulomb\'s force, demand it travel at c. Magnetism appears as a relativistic side effect of electric forces.',
+ specific:['Shown in Purcell\'s textbook: a current\'s magnetic force is a length-contraction effect','Classical electron radius <span class="f">r_e = k_e e²/(m_e c²) ≈ 2.8 fm</span>: the point electron\'s energy diverges'],
+ dir:'Different route, same Maxwell theory.'},
+'h|ke':{word:'Atoms',theory:'Quantum atom (Bohr 1913, Schrödinger 1926)',status:'solved',
+ abstract:'Start from quantum, add the Coulomb force. You get atoms with fixed sizes and energy levels, and from them chemistry and Mendeleev\'s table.',
+ specific:['Bohr radius <span class="f">a₀ = ħ²/(k_e m_e e²) ≈ 0.529 Å</span>','Hydrogen levels: −13.6 eV / n²'],
+ dir:'Meets the reverse route.'},
+'ke|h':{word:'Stability',theory:'Quantum repair of the classical atom',status:'solved',
+ abstract:'Start from classical charges, where atoms collapse, and add quanta. The electron has a lowest orbit and can\'t fall further.',
+ specific:['Classical collapse time about 10⁻¹¹ s','Uncertainty forbids pinning the electron onto the nucleus'],
+ dir:'Broken classical result repaired by ħ.'},
+'G|ke':{word:'Hierarchy',theory:'Comparing gravity and electricity',status:'open',
+ abstract:'Put both forces side by side and gravity is absurdly weak. Nobody knows why.',
+ specific:['Two protons: electric/gravity ≈ 1.24 × 10³⁶','Two electrons: ≈ 4.2 × 10⁴²','Dirac\'s large numbers hypothesis (1937)','Weak gravity conjecture (2006): gravity must be the weakest force'],
+ dir:'Same question in both directions.'},
+'ke|G':{word:'Hierarchy',theory:'Comparing gravity and electricity',status:'open',
+ abstract:'Same question from the other side. Why is charge so strong compared with mass?',
+ specific:['Charged black holes (Reissner–Nordström) need c as well'],
+ dir:'Same question in both directions.'},
+'kB|ke':{word:'Screening',theory:'Plasma physics (Debye–Hückel, 1923)',status:'solved',
+ abstract:'Hot charges arrange themselves to cancel each other\'s fields beyond a certain distance.',
+ specific:['Debye length <span class="f">λ_D = √(ε₀k_BT / (ne²))</span>','Most visible matter in the universe is plasma'],
+ dir:'Same physics in both directions.'},
+'ke|kB':{word:'Screening',theory:'Plasma physics',status:'solved',
+ abstract:'Start from charges, add temperature: same result as the reverse cell. Thermal motion and attraction balance into a screening length.',
+ specific:['Also explains electrolytes and salt water'],
+ dir:'Same physics in both directions.'}
+};
+
+
+Object.assign(G2,{
+'c|c':{s:'Poincaré',f:'Poincaré group ISO(3,1)',n:'Translations, rotations and boosts of spacetime.',k:'std'},
+'h|h':{s:'H₃',f:'Heisenberg group H₃',n:'The group behind [x, p] = iħ. Plus the U(1) of the quantum phase.',k:'std'},
+'G|G':{s:'Galilei',f:'Galilei group',n:'Galilean relativity. Any 1/r² orbit problem also has a hidden SO(4), which is why Kepler orbits close.',k:'std'},
+'kB|kB':N('No single standard group. Candidates: contact transformations (the geometry of thermodynamics), or S_N for identical particles.'),
+'ke|ke':{s:'U(1)',f:'U(1) gauge group',n:'Gauge symmetry of charge; charge conservation follows (Noether). Coulomb\'s 1/r² also has a hidden SO(4).',k:'std'}
+});
+ST.base='Constant alone';
+const ROWS=[];K.forEach(a=>K.forEach(b=>{if(a!==b)ROWS.push([a,b])}));
+let layer='l2',view='grid',color='status',sel=null,focus=null,mark2=null,open2=false;
+const $=id=>document.getElementById(id);
+const grid2=$('grid2'),grid3=$('grid3'),sheet=$('sheet'),panel=$('panel'),ctx=$('ctx');
+
+function chip(c,t){return `<span class="chip ${c}">${t}</span>`}
+function cls(d){return color==='status'?d.status:'k-'+d.a.cls}
+function d2(id){const [r,c]=id.split('|');return r===c?CONST[r]:C[id]}
+
+/* ---------- layer switching ---------- */
+function setLayer(l){
+ layer=l;
+ document.querySelectorAll('#layers button').forEach(x=>x.classList.toggle('on',x.dataset.l===l));
+ $('v2').hidden=l!=='l2';$('v3').hidden=l!=='l3';
+ if(l==='l2'){sheet.classList.remove('show');sel=null;render2()}else render3();
+ window.scrollTo({top:0});
+}
+
+/* ---------- 5 × 5 ---------- */
+function render2(){
+ let h='<div class="h corner">start ↓<br>add →</div>'+K.map(k=>`<div class="h hc" data-c="${k}">${L[k]}<small class="nm">${NM[k]}</small></div>`).join('');
+ K.forEach(r=>{
+  h+=`<div class="h hc" data-c="${r}">${L[r]}<small class="nm">${NM[r]}</small></div>`;
+  K.forEach(c=>{const id=r+'|'+c,d=d2(id);
+   h+=`<div class="cell ${r===c?'base':d.status}${mark2===id?' sel':''}" data-id="${id}">${d.word}${gspan(G2[id])}</div>`});
+ });
+ grid2.innerHTML=h;
+}
+grid2.onclick=e=>{
+ const t=e.target.closest('[data-id],[data-c]');if(!t)return;
+ const id=t.dataset.id||(t.dataset.c+'|'+t.dataset.c);
+ goTo3(id);
+};
+function goTo3(id){
+ const [r,c]=id.split('|');
+ focus=r===c?{type:'col',k:r}:{type:'row',a:r,b:c};
+ mark2=id;open2=false;view='grid';
+ document.querySelectorAll('#view button').forEach(x=>x.classList.toggle('on',x.dataset.v==='grid'));
+ setLayer('l3');
+ requestAnimationFrame(()=>{const el=grid3.querySelector('.focus');if(el)el.scrollIntoView({block:'center',behavior:'smooth'})});
+}
+function back2(){setLayer('l2');requestAnimationFrame(()=>{const el=grid2.querySelector('.sel');if(el)el.scrollIntoView({block:'center',behavior:'smooth'})})}
+
+/* ---------- context card (the 5 × 5 cell you came from) ---------- */
+function renderCtx(){
+ if(!focus){ctx.innerHTML='';ctx.hidden=true;return}
+ ctx.hidden=false;
+ const id=focus.type==='row'?focus.a+'|'+focus.b:focus.k+'|'+focus.k,[r,c]=id.split('|'),d=d2(id),g=G2[id];
+ const title=r===c?`${L[r]} alone`:`Start with ${L[r]} → add ${L[c]}`;
+ const hint=r===c?`Highlighted: the ${L[r]} column, every route that adds ${L[r]} third.`:`Highlighted: the ${L[r]}→${L[c]} row, its three ways to add a third constant.`;
+ let more='';
+ if(open2){
+  more=`<div class="sec"><h3>Group</h3>${gbox(g)}</div>
+  <div class="sec"><h3>${r===c?'What it brings':'The idea'}</h3><p>${d.abstract}</p></div>
+  <div class="sec"><h3>Specific</h3><ul>${d.specific.map(s=>`<li>${s}</li>`).join('')}</ul></div>
+  <div class="sec"><h3>${r===c?'Switching it off':'Direction'}</h3><p>${r===c?d.off:d.dir}</p></div>
+  ${r!==c?`<button class="btn" id="rv">Reverse: ${L[c]} → ${L[r]} · ${C[c+'|'+r].word}</button>`:''}`;
+ }
+ ctx.innerHTML=`<div class="ctxtop"><button class="btn sm" id="bk">← 5 × 5</button><span class="path">From the 5 × 5 table</span></div>
+ <p class="path">${title}</p><p class="word">${d.word} <span class="gname sm">${g.s}</span></p><p class="theory">${d.theory}</p>
+ <div class="chips">${chip(r===c?'base':d.status,ST[r===c?'base':d.status])}</div>
+ <p class="hint">${hint}</p>${more}
+ <button class="btn" id="mo">${open2?'Hide details':'Show full details'}</button>`;
+ $('bk').onclick=back2;
+ $('mo').onclick=()=>{open2=!open2;renderCtx()};
+ if($('rv'))$('rv').onclick=()=>goTo3(c+'|'+r);
+}
+
+/* ---------- A5 table ---------- */
+function isFocus(tr){if(!focus)return false;return focus.type==='row'?(tr[0]===focus.a&&tr[1]===focus.b):tr[2]===focus.k}
+function render3(){
+ renderCtx();
+ let h='';const f=!!focus&&view==='grid';
+ if(view==='grid'){
+  grid3.style.gridTemplateColumns='62px repeat(5,minmax(0,1fr))';
+  h+='<div class="h corner">first two ↓<br>then add →</div>'+K.map(k=>`<div class="h hc${focus&&focus.type==='col'&&focus.k===k?' fh':''}" data-col="${k}">${L[k]}<small class="nm">${NM[k]}</small></div>`).join('');
+  ROWS.forEach(([a,b])=>{
+   const fr=focus&&focus.type==='row'&&focus.a===a&&focus.b===b;
+   h+=`<div class="h hc${fr?' fh':''}" data-row="${a}|${b}">${L[a]}→${L[b]}<small>${P[a+'|'+b]}</small></div>`;
+   K.forEach(z=>{
+    if(z===a||z===b){h+=`<div class="cell blank${f?' dim':''}"></div>`;return}
+    const tr=[a,b,z],d=cell(tr),on=isFocus(tr);
+    h+=`<div class="cell ${cls(d)}${on?' focus':''}${f&&!on?' dim':''}" data-t="${tr.join('|')}">${d.word}${gspan(d.grp)}</div>`;
+   });
+  });
+ }else{
+  grid3.style.gridTemplateColumns='62px repeat(6,minmax(0,1fr))';
+  h+='<div class="h corner">triple ↓<br>route →</div>'+['1 2 3','1 3 2','2 1 3','2 3 1','3 1 2','3 2 1'].map(x=>`<div class="h" style="font-size:11px">${x}</div>`).join('');
+  Object.keys(TRI).forEach(t=>{
+   const m=t.split(',');
+   h+=`<div class="h" style="font-size:12px">${m.map(k=>L[k]).join(' ')}</div>`;
+   [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]].forEach(o=>{
+    const tr=o.map(i=>m[i]),d=cell(tr),on=isFocus(tr);
+    h+=`<div class="cell ${cls(d)}${on?' focus':''}" data-t="${tr.join('|')}">${d.word}${gspan(d.grp)}<small>${tr.map(k=>L[k]).join('→')}</small></div>`;
+   });
+  });
+ }
+ grid3.innerHTML=h;legend();markSel();
+}
+function legend(){
+ $('legend').innerHTML='<span style="width:100%"><b>Groups:</b>&nbsp;name = known · <b>?</b> = nobody knows · <b>…</b> = not looked up yet</span>'+(color==='status'
+  ?Object.entries(ST).filter(([k])=>k!=='base').map(([k,v])=>`<span><i class="${k}"></i>${v}</span>`).join('')+'<span><i class="blank"></i>Repeat (skipped)</span><span><i style="border:2px dashed var(--mute)"></i>Same triple</span>'
+  :Object.entries(KN).map(([k,v])=>`<span><i class="k-${k}"></i>${v} · ${KS[k]}</span>`).join(''));
+}
+function markSel(){
+ const st=sel&&key3(sel);
+ grid3.querySelectorAll('.cell[data-t]').forEach(el=>{
+  const tr=el.dataset.t.split('|');
+  el.classList.toggle('sel',!!sel&&el.dataset.t===sel.join('|'));
+  el.classList.toggle('sib',!!sel&&el.dataset.t!==sel.join('|')&&key3(tr)===st);
+ });
+}
+function show(tr){
+ sel=tr;const d=cell(tr),[a,b,z]=tr,tri=TRI[d.tri],m=d.tri.split(','),pg=G2[a+'|'+b];
+ const sibs=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]].map(o=>o.map(i=>m[i]));
+ panel.innerHTML=`<button class="x" id="x" aria-label="Close">×</button>
+ <p class="path">Start with ${L[a]} → add ${L[b]} → then add ${L[z]}</p>
+ <p class="word">${d.word}</p><p class="theory">${d.theory}</p>
+ <div class="chips">${chip(d.status,ST[d.status])}${chip('k-'+d.a.cls,'A5: '+d.a.txt+' · '+KN[d.a.cls])}</div>
+ <div class="sec"><h3>Group</h3>${gbox(d.grp)}</div>
+ <div class="sec"><h3>First two steps (5 × 5 cell)</h3><p>${L[a]} → ${L[b]}: <b>${P[a+'|'+b]}</b>, which reaches ${PT[a+'|'+b]}. Group: <b>${pg.s}</b>.</p>
+ <div class="two"><button class="btn" id="o2">Open ${L[a]}→${L[b]} in 5 × 5</button><button class="btn" id="oz">Open ${L[z]} alone</button></div></div>
+ <div class="sec"><h3>What adding ${L[z]} does</h3><p>${d.abs}</p></div>
+ <div class="sec"><h3>Specific</h3><ul>${d.spec.map(s=>`<li>${s}</li>`).join('')}</ul></div>
+ <div class="sec"><h3>Triple endpoint: ${m.map(k=>L[k]).join(' ')}</h3><p><b>${tri.end}.</b> ${tri.sum}</p></div>
+ <div class="sec"><h3>All 6 routes of this triple</h3><div class="sibs">${sibs.map(s=>{const sd=cell(s);return `<button class="${s.join('|')===tr.join('|')?'me':''}" data-s="${s.join('|')}"><b>${sd.word}</b>${s.map(k=>L[k]).join('→')}</button>`}).join('')}</div></div>`;
+ sheet.classList.add('show');markSel();
+ $('x').onclick=()=>{sheet.classList.remove('show');sel=null;markSel()};
+ $('o2').onclick=()=>{sheet.classList.remove('show');sel=null;mark2=a+'|'+b;back2()};
+ $('oz').onclick=()=>{sheet.classList.remove('show');sel=null;mark2=z+'|'+z;back2()};
+ panel.querySelectorAll('[data-s]').forEach(btn=>btn.onclick=()=>show(btn.dataset.s.split('|')));
+ sheet.scrollTop=0;
+}
+grid3.onclick=e=>{
+ const t=e.target.closest('[data-t]');if(t){show(t.dataset.t.split('|'));return}
+ const rw=e.target.closest('[data-row]');if(rw){goTo3(rw.dataset.row);return}
+ const cl=e.target.closest('[data-col]');if(cl)goTo3(cl.dataset.col+'|'+cl.dataset.col);
+};
+$('layers').onclick=e=>{const b=e.target.closest('button');if(b)setLayer(b.dataset.l)};
+$('view').onclick=e=>{const b=e.target.closest('button');if(!b)return;view=b.dataset.v;e.currentTarget.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));render3()};
+$('color').onclick=e=>{const b=e.target.closest('button');if(!b)return;color=b.dataset.c;e.currentTarget.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));render3()};
+$('clear').onclick=()=>{focus=null;render3()};
+const NM={c:'light',h:'quanta',G:'gravity',kB:'heat',ke:'charge'};
+const INTRO={
+c:{name:'Speed of light',hook:'c for celeritas, Latin for speed',
+ what:'The maximum speed for anything: matter, light, information, even gravity.',
+ why:'It fixes how space and time convert into each other, so cause always comes before effect. E = mc² makes it the exchange rate between mass and energy.',
+ val:'299,792,458 m/s, exact by definition',off:'c → ∞: Newton\'s world, with instant action at a distance.'},
+h:{name:'Reduced Planck constant',hook:'ħ = h/2π, the quantum one',
+ what:'The size of the smallest packet of action. It sets how grainy nature is.',
+ why:'Energy comes in packets (E = ħω), position and momentum can\'t both be sharp, and atoms are stable. Without ħ, atoms would collapse in about 10⁻¹¹ s.',
+ val:'1.054571817 × 10⁻³⁴ J·s, exact since 2019',off:'ħ → 0: the classical world.'},
+G:{name:'Gravitational constant',hook:'G for gravity',
+ what:'The strength of the attraction between masses.',
+ why:'Gravity acts on everything that has energy and can\'t be shielded. It shapes stars, galaxies and the universe. In general relativity, G sets how much matter curves spacetime.',
+ val:'6.67430 × 10⁻¹¹ m³ kg⁻¹ s⁻², the least precise of the five (about 22 ppm)',off:'G → 0: no gravity.'},
+kB:{name:'Boltzmann constant',hook:'B for Boltzmann: the heat one',
+ what:'The exchange rate between temperature and energy. Each way a particle can move carries about k_B T of energy.',
+ why:'It bridges the microscopic world of atoms and the macroscopic world of heat and pressure. Entropy S = k_B ln W counts hidden states, and that is where the arrow of time comes from.',
+ val:'1.380649 × 10⁻²³ J/K, exact since 2019',off:'Arguably a unit conversion: temperature could be measured in joules. That is an open question for this table.'},
+ke:{name:'Coulomb constant',hook:'e for electric: the charge one',
+ what:'The strength of the electric force between charges. Equal to 1/(4πε₀).',
+ why:'It holds atoms and molecules together and powers chemistry and light. Nearly everything you touch is electric.',
+ val:'8.9875517862 × 10⁹ N·m²/C²',off:'Depends on the unit of charge. The unit-free strength is α = k_e e²/(ħc) ≈ 1/137, which already mixes three switches.'}
+};
+$('cards').innerHTML=K.map(k=>{const i=INTRO[k];return `<div class="kc"><div><span class="sym">${L[k]}</span><span class="nm">${i.name}</span><span class="hook">${i.hook}</span></div>
+<p><b>What it is.</b> ${i.what}</p><p><b>Why it's fundamental.</b> ${i.why}</p><p class="val">${i.val}</p><p style="font-size:12.5px;color:var(--mute)">${i.off}</p>
+<button class="btn" data-k="${k}">Its column in the A5 table →</button></div>`}).join('');
+$('cards').onclick=e=>{const b=e.target.closest('[data-k]');if(b)goTo3(b.dataset.k+'|'+b.dataset.k)};
+render2();
+</script>
+</body>
+</html>

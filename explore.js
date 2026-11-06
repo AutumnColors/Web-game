@@ -83,5 +83,12 @@ window.EXPLORE = [
     title: 'Non-simple groups',
     path: 'explore/nonsimple/',
     desc: 'Fourteen groups from C₄ to SL(2,3) as moving solids, mirrors and maps of Z/5. Pick a subgroup, see its cosets color the multiplication table, collapse to G/H, and find where each group splits.'
+  },
+  {
+    id: 'constants-table',
+    badge: 'cħG',
+    title: 'Table of Physical Constants',
+    path: 'explore/constants-table/',
+    desc: 'c, ħ, G, k_B and k_e as switches. A 5 × 5 table of what each pair of constants builds, opening into a 60-cell table of triples, one per element of A₅, each with its symmetry group.'
   }
 ];
