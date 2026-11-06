@@ -34,6 +34,7 @@ explore/
   an-lab/             Aₙ(q) Lab (PSL(n+1, q): family grid, order from the Dynkin diagram, action on PG(n, q), element-order census and comparisons)
   galois/             Galois Workbench (field extensions, S₃ on the roots of x³ − 2, the Galois correspondence, why A₅ blocks the quintic)
   nonsimple/          Non-simple groups (C₄, V₄, D₃, D₄, Q₈, D₅, D₆, A₄, S₄: subgroup lattice, coset-colored Cayley table, quotients, composition series, splitting)
+  constants-table/    Table of Physical Constants (c, ħ, G, k_B, k_e: 5 × 5 pair table linked to the 60-cell A₅ table of triples, with a symmetry group in every cell)
 world/
   index.html          World viewer: one base map, switchable data layers, country panel, ranking
   countries.json      Natural Earth id → ISO-3 code and display name (outlines load from world-atlas on jsDelivr, projected to Equal Earth)
