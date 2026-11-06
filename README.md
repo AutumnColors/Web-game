@@ -43,6 +43,7 @@ sketches/
   corn-cob/           Corn Cob (an ear of corn in its husk: instanced kernels, silk, peeling husk leaves; the original drawing is embedded)
 music/
   sound-of-a5/        Sound of A₅ (60 elements played by a band: irreps 1, 3, 3′, 4, 5 as bass, drums, piano, violin, gamelan; Web Audio, octave clock)
+  sound-of-d4/        Sound of D₄ (the square's 8 symmetries played by a band: irreps 1, 1′, 1″, 1‴, 2; by-class walk by default, every layer's instrument swappable)
 tools/
   chartable_convert.py  Regenerates explore/simple-groups/chartables from CTblLib data files
   j1/build_action.py  Rebuilds J1's 266-point action from Janko's 7×7 matrices over F11 (the generators in explore/j1)
