@@ -7,9 +7,10 @@ Plain static HTML — no build step. Progress (played / best score / cleared) is
 ## Structure
 
 ```
-index.html            landing page (levels, explore, world, sketches, music)
+index.html            landing page (levels, explore, explore › groups, world, sketches, music)
 levels.js             level registry
 explore.js            explore registry (interactive math, no score)
+groups.js             groups registry (group viewers in explore/, shown as Explore › Groups)
 world.js              world registry (map layers)
 sketches.js           sketches registry (drawings rebuilt as 3D models)
 music.js              music registry (groups played as sound)
@@ -30,6 +31,7 @@ explore/
   rubiks-cube/        Vector Cube (Rubik's cube as 54 position/facing/color sticker vectors, one rotation rule)
   j1/                 J1 viewer (the Livingstone graph: 266 vertices built from J1; spin, re-root, random symmetries)
   a5/                 A5 viewer (dodecahedron with its 5 inscribed cubes, icosahedron dual; derive the character table from fixed points)
+  m24/                M₂₄ viewer (24 points moved by α, β, γ, δ on PL(23); fixed points, duads, octads, dodecads, sextets, trios per class; census of the 26 classes; peel the counts into the character table)
   golay/              Golay MOG Lab (binary Golay code on the Miracle Octad Generator: octads, sextets, decoding games, M24 acting on the board)
   an-lab/             Aₙ(q) Lab (PSL(n+1, q): family grid, order from the Dynkin diagram, action on PG(n, q), element-order census and comparisons)
   galois/             Galois Workbench (field extensions, S₃ on the roots of x³ − 2, the Galois correspondence, why A₅ blocks the quintic)
@@ -71,6 +73,11 @@ Minesweeper keeps its own level list in the `LEVELS` array at the top of the scr
 
 1. Create `explore/name/index.html` (self-contained, back link to `../../`).
 2. Add an entry to `explore.js` with a short `badge` (up to ~3 characters).
+
+## Add a group viewer
+
+1. Create `explore/name/index.html` like any explore page.
+2. Add the entry to `groups.js` instead of `explore.js`. It then shows in the Explore › Groups section of the landing page.
 
 ## Add a sketch
 
