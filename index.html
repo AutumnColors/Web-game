@@ -13,6 +13,7 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
 .sec{font-size:1.4rem;margin:40px 0 4px;letter-spacing:.02em}
 .sub{color:var(--muted);margin:0 0 28px}
 .sec+.sub{margin-bottom:16px}
+.subsec{font-size:1.15rem;margin-top:28px;color:var(--accent)}
 .levels{display:grid;gap:12px;list-style:none;padding:0;margin:0}
 .level{display:flex;align-items:center;gap:16px;padding:16px 18px;background:var(--card);border:2px solid var(--line);border-radius:16px;color:inherit;text-decoration:none;transition:transform .12s,border-color .12s,background .12s}
 .level:hover,.level:focus-visible{border-color:var(--accent);background:var(--card2);transform:translateY(-2px);outline:none}
@@ -36,6 +37,9 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
   <h2 class="sec">Explore</h2>
   <p class="sub">Interactive math. No score, just play with it.</p>
   <ul class="levels" id="explore"></ul>
+  <h3 class="sec subsec">Explore › Groups</h3>
+  <p class="sub">Viewers for groups, from the 8 symmetries of a square to M₂₄ and the periodic table of simple groups.</p>
+  <ul class="levels" id="groups"></ul>
   <h2 class="sec">World</h2>
   <p class="sub">One world map, many layers. Tap a country to see its numbers.</p>
   <ul class="levels" id="world"></ul>
@@ -50,6 +54,7 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
 <script src="shared/progress.js"></script>
 <script src="levels.js"></script>
 <script src="explore.js"></script>
+<script src="groups.js"></script>
 <script src="world.js"></script>
 <script src="sketches.js"></script>
 <script src="music.js"></script>
@@ -80,6 +85,9 @@ function render(){
   const ex=document.getElementById('explore');
   ex.replaceChildren();
   (window.EXPLORE||[]).forEach(e=>ex.append(card(e.path,e.badge||'?',' badge',e.title,'','')));
+  const gr=document.getElementById('groups');
+  gr.replaceChildren();
+  (window.GROUPS||[]).forEach(e=>gr.append(card(e.path,e.badge||'?',' badge',e.title,'','')));
   const wo=document.getElementById('world');
   wo.replaceChildren();
   (window.WORLD_LAYERS||[]).forEach(l=>wo.append(card('world/#layer='+l.id,l.badge||'?',' badge',l.title,'','')));
