@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>M₂₄ Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+/* Same paper, ink and type as the A5 viewer. The stage (24 points) sits left and sticky on wide screens;
+   the derivation reads top to bottom beside it. Hues only mark cycles or the parts of a fixed object. */
+:root{
+  --bg:#ECEFF3; --panel:#F7F8FA; --stage:#E1E5EB; --fg:#17202C; --muted:#586374; --line:#C8CFD9; --soft:#DCE1E8;
+  --ok:#22905C; --warn:#D38A0C; --bad:#D0403A; --pt:#F7F8FA;
+  --f-math:"STIX Two Text","Times New Roman",Times,serif;
+  --f-ui:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0F131A; --panel:#151A23; --stage:#0A0D12; --fg:#E3E7EE; --muted:#8D97A7; --line:#283041; --soft:#1C2330;
+    --ok:#47C285; --warn:#F0B03E; --bad:#EE6A61; --pt:#1C2330;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-ui);font-size:15px;line-height:1.5;
+  padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));padding-block:18px 56px}
+.wrap{max-width:1260px;margin:0 auto}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.math{font-family:var(--f-math)}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.back{font:13px var(--f-num);color:var(--muted);text-decoration:none;display:inline-block;margin-bottom:10px}
+.back:hover{color:var(--fg)}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 22px;margin-bottom:18px}
+h1{font-family:var(--f-math);font-weight:600;font-size:clamp(30px,4.4vw,44px);line-height:1.05;margin:0}
+h1 sub{font-size:.6em}
+.lede{color:var(--muted);margin:0;max-width:64ch;text-wrap:pretty}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:32px;align-items:start}
+.stage-col{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px;min-width:0}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr);gap:22px}.stage-col{position:static}}
+
+.stage{position:relative;width:100%;aspect-ratio:1/1;max-height:min(62vh,640px);margin:0 auto;background:var(--stage);border-radius:4px;overflow:hidden}
+.stage svg{display:block;width:100%;height:100%}
+.hud{position:absolute;left:12px;top:10px;pointer-events:none;line-height:1.1}
+.hud .cl{font-family:var(--f-math);font-size:30px;font-weight:600}
+.hud .an{display:block;font-family:var(--f-math);font-size:16px;color:var(--muted);margin-top:2px}
+.hud2{position:absolute;right:12px;top:12px;pointer-events:none;text-align:right;font-size:12px;color:var(--muted);max-width:46%}
+.hint{font-size:12.5px;color:var(--muted);margin-top:-4px;min-height:1.4em}
+
+.seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:none;padding:7px 6px;cursor:pointer;line-height:1.2;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button b{display:block;font-weight:600;font-size:14px}
+.seg button span{font-size:11.5px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.seg button[aria-pressed="true"] span{color:var(--bg);opacity:.75}
+
+.moves{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.mv{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:6px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.15}
+.mv b{font-family:var(--f-math);font-size:22px;font-weight:600}
+.mv span{font-family:var(--f-math);font-size:13px;color:var(--muted);white-space:nowrap}
+.mv.hidden-move{border-style:dashed}
+.mv:active{background:var(--soft)}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:6px 11px;cursor:pointer;font-size:13.5px;white-space:nowrap}
+.btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:500}
+.btn:disabled{opacity:.35;cursor:default}
+.word{font-family:var(--f-math);font-size:16px;color:var(--muted);min-height:1.5em;overflow-wrap:anywhere}
+.word b{color:var(--fg);font-weight:600}
+
+.panel-col{display:flex;flex-direction:column;gap:26px;min-width:0}
+section h2{font-family:var(--f-math);font-style:italic;font-weight:400;font-size:23px;line-height:1.15;margin:0 0 4px}
+section .sub{color:var(--muted);font-size:13.5px;margin:0 0 12px;max-width:64ch;text-wrap:pretty}
+section + section{border-top:1px solid var(--line);padding-top:22px}
+.note{font-size:13.5px;color:var(--muted);margin:10px 0 0;text-wrap:pretty}
+.note b{color:var(--fg);font-weight:600}
+
+/* element card */
+.cycles{display:flex;flex-wrap:wrap;gap:4px 10px;font-family:var(--f-math);font-size:16px;margin-top:6px}
+.cycles .cy{white-space:nowrap}
+.cycles .cy i{font-style:normal;display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:1px}
+.split{margin-top:10px;border-left:2px solid var(--fg);padding:4px 0 4px 10px;font-size:13.5px;text-wrap:pretty}
+
+/* fixed counts */
+.frows{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+.frow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:2px 10px;align-items:center;text-align:left;background:none;border:0;border-top:1px solid var(--soft);padding:9px 10px;cursor:pointer;width:100%}
+.frow:first-child{border-top:0}
+.frow .nm{font-weight:600;font-size:14px;display:block}
+.frow .ct{color:var(--muted);font-size:12.5px;display:block}
+.frow .v{font-family:var(--f-math);font-size:22px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.frow .v small{font-size:13px;color:var(--muted);font-weight:400}
+.frow .nx{font-size:12px;color:var(--muted);min-width:56px;text-align:right}
+.frow[aria-pressed="true"]{background:var(--soft)}
+.frow[aria-pressed="true"] .nm::before{content:"● ";}
+
+/* class grid */
+.picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:5px}
+.cls{position:relative;border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:5px 2px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.cls .cn{font-family:var(--f-math);font-size:18px;font-weight:600}
+.cls .cs{font-family:var(--f-num);font-size:10px;color:var(--muted)}
+.cls .bar{position:absolute;left:0;bottom:0;height:3px;background:var(--ok);border-radius:0 0 0 3px;max-width:100%}
+.cls[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.cls[aria-pressed="true"] .cs{color:var(--bg);opacity:.75}
+.cinfo{margin-top:10px;font-size:13.5px}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--panel);-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.cen{width:100%;font-size:13px}
+table.cen th,table.cen td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--soft);white-space:nowrap}
+table.cen th:first-child,table.cen td:first-child{text-align:left;font-family:var(--f-math);font-size:15px;font-weight:600}
+table.cen thead th{font-weight:500;color:var(--muted);font-size:11.5px}
+table.cen td.sh{text-align:left;font-family:var(--f-math);font-size:14px}
+table.cen td.dev{color:var(--muted)}
+table.cen tr.cur td{background:var(--soft)}
+
+/* builder */
+.prog{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:3px;margin-bottom:10px}
+.pc{border:1px solid var(--line);border-radius:3px;text-align:center;font-family:var(--f-num);font-size:9.5px;padding:3px 0;color:var(--muted);overflow:hidden}
+.pc.f{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.pc.p{background:var(--soft);color:var(--fg);border-color:var(--fg);border-style:dashed}
+.score{font-family:var(--f-math);font-size:18px;margin:0 0 8px}
+.score b{font-weight:600}
+.rows{display:flex;flex-direction:column;gap:6px}
+.wr{border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+.wr.sel{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
+.wr .hd{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 9px;cursor:pointer;width:100%;background:none;border:0;text-align:left}
+.wr .sl{font-family:var(--f-num);font-size:11px;min-width:20px;height:20px;border-radius:3px;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted)}
+.wr.sel .sl{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.wr .t{font-size:13.5px;font-weight:600;display:block;overflow-wrap:anywhere}
+.wr .r{font-size:12px;color:var(--muted);display:block;overflow-wrap:anywhere}
+.wr .st{font-size:12px;text-align:right;white-space:nowrap}
+.st .irr{color:var(--ok);font-weight:600}
+.st .pair{color:var(--warn);font-weight:600}
+.st .n{color:var(--muted)}
+.wr .vals{padding:0 9px 9px}
+.mini{font-size:12.5px}
+.mini th,.mini td{padding:3px 7px;text-align:center;border-bottom:1px solid var(--soft);white-space:nowrap}
+.mini th{font-family:var(--f-math);font-weight:600;font-size:13px}
+.mini td{font-family:var(--f-math);font-size:14px}
+.dec{font-size:12.5px;color:var(--muted);margin-top:6px;overflow-wrap:anywhere}
+.dec b{color:var(--fg)}
+.acts{position:sticky;bottom:0;z-index:3;background:var(--bg);padding:8px 0 calc(6px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;border-top:1px solid var(--line);margin-top:8px}
+.acts .btn{padding:6px 4px;font-size:13px}
+.msg{font-size:13.5px;min-height:1.4em;margin:6px 0 0}
+.msg.ok{color:var(--ok)} .msg.bad{color:var(--bad)}
+
+/* character table */
+table.ct{font-size:13px}
+table.ct th,table.ct td{padding:4px 7px;text-align:center;border-bottom:1px solid var(--soft);white-space:nowrap}
+table.ct thead th{font-family:var(--f-math);font-weight:600;font-size:14px;position:sticky;top:0;background:var(--panel)}
+table.ct thead tr.cz th{font-family:var(--f-num);font-weight:400;font-size:10px;color:var(--muted)}
+table.ct tbody th{position:sticky;left:0;background:var(--panel);text-align:left;font-family:var(--f-math);font-weight:600;font-size:14px;z-index:1;border-right:1px solid var(--soft)}
+table.ct td{font-family:var(--f-math);font-size:14px;cursor:pointer}
+table.ct tr.unk td{color:var(--muted);opacity:.35}
+table.ct tr.pr th{color:var(--warn)}
+table.ct td.cur,table.ct th.cur{background:var(--soft)}
+table.ct td.pick{outline:2px solid var(--fg);outline-offset:-2px}
+.cell{margin-top:8px;font-size:13.5px;min-height:1.4em}
+.cell .math{font-size:17px}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../../">← Back</a>
+  <header>
+    <h1>M<sub>24</sub> Viewer</h1>
+    <p class="lede">244,823,040 ways to shuffle 24 points that keep the Golay code intact. Four moves make all of them. Count what each one leaves in place, and the counts build the character table.</p>
+  </header>
+
+  <div class="grid">
+    <div class="stage-col">
+      <div class="stage" id="stage">
+        <svg id="sv" viewBox="-1 -1 2 2" aria-label="The 24 points and the current symmetry drawn as arrows"></svg>
+        <div class="hud"><span class="cl" id="hudCl">1A</span><span class="an" id="hudAn">1²⁴</span></div>
+        <div class="hud2" id="hud2"></div>
+      </div>
+      <div class="hint" id="hint"></div>
+      <div class="seg" role="group" aria-label="Layout">
+        <button data-lay="ring" aria-pressed="true"><b>Ring</b><span>0…22 around, ∞ in the middle</span></button>
+        <button data-lay="mog" aria-pressed="false"><b>MOG</b><span>Curtis's 4 × 6 board</span></button>
+      </div>
+      <div class="moves" id="moves">
+        <button class="mv" data-m="alpha"><b>α</b><span>x ↦ x+1</span></button>
+        <button class="mv" data-m="beta"><b>β</b><span>x ↦ 2x</span></button>
+        <button class="mv" data-m="gamma"><b>γ</b><span>x ↦ −1/x</span></button>
+        <button class="mv hidden-move" data-m="delta"><b>δ</b><span>x³/9 · 9x³</span></button>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="play">Play g</button>
+        <button class="btn" id="rand">Random element</button>
+        <button class="btn" id="sq">g²</button>
+        <button class="btn" id="reset">Identity</button>
+      </div>
+      <div class="word" id="word"></div>
+    </div>
+
+    <div class="panel-col">
+      <section>
+        <h2>Four moves</h2>
+        <p class="sub">The points are ∞ and the numbers 0 to 22, counted mod 23. Each tap multiplies the current symmetry <span class="math">g</span> by one move. α, β and γ are fractional maps <span class="math">x ↦ (ax+b)/(cx+d)</span>; together they make PSL(2, 23), only 6,072 symmetries. δ is Conway's move: cube <span class="math">x</span>, then divide by 9 if <span class="math">x</span> is a nonzero square mod 23, multiply by 9 if it isn't. Add δ and the four moves make every one of the 244,823,040.</p>
+        <div id="elcard"></div>
+      </section>
+
+      <section>
+        <h2>Count what stays put</h2>
+        <p class="sub">Seven kinds of object live on the 24 points. Each count below is how many of them <span class="math">g</span> sends to themselves. Tap a row to see one on the board, tap again for the next, then press Play: the colours travel and land back in the same pattern.</p>
+        <div class="frows" id="frows"></div>
+        <p class="note">Every element of a class gives the same seven counts, so a count is a function on the 26 classes. Functions like this are characters.</p>
+      </section>
+
+      <section>
+        <h2>26 classes</h2>
+        <p class="sub">Elements that are the same move seen from a different start form a conjugacy class. Tap one to load a random member. The census draws random symmetries and sorts them; each class should turn up in proportion 1/|C(g)|.</p>
+        <div class="picker" id="picker"></div>
+        <div class="row" style="margin-top:10px"><button class="btn primary" id="census">Census of 10,000</button><button class="btn" id="cenTable">Show table</button><span class="note" id="cenNote" style="margin:0"></span></div>
+        <div class="tbl-wrap" id="cenWrap" hidden style="margin-top:10px"><table class="cen" id="cenT"></table></div>
+      </section>
+
+      <section>
+        <h2>Build the character table</h2>
+        <p class="sub">Each count row is a character. Peel strips off every irreducible you already know; when what remains has norm ⟨χ, χ⟩ = 1, it is a new irreducible. Start with Fixed points → Peel. Later, multiply characters you have found (×, ∧², S²) and peel the result.</p>
+        <div class="prog" id="prog"></div>
+        <p class="score" id="score"></p>
+        <div class="rows" id="rows"></div>
+        <div class="acts">
+          <button class="btn primary" id="aPeel">Peel</button>
+          <button class="btn" id="aMul">A × B</button>
+          <button class="btn" id="aSub">A − B</button>
+          <button class="btn" id="aWedge">∧² A</button>
+          <button class="btn" id="aSym">S² A</button>
+          <button class="btn" id="aDel">Remove</button>
+          <button class="btn" id="aAuto">Auto-build</button>
+        </div>
+        <p class="msg" id="msg"></p>
+      </section>
+
+      <section>
+        <h2>The table</h2>
+        <p class="sub">Rows you have found are dark; the rest stay faint until you find them. The current class is shaded. Tap a cell for its exact value.</p>
+        <div class="tbl-wrap"><table class="ct" id="ct"></table></div>
+        <div class="cell" id="cell"></div>
+        <p class="note">Counting only ever produces whole numbers, so it reaches the 16 rational characters and the five complex pairs only as sums (45a+45b, 231a+231b, 770a+770b, 990a+990b, 1035b+1035c). Splitting a pair takes √−7, √−15 or √−23: the same information that tells 7A from 7B, 15A from 15B and 23A from 23B, and no count can see it. The Golay code over 𝔽₂ can, which is how this page names those classes.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+// Generators on PL(23) (index 23 = ∞), one short word (and power) per class, the Golay code basis, and each point's MOG cell.
+// The character table is read from ../simple-groups/chartables/M24.json.
+const DATA={"gens":{"alpha":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,0,23],"beta":[0,2,4,6,8,10,12,14,16,18,20,22,1,3,5,7,9,11,13,15,17,19,21,23],"gamma":[23,22,11,15,17,9,19,13,20,5,16,2,21,7,18,3,10,4,14,6,8,12,1,0],"delta":[0,18,6,3,2,21,1,5,16,12,7,19,8,9,17,15,13,11,4,22,10,20,14,23]},"words":[["c",2],["ad",3],["c",1],["ad",2],["ac",1],["aacddd",1],["abad",2],["abc",1],["d",1],["ad",1],["aaac",2],["aad",1],["acdd",1],["abad",1],["cd",1],["b",1],["aadbac",1],["aaac",1],["abd",1],["abacd",1],["adb",1],["aaabd",1],["abcdd",1],["abcadd",1],["a",1],["aac",1]],"basis":[8391797,4377555,2358342,1179171,681662,340831,145176,84464,42232,18147,10558,5279],"mog":[1,2,3,4,8,5,19,16,14,23,20,15,12,9,6,22,10,7,13,18,21,17,11,0]};
+(async()=>{
+'use strict';
+let CT;
+try{CT=await fetch('../simple-groups/chartables/M24.json').then(r=>{if(!r.ok)throw 0;return r.json();});}
+catch(e){document.querySelector('.lede').textContent='The character table did not load. Open this page through the site (or a local server) so it can read ../simple-groups/chartables/M24.json.';return;}
+DATA.classes=CT.classes.map(c=>[c.name,Number(c.cent)]);DATA.chars=CT.chars;DATA.labels=CT.labels;DATA.ind=CT.ind;DATA.bases=CT.bases;DATA.order=Number(CT.order);
+const $=s=>document.querySelector(s);
+const INF=23, ID=Array.from({length:24},(_,i)=>i);
+const lab=x=>x===INF?'∞':String(x);
+const mul=(a,b)=>a.map(x=>b[x]);               // first a, then b
+const inv=a=>{const r=new Array(24);a.forEach((y,x)=>r[y]=x);return r;};
+const ppow=(g,k)=>{let r=ID,b=g;while(k>0){if(k&1)r=mul(r,b);b=mul(b,b);k>>=1;}return r;};
+const eq=(a,b)=>a.every((x,i)=>x===b[i]);
+const rint=n=>Math.floor(Math.random()*n);
+const fmt=n=>n.toLocaleString('en-US');
+const SUP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+const sup=n=>String(n).split('').map(c=>SUP[c]).join('');
+const G=DATA.gens, CN=DATA.classes.map(c=>c[0]), CENT=DATA.classes.map(c=>c[1]), ORDER=DATA.order;
+const GL={a:DATA.gens.alpha,b:DATA.gens.beta,c:DATA.gens.gamma,d:DATA.gens.delta};
+const NC=26;
+
+// ---------- permutations ----------
+function cycles(g){const seen=new Array(24).fill(false),cs=[];for(let x=0;x<24;x++){if(seen[x])continue;const c=[];let y=x;while(!seen[y]){seen[y]=true;c.push(y);y=g[y];}cs.push(c);}return cs;}
+function shapeOf(g){const m={};for(const c of cycles(g))m[c.length]=(m[c.length]||0)+1;return Object.keys(m).map(Number).sort((a,b)=>a-b).map(k=>[k,m[k]]);}
+const shapeKey=g=>shapeOf(g).map(([k,m])=>k+':'+m).join(',');
+const shapeStr=sh=>sh.map(([k,m])=>k+(m>1?sup(m):'')).join(' ');
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+const orderOf=g=>cycles(g).reduce((o,c)=>o/gcd(o,c.length)*c.length,1);
+
+// ---------- Golay code over F2 ----------
+const BASIS=DATA.basis;
+const applyM=(g,m)=>{let r=0;for(let x=0;x<24;x++)if(m>>>x&1)r|=1<<g[x];return r;};
+const pc=x=>{x=x-((x>>>1)&0x55555555);x=(x&0x33333333)+((x>>>2)&0x33333333);return(((x+(x>>>4))&0x0F0F0F0F)*0x01010101)>>>24;};
+function rank(vs){const rows=[];for(let v of vs){for(const r of rows)if(v&(r&-r))v^=r;if(v){for(let i=0;i<rows.length;i++)if(rows[i]&(v&-v))rows[i]^=v;rows.push(v);}}return rows.length;}
+function kerdim(h,exps){const P=exps.map(e=>ppow(h,e));return 12-rank(BASIS.map(b=>P.reduce((s,p)=>s^applyM(p,b),0)));}
+const F7A=[3,1,0], F15A=[4,1,0], F23A=[11,9,7,6,5,1,0];
+const WORDS=[0];for(const b of BASIS){const n=WORDS.length;for(let i=0;i<n;i++)WORDS.push(WORDS[i]^b);}
+const FULL=(1<<24)-1;
+const OCTADS=WORDS.filter(w=>pc(w)===8), DODECADS=WORDS.filter(w=>pc(w)===12);
+const bitsOf=m=>{const a=[];for(let i=0;i<24;i++)if(m>>>i&1)a.push(i);return a;};
+// sextets: a tetrad plus the five tetrads that complete it to an octad
+const T4=new Map();
+for(const o of OCTADS){const b=bitsOf(o);for(let i=0;i<8;i++)for(let j=i+1;j<8;j++)for(let k=j+1;k<8;k++)for(let l=k+1;l<8;l++){const t=(1<<b[i])|(1<<b[j])|(1<<b[k])|(1<<b[l]);if(!T4.has(t))T4.set(t,[]);T4.get(t).push(o);}}
+const SEXTETS=[],seenS=new Set();
+for(const [t,os] of T4){const parts=[t,...os.map(o=>o^t)].sort((a,b)=>a-b);const key=parts.join(',');if(!seenS.has(key)){seenS.add(key);SEXTETS.push(parts);}}
+const TRIOS=[],seenT=new Set();
+for(let i=0;i<OCTADS.length;i++){const o=OCTADS[i];for(let j=i+1;j<OCTADS.length;j++){const p=OCTADS[j];if(o&p)continue;const parts=[o,p,FULL^o^p].sort((a,b)=>a-b);const key=parts.join(',');if(!seenT.has(key)){seenT.add(key);TRIOS.push(parts);}}}
+const DPAIRS=DODECADS.filter(d=>d<(FULL^d)).map(d=>[d,FULL^d]);
+const DUADS=[];for(let i=0;i<24;i++)for(let j=i+1;j<24;j++)DUADS.push((1<<i)|(1<<j));
+const POINTS=ID.map(i=>1<<i);
+const KINDS=[
+  {id:'points',  name:'Fixed points',  ct:'24 points',                         list:POINTS,  part:false},
+  {id:'duads',   name:'Duads',         ct:'276 pairs of points',               list:DUADS,   part:false},
+  {id:'octads',  name:'Octads',        ct:'759 eight-point codewords',         list:OCTADS,  part:false},
+  {id:'dodecads',name:'Dodecads',      ct:'2,576 twelve-point codewords',      list:DODECADS,part:false},
+  {id:'dpairs',  name:'Dodecad pairs', ct:'1,288 dodecads with their complements',list:DPAIRS,part:true},
+  {id:'sextets', name:'Sextets',       ct:'1,771 splits into 6 tetrads',       list:SEXTETS, part:true},
+  {id:'trios',   name:'Trios',         ct:'3,795 splits into 3 octads',        list:TRIOS,   part:true},
+];
+function fixedOf(g,K){const out=[];if(!K.part){for(const m of K.list)if(applyM(g,m)===m)out.push(m);}else{for(const P of K.list){let ok=true;for(const m of P){if(!P.includes(applyM(g,m))){ok=false;break;}}if(ok)out.push(P);}}return out;}
+function countFixed(g,K){let n=0;if(!K.part){for(const m of K.list)if(applyM(g,m)===m)n++;}else{for(const P of K.list){let ok=true;for(const m of P){if(!P.includes(applyM(g,m))){ok=false;break;}}if(ok)n++;}}return n;}
+
+// ---------- classes ----------
+const SHAPE2CLASS=new Map();
+const REPS=DATA.words.map(([w,k])=>ppow([...w].reduce((g,ch)=>mul(g,GL[ch]),ID),k));
+REPS.forEach((r,i)=>{const k=shapeKey(r);if(!SHAPE2CLASS.has(k))SHAPE2CLASS.set(k,[]);SHAPE2CLASS.get(k).push(i);});
+function splitInfo(g){
+  const o=orderOf(g);
+  if(o===7||o===14||o===21){const h=ppow(g,o/7);const k=kerdim(h,F7A);const a=k===6;return{fam:7,h:o/7,k,poly:'g³ + g + 1',A:o===21?!a:a};}
+  if(o===15){const k=kerdim(g,F15A);return{fam:15,h:1,k,poly:'g⁴ + g + 1',A:k===4};}
+  if(o===23){const k=kerdim(g,F23A);return{fam:23,h:1,k,poly:'g¹¹ + g⁹ + g⁷ + g⁶ + g⁵ + g + 1',A:k===11};}
+  return null;
+}
+function classify(g){
+  const c=SHAPE2CLASS.get(shapeKey(g));
+  if(c.length===1)return c[0];
+  const s=splitInfo(g);
+  return s.A?c[0]:c[1];
+}
+const SIZE=CENT.map(c=>ORDER/c);
+// precomputed per class: counts of every kind
+const FIX=KINDS.map(K=>REPS.map(r=>countFixed(r,K)));
+
+// Schreier–Sims: a base and one coset representative per point of each basic orbit
+const TRANS=(()=>{
+  const key=p=>p.join(',');
+  const orbitT=(gens,b)=>{const T=new Map([[b,ID]]),q=[b];while(q.length){const x=q.pop();for(const g of gens){const y=g[x];if(!T.has(y)){T.set(y,mul(T.get(x),g));q.push(y);}}}return T;};
+  const moved=(g,base)=>{for(let x=0;x<24;x++)if(g[x]!==x&&!base.includes(x))return x;return -1;};
+  const isId=g=>g.every((y,x)=>y===x);
+  const gens=Object.values(DATA.gens);
+  const base=[moved(gens[0],[])],S=[gens.slice()],T=[orbitT(gens,base[0])];
+  let changed=true;
+  while(changed){
+    changed=false;
+    for(let lvl=base.length-1;lvl>=0&&!changed;lvl--){
+      for(const u of [...T[lvl].values()]){
+        for(const s of S[lvl]){
+          const us=mul(u,s);let h=mul(us,inv(T[lvl].get(us[base[lvl]])));
+          if(isId(h))continue;
+          let j=lvl+1;
+          for(;;){
+            if(j===base.length){if(isId(h))break;base.push(moved(h,base));S.push([]);T.push(new Map([[base[base.length-1],ID]]));}
+            const y=h[base[j]];if(!T[j].has(y))break;
+            h=mul(h,inv(T[j].get(y)));j++;
+          }
+          if(!isId(h)){for(let k=lvl+1;k<=j;k++){S[k].push(h);T[k]=orbitT(S[k],base[k]);}changed=true;break;}
+        }
+        if(changed)break;
+      }
+    }
+  }
+  return T.map(t=>[...t.values()]);
+})();
+// uniform random element: one random coset representative from each level of the chain
+function randomElement(){let g=ID;for(let i=TRANS.length-1;i>=0;i--){const T=TRANS[i];g=mul(g,T[rint(T.length)]);}return g;}
+
+// ---------- characters (complex numbers as [re, im]) ----------
+const LBL=DATA.labels;
+const cval=v=>typeof v==='number'?[v,0]:LBL[v].slice();
+const CHARS=DATA.chars.map(r=>r.map(cval));
+const DEG=CHARS.map(r=>r[0][0]);
+const CHNAME=(()=>{const seen={};return DEG.map(d=>{seen[d]=(seen[d]||0)+1;return d+'abc'[seen[d]-1];});})();
+const RATIONAL=DATA.ind.map(x=>x!=='o');
+const PAIR_OF=CHARS.map((_,i)=>{if(RATIONAL[i])return -1;for(let j=0;j<NC;j++)if(j!==i&&!RATIONAL[j]&&DEG[j]===DEG[i]&&CHARS[j].every((z,k)=>Math.abs(z[0]-CHARS[i][k][0])<1e-6&&Math.abs(z[1]+CHARS[i][k][1])<1e-6))return j;return -1;});
+const SQ=REPS.map(r=>classify(ppow(r,2)));
+const W=CENT.map(c=>1/c);
+function ip(a,b){let re=0,im=0;for(let k=0;k<NC;k++){const [x,y]=a[k],[u,v]=b[k];re+=(x*u+y*v)*W[k];im+=(y*u-x*v)*W[k];}return[re,im];}
+const nrm=a=>ip(a,a)[0];
+const vmul=(a,b)=>a.map(([x,y],k)=>[x*b[k][0]-y*b[k][1],x*b[k][1]+y*b[k][0]]);
+const vsub=(a,b,m=1)=>a.map(([x,y],k)=>[x-m*b[k][0],y-m*b[k][1]]);
+const vneg=a=>a.map(([x,y])=>[-x,-y]);
+const wedge=a=>a.map(([x,y],k)=>{const s=a[SQ[k]];return[(x*x-y*y-s[0])/2,(2*x*y-s[1])/2];});
+const sym2=a=>a.map(([x,y],k)=>{const s=a[SQ[k]];return[(x*x-y*y+s[0])/2,(2*x*y+s[1])/2];});
+const ri=x=>Math.round(x);
+const isZero=a=>a.every(([x,y])=>Math.abs(x)<1e-6&&Math.abs(y)<1e-6);
+// a pair sum χ + χ̄
+const PAIRSUM=i=>CHARS[i].map((z,k)=>[z[0]+CHARS[PAIR_OF[i]][k][0],0]);
+
+// ---------- state ----------
+const S={g:ID,word:[],lay:'ring',kind:-1,kidx:0,fixedList:[],anim:null,census:null,showCen:false,
+  found:new Set([0]),pairs:new Set(),rows:[],sel:[],open:new Set(),pickCell:null,msg:'',msgCls:''};
+let rowId=0;
+
+// ---------- stage ----------
+const sv=$('#sv');
+const NS='http://www.w3.org/2000/svg';
+const el=(t,a={})=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+const CYC=['#D0403A','#D38A0C','#22905C','#2B67CF','#8445C9','#C23C86','#178F95','#7E8C14','#B5642A','#4F5BD5','#2E8B57','#9C4F96'];
+const PARTC=['#D0403A','#2B67CF','#22905C','#D38A0C','#8445C9','#178F95'];
+function posRing(x){if(x===INF)return[0,0];const t=-Math.PI/2+2*Math.PI*x/23;return[.80*Math.cos(t),.80*Math.sin(t)];}
+function posMog(x){const i=DATA.mog[x],c=Math.floor(i/4),r=i%4;const brick=Math.floor(c/2);return[-.80+c*.29+brick*.07,-.45+r*.30];}
+const pos=x=>S.lay==='ring'?posRing(x):posMog(x);
+function ctrl(a,b,bend){const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2,dx=b[0]-a[0],dy=b[1]-a[1];return[mx-dy*bend,my+dx*bend];}
+const BEND=.16;
+function qb(a,c,b,t){const u=1-t;return[u*u*a[0]+2*u*t*c[0]+t*t*b[0],u*u*a[1]+2*u*t*c[1]+t*t*b[1]];}
+const dark=()=>matchMedia('(prefers-color-scheme: dark)').matches;
+const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+let ptNodes=[];
+function draw(){
+  sv.innerHTML='';
+  const fg=cssv('--fg'),muted=cssv('--muted'),pt=cssv('--pt'),line=cssv('--line');
+  const defs=el('defs');sv.appendChild(defs);
+  const mk=(id,col)=>{const m=el('marker',{id,viewBox:'0 0 10 10',refX:'9',refY:'5',markerWidth:'5',markerHeight:'5',orient:'auto-start-reverse',markerUnits:'strokeWidth'});m.appendChild(el('path',{d:'M0,1 L10,5 L0,9 z',fill:col}));defs.appendChild(m);};
+  CYC.forEach((c,i)=>mk('ar'+i,c));mk('arG',muted);
+  // MOG grid backdrop
+  if(S.lay==='mog'){
+    for(let b=0;b<3;b++){const x0=-.80+b*2*.29+b*.07-.13;sv.appendChild(el('rect',{x:x0,y:-.60,width:.29+.26,height:1.20,fill:'none',stroke:line,'stroke-width':.006,rx:.02}));}
+    ['0','1','ω','ω̄'].forEach((s,r)=>{const t=el('text',{x:-.95,y:-.45+r*.30+.02,'font-size':.06,fill:muted,'text-anchor':'middle','font-family':'STIX Two Text,serif'});t.textContent=s;sv.appendChild(t);});
+  } else {
+    sv.appendChild(el('circle',{cx:0,cy:0,r:.80,fill:'none',stroke:line,'stroke-width':.004}));
+  }
+  const hl=highlightMap();
+  const cs=cycles(S.g).filter(c=>c.length>1);
+  const grey=hl!==null;
+  cs.forEach((c,ci)=>{
+    const col=grey?muted:CYC[ci%CYC.length];
+    for(const x of c){
+      const a=pos(x),b=pos(S.g[x]);const cc=ctrl(a,b,BEND);
+      // shorten the end so the arrow stops at the dot
+      const end=qb(a,cc,b,.90),start=qb(a,cc,b,.08);
+      sv.appendChild(el('path',{d:`M${start[0]},${start[1]} Q${cc[0]},${cc[1]} ${end[0]},${end[1]}`,fill:'none',stroke:col,'stroke-width':grey?.006:.009,opacity:grey?.45:.9,'marker-end':`url(#${grey?'arG':'ar'+(ci%CYC.length)})`}));
+    }
+  });
+  ptNodes=[];
+  const fixedPts=new Set(ID.filter(x=>S.g[x]===x));
+  for(let x=0;x<24;x++){
+    const [px,py]=pos(x);const g=el('g',{transform:`translate(${px},${py})`});
+    let fill=pt,stroke=fg,tcol=fg,sw=.006;
+    if(hl&&hl.has(x)){fill=hl.get(x);stroke=fill;tcol='#fff';}
+    else if(hl){fill=pt;stroke=line;tcol=muted;}
+    if(!hl&&fixedPts.has(x)){g.appendChild(el('circle',{r:.066,fill:'none',stroke:fg,'stroke-width':.006,'stroke-dasharray':'.012 .01'}));}
+    g.appendChild(el('circle',{r:.048,fill,stroke,'stroke-width':sw}));
+    const t=el('text',{y:.017,'font-size':x===INF?.06:.046,'text-anchor':'middle',fill:tcol,'font-family':'IBM Plex Mono,monospace'});t.textContent=lab(x);g.appendChild(t);
+    sv.appendChild(g);ptNodes.push(g);
+  }
+}
+function highlightMap(){
+  if(S.kind<0||!S.fixedList.length)return null;
+  const K=KINDS[S.kind],obj=S.fixedList[S.kidx%S.fixedList.length],m=new Map();
+  if(!K.part){for(const x of bitsOf(obj))m.set(x,cssv('--fg'));}
+  else obj.forEach((part,i)=>{for(const x of bitsOf(part))m.set(x,PARTC[i%PARTC.length]);});
+  return m;
+}
+function play(){
+  if(S.anim)return;
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const T=reduce?1:900,t0=performance.now();
+  const paths=ID.map(x=>{const a=pos(x),b=pos(S.g[x]);return[a,ctrl(a,b,BEND),b];});
+  const step=now=>{
+    let t=Math.min(1,(now-t0)/T);const e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    ptNodes.forEach((n,x)=>{const [a,c,b]=paths[x];const p=qb(a,c,b,e);n.setAttribute('transform',`translate(${p[0]},${p[1]})`);});
+    if(t<1)S.anim=requestAnimationFrame(step);
+    else{S.anim=setTimeout(()=>{S.anim=null;draw();},reduce?300:650);}
+  };
+  S.anim=requestAnimationFrame(step);
+}
+
+// ---------- rendering: element card, counts ----------
+function setG(g,word){S.g=g;S.word=word;S.kidx=0;refreshFixed();renderAll();}
+function refreshFixed(){S.fixedList=S.kind>=0?fixedOf(S.g,KINDS[S.kind]):[];}
+function curClass(){return classify(S.g);}
+function renderHud(){
+  const c=curClass(),sh=shapeOf(S.g);
+  $('#hudCl').textContent=CN[c];
+  $('#hudAn').textContent=shapeStr(sh);
+  const o=orderOf(S.g);
+  $('#hud2').innerHTML=`order ${o}<br>|class| ${fmt(SIZE[c])}`;
+  let h='';
+  if(S.kind>=0){const K=KINDS[S.kind],n=S.fixedList.length;h=n?`${K.name.replace('Fixed points','Fixed point')} ${S.kidx%n+1} of ${n} · ${K.part?'colours = parts':'dark = the set'}`:`g fixes no ${K.name.toLowerCase()}`;}
+  else h=S.lay==='ring'?'arrows: x → g(x), one colour per cycle · dashed ring = fixed point':'MOG layout: same 24 points, same arrows';
+  $('#hint').textContent=h;
+}
+function renderWord(){
+  const w=S.word;
+  $('#word').innerHTML=w===null?'g = <b>random element</b>':w.length?('g = '+(w.length>40?'… ':'')+w.slice(-40).map(m=>`<b>${m}</b>`).join(' ')):'g = <b>identity</b>';
+}
+function renderElCard(){
+  const c=curClass(),cs=cycles(S.g);
+  let h=`<div class="cycles">`;
+  let ci=0;
+  for(const cy of cs){if(cy.length===1)continue;const col=CYC[ci%CYC.length];ci++;h+=`<span class="cy"><i style="background:${col}"></i>(${cy.map(lab).join(' ')})</span>`;}
+  const fx=cs.filter(c=>c.length===1).map(c=>lab(c[0]));
+  if(fx.length)h+=`<span class="cy" style="color:var(--muted)">fixed: ${fx.join(' ')}</span>`;
+  h+=`</div>`;
+  const s=splitInfo(S.g);
+  if(s){
+    const pair=SHAPE2CLASS.get(shapeKey(S.g)).map(i=>CN[i]).join(' or ');
+    const hname=s.h===1?'g':`g${sup(s.h)}`;
+    const polyFor=s.h===1?s.poly:s.poly.replace(/g/g,'h');
+    h+=`<div class="split">Shape and all seven counts say <b>${pair}</b>. The Golay code settles it. Acting on the code's 12 dimensions over 𝔽₂${s.h>1?`, with h = ${hname}`:''}, the map <span class="math">${polyFor}</span> kills a${s.k===11||s.k===8?'n':''} ${s.k}-dimensional subspace, so this is <b>${CN[c]}</b>.</div>`;
+  }
+  $('#elcard').innerHTML=h;
+}
+function renderCounts(){
+  const c=curClass();
+  $('#frows').innerHTML=KINDS.map((K,i)=>{
+    const n=FIX[i][c];
+    return `<button class="frow" data-k="${i}" aria-pressed="${S.kind===i}"><span><span class="nm">${K.name}</span><span class="ct">${K.ct}</span></span><span class="v">${n}<small> / ${fmt(K.list.length)}</small></span><span class="nx">${S.kind===i&&n?'next ›':(n?'show':'')}</span></button>`;
+  }).join('');
+}
+function renderPicker(){
+  const c=curClass();const cen=S.census;
+  $('#picker').innerHTML=CN.map((n,i)=>{
+    let bar='';if(cen){const r=cen.cnt[i]/(cen.n*W[i]||1);bar=`<span class="bar" style="width:${Math.min(100,r*100).toFixed(0)}%"></span>`;}
+    return `<button class="cls" data-c="${i}" aria-pressed="${i===c}"><span class="cn">${n}</span><span class="cs">${shapeStr(shapeOf(REPS[i])).replace(/ /g,' ')}</span>${bar}</button>`;
+  }).join('');
+  if(cen){
+    const done=cen.n>=cen.target;
+    $('#cenNote').textContent=`${fmt(cen.n)} drawn${done?'':' …'} · bar = observed ÷ expected`;
+    if(S.showCen){
+      let h=`<thead><tr><th>class</th><th style="text-align:left">shape</th><th>size</th><th>expected</th><th>seen</th></tr></thead><tbody>`;
+      CN.forEach((n,i)=>{const e=cen.n*W[i];h+=`<tr class="${i===c?'cur':''}"><td>${n}</td><td class="sh">${shapeStr(shapeOf(REPS[i]))}</td><td>${fmt(SIZE[i])}</td><td class="dev">${e.toFixed(1)}</td><td>${cen.cnt[i]}</td></tr>`;});
+      $('#cenT').innerHTML=h+'</tbody>';
+    }
+  }
+  $('#cenWrap').hidden=!(cen&&S.showCen);
+  $('#cenTable').hidden=!cen;
+  $('#cenTable').textContent=S.showCen?'Hide table':'Show table';
+}
+function renderAll(){draw();renderHud();renderWord();renderElCard();renderCounts();renderPicker();renderTable();}
+
+// ---------- builder ----------
+function addRow(o){o.id=++rowId;S.rows.push(o);return o;}
+function initRows(){
+  KINDS.forEach((K,i)=>addRow({title:K.name,recipe:'count: '+K.ct,v:FIX[i].map(n=>[n,0])}));
+}
+function decompose(v){ // multiplicities of found irreducibles and found pairs
+  const parts=[];
+  for(const i of [...S.found].sort((a,b)=>a-b)){const m=ri(ip(v,CHARS[i])[0]);if(m)parts.push([m,CHNAME[i],i,false]);}
+  for(const i of [...S.pairs].sort((a,b)=>a-b)){const m=ri(ip(v,CHARS[i])[0]);if(m)parts.push([m,CHNAME[i]+'+'+CHNAME[PAIR_OF[i]],i,true]);}
+  return parts;
+}
+function peelVec(v){
+  for(const [m,,i,isPair] of decompose(v))v=vsub(v,isPair?PAIRSUM(i):CHARS[i],m);
+  return v;
+}
+function identify(v){
+  const n=ri(nrm(v));
+  if(n===1){for(let i=0;i<NC;i++){const z=ip(v,CHARS[i]);if(Math.abs(Math.abs(z[0])-1)<1e-6&&Math.abs(z[1])<1e-6)return{type:'irr',i,sign:Math.sign(z[0])};}}
+  if(n===2){const js=[];for(let i=0;i<NC;i++){const z=ip(v,CHARS[i]);if(Math.abs(Math.abs(z[0])-1)<1e-6)js.push([i,Math.sign(z[0])]);}
+    if(js.length===2&&PAIR_OF[js[0][0]]===js[1][0]&&js[0][1]===js[1][1])return{type:'pair',i:Math.min(js[0][0],js[1][0]),sign:js[0][1]};}
+  return null;
+}
+function status(row){
+  const v=row.v;if(isZero(v))return{html:'<span class="n">zero</span>',n:0};
+  const n=ri(nrm(v));
+  const id=identify(v);
+  if(id&&id.sign>0){if(id.type==='irr')return{html:`<span class="irr">✓ ${CHNAME[id.i]}</span>`,n,id};return{html:`<span class="pair">pair ${CHNAME[id.i]}+${CHNAME[PAIR_OF[id.i]]}</span>`,n,id};}
+  return{html:`<span class="n">norm ${n}</span>`,n};
+}
+function absorb(row){ // returns text if new
+  const id=identify(row.v);if(!id||id.sign<0)return'';
+  if(id.type==='irr'&&!S.found.has(id.i)){S.found.add(id.i);row.title='χ '+CHNAME[id.i];return CHNAME[id.i];}
+  if(id.type==='pair'&&!S.pairs.has(id.i)){S.pairs.add(id.i);row.title='χ '+CHNAME[id.i]+' + '+CHNAME[PAIR_OF[id.i]];return CHNAME[id.i]+' + '+CHNAME[PAIR_OF[id.i]];}
+  return'';
+}
+const selRows=()=>S.sel.map(id=>S.rows.find(r=>r.id===id)).filter(Boolean);
+function say(t,cls=''){S.msg=t;S.msgCls=cls;}
+function act(kind){
+  const [A,B]=selRows();
+  if(kind==='peel'){
+    if(!A)return say('Select a row first (tap its header).','bad');
+    const parts=decompose(A.v);
+    if(!parts.length){const st=status(A);const nw=absorb(A);return say(nw?`New irreducible: ${nw}.`:'Nothing known to peel off'+(st.id?' – it is already irreducible.':'. Find more irreducibles first.'),nw?'ok':'');}
+    const out=peelVec(A.v);
+    const r=addRow({title:'Peeled '+A.title,recipe:A.title+' − ('+parts.map(([m,nm])=>(m===1?'':m+'·')+nm).join(' + ')+')',v:out});
+    const nw=absorb(r);
+    S.sel=[r.id];
+    if(isZero(out))say('Everything peeled off. '+A.title+' = '+parts.map(([m,nm])=>(m===1?'':m+'·')+nm).join(' + ')+'.');
+    else say(nw?`New: ${nw}.`:`Left over: norm ${ri(nrm(out))}. A norm of n means at least that many unknown pieces (or repeats).`,nw?'ok':'');
+  } else if(kind==='mul'||kind==='sub'){
+    if(!A||!B)return say('Select two rows: A first, then B.','bad');
+    const v=kind==='mul'?vmul(A.v,B.v):vsub(A.v,B.v);
+    const r=addRow({title:kind==='mul'?`${A.title} × ${B.title}`:`${A.title} − ${B.title}`,recipe:kind==='mul'?'product, value by value':'difference',v});
+    const nw=absorb(r);S.sel=[r.id];
+    say(nw?`New: ${nw}.`:`Made a character of degree ${ri(v[0][0])}, norm ${ri(nrm(v))}. Peel it.`,nw?'ok':'');
+  } else if(kind==='wedge'||kind==='sym'){
+    if(!A)return say('Select a row first.','bad');
+    const v=kind==='wedge'?wedge(A.v):sym2(A.v);
+    const r=addRow({title:(kind==='wedge'?'∧² ':'S² ')+A.title,recipe:kind==='wedge'?'(χ(g)² − χ(g²)) / 2':'(χ(g)² + χ(g²)) / 2',v});
+    const nw=absorb(r);S.sel=[r.id];
+    say(nw?`New: ${nw}.`:`Degree ${ri(v[0][0])}, norm ${ri(nrm(v))}. Peel it.`,nw?'ok':'');
+  } else if(kind==='del'){
+    if(!A)return say('Select a row first.','bad');
+    S.rows=S.rows.filter(r=>!S.sel.includes(r.id));S.sel=[];say('');
+  }
+}
+// Auto-build: peel everything, multiply new finds by known ones, and reduce leftovers against each other until nothing changes
+function* autoGen(){
+  const known=()=>[...[...S.found].map(i=>CHARS[i]),...[...S.pairs].map(PAIRSUM)];
+  let pool=S.rows.map(r=>({v:r.v,t:r.title}));
+  const prods=v=>{const out=[];for(const i of S.found)if(i)out.push({v:vmul(v.v,CHARS[i]),t:v.t+' × '+CHNAME[i]});out.push({v:wedge(v.v),t:'∧² '+v.t},{v:sym2(v.v),t:'S² '+v.t});return out;};
+  for(const i of S.found)if(i)pool.push(...prods({v:CHARS[i],t:CHNAME[i]}));
+  let guard=0;
+  while(guard++<20000){
+    pool=pool.map(p=>({v:peelVec(p.v),t:p.t})).filter(p=>!isZero(p.v));
+    let hit=null;
+    for(const p of pool){const id=identify(p.v);if(id&&((id.type==='irr'&&!S.found.has(id.i))||(id.type==='pair'&&!S.pairs.has(id.i)))){hit={p,id};break;}}
+    if(hit){
+      let v=hit.p.v;if(hit.id.sign<0)v=vneg(v);
+      const r=addRow({title:'',recipe:'auto: from '+hit.p.t,v});
+      const nw=absorb(r);
+      const base={v:hit.id.type==='irr'?CHARS[hit.id.i]:PAIRSUM(hit.id.i),t:hit.id.type==='irr'?CHNAME[hit.id.i]:nw.replace(/ /g,'')};
+      pool.push(...prods(base));
+      yield nw;continue;
+    }
+    pool.sort((a,b)=>nrm(a.v)-nrm(b.v));
+    let red=false;
+    outer:for(let i=0;i<pool.length;i++)for(let j=0;j<pool.length;j++){
+      if(i===j)continue;const a=pool[i].v,b=pool[j].v;const m=ri(ip(a,b)[0]/nrm(b));
+      if(m){const c=vsub(a,b,m);const nc=nrm(c);if(nc>.5&&nc<nrm(a)-.5){pool[i]={v:c,t:pool[i].t+(m>0?' − ':' + ')+(Math.abs(m)===1?'':Math.abs(m)+'·')+'('+pool[j].t+')'};red=true;break outer;}}
+    }
+    if(!red)return;
+  }
+}
+let autoRun=null;
+function auto(){
+  if(autoRun){clearTimeout(autoRun.t);autoRun=null;$('#aAuto').textContent='Auto-build';return;}
+  const gen=autoGen();autoRun={gen};$('#aAuto').textContent='Stop';
+  const tick=()=>{
+    if(!autoRun)return;
+    const {value,done}=gen.next();
+    if(done){autoRun=null;$('#aAuto').textContent='Auto-build';const tot=S.found.size+2*S.pairs.size;say(tot===26?'All 26 accounted for: 16 found one by one, 10 as five complex pairs.':`Stuck at ${tot} – nothing new comes out of these rows.`,tot===26?'ok':'');renderBuilder();renderTable();return;}
+    say('Found '+value+'.','ok');renderBuilder();renderTable();
+    autoRun.t=setTimeout(tick,matchMedia('(prefers-reduced-motion: reduce)').matches?0:350);
+  };
+  tick();
+}
+function valStr(z){const [x,y]=z;if(Math.abs(y)<1e-6){const r=Math.round(x);return Math.abs(x-r)<1e-6?(r<0?'−'+(-r):String(r)):x.toFixed(2);}
+  return `${x.toFixed(1).replace('-','−')}${y<0?'−':'+'}${Math.abs(y).toFixed(2)}i`;}
+function renderBuilder(){
+  const prog=CHNAME.map((n,i)=>`<span class="pc ${S.found.has(i)?'f':(S.pairs.has(i)||S.pairs.has(PAIR_OF[i])?'p':'')}" title="${n}">${DEG[i]}</span>`).join('');
+  $('#prog').innerHTML=prog;
+  const tot=S.found.size+2*S.pairs.size;
+  $('#score').innerHTML=`<b>${S.found.size}</b> irreducible${S.found.size===1?'':'s'} found${S.pairs.size?` · <b>${S.pairs.size}</b> pair${S.pairs.size>1?'s':''}`:''} · ${tot} of 26`;
+  const sel=S.sel;
+  $('#rows').innerHTML=S.rows.map(r=>{
+    const st=status(r),si=sel.indexOf(r.id);
+    const open=S.open.has(r.id);
+    let vals='';
+    if(open){
+      vals=`<div class="vals"><div class="tbl-wrap"><table class="mini"><tr>${CN.map(n=>`<th>${n}</th>`).join('')}</tr><tr>${r.v.map(z=>`<td>${valStr(z)}</td>`).join('')}</tr></table></div>`;
+      const parts=decompose(r.v);
+      if(parts.length){const rest=peelVec(r.v);vals+=`<p class="dec">Contains <b>${parts.map(([m,nm])=>(m===1?'':m+'·')+nm).join(' + ')}</b>${isZero(rest)?' and nothing else.':`, plus an unknown part of norm ${ri(nrm(rest))}.`}</p>`;}
+      vals+='</div>';
+    }
+    return `<div class="wr ${si>=0?'sel':''}"><button class="hd" data-r="${r.id}"><span class="sl">${si===0?'A':si===1?'B':''}</span><span><span class="t">${r.title}</span><span class="r">deg ${ri(r.v[0][0])} · ${r.recipe.length>150?r.recipe.slice(0,150)+'…':r.recipe}</span></span><span class="st">${st.html}<br><span class="n" data-o="${r.id}" style="text-decoration:underline;cursor:pointer">${open?'hide':'values'}</span></span></button>${vals}</div>`;
+  }).join('');
+  $('#msg').textContent=S.msg;$('#msg').className='msg '+S.msgCls;
+}
+function dispVal(raw){
+  if(typeof raw==='number')return raw<0?'−'+(-raw):String(raw);
+  return raw.replace(/b(\d+)/,(m,d)=>'b'+d.split('').map(c=>'₀₁₂₃₄₅₆₇₈₉'[c]).join(''));
+}
+function renderTable(){
+  const c=curClass();
+  let h=`<thead><tr><th></th>${CN.map((n,k)=>`<th class="${k===c?'cur':''}">${n}</th>`).join('')}</tr><tr class="cz"><th>|C|</th>${CENT.map((z,k)=>`<th class="${k===c?'cur':''}">${fmt(z)}</th>`).join('')}</tr></thead><tbody>`;
+  CHARS.forEach((row,i)=>{
+    const f=S.found.has(i),p=S.pairs.has(i)||S.pairs.has(PAIR_OF[i]);
+    h+=`<tr class="${f?'':(p?'pr':'unk')}"><th>${CHNAME[i]}</th>${DATA.chars[i].map((raw,k)=>`<td data-i="${i}" data-k="${k}" class="${k===c?'cur':''} ${S.pickCell&&S.pickCell[0]===i&&S.pickCell[1]===k?'pick':''}">${f||p?dispVal(raw):'·'}</td>`).join('')}</tr>`;
+  });
+  $('#ct').innerHTML=h+'</tbody>';
+  if(S.pickCell){
+    const [i,k]=S.pickCell,raw=DATA.chars[i][k],f=S.found.has(i),p=S.pairs.has(i)||S.pairs.has(PAIR_OF[i]);
+    let t=`χ <span class="math">${CHNAME[i]}</span> at <span class="math">${CN[k]}</span>: `;
+    if(!f&&!p)t+='not found yet.';
+    else if(typeof raw==='number')t+=`<span class="math">${dispVal(raw)}</span>`;
+    else{const base=DATA.bases.find(b=>raw.includes(b.name));t+=`<span class="math">${dispVal(raw)}</span>, where <span class="math">${dispVal(base.name)} = ${base.def}</span> ≈ ${valStr(LBL[raw])}`+(raw.includes('*')?' (* = complex conjugate)':'')+(p&&!f?'. You have this pair only as a sum; its two members swap these values.':'');}
+    if(f||p)t+=` · whole column: <span class="math">${CN[k]}</span> has ${fmt(SIZE[k])} elements.`;
+    $('#cell').innerHTML=t;
+  } else $('#cell').textContent='';
+}
+
+// ---------- census ----------
+function census(){
+  const target=10000;S.census={n:0,target,cnt:new Array(NC).fill(0)};
+  const run=()=>{const C=S.census;if(!C||C.n>=C.target)return;const end=Math.min(C.target,C.n+400);for(;C.n<end;C.n++)C.cnt[classify(randomElement())]++;renderPicker();if(C.n<C.target)requestAnimationFrame(run);};
+  run();
+}
+
+// ---------- events ----------
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{S.lay=b.dataset.lay;document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw();renderHud();});
+const MVN={alpha:'α',beta:'β',gamma:'γ',delta:'δ'};
+document.querySelectorAll('.mv').forEach(b=>b.onclick=()=>{const m=b.dataset.m;setG(mul(S.g,G[m]),[...(S.word||[]),MVN[m]]);});
+$('#play').onclick=play;
+$('#rand').onclick=()=>setG(randomElement(),null);
+$('#sq').onclick=()=>setG(ppow(S.g,2),S.word===null?null:[...S.word,'²']);
+$('#reset').onclick=()=>setG(ID,[]);
+$('#frows').onclick=e=>{const b=e.target.closest('.frow');if(!b)return;const k=+b.dataset.k;if(S.kind===k){S.kidx++;if(!S.fixedList.length)S.kind=-1;}else{S.kind=k;S.kidx=0;refreshFixed();}draw();renderHud();renderCounts();};
+$('#picker').onclick=e=>{const b=e.target.closest('.cls');if(!b)return;const i=+b.dataset.c;const h=randomElement();setG(mul(mul(inv(h),REPS[i]),h),null);};
+$('#census').onclick=census;
+$('#cenTable').onclick=()=>{S.showCen=!S.showCen;renderPicker();};
+$('#rows').onclick=e=>{
+  const o=e.target.closest('[data-o]');if(o){const id=+o.dataset.o;S.open.has(id)?S.open.delete(id):S.open.add(id);renderBuilder();return;}
+  const b=e.target.closest('.hd');if(!b)return;const id=+b.dataset.r;
+  const i=S.sel.indexOf(id);if(i>=0)S.sel.splice(i,1);else{S.sel.push(id);if(S.sel.length>2)S.sel.shift();}
+  renderBuilder();
+};
+const A=(id,k)=>$(id).onclick=()=>{act(k);renderBuilder();renderTable();};
+A('#aPeel','peel');A('#aMul','mul');A('#aSub','sub');A('#aWedge','wedge');A('#aSym','sym');A('#aDel','del');
+$('#aAuto').onclick=auto;
+$('#ct').onclick=e=>{const td=e.target.closest('td');if(!td)return;S.pickCell=[+td.dataset.i,+td.dataset.k];renderTable();};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+
+// ---------- start ----------
+initRows();
+S.sel=[S.rows[0].id];
+say('Fixed points is selected. Press Peel.');
+setG(G.alpha,['α']);
+renderBuilder();
+window.__M24={TRANS,S,classify,REPS,CN,FIX,KINDS,CHARS,ip,nrm,randomElement,mul,G,ID,orderOf,ppow,SEXTETS,TRIOS,DPAIRS,OCTADS,DODECADS,autoGen,act,renderBuilder};
+})();
+</script>
+</body>
+</html>
