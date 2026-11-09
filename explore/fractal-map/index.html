@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>Mandelbrot Map</title>
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none}
+canvas{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+canvas.drag{cursor:grabbing}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+'use strict';
+/* One map of the Mandelbrot set (z → z² + c), same colouring as Seed → Structure Lab.
+   Gestures only. When a 64-bit number can no longer tell neighbouring pixels apart,
+   the view lets go and drifts back to the whole set. */
+
+/* ---------- colour (Seed Lab "fire") ---------- */
+function buildLUT(stops){
+  const n=1024, lut=new Uint8Array(n*3);
+  for(let i=0;i<n;i++){ const t=i/n*(stops.length-1), k=Math.floor(t), f=t-k, a=stops[k], b=stops[k+1];
+    for(let j=0;j<3;j++) lut[i*3+j]=a[j]+(b[j]-a[j])*f; }
+  return lut;
+}
+const LUT=buildLUT([[0,7,30],[32,18,110],[190,40,90],[255,140,30],[255,240,180],[90,30,140],[0,7,30]]);
+
+/* ---------- worker: one strip of rows ---------- */
+const WORKER_SRC=`
+let lut=null;
+onmessage=e=>{
+  const m=e.data;
+  if(m.lut){ lut=m.lut; return; }
+  const {W,y0row,rows,x0,y0,sx,maxIt}=m;
+  const out=new Uint8ClampedArray(W*rows*4); let minN=1e9;
+  for(let r=0;r<rows;r++){
+    const ci=y0-(y0row+r)*sx;
+    for(let x=0;x<W;x++){
+      const cr=x0+x*sx, i=(r*W+x)*4; out[i+3]=255;
+      const xr=cr-0.25, q=xr*xr+ci*ci;
+      if(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625) continue;
+      let zr=0,zi=0,zr2=0,zi2=0,n=0, pr=0,pi=0,lim=8,cnt=0, inside=false;
+      while(zr2+zi2<=256){
+        if(n>=maxIt){ inside=true; break; }
+        zi=2*zr*zi+ci; zr=zr2-zi2+cr; zr2=zr*zr; zi2=zi*zi; n++;
+        if(zr===pr && zi===pi){ inside=true; break; }
+        if(++cnt===lim){ cnt=0; lim<<=1; pr=zr; pi=zi; }
+      }
+      if(inside) continue;
+      if(n<minN) minN=n;
+      let mu=n+1-Math.log2(Math.log(zr2+zi2)*0.5); if(!(mu>0)) mu=0;
+      const k=(((Math.sqrt(mu)*90)|0)&1023)*3;
+      out[i]=lut[k]; out[i+1]=lut[k+1]; out[i+2]=lut[k+2];
+    }
+  }
+  postMessage({job:m.job,pass:m.pass,y0row,rows,out,minN},[out.buffer]);
+};`;
+const NW=Math.max(2,Math.min(8,(navigator.hardwareConcurrency||4)));
+const workerURL=URL.createObjectURL(new Blob([WORKER_SRC],{type:'text/javascript'}));
+const workers=[], idle=[];
+for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.postMessage({lut:LUT}); w.onmessage=onStrip; workers.push(w); idle.push(w); }
+
+/* ---------- view ---------- */
+const HOME={cx:-0.75, cy:0, w:3.2};
+const view={...HOME};
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+let DPR=1, Wd=1, Hd=1;
+function fitHome(){ // whole set visible whatever the screen shape
+  const a=Hd/Wd; HOME.w = a>=0.8 ? 3.2 : 2.6/a;
+}
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  Wd=Math.max(1,Math.round(innerWidth*DPR)); Hd=Math.max(1,Math.round(innerHeight*DPR));
+  cv.width=Wd; cv.height=Hd;
+  const first=!resize.done; resize.done=true;
+  fitHome(); if(first) Object.assign(view,HOME);
+  dirty=true; draw();
+}
+const hOf=w=>w*Hd/Wd;
+// iteration budget: grows with depth, and with what the last picture actually needed
+let lastMin=0, boost=1;
+function itFor(w){
+  const byDepth=150+260*Math.max(0,Math.log10(3.2/w));
+  return Math.round(Math.min(40000, Math.max(byDepth, lastMin*1.8+400)*boost));
+}
+// 64-bit floats hold ~16 digits; past this, neighbouring pixels share the same number.
+function atLimit(v){ return v.w/Wd < 2.5e-15*Math.max(1,Math.abs(v.cx),Math.abs(v.cy)); }
+
+/* ---------- progressive render jobs ---------- */
+const PASSES=[8,3,1];            // downsample factors: rough → sharp
+let job=0, queue=[], cur=null, dirty=true, lastStart=0, roughMs=150;
+let base=null;                   // {img:canvas, cx,cy,w,h} last finished image
+let home=null;                   // low-res whole-set backdrop
+function startJob(){
+  job++; queue=[]; dirty=false; lastStart=performance.now();
+  // while drifting back, draw where the view will be shortly (a wider area), so frames arrive ahead of it
+  const v= back ? backView(performance.now()+Math.min(500,Math.max(50,roughMs*1.15))) : {...view}, h=hOf(v.w), maxIt=itFor(v.w);
+  cur={id:job, v, h, maxIt, passes:[]};
+  (back?[6]:PASSES).forEach((ds,p)=>{
+    const W=Math.ceil(Wd/ds), H=Math.ceil(Hd/ds), sx=v.w/W;
+    const P={W,H,ds,left:H,minN:1e9,data:new Uint8ClampedArray(W*H*4)}; cur.passes.push(P);
+    const rows=Math.max(1,Math.floor(12000/W));
+    for(let y=0;y<H;y+=rows) queue.push({job,pass:p,W,y0row:y,rows:Math.min(rows,H-y),x0:v.cx-v.w/2+sx/2,y0:v.cy+sx*H/2-sx/2,sx,maxIt});
+  });
+  pump();
+}
+function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
+function onStrip(e){
+  idle.push(e.target);
+  const m=e.data;
+  if(m.job===-1){ homeStrip(m); pump(); return; }
+  if(!cur || m.job!==cur.id){ pump(); return; }
+  const P=cur.passes[m.pass];
+  P.data.set(m.out, m.y0row*P.W*4); P.left-=m.rows; if(m.minN<P.minN) P.minN=m.minN;
+  if(P.left<=0){
+    if(m.pass===0) roughMs=0.6*roughMs+0.4*(performance.now()-lastStart);
+    if(P.minN<1e9){ lastMin=P.minN; boost=1; }
+    else if(cur.maxIt<40000 && !back){ boost*=3; dirty=true; }   // nothing escaped yet: look harder
+    const better=!base || base.job!==cur.id || base.pass<m.pass;
+    if(better){
+      const c=document.createElement('canvas'); c.width=P.W; c.height=P.H;
+      c.getContext('2d').putImageData(new ImageData(P.data,P.W,P.H),0,0);
+      base={img:c, cx:cur.v.cx, cy:cur.v.cy, w:cur.v.w, h:cur.h, job:cur.id, pass:m.pass};
+      needDraw=true;
+    }
+  }
+  pump();
+}
+// backdrop of the whole set, drawn under everything (so zooming out never shows black edges)
+(function(){
+  const W=360, H=360, v={cx:-0.6,cy:0,w:5.2}, sx=v.w/W;
+  home={W,H,left:H,data:new Uint8ClampedArray(W*H*4),cx:v.cx,cy:v.cy,w:v.w,h:v.w,img:null};
+  for(let y=0;y<H;y+=30) queue.push({job:-1,pass:0,W,y0row:y,rows:Math.min(30,H-y),x0:v.cx-v.w/2+sx/2,y0:v.cy+v.w/2-sx/2,sx,maxIt:300});
+})();
+function homeStrip(m){
+  home.data.set(m.out, m.y0row*home.W*4); home.left-=m.rows;
+  if(home.left<=0){ const c=document.createElement('canvas'); c.width=home.W; c.height=home.H;
+    c.getContext('2d').putImageData(new ImageData(home.data,home.W,home.H),0,0); home.img=c; needDraw=true; }
+}
+
+/* ---------- drawing ---------- */
+let needDraw=true;
+function blit(L){
+  const s=Wd/view.w, h=hOf(view.w);
+  const dx=((L.cx-L.w/2)-(view.cx-view.w/2))*s, dy=((view.cy+h/2)-(L.cy+L.h/2))*s;
+  ctx.drawImage(L.img, dx, dy, L.w*s, L.h*s);
+}
+function draw(){
+  needDraw=false;
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,Wd,Hd);
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  if(home && home.img && (!base || view.w>base.w*0.6)) blit(home);
+  if(base) blit(base);
+}
+
+/* ---------- letting go: drift back to the whole set ---------- */
+let back=null;
+function release(){
+  if(back) return;
+  endGesture(); vel.x=vel.y=0;
+  const from={...view}, to={...HOME};
+  const decades=Math.log10(to.w/from.w);
+  back={from,to,t0:performance.now(),dur:Math.min(8000,Math.max(3000,decades*520))};
+}
+function backView(now){
+  const {from,to,t0,dur}=back;
+  const t=Math.min(1,(now-t0)/dur), s=t*t*(3-2*t);
+  const w=from.w*Math.pow(to.w/from.w,s);
+  // centre moves in proportion to w → one fixed point on screen, like a zoom-out about a pin
+  const k=(w-from.w)/(to.w-from.w);
+  return {w, cx:from.cx+(to.cx-from.cx)*k, cy:from.cy+(to.cy-from.cy)*k, t};
+}
+function stepBack(now,dt){
+  let b=backView(now);
+  // never outrun the pictures: if the last finished frame no longer covers the screen, wait for the next one
+  if(b.t<1 && base && b.w>base.w*1.08){ back.t0+=dt; b=backView(now); }
+  view.w=b.w; view.cx=b.cx; view.cy=b.cy;
+  dirty=true; needDraw=true;
+  const {to}=back;
+  if(b.t>=1){ Object.assign(view,to); back=null; lastMin=0; boost=1; }
+}
+
+/* ---------- moving the map ---------- */
+function clampView(){
+  view.w=Math.min(view.w, HOME.w*2.2);
+  view.cx=Math.max(-2.6,Math.min(1.4,view.cx)); view.cy=Math.max(-1.6,Math.min(1.6,view.cy));
+  if(atLimit(view)) release();
+}
+function toWorld(px,py){ const s=view.w/Wd; return [view.cx+(px-Wd/2)*s, view.cy-(py-Hd/2)*s]; }
+function zoomAt(px,py,f){ // f>1 = closer; keeps the point under the finger fixed
+  const [wx,wy]=toWorld(px,py);
+  view.w/=f; const s=view.w/Wd;
+  view.cx=wx-(px-Wd/2)*s; view.cy=wy+(py-Hd/2)*s;
+  clampView(); dirty=true; needDraw=true;
+}
+function panBy(dx,dy){ const s=view.w/Wd; view.cx-=dx*s; view.cy+=dy*s; clampView(); dirty=true; needDraw=true; }
+
+const ptrs=new Map(); let blocked=false;
+const vel={x:0,y:0}; let lastMove=0, tapT=0, tapX=0, tapY=0, moved=0, glide=null;
+const P=e=>[e.clientX*DPR, e.clientY*DPR];
+function endGesture(){ ptrs.clear(); cv.classList.remove('drag'); blocked=true; }
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  if(back) return;
+  if(blocked && ptrs.size===0) blocked=false;
+  if(blocked) return;
+  cv.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId,P(e)); cv.classList.add('drag');
+  glide=null; vel.x=vel.y=0; moved=0; lastMove=performance.now();
+});
+cv.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId) || back || blocked) return;
+  const ids=[...ptrs.keys()].slice(0,2);
+  const before=ids.map(id=>ptrs.get(id));      // positions before this move
+  const np=P(e); ptrs.set(e.pointerId,np);
+  const after=ids.map(id=>ptrs.get(id));
+  const now=performance.now();
+  if(ptrs.size===1){
+    const dx=after[0][0]-before[0][0], dy=after[0][1]-before[0][1]; moved+=Math.abs(dx)+Math.abs(dy);
+    panBy(dx,dy);
+    const dt=Math.max(1,now-lastMove), a=0.75; vel.x=a*dx/dt+(1-a)*vel.x; vel.y=a*dy/dt+(1-a)*vel.y; lastMove=now;
+  } else {
+    if(!ids.includes(e.pointerId)) return;     // a 3rd finger does nothing
+    const mid=q=>[(q[0][0]+q[1][0])/2,(q[0][1]+q[1][1])/2], dist=q=>Math.hypot(q[0][0]-q[1][0],q[0][1]-q[1][1]);
+    const m0=mid(before), m1=mid(after), d0=dist(before), d1=dist(after);
+    moved+=99; vel.x=vel.y=0;
+    panBy(m1[0]-m0[0], m1[1]-m0[1]);
+    if(d0>2 && d1>2 && !back) zoomAt(m1[0],m1[1],d1/d0);
+  }
+});
+function up(e){
+  if(!ptrs.has(e.pointerId)) return;
+  const was=ptrs.size; ptrs.delete(e.pointerId);
+  const now=performance.now();
+  if(was===1){
+    cv.classList.remove('drag');
+    if(moved<12){ // tap: two quick taps = closer
+      if(now-tapT<320 && Math.hypot(e.clientX*DPR-tapX,e.clientY*DPR-tapY)<40*DPR){ glide={px:tapX,py:tapY,f:2.5,t0:now,dur:280,done:1}; tapT=0; }
+      else { tapT=now; tapX=e.clientX*DPR; tapY=e.clientY*DPR; }
+    } else if(now-lastMove<60 && Math.hypot(vel.x,vel.y)>0.15){ glide={fling:true}; }
+  } else if(was>=2){ vel.x=vel.y=0; }
+}
+cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
+cv.addEventListener('wheel',e=>{
+  e.preventDefault(); if(back) return;
+  const d=e.deltaMode===1?e.deltaY*16:e.deltaY;
+  zoomAt(e.clientX*DPR,e.clientY*DPR,Math.exp(-d*0.0018));
+},{passive:false});
+['gesturestart','gesturechange','contextmenu'].forEach(t=>document.addEventListener(t,e=>e.preventDefault()));
+
+/* ---------- loop ---------- */
+let lastT=performance.now();
+function frame(now){
+  const dt=Math.min(50,now-lastT); lastT=now;
+  if(back) stepBack(now,dt);
+  else if(glide){
+    if(glide.fling){
+      panBy(vel.x*dt, vel.y*dt);
+      const k=Math.pow(0.994,dt); vel.x*=k; vel.y*=k;
+      if(Math.hypot(vel.x,vel.y)<0.02) glide=null;
+    } else {
+      const t=Math.min(1,(now-glide.t0)/glide.dur), e=1-Math.pow(1-t,3), target=Math.pow(glide.f,e);
+      zoomAt(glide.px,glide.py,target/glide.done); glide.done=target;
+      if(t>=1) glide=null;
+    }
+  }
+  // restart rendering when the view changed, but let the rough pass land first
+  const roughDone=cur && cur.passes[0].left<=0;
+  if(dirty && (!cur || roughDone || (!back && now-lastStart>140))) startJob();
+  if(needDraw) draw();
+  requestAnimationFrame(frame);
+}
+addEventListener('resize',resize);
+resize(); pump(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>

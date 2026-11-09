@@ -41,5 +41,12 @@ window.EXPLORE = [
     title: 'Seed → Structure Lab',
     path: 'explore/seed-lab/',
     desc: 'A tiny rule, an enormous structure. Zoom into the Mandelbrot set, flip the 8 bits of a cell rule, grow a plant from one letter, roll dice into a fractal, and compare seed size with result size.'
+  },
+  {
+    id: 'fractal-map',
+    badge: '∞',
+    title: 'Mandelbrot Map',
+    path: 'explore/fractal-map/',
+    desc: 'Only the map. Drag and pinch through z → z² + c until the numbers run out, then drift back to the whole set.'
   }
 ];
