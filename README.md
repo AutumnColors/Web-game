@@ -40,6 +40,8 @@ explore/
   constants-table/    Table of Physical Constants (c, ħ, G, k_B, k_e: 5 × 5 pair table linked to the 60-cell A₅ table of triples, with a symmetry group in every cell)
   seed-lab/           Seed → Structure Lab (small rules, huge structures: Mandelbrot/Julia, 1-D cell rules, L-systems, chaos game; guided steps, seed size vs result size)
   fractal-map/        Mandelbrot Map (full-screen, gestures only: drag, pinch, wheel; at the 64-bit precision limit it lets go and drifts back to the whole set; no back link by design)
+  fractal-map-survey/ Mandelbrot Survey Map (same engine plus scale bar, twist-to-rotate with compass, tap-a-point coordinates and orbit, screenshots with the coordinates stored in the PNG)
+  julia-lab/          Julia Lab (pick the seed c on the Mandelbrot plane with a live Julia preview, type it, or use a preset; then the Survey Map tools on the Julia set of z → z² + c; #c=re,im links open a seed)
 world/
   index.html          World viewer: one base map, switchable data layers, country panel, ranking
   countries.json      Natural Earth id → ISO-3 code and display name (outlines load from world-atlas on jsDelivr, projected to Equal Earth)

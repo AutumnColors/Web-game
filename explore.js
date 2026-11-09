@@ -55,5 +55,12 @@ window.EXPLORE = [
     title: 'Mandelbrot Survey Map',
     path: 'explore/fractal-map-survey/',
     desc: 'The same map with survey tools: a scale bar, twist to rotate with a compass, tap a point to read its coordinates, and screenshots that keep the scale, compass and coordinates.'
+  },
+  {
+    id: 'julia-lab',
+    badge: 'Jc',
+    title: 'Julia Lab',
+    path: 'explore/julia-lab/',
+    desc: 'Pick a seed c on the Mandelbrot plane or type it, watch its Julia set change live, then explore it with the survey tools: scale, compass, tap coordinates with the orbit, screenshots that keep the seed.'
   }
 ];
