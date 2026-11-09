@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Mandelbrot Survey Map</title>
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+canvas{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+canvas.drag{cursor:grabbing}
+#sa{position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#shot{position:fixed;left:calc(14px + env(safe-area-inset-left));bottom:calc(14px + env(safe-area-inset-bottom));width:48px;height:48px;border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.55);background:rgba(0,0,0,.45);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0;
+  -webkit-tap-highlight-color:transparent;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+#shot:active{transform:scale(.94)}
+#shot svg{width:24px;height:24px}
+#shot.busy{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.45}}
+#toast{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;font-size:14px;
+  padding:7px 14px;border-radius:18px;pointer-events:none;opacity:0;transition:opacity .25s;white-space:nowrap}
+#toast.on{opacity:1}
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;z-index:5}
+#sheet.on{display:flex}
+#sheet img{max-width:min(92vw,900px);max-height:68vh;border-radius:10px;box-shadow:0 6px 30px rgba(0,0,0,.6);-webkit-touch-callout:default}
+#sheet .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#sheet button{font:inherit;font-size:15px;padding:10px 18px;border-radius:22px;border:1.5px solid rgba(255,255,255,.5);background:#151515;color:#fff;cursor:pointer}
+#sheet button.main{background:#fff;color:#000;border-color:#fff;font-weight:650}
+#sheet .hint{color:#aaa;font-size:13px;text-align:center}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="sa"></div>
+<button id="shot" type="button" aria-label="Screenshot">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8h3l1.6-2.2h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.3" r="3.6"/></svg>
+</button>
+<div id="toast"></div>
+<div id="sheet">
+  <img id="shotImg" alt="Screenshot">
+  <div class="row">
+    <button id="save" class="main" type="button">Save</button>
+    <button id="share" type="button">Share</button>
+    <button id="close" type="button">Close</button>
+  </div>
+  <div class="hint" id="shotInfo"></div>
+</div>
+<script>
+'use strict';
+/* Mandelbrot Map, second viewer: the same engine (z → z² + c, same colouring, same
+   64-bit limit and drift back), plus a scale bar, rotation with a compass, a pin that
+   shows the coordinates of the point you tap, and a screenshot with all of that in it. */
+
+/* ---------- colour (Seed Lab "fire") ---------- */
+function buildLUT(stops){
+  const n=1024, lut=new Uint8Array(n*3);
+  for(let i=0;i<n;i++){ const t=i/n*(stops.length-1), k=Math.floor(t), f=t-k, a=stops[k], b=stops[k+1];
+    for(let j=0;j<3;j++) lut[i*3+j]=a[j]+(b[j]-a[j])*f; }
+  return lut;
+}
+const LUT=buildLUT([[0,7,30],[32,18,110],[190,40,90],[255,140,30],[255,240,180],[90,30,140],[0,7,30]]);
+
+/* ---------- worker: one strip of rows, sampled on a rotated grid ---------- */
+const WORKER_SRC=`
+let lut=null;
+onmessage=e=>{
+  const m=e.data;
+  if(m.lut){ lut=m.lut; return; }
+  const {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt}=m;
+  const out=new Uint8ClampedArray(W*rows*4); let minN=1e9;
+  for(let r=0;r<rows;r++){
+    const R=y0row+r, rr=or+R*eyr, ri=oi+R*eyi;
+    for(let x=0;x<W;x++){
+      const cr=rr+x*exr, ci=ri+x*exi, i=(r*W+x)*4; out[i+3]=255;
+      const xr=cr-0.25, q=xr*xr+ci*ci;
+      if(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625) continue;
+      let zr=0,zi=0,zr2=0,zi2=0,n=0, pr=0,pi=0,lim=8,cnt=0, inside=false;
+      while(zr2+zi2<=256){
+        if(n>=maxIt){ inside=true; break; }
+        zi=2*zr*zi+ci; zr=zr2-zi2+cr; zr2=zr*zr; zi2=zi*zi; n++;
+        if(zr===pr && zi===pi){ inside=true; break; }
+        if(++cnt===lim){ cnt=0; lim<<=1; pr=zr; pi=zi; }
+      }
+      if(inside) continue;
+      if(n<minN) minN=n;
+      let mu=n+1-Math.log2(Math.log(zr2+zi2)*0.5); if(!(mu>0)) mu=0;
+      const k=(((Math.sqrt(mu)*90)|0)&1023)*3;
+      out[i]=lut[k]; out[i+1]=lut[k+1]; out[i+2]=lut[k+2];
+    }
+  }
+  postMessage({job:m.job,pass:m.pass,y0row,rows,out,minN},[out.buffer]);
+};`;
+const NW=Math.max(2,Math.min(8,(navigator.hardwareConcurrency||4)));
+const workerURL=URL.createObjectURL(new Blob([WORKER_SRC],{type:'text/javascript'}));
+const workers=[], idle=[];
+for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.postMessage({lut:LUT}); w.onmessage=onStrip; workers.push(w); idle.push(w); }
+
+/* ---------- view: centre, width (complex units across the screen), angle ---------- */
+const TAU=Math.PI*2;
+const wrap=a=>{ a=(a+Math.PI)%TAU; if(a<0) a+=TAU; return a-Math.PI; };   // → (−π, π]
+const HOME={cx:-0.75, cy:0, w:3.2, a:0};
+const view={...HOME};
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+let DPR=1, Wd=1, Hd=1, SA={t:0,r:0,b:0,l:0};
+function fitHome(){ const a=Hd/Wd; HOME.w = a>=0.8 ? 3.2 : 2.6/a; }
+function readSafe(){
+  const s=getComputedStyle(document.getElementById('sa'));
+  SA={t:parseFloat(s.paddingTop)||0, r:parseFloat(s.paddingRight)||0, b:parseFloat(s.paddingBottom)||0, l:parseFloat(s.paddingLeft)||0};
+}
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  Wd=Math.max(1,Math.round(innerWidth*DPR)); Hd=Math.max(1,Math.round(innerHeight*DPR));
+  cv.width=Wd; cv.height=Hd; readSafe();
+  const first=!resize.done; resize.done=true;
+  fitHome(); if(first) Object.assign(view,HOME);
+  dirty=true; draw();
+}
+const hOf=w=>w*Hd/Wd;
+let lastMin=0, boost=1;
+function itFor(w){
+  const byDepth=150+260*Math.max(0,Math.log10(3.2/w));
+  return Math.round(Math.min(40000, Math.max(byDepth, lastMin*1.8+400)*boost));
+}
+function atLimit(v){ return v.w/Wd < 2.5e-15*Math.max(1,Math.abs(v.cx),Math.abs(v.cy)); }
+
+// screen (device px, y down) ↔ complex plane (y up), through the rotation
+function toWorld(px,py,v=view){
+  const s=v.w/Wd, ux=(px-Wd/2)*s, uy=-(py-Hd/2)*s, c=Math.cos(v.a), n=Math.sin(v.a);
+  return [v.cx+ux*c-uy*n, v.cy+ux*n+uy*c];
+}
+function toScreen(wx,wy,v=view){
+  const s=v.w/Wd, dx=wx-v.cx, dy=wy-v.cy, c=Math.cos(v.a), n=Math.sin(v.a);
+  return [Wd/2+(dx*c+dy*n)/s, Hd/2-(-dx*n+dy*c)/s];
+}
+function pinTo(px,py,wx,wy){ // move the centre so that screen point (px,py) shows world point (wx,wy)
+  const s=view.w/Wd, ux=(px-Wd/2)*s, uy=-(py-Hd/2)*s, c=Math.cos(view.a), n=Math.sin(view.a);
+  view.cx=wx-(ux*c-uy*n); view.cy=wy-(ux*n+uy*c);
+}
+
+/* ---------- progressive render jobs ---------- */
+const PASSES=[8,3,1];
+let job=0, queue=[], cur=null, dirty=true, lastStart=0, roughMs=150;
+let base=null, home=null;
+function gridFor(v,W,H,sx){ // top-left pixel centre and per-pixel steps along a row / down a column
+  const c=Math.cos(v.a), n=Math.sin(v.a);
+  const exr=sx*c, exi=sx*n, eyr=sx*n, eyi=-sx*c;
+  const ox=0.5-W/2, oy=0.5-H/2;
+  return {or:v.cx+ox*exr+oy*eyr, oi:v.cy+ox*exi+oy*eyi, exr,exi,eyr,eyi};
+}
+function startJob(){
+  job++; queue=[]; dirty=false; lastStart=performance.now();
+  const v= back ? backView(performance.now()+Math.min(500,Math.max(50,roughMs*1.15))) : {...view}, maxIt=itFor(v.w);
+  cur={id:job, v, maxIt, passes:[]};
+  (back?[6]:PASSES).forEach((ds,p)=>{
+    const W=Math.ceil(Wd/ds), H=Math.ceil(Hd/ds), sx=v.w/W;
+    const P={W,H,ds,sx,left:H,minN:1e9,data:new Uint8ClampedArray(W*H*4)}; cur.passes.push(P);
+    const g=gridFor(v,W,H,sx), rows=Math.max(1,Math.floor(12000/W));
+    for(let y=0;y<H;y+=rows) queue.push({job,pass:p,W,y0row:y,rows:Math.min(rows,H-y),...g,maxIt});
+  });
+  pump();
+}
+function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
+function onStrip(e){
+  idle.push(e.target);
+  const m=e.data;
+  if(m.job===-1){ homeStrip(m); pump(); return; }
+  if(!cur || m.job!==cur.id){ pump(); return; }
+  const P=cur.passes[m.pass];
+  P.data.set(m.out, m.y0row*P.W*4); P.left-=m.rows; if(m.minN<P.minN) P.minN=m.minN;
+  if(P.left<=0){
+    if(m.pass===0) roughMs=0.6*roughMs+0.4*(performance.now()-lastStart);
+    if(P.minN<1e9){ lastMin=P.minN; boost=1; }
+    else if(cur.maxIt<40000 && !back){ boost*=3; dirty=true; }
+    const better=!base || base.job!==cur.id || base.pass<m.pass;
+    if(better){
+      const c=document.createElement('canvas'); c.width=P.W; c.height=P.H;
+      c.getContext('2d').putImageData(new ImageData(P.data,P.W,P.H),0,0);
+      base={img:c, cx:cur.v.cx, cy:cur.v.cy, a:cur.v.a, sx:P.sx, job:cur.id, pass:m.pass, w:cur.v.w};
+      needDraw=true;
+    }
+  }
+  pump();
+}
+(function(){ // whole-set backdrop, wide enough to fill the corners of a turned view
+  const W=420, H=420, v={cx:-0.6,cy:0,w:6.4,a:0}, sx=v.w/W;
+  home={img:null, cx:v.cx, cy:v.cy, a:0, sx, w:v.w, W, H, left:H, data:new Uint8ClampedArray(W*H*4)};
+  const g=gridFor(v,W,H,sx);
+  for(let y=0;y<H;y+=30) queue.push({job:-1,pass:0,W,y0row:y,rows:Math.min(30,H-y),...g,maxIt:300});
+})();
+function homeStrip(m){
+  home.data.set(m.out, m.y0row*home.W*4); home.left-=m.rows;
+  if(home.left<=0){ const c=document.createElement('canvas'); c.width=home.W; c.height=home.H;
+    c.getContext('2d').putImageData(new ImageData(home.data,home.W,home.H),0,0); home.img=c; needDraw=true; }
+}
+
+/* ---------- drawing ---------- */
+let needDraw=true;
+function blit(L){
+  const [sx,sy]=toScreen(L.cx,L.cy), k=L.sx/(view.w/Wd);
+  ctx.save(); ctx.translate(sx,sy); ctx.rotate(view.a-L.a); ctx.scale(k,k);
+  ctx.drawImage(L.img,-L.img.width/2,-L.img.height/2); ctx.restore();
+}
+function draw(){
+  needDraw=false;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,Wd,Hd);
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  if(home && home.img && (!base || view.w>base.w*0.6)) blit(home);
+  if(base) blit(base);
+  ctx.save(); ctx.scale(DPR,DPR);
+  drawPin(); drawCompass(); drawScale();
+  ctx.restore();
+}
+
+/* ---------- number formatting ---------- */
+const SUP={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+const sup=n=>String(n).split('').map(ch=>SUP[ch]).join('');
+const minus=s=>s.replace(/^-/,'−');
+function digitsFor(pix){ return Math.max(2,Math.min(17,Math.ceil(-Math.log10(pix))+1)); } // one digit finer than a pixel
+function fixed(x,d){ return minus((x<0||Object.is(x,-0)?'-':'')+Math.abs(x).toFixed(d)); }
+function sci(x,sig=2){
+  if(x===0) return '0';
+  const k=Math.floor(Math.log10(Math.abs(x))), m=x/Math.pow(10,k);
+  if(k>=-3 && k<=4) return String(+x.toPrecision(sig));
+  const ms=String(+m.toPrecision(sig));
+  return (ms==='1'?'':ms+' × ')+'10'+sup(k);
+}
+function plainSci(x){ return x.toExponential(3).replace('e',' × 10^'); }
+
+/* ---------- scale bar (bottom right) ---------- */
+function niceLen(target){ const k=Math.floor(Math.log10(target)), b=Math.pow(10,k);
+  for(const m of [5,2,1]) if(m*b<=target) return {L:m*b,m,k}; return {L:b,m:1,k}; }
+function drawScale(){
+  const cssW=Wd/DPR, perPx=view.w/cssW;                // complex units per CSS pixel
+  const {L}=niceLen(perPx*130), len=L/perPx;
+  const right=cssW-16-SA.r, bottom=Hd/DPR-18-SA.b, left=right-len;
+  ctx.lineCap='round';
+  ctx.strokeStyle='rgba(0,0,0,.55)'; ctx.lineWidth=5;
+  line(left,bottom,right,bottom); line(left,bottom-7,left,bottom+1); line(right,bottom-7,right,bottom+1);
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+  line(left,bottom,right,bottom); line(left,bottom-7,left,bottom+1); line(right,bottom-7,right,bottom+1);
+  const z=HOME.w/view.w;
+  textShadow(sci(L,1), right, bottom-12, '600 13px system-ui,sans-serif','right');
+  textShadow('zoom ×'+(z<1e4?String(+z.toPrecision(2)):sci(z,2)), right, bottom+14, '11px system-ui,sans-serif','right', 'rgba(255,255,255,.75)');
+}
+function line(a,b,c,d){ ctx.beginPath(); ctx.moveTo(a,b); ctx.lineTo(c,d); ctx.stroke(); }
+function textShadow(t,x,y,font,align,col='#fff'){
+  ctx.font=font; ctx.textAlign=align; ctx.textBaseline='alphabetic';
+  ctx.lineJoin='round'; ctx.lineWidth=3.5; ctx.strokeStyle='rgba(0,0,0,.65)'; ctx.strokeText(t,x,y);
+  ctx.fillStyle=col; ctx.fillText(t,x,y);
+}
+
+/* ---------- compass (top right): needle points to +i ---------- */
+const COMPASS_R=25;
+function compassPos(){ return [Wd/DPR-16-SA.r-COMPASS_R, 16+SA.t+COMPASS_R]; }
+function drawCompass(){
+  const [x,y]=compassPos(), R=COMPASS_R, a=view.a;
+  ctx.save(); ctx.translate(x,y);
+  ctx.beginPath(); ctx.arc(0,0,R,0,TAU); ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fill();
+  ctx.lineWidth=1.5; ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.stroke();
+  ctx.rotate(a);                                           // the plane's north on screen
+  ctx.strokeStyle='rgba(255,255,255,.45)'; ctx.lineWidth=1;
+  for(let i=0;i<8;i++){ const t=i*TAU/8, r0=i%2?R-4:R-6; line(Math.sin(t)*r0,-Math.cos(t)*r0,Math.sin(t)*(R-1.5),-Math.cos(t)*(R-1.5)); }
+  ctx.beginPath(); ctx.moveTo(0,-R+7); ctx.lineTo(5,0); ctx.lineTo(-5,0); ctx.closePath(); ctx.fillStyle='#ff4a3d'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0,R-7); ctx.lineTo(5,0); ctx.lineTo(-5,0); ctx.closePath(); ctx.fillStyle='#e8e8e8'; ctx.fill();
+  ctx.beginPath(); ctx.arc(0,0,2,0,TAU); ctx.fillStyle='#000'; ctx.fill();
+  ctx.font='700 10px system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.save(); ctx.translate(0,-R-9); ctx.rotate(-a); textShadow('+i',0,4,'700 11px system-ui,sans-serif','center'); ctx.restore();
+  ctx.restore();
+  const deg=Math.round(-view.a*180/Math.PI);           // how far the plane is turned, counter-clockwise positive
+  if(deg!==0) textShadow((deg>0?'+':'−')+Math.abs(deg)+'°', x, y+R+17, '600 11px system-ui,sans-serif','center');
+}
+
+/* ---------- pin: tap a point, read its coordinates ---------- */
+let pin=null, labelBox=null;
+function escapeCount(cr,ci,maxIt){
+  let zr=0,zi=0,zr2=0,zi2=0,n=0;
+  while(zr2+zi2<=4 && n<maxIt){ zi=2*zr*zi+ci; zr=zr2-zi2+cr; zr2=zr*zr; zi2=zi*zi; n++; }
+  return zr2+zi2>4 ? n : -1;
+}
+function placePin(px,py){
+  if(pin){
+    const [sx,sy]=toScreen(pin.re,pin.im);
+    if(Math.hypot(sx-px,sy-py)<26*DPR){ pin=null; needDraw=true; return; }   // tap the pin again to remove it
+  }
+  const [re,im]=toWorld(px,py), pix=view.w/Wd*DPR, maxIt=itFor(view.w);
+  pin={re,im,d:digitsFor(pix),pix,maxIt,n:escapeCount(re,im,maxIt)};
+  needDraw=true;
+}
+function pinText(){
+  return { re:fixed(pin.re,pin.d), im:(pin.im<0?'− ':'+ ')+Math.abs(pin.im).toFixed(pin.d)+' i',
+           n: pin.n<0 ? 'no escape in '+pin.maxIt+' steps' : 'escapes after '+pin.n+' steps' };
+}
+function drawPin(){
+  labelBox=null; if(!pin) return;
+  const [sx,sy]=toScreen(pin.re,pin.im), x=sx/DPR, y=sy/DPR, cw=Wd/DPR, ch=Hd/DPR;
+  if(x<-10||y<-10||x>cw+10||y>ch+10){ drawOffscreen(x,y); return; }
+  ctx.lineWidth=3; ctx.strokeStyle='rgba(0,0,0,.6)';
+  ctx.beginPath(); ctx.arc(x,y,7,0,TAU); ctx.stroke(); line(x-13,y,x-9,y); line(x+9,y,x+13,y); line(x,y-13,x,y-9); line(x,y+9,x,y+13);
+  ctx.lineWidth=1.6; ctx.strokeStyle='#fff';
+  ctx.beginPath(); ctx.arc(x,y,7,0,TAU); ctx.stroke(); line(x-13,y,x-9,y); line(x+9,y,x+13,y); line(x,y-13,x,y-9); line(x,y+9,x,y+13);
+  ctx.beginPath(); ctx.arc(x,y,1.6,0,TAU); ctx.fillStyle='#fff'; ctx.fill();
+  const T=pinText(), f1='600 13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace', f2='11px system-ui,sans-serif';
+  ctx.font=f1; const w1=Math.max(ctx.measureText(T.re).width, ctx.measureText(T.im).width);
+  ctx.font=f2; const w2=ctx.measureText(T.n).width;
+  const bw=Math.max(w1,w2)+20, bh=62;
+  let bx=x+16, by=y-bh-10;
+  if(bx+bw>cw-8) bx=x-16-bw; if(bx<8) bx=Math.max(8,Math.min(cw-8-bw,x-bw/2));
+  if(by<8+SA.t) by=y+18;
+  ctx.fillStyle='rgba(0,0,0,.68)'; roundRect(bx,by,bw,bh,9); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic'; ctx.fillStyle='#fff';
+  ctx.font=f1; ctx.fillText(T.re,bx+10,by+20); ctx.fillText(T.im,bx+10,by+37);
+  ctx.font=f2; ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillText(T.n,bx+10,by+53);
+  labelBox={x:bx,y:by,w:bw,h:bh};
+}
+function drawOffscreen(x,y){ // a small arrow on the edge pointing at the pin
+  const cw=Wd/DPR, ch=Hd/DPR, cx=cw/2, cy=ch/2, ang=Math.atan2(y-cy,x-cx);
+  const m=26, t=Math.min(Math.abs((cw/2-m)/Math.cos(ang)||1e9), Math.abs((ch/2-m)/Math.sin(ang)||1e9));
+  const ax=cx+Math.cos(ang)*t, ay=cy+Math.sin(ang)*t;
+  ctx.save(); ctx.translate(ax,ay); ctx.rotate(ang);
+  ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-7); ctx.lineTo(-6,7); ctx.closePath();
+  ctx.fillStyle='#fff'; ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=3; ctx.stroke(); ctx.fill(); ctx.restore();
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function copyPin(){
+  const T=pinText(), s=fixed(pin.re,pin.d)+' '+(pin.im<0?'-':'+')+' '+Math.abs(pin.im).toFixed(pin.d)+'i';
+  const ok=()=>toast('Copied  '+T.re+' '+T.im);
+  if(navigator.clipboard) navigator.clipboard.writeText(s.replace(/−/g,'-')).then(ok,()=>toast(s));
+  else toast(s);
+}
+let toastT=0;
+function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('on'),1800); }
+
+/* ---------- letting go: drift back to the whole set ---------- */
+let back=null;
+function release(){
+  if(back) return;
+  endGesture(); vel.x=vel.y=0; rotAnim=null;
+  const from={...view}, to={...HOME};
+  const decades=Math.log10(to.w/from.w);
+  back={from,to,t0:performance.now(),dur:Math.min(8000,Math.max(3000,decades*520))};
+}
+function backView(now){
+  const {from,to,t0,dur}=back;
+  const t=Math.min(1,(now-t0)/dur), s=t*t*(3-2*t);
+  const w=from.w*Math.pow(to.w/from.w,s);
+  const k=(w-from.w)/(to.w-from.w);
+  return {w, cx:from.cx+(to.cx-from.cx)*k, cy:from.cy+(to.cy-from.cy)*k, a:wrap(from.a)*(1-s), t};
+}
+function stepBack(now,dt){
+  let b=backView(now);
+  if(b.t<1 && base && b.w>base.w*1.08){ back.t0+=dt; b=backView(now); }
+  view.w=b.w; view.cx=b.cx; view.cy=b.cy; view.a=b.a;
+  dirty=true; needDraw=true;
+  if(b.t>=1){ Object.assign(view,back.to); back=null; lastMin=0; boost=1; }
+}
+
+/* ---------- moving the map ---------- */
+function clampView(){
+  view.w=Math.min(view.w, HOME.w*2.2);
+  view.cx=Math.max(-2.6,Math.min(1.4,view.cx)); view.cy=Math.max(-1.6,Math.min(1.6,view.cy));
+  if(atLimit(view)) release();
+}
+function zoomAt(px,py,f){
+  const [wx,wy]=toWorld(px,py); view.w/=f; pinTo(px,py,wx,wy);
+  clampView(); dirty=true; needDraw=true;
+}
+function rotateAt(px,py,dA){ // dA in screen radians, clockwise positive; the point under the fingers stays put
+  const [wx,wy]=toWorld(px,py); view.a=wrap(view.a+dA); pinTo(px,py,wx,wy);
+  clampView(); dirty=true; needDraw=true;
+}
+function panBy(dx,dy){
+  const s=view.w/Wd, c=Math.cos(view.a), n=Math.sin(view.a);
+  view.cx-=s*(dx*c+dy*n); view.cy-=s*(dx*n-dy*c);
+  clampView(); dirty=true; needDraw=true;
+}
+let rotAnim=null;
+function northUp(){ if(back||Math.abs(view.a)<1e-9) return; rotAnim={from:view.a,t0:performance.now(),dur:Math.min(600,250+Math.abs(view.a)*200),done:0}; }
+function snapNorth(){ if(Math.abs(view.a)<3*Math.PI/180 && view.a!==0) northUp(); }
+
+const ptrs=new Map(); let blocked=false;
+const vel={x:0,y:0}; let lastMove=0, tapT=0, tapX=0, tapY=0, moved=0, glide=null, twist=0, twisting=false, pinTimer=0;
+const P=e=>[e.clientX*DPR, e.clientY*DPR];
+function endGesture(){ ptrs.clear(); cv.classList.remove('drag'); blocked=true; }
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  if(back) return;
+  if(blocked && ptrs.size===0) blocked=false;
+  if(blocked) return;
+  cv.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId,P(e)); cv.classList.add('drag');
+  glide=null; rotAnim=null; vel.x=vel.y=0; lastMove=performance.now();
+  if(ptrs.size===1){ moved=0; twist=0; twisting=false; }
+});
+cv.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId) || back || blocked) return;
+  const ids=[...ptrs.keys()].slice(0,2);
+  const before=ids.map(id=>ptrs.get(id));
+  const np=P(e); ptrs.set(e.pointerId,np);
+  const after=ids.map(id=>ptrs.get(id));
+  const now=performance.now();
+  if(ptrs.size===1){
+    const dx=after[0][0]-before[0][0], dy=after[0][1]-before[0][1]; moved+=Math.abs(dx)+Math.abs(dy);
+    panBy(dx,dy);
+    const dt=Math.max(1,now-lastMove), a=0.75; vel.x=a*dx/dt+(1-a)*vel.x; vel.y=a*dy/dt+(1-a)*vel.y; lastMove=now;
+  } else {
+    if(!ids.includes(e.pointerId)) return;
+    const mid=q=>[(q[0][0]+q[1][0])/2,(q[0][1]+q[1][1])/2], dist=q=>Math.hypot(q[0][0]-q[1][0],q[0][1]-q[1][1]);
+    const ang=q=>Math.atan2(q[1][1]-q[0][1],q[1][0]-q[0][0]);
+    const m0=mid(before), m1=mid(after), d0=dist(before), d1=dist(after);
+    moved+=99; vel.x=vel.y=0;
+    panBy(m1[0]-m0[0], m1[1]-m0[1]);
+    if(d0>2 && d1>2 && !back) zoomAt(m1[0],m1[1],d1/d0);
+    if(d0>20*DPR && d1>20*DPR && !back){
+      const dA=wrap(ang(after)-ang(before));
+      if(twisting) rotateAt(m1[0],m1[1],dA);
+      else { twist+=dA; if(Math.abs(twist)>0.14){ twisting=true; rotateAt(m1[0],m1[1],twist); } } // ~8° before a pinch starts to turn
+    }
+  }
+});
+function hitCompass(px,py){ const [x,y]=compassPos(); return Math.hypot(px/DPR-x,py/DPR-y)<COMPASS_R+8; }
+function hitLabel(px,py){ const b=labelBox, x=px/DPR, y=py/DPR; return b && x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h; }
+function up(e){
+  if(!ptrs.has(e.pointerId)) return;
+  const was=ptrs.size; ptrs.delete(e.pointerId);
+  const now=performance.now();
+  if(was===1){
+    cv.classList.remove('drag');
+    if(twisting){ twisting=false; snapNorth(); }
+    if(moved<12){
+      const x=e.clientX*DPR, y=e.clientY*DPR;
+      if(hitCompass(x,y)){ northUp(); tapT=0; return; }
+      if(hitLabel(x,y)){ copyPin(); tapT=0; return; }
+      if(now-tapT<320 && Math.hypot(x-tapX,y-tapY)<40*DPR){ // double tap = closer
+        clearTimeout(pinTimer); glide={px:tapX,py:tapY,f:2.5,t0:now,dur:280,done:1}; tapT=0;
+      } else {                                               // single tap = pin (after the double-tap window)
+        tapT=now; tapX=x; tapY=y; clearTimeout(pinTimer);
+        pinTimer=setTimeout(()=>{ if(!back) placePin(tapX,tapY); },300);
+      }
+    } else if(now-lastMove<60 && Math.hypot(vel.x,vel.y)>0.15){ glide={fling:true}; }
+  } else if(was>=2){ vel.x=vel.y=0; }
+}
+cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
+cv.addEventListener('wheel',e=>{
+  e.preventDefault(); if(back) return;
+  let d=e.deltaMode===1?16:1;
+  if(e.shiftKey || e.altKey){ // shift/alt + wheel turns the map
+    const v=(e.deltaY||e.deltaX)*d; rotateAt(e.clientX*DPR,e.clientY*DPR,v*0.0025); clearTimeout(cv._snap); cv._snap=setTimeout(snapNorth,250); return;
+  }
+  zoomAt(e.clientX*DPR,e.clientY*DPR,Math.exp(-e.deltaY*d*0.0018));
+},{passive:false});
+addEventListener('keydown',e=>{
+  if(back || document.getElementById('sheet').classList.contains('on')) return;
+  const k=e.key.toLowerCase();
+  if(k==='q') rotateAt(Wd/2,Hd/2,-Math.PI/36);
+  else if(k==='e') rotateAt(Wd/2,Hd/2,Math.PI/36);
+  else if(k==='n') northUp();
+  else if(k==='p') requestShot();
+});
+['gesturestart','gesturechange','contextmenu'].forEach(t=>document.addEventListener(t,e=>{ if(!e.target.closest || !e.target.closest('#sheet')) e.preventDefault(); }));
+
+/* ---------- screenshot: the picture + pin + compass + scale, no buttons ---------- */
+let shotWanted=0;
+const shotBtn=document.getElementById('shot');
+shotBtn.addEventListener('click',requestShot);
+function requestShot(){ if(back||shotWanted) return; shotWanted=performance.now(); shotBtn.classList.add('busy'); }
+function settled(){ return !dirty && cur && cur.passes.every(p=>p.left<=0) && !glide && !rotAnim && !back && ptrs.size===0; }
+function viewInfo(){
+  const pix=view.w/Wd*DPR, d=digitsFor(pix);
+  return { d, re:fixed(view.cx,d), im:(view.cy<0?'− ':'+ ')+Math.abs(view.cy).toFixed(d)+' i',
+           width:sci(view.w,3), deg:Math.round(-view.a*180/Math.PI) };
+}
+let shotBlob=null, shotURL='', shotName='';
+function takeShot(){
+  shotWanted=0; shotBtn.classList.remove('busy');
+  draw();
+  const c=document.createElement('canvas'); c.width=Wd; c.height=Hd;
+  const g=c.getContext('2d'); g.drawImage(cv,0,0);
+  // caption, top left: where this view is
+  const V=viewInfo(), lines=['Mandelbrot  z → z² + c', 'centre  '+V.re+'  '+V.im, 'width  '+V.width+'   rotation  '+(V.deg>0?'+':V.deg<0?'−':'')+Math.abs(V.deg)+'°'];
+  g.save(); g.scale(DPR,DPR);
+  const fonts=['600 12px system-ui,sans-serif','12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace','12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace'];
+  let maxW=0; lines.forEach((t,i)=>{ g.font=fonts[i]; maxW=Math.max(maxW,g.measureText(t).width); });
+  const x0=14+SA.l, y0=14+SA.t;
+  g.fillStyle='rgba(0,0,0,.55)'; g.beginPath(); g.roundRect ? g.roundRect(x0,y0,maxW+20,lines.length*17+12,8) : g.rect(x0,y0,maxW+20,lines.length*17+12); g.fill();
+  lines.forEach((t,i)=>{ g.font=fonts[i]; g.fillStyle=i?'rgba(255,255,255,.9)':'#fff'; g.textAlign='left'; g.fillText(t,x0+10,y0+19+i*17); });
+  g.restore();
+  const meta={viewer:'Mandelbrot Survey Map', map:'z -> z^2 + c',
+    centre:{re:view.cx, im:view.cy}, width:view.w, rotationDeg:-view.a*180/Math.PI,
+    pin: pin ? {re:pin.re, im:pin.im, escapes:pin.n<0?null:pin.n, maxIter:pin.maxIt} : null,
+    taken:new Date().toISOString()};
+  c.toBlob(async b=>{
+    if(!b){ toast('Could not make the image'); return; }
+    shotBlob=await withText(b,'Comment',JSON.stringify(meta));
+    const t=new Date(), p=n=>String(n).padStart(2,'0');
+    shotName=`mandelbrot-${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())}-${p(t.getHours())}${p(t.getMinutes())}${p(t.getSeconds())}.png`;
+    if(shotURL) URL.revokeObjectURL(shotURL);
+    shotURL=URL.createObjectURL(shotBlob);
+    document.getElementById('shotImg').src=shotURL;
+    document.getElementById('shotInfo').textContent = pin
+      ? 'Pin  '+fixed(pin.re,pin.d)+'  '+(pin.im<0?'−':'+')+' '+Math.abs(pin.im).toFixed(pin.d)+' i   ·   the coordinates are also stored inside the PNG'
+      : 'Centre, width and rotation are also stored inside the PNG';
+    const f=new File([shotBlob],shotName,{type:'image/png'});
+    document.getElementById('share').style.display = (navigator.canShare && navigator.canShare({files:[f]})) ? '' : 'none';
+    document.getElementById('sheet').classList.add('on');
+  },'image/png');
+}
+// write a tEXt chunk (keyword + JSON) right after the PNG header, so the coordinates travel with the file
+async function withText(blob,key,text){
+  try{
+    const src=new Uint8Array(await blob.arrayBuffer());
+    const data=new TextEncoder().encode(key+'\0'+text), type=new TextEncoder().encode('tEXt');
+    const chunk=new Uint8Array(12+data.length), dv=new DataView(chunk.buffer);
+    dv.setUint32(0,data.length); chunk.set(type,4); chunk.set(data,8);
+    dv.setUint32(8+data.length,crc32(chunk.subarray(4,8+data.length)));
+    const at=33; // 8-byte signature + 25-byte IHDR chunk
+    const out=new Uint8Array(src.length+chunk.length); out.set(src.subarray(0,at)); out.set(chunk,at); out.set(src.subarray(at),at+chunk.length);
+    return new Blob([out],{type:'image/png'});
+  }catch(_){ return blob; }
+}
+let CRC=null;
+function crc32(u){
+  if(!CRC){ CRC=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; CRC[n]=c>>>0; } }
+  let c=0xFFFFFFFF; for(let i=0;i<u.length;i++) c=CRC[(c^u[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0;
+}
+document.getElementById('save').addEventListener('click',()=>{
+  const a=document.createElement('a'); a.href=shotURL; a.download=shotName; document.body.append(a); a.click(); a.remove();
+});
+document.getElementById('share').addEventListener('click',()=>{
+  const f=new File([shotBlob],shotName,{type:'image/png'});
+  navigator.share({files:[f], title:'Mandelbrot', text: pin ? 'c = '+fixed(pin.re,pin.d)+' '+(pin.im<0?'−':'+')+' '+Math.abs(pin.im).toFixed(pin.d)+'i' : undefined}).catch(()=>{});
+});
+document.getElementById('close').addEventListener('click',()=>document.getElementById('sheet').classList.remove('on'));
+document.getElementById('sheet').addEventListener('click',e=>{ if(e.target.id==='sheet') e.currentTarget.classList.remove('on'); });
+
+/* ---------- loop ---------- */
+let lastT=performance.now();
+function frame(now){
+  const dt=Math.min(50,now-lastT); lastT=now;
+  if(back) stepBack(now,dt);
+  else {
+    if(glide){
+      if(glide.fling){
+        panBy(vel.x*dt, vel.y*dt);
+        const k=Math.pow(0.994,dt); vel.x*=k; vel.y*=k;
+        if(Math.hypot(vel.x,vel.y)<0.02) glide=null;
+      } else {
+        const t=Math.min(1,(now-glide.t0)/glide.dur), e=1-Math.pow(1-t,3), target=Math.pow(glide.f,e);
+        zoomAt(glide.px,glide.py,target/glide.done); glide.done=target;
+        if(t>=1) glide=null;
+      }
+    }
+    if(rotAnim && !back){
+      const t=Math.min(1,(now-rotAnim.t0)/rotAnim.dur), e=1-Math.pow(1-t,3), target=-rotAnim.from*e;
+      rotateAt(Wd/2,Hd/2,target-rotAnim.done); rotAnim.done=target;
+      if(t>=1){ view.a=0; rotAnim=null; }
+    }
+  }
+  const roughDone=cur && cur.passes[0].left<=0;
+  if(dirty && (!cur || roughDone || (!back && now-lastStart>140))) startJob();
+  if(needDraw) draw();
+  if(shotWanted && (settled() || now-shotWanted>15000)) takeShot();
+  else if(shotWanted && back){ shotWanted=0; shotBtn.classList.remove('busy'); }
+  requestAnimationFrame(frame);
+}
+addEventListener('resize',resize);
+resize(); pump(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>

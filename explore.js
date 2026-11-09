@@ -48,5 +48,12 @@ window.EXPLORE = [
     title: 'Mandelbrot Map',
     path: 'explore/fractal-map/',
     desc: 'Only the map. Drag and pinch through z → z² + c until the numbers run out, then drift back to the whole set.'
+  },
+  {
+    id: 'fractal-map-survey',
+    badge: '⌖',
+    title: 'Mandelbrot Survey Map',
+    path: 'explore/fractal-map-survey/',
+    desc: 'The same map with survey tools: a scale bar, twist to rotate with a compass, tap a point to read its coordinates, and screenshots that keep the scale, compass and coordinates.'
   }
 ];
