@@ -7,13 +7,14 @@ Plain static HTML — no build step. Progress (played / best score / cleared) is
 ## Structure
 
 ```
-index.html            landing page (levels, explore, explore › groups, world, sketches, music)
+index.html            landing page (levels, explore, explore › groups, world, sketches, research, music)
 levels.js             level registry
 explore.js            explore registry (interactive math, no score)
 groups.js             groups registry (group viewers in explore/, shown as Explore › Groups)
 world.js              world registry (map layers)
 sketches.js           sketches registry (drawings rebuilt as 3D models)
 music.js              music registry (groups played as sound)
+research.js           research registry (Mandelbrot investigations, computed live)
 shared/progress.js    progress store used by every level
 levels/
   01-smiley-paths/    Smiley Paths
@@ -46,6 +47,9 @@ world/
 sketches/
   pineapple-umbrella/ Pineapple Umbrella (colored-pencil umbrella with a pineapple crown, as a three.js model; the original drawing is embedded)
   corn-cob/           Corn Cob (an ear of corn in its husk: instanced kernels, silk, peeling husk leaves; the original drawing is embedded)
+research/
+  six-routes/         Six routes through the Mandelbrot set (Fibonacci road, Farey grammar, period doubling, symmetry doubling, spiral seed, census of copies; frames computed live, results grids)
+  spiral-dive/        Dive into the spiral seed (100 frames to 10^-78; deep frames by perturbation around the exact centre plus a jump along the fixed point)
 music/
   sound-of-a5/        Sound of A₅ (60 elements played by a band: irreps 1, 3, 3′, 4, 5 as bass, drums, piano, violin, gamelan; Web Audio, octave clock)
   sound-of-d4/        Sound of D₄ (the square's 8 symmetries played by a band: irreps 1, 1′, 1″, 1‴, 2; by-class walk by default, every layer's instrument swappable)
@@ -85,6 +89,11 @@ Minesweeper keeps its own level list in the `LEVELS` array at the top of the scr
 
 1. Create `sketches/name/index.html` (self-contained, back link to `../../`).
 2. Add an entry to `sketches.js` with a short `badge`.
+
+## Add a research page
+
+1. Create `research/name/index.html` (self-contained, back link to `../../`).
+2. Add an entry to `research.js` with a short `badge`.
 
 ## Add a music page
 

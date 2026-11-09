@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dive into the spiral seed</title>
+<style>
+:root{--bg:#0b0d12;--panel:#141821;--line:#262c3a;--text:#e8ebf2;--mute:#8b93a7;--acc:#ffb35c;--ok:#9be7a8}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:560px;margin:0 auto}
+header{display:flex;align-items:baseline;gap:12px;padding:10px 14px 4px}
+header a{color:var(--mute);text-decoration:none;font-size:14px}
+header h1{font-size:16px;margin:0}
+.stage{position:relative;flex:1 1 auto;min-height:0;touch-action:pan-y}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.tap{position:absolute;top:0;bottom:0;width:30%;z-index:2}.tap.l{left:0}.tap.r{right:0}
+.live{position:absolute;right:10px;top:8px;z-index:3;font:11px ui-monospace,Menlo,monospace;color:var(--mute);background:rgba(11,13,18,.7);padding:3px 7px;border-radius:8px}
+.cap{padding:8px 14px 0;min-height:104px}
+.cap .d{font:600 15px system-ui;color:var(--acc)}
+.cap .d sup{font-size:10px}
+.cap .n{margin:3px 0 0}
+.cap .m{margin:4px 0 0;color:var(--ok);font:12px ui-monospace,Menlo,monospace}
+.ctl{display:flex;align-items:center;gap:10px;padding:8px 14px 16px}
+.ctl button{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font:inherit;min-width:74px}
+.ctl input{flex:1;accent-color:var(--acc)}
+.ctl .i{color:var(--mute);font:12px ui-monospace,Menlo,monospace;min-width:52px;text-align:right}
+</style></head><body>
+<div class="app">
+  <header><a href="../../">← Home</a><h1>Dive into the spiral seed</h1></header>
+  <div class="stage" id="st"><canvas id="cv" width="540" height="720"></canvas><span class="live" id="live"></span>
+    <div class="tap l" id="tl"></div><div class="tap r" id="tr"></div></div>
+  <div class="cap"><div class="d" id="d"></div><p class="n" id="n"></p><p class="m" id="m"></p></div>
+  <div class="ctl"><button id="pl">Play</button><input type="range" id="sl" min="0" max="99" value="0"><span class="i" id="i"></span></div>
+</div>
+<script>
+'use strict';
+/* 100 frames, each 6.1925x deeper (exactly 48 steps of the spiral's multiplier), computed live on this device.
+   Shallow frames: plain 64-bit z -> z^2 + c, like the Mandelbrot Map app.
+   Deep frames (width < 1e-9): perturbation around the exact centre c0, whose orbit lands on the fixed point alpha
+   after 24 steps. Near alpha a pixel's offset grows by exactly rho = 2*alpha per step, so the long predictable
+   stretch is jumped in one multiplication and only the last ~650 steps are iterated. */
+const DATA={"consts":{"c0":[-0.7756837680090538,0.1364673682946901],"Z":[[0.0,0.0],[-0.7756837680090538,0.1364673682946901],[-0.1926218026656088,-0.07524367660351891],[-0.74424222001572,0.16545451354780594],[-0.24916248200846752,-0.1098091006541901],[-0.7256598641549159,0.1911879844269214],[-0.2856543749529515,-0.14100752531989383],[-0.7139684682761329,0.21702620131252362],[-0.3130331663726304,-0.1734323607590902],[-0.7077727885182501,0.2450475303744868],[-0.3347897399847893,-0.2104085794906321],[-0.7078713683332366,0.2773526355311653],[-0.35152637833916844,-0.25619261095386076],[-0.7177476272481579,0.3165842896664226],[-0.3607477240522866,-0.3179878771695465],[-0.7466611376269436,0.3658941742249541],[-0.35205946029845314,-0.4099305524610606],[-0.8197809622644461,0.4251072264132656],[-0.2843590958666121,-0.5605222539745831],[-1.0090088698077238,0.4552465710013461],[0.035165690933122495,-0.7822282878851295],[-1.386328236557951,0.08145217187286206],[1.1395877551660183,-0.08937152329794987],[0.5149892145386749,-0.06722601892706626],[-0.5149892145386749,0.06722601892706626]],"alpha":[-0.5149892145386749,0.06722601892706626]},"match":[null,0.02058,0.00445,-0.00969,0.06582,0.24921,0.62688,0.80787,0.89745,0.94733,0.96942,0.98339,0.99051,0.9933,0.99749,0.99874,0.99936,0.99963,0.99982,0.99995,0.99996,0.99998,0.99996,0.99996,0.99999,0.99999,0.99993,0.99994,0.99993,0.99998,0.99996,0.99996,0.99995,0.9998,0.99985,0.9999,0.99985,0.99987,0.99982,0.99995,0.99997,0.99999,0.99998,0.99995,0.99997,0.99998,0.99998,0.99994,0.99999,0.99989,0.99989,0.99995,0.99994,0.99996,0.99992,0.99998,0.99986,0.99988,0.99999,0.99996,0.99998,0.9999,0.99948,0.99968,0.99999,0.99997,0.99998,0.99995,0.99989,0.99991,0.99987,0.99993,0.99983,0.99989,0.99996,0.99994,0.99989,0.99981,0.9999,0.99999,1.0,0.99992,0.99986,0.99992,0.99989,0.99993,0.99994,0.99991,0.99999,0.99997,0.99998,0.99999,0.99999,0.99981,0.99977,0.99999,0.99983,0.99983,0.99997,0.99997]};
+const W=540, H=720, STEP=6.192508539843593;   // |rho|^48: one frame = 48 steps of the spiral's multiplier
+const U=8.8e26/3.2;                             // metres per unit if the whole set were the observable universe
+function sci(w){ const e=Math.floor(Math.log10(w)); return (w/10**e).toFixed(1)+' × 10<sup>'+e+'</sup>'; }
+function note(k,w){
+  if(w>=3) return 'The whole Mandelbrot set. We dive straight at one point: the spiral seed in Seahorse Valley.';
+  if(w>0.3&&w<1) return 'Seahorse Valley, the gap between the main body and the big bulb on the left.';
+  if(w>0.01&&w<0.02) return 'The seahorse tails appear.';
+  if(w>2e-4&&w<6e-4) return 'The double spiral comes into view. From here on, every frame should repeat the last.';
+  const p=w*STEP;
+  if(p>2e-12&&2e-12>=w) return 'Your Mandelbrot Map app lets go about here (2 × 10⁻¹²).';
+  if(p>1e-16&&1e-16>=w) return "Past this point your phone's 64-bit numbers show only flat blocks. Everything deeper uses the 120-digit centre.";
+  const m=w*U, sc=[[1.0,'If the whole set were as big as the observable universe, this frame would be about 1 metre across.'],
+    [1e-10,'On that universe-sized set, this frame is now about one atom across.'],[1.7e-15,'…and now about one proton across.'],
+    [1.6e-35,'…and now about one Planck length across: the smallest length physics can talk about.']];
+  for(const [lim,t] of sc) if(m*STEP>lim&&lim>=m) return t;
+  if(k===99) return 'The last frame: on the universe-sized set it is about 5 × 10¹⁶ times smaller than a Planck length. The centre is still there, the same spiral that appeared at frame 6.';
+  return ''; }
+DATA.frames=DATA.match.map((mt,k)=>{ const w=3.2/STEP**k;
+  return {w, depth:'Frame '+(k+1)+' · width '+sci(w), note:note(k,w), match: mt===null?'':'Match with the previous frame (turned 3.01°): '+mt.toFixed(5)}; });
+
+function buildLUT(stops){ const n=1024, lut=new Uint8Array(n*3);
+  for(let i=0;i<n;i++){ const t=i/n*(stops.length-1), k=Math.floor(t), f=t-k, a=stops[k], b=stops[k+1];
+    for(let j=0;j<3;j++) lut[i*3+j]=a[j]+(b[j]-a[j])*f; } return lut; }
+const LUT=buildLUT([[0,7,30],[32,18,110],[190,40,90],[255,140,30],[255,240,180],[90,30,140],[0,7,30]]);
+
+const WORKER=`
+let lut,C,Z,AL;
+onmessage=e=>{ const m=e.data;
+  if(m.init){ lut=m.lut; C=m.c0; Z=m.Z; AL=m.alpha; return; }
+  const {job,y0row,rows,Wp,Hp,ss,w,maxit,deep}=m;
+  const out=new Uint8ClampedArray(Wp*rows*4);
+  const sx=w/(Wp*ss), dx0=-w/2+sx/2, dy0=sx*Hp*ss/2-sx/2;
+  const ar=AL[0], ai=AL[1], rr=2*ar, ri=2*ai;               // rho = 2 alpha
+  const lr=Math.log(Math.hypot(rr,ri)), th=Math.atan2(ri,rr);
+  const qr=rr-1, qi=ri, qq=qr*qr+qi*qi;                     // rho - 1
+  for(let r=0;r<rows;r++){ const py=y0row+r;
+    for(let px=0;px<Wp;px++){ let R=0,G=0,B=0;
+      for(let sy=0;sy<ss;sy++) for(let sxx=0;sxx<ss;sxx++){
+        const dr=dx0+(px*ss+sxx)*sx, di=dy0-(py*ss+sy)*sx;
+        let n=0, zr=0, zi=0, esc=false;
+        if(!deep){
+          const cr=C[0]+dr, ci=C[1]+di; const xr=cr-0.25, q=xr*xr+ci*ci;
+          if(!(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625)){
+            let x=0,y=0,x2=0,y2=0,pr=0,pi=0,lim=8,cnt=0;
+            while(x2+y2<=256){ if(n>=maxit) break; y=2*x*y+ci; x=x2-y2+cr; x2=x*x; y2=y*y; n++;
+              if(x===pr&&y===pi){ n=maxit; break; } if(++cnt===lim){cnt=0;lim<<=1;pr=x;pi=y;} }
+            if(n<maxit && x2+y2>256){ esc=true; zr=x; zi=y; }
+          }
+        } else {
+          let er=0, ei=0;
+          for(n=0;n<24;n++){ const Zr=Z[n][0], Zi=Z[n][1];
+            const tr=2*(Zr*er-Zi*ei)+er*er-ei*ei+dr, ti=2*(Zr*ei+Zi*er)+2*er*ei+di; er=tr; ei=ti; }
+          // A = e + d/(rho-1);  e_{24+m} = rho^m A - d/(rho-1)   (exact for the linear part)
+          const pr_=(dr*qr+di*qi)/qq, pi_=(di*qr-dr*qi)/qq;
+          const Ar=er+pr_, Ai=ei+pi_, aA=Math.hypot(Ar,Ai);
+          if(Math.hypot(er,ei)<1e-9 && aA>0){
+            const mj=Math.floor(Math.log(1e-9/aA)/lr)-1;
+            if(mj>0){ const mag=Math.exp(mj*lr), ang=mj*th, cr_=mag*Math.cos(ang), ci_=mag*Math.sin(ang);
+              er=cr_*Ar-ci_*Ai-pr_; ei=cr_*Ai+ci_*Ar-pi_; n+=mj; }
+          }
+          const stop=n+maxit;
+          while(n<stop){ const tr=rr*er-ri*ei+er*er-ei*ei+dr, ti=rr*ei+ri*er+2*er*ei+di; er=tr; ei=ti; n++;
+            zr=ar+er; zi=ai+ei; if(zr*zr+zi*zi>256){ esc=true; break; } }
+        }
+        if(esc){ let mu=n+1-Math.log2(Math.log(zr*zr+zi*zi)*0.5); if(!(mu>0)) mu=0;
+          const k=((Math.sqrt(mu)*90)|0)&1023; R+=lut[k*3]; G+=lut[k*3+1]; B+=lut[k*3+2]; }
+      }
+      const d=ss*ss, o=(r*Wp+px)*4;
+      out[o]=Math.floor(R/d+0.5); out[o+1]=Math.floor(G/d+0.5); out[o+2]=Math.floor(B/d+0.5); out[o+3]=255;
+    }
+  }
+  postMessage({job,pass:m.pass,y0row,rows,out},[out.buffer]);
+};`;
+
+const NW=Math.max(2,Math.min(8,navigator.hardwareConcurrency||4));
+const url=URL.createObjectURL(new Blob([WORKER],{type:'text/javascript'}));
+const workers=[], idle=[];
+for(let i=0;i<NW;i++){ const w=new Worker(url);
+  w.postMessage({init:true,lut:LUT,c0:DATA.consts.c0,Z:DATA.consts.Z,alpha:DATA.consts.alpha});
+  w.onmessage=onRows; workers.push(w); idle.push(w); }
+
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const cache=new Map();           // frame -> {img, pass}
+let cur=null, jobId=0, queue=[];
+function passes(fast){ return fast ? [[4,1],[1,1]] : [[4,1],[1,1],[1,2]]; }   // [downsample, supersample]
+function start(k,fast){
+  jobId++; queue=[];
+  const f=DATA.frames[k], w=f.w, deep=w<1e-9, maxit=deep?4000:3000+60*k;
+  cur={id:jobId,k,ps:[],done:0,fast,t0:performance.now()};
+  const have=cache.get(k);
+  passes(fast).forEach(([ds,ss],p)=>{
+    if(have && have.level>=p) return;
+    const Wp=Math.ceil(W/ds), Hp=Math.ceil(H/ds);
+    const P={Wp,Hp,left:Hp,data:new Uint8ClampedArray(Wp*Hp*4)}; cur.ps[p]=P;
+    const rows=Math.max(1,Math.floor((ss>1?3000:9000)/Wp));
+    for(let y=0;y<Hp;y+=rows) queue.push({job:jobId,pass:p,y0row:y,rows:Math.min(rows,Hp-y),Wp,Hp,ss,w,maxit,deep});
+  });
+  if(have) draw(have.img);
+  if(!queue.length){ cur.done=99; status(); return; }
+  pump(); status();
+}
+function pump(){ while(idle.length&&queue.length) idle.pop().postMessage(queue.shift()); }
+function onRows(e){
+  idle.push(e.target); const m=e.data;
+  if(!cur||m.job!==cur.id){ pump(); return; }
+  const P=cur.ps[m.pass]; P.data.set(m.out,m.y0row*P.Wp*4); P.left-=m.rows;
+  if(P.left<=0){
+    const c=document.createElement('canvas'); c.width=P.Wp; c.height=P.Hp;
+    c.getContext('2d').putImageData(new ImageData(P.data,P.Wp,P.Hp),0,0);
+    const have=cache.get(cur.k);
+    if(!have||have.level<m.pass){ cache.set(cur.k,{img:c,level:m.pass}); if(cache.size>40) cache.delete(cache.keys().next().value); }
+    draw(c); cur.done=Math.max(cur.done,m.pass+1); status();
+  }
+  pump();
+}
+function draw(c){ ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high'; ctx.drawImage(c,0,0,W,H); }
+function status(){ const L=document.getElementById('live');
+  const n=cur?passes(cur.fast).length:0;
+  L.textContent = !cur ? '' : cur.done>=n||cur.done===99 ? 'computed live' : 'computing…'; }
+
+let i=0, timer=null, playing=false;
+const sl=document.getElementById('sl');
+function show(k,fast){ i=Math.max(0,Math.min(99,k)); const f=DATA.frames[i];
+  document.getElementById('d').innerHTML=f.depth; document.getElementById('n').textContent=f.note;
+  document.getElementById('m').textContent=f.match; sl.value=i; document.getElementById('i').textContent=(i+1)+' / 100';
+  start(i,!!fast); }
+function tick(){ if(!playing) return;
+  const ready=cur && (cur.done>=2||cur.done===99) && performance.now()-cur.t0>450;
+  if(ready){ if(i>=99){ stopPlay(); return; } show(i+1,true); }
+  timer=setTimeout(tick,60); }
+function stopPlay(){ playing=false; clearTimeout(timer); document.getElementById('pl').textContent='Play'; if(cur&&cur.fast) start(i,false); }
+document.getElementById('pl').onclick=()=>{ if(playing){ stopPlay(); return; }
+  playing=true; document.getElementById('pl').textContent='Pause'; if(i>=99) show(0,true); else start(i,true); tick(); };
+sl.oninput=()=>{ if(playing) stopPlay(); show(+sl.value); };
+document.getElementById('tl').onclick=()=>{ if(playing) stopPlay(); show(i-1); };
+document.getElementById('tr').onclick=()=>{ if(playing) stopPlay(); show(i+1); };
+addEventListener('keydown',e=>{ if(e.key==='ArrowRight'){ if(playing) stopPlay(); show(i+1);} if(e.key==='ArrowLeft'){ if(playing) stopPlay(); show(i-1);} });
+let x0=null; const st=document.getElementById('st');
+st.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;},{passive:true});
+st.addEventListener('touchend',e=>{ if(x0===null) return; const dx=e.changedTouches[0].clientX-x0;
+  if(Math.abs(dx)>40){ if(playing) stopPlay(); show(i+(dx<0?1:-1)); } x0=null; },{passive:true});
+show(0);
+</script></body></html>

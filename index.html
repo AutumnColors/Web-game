@@ -46,6 +46,9 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
   <h2 class="sec">Sketches</h2>
   <p class="sub">Drawings from the sketchbook, rebuilt in 3D. Drag to turn them.</p>
   <ul class="levels" id="sketches"></ul>
+  <h2 class="sec">Research</h2>
+  <p class="sub">Investigations of the Mandelbrot map. Every picture is computed live on your device.</p>
+  <ul class="levels" id="research"></ul>
   <h2 class="sec">Music</h2>
   <p class="sub">Symmetry you can hear. Press play.</p>
   <ul class="levels" id="music"></ul>
@@ -58,6 +61,7 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
 <script src="world.js"></script>
 <script src="sketches.js"></script>
 <script src="music.js"></script>
+<script src="research.js"></script>
 <script>
 'use strict';
 function card(href,badge,badgeClass,title,metaHtml,extraClass){
@@ -97,6 +101,9 @@ function render(){
   const mu=document.getElementById('music');
   mu.replaceChildren();
   (window.MUSIC||[]).forEach(m=>mu.append(card(m.path,m.badge||'?',' badge',m.title,'','')));
+  const rs=document.getElementById('research');
+  rs.replaceChildren();
+  (window.RESEARCH||[]).forEach(e=>rs.append(card(e.path,e.badge||'?',' badge',e.title,'','')));
 }
 document.getElementById('reset').addEventListener('click',()=>{
   if(!confirm('Reset all progress?'))return;
