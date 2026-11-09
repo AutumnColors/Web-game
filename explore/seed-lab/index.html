@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seed → Structure Lab</title>
+<style>
+:root{--bg:#0b0d12;--panel:#141821;--line:#262c3a;--text:#e8ebf2;--mute:#8b93a7;--acc:#7aa2ff;--acc2:#ffb35c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:680px;margin:0 auto;padding:12px 12px 48px}
+h1{font-size:20px;margin:4px 0 6px}
+.how{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 4px}
+.how div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:12px;color:var(--mute)}
+.how b{display:block;color:var(--text);font-size:13px}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}
+.tab{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:7px 2px;font-size:11px;text-align:center;cursor:pointer;font-family:inherit}
+.tab b{display:block;font-size:18px;line-height:1.2}
+.tab.on{border-color:var(--acc);background:#1a2340}
+.rule{font-size:16px;margin:2px 0 10px;padding:10px 12px;background:#10131b;border-left:3px solid var(--acc2);border-radius:6px}
+.rule small{display:block;color:var(--mute);font-size:13px;margin-top:2px}
+code,.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+canvas{display:block;width:100%;border-radius:10px;background:#000;touch-action:manipulation}
+canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges}
+.status{font:12px ui-monospace,Menlo,monospace;color:var(--mute);margin:6px 2px;min-height:16px}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0}
+button,select,input[type=number],input[type=text],textarea{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;font-size:14px}
+button{cursor:pointer}
+button:active{transform:scale(.98)}
+button.on{border-color:var(--acc);background:#1a2340}
+button.pri{background:#22335f;border-color:#3b5bb0}
+.seg{display:flex;gap:0}
+.seg button{border-radius:0;flex:1}
+.seg button:first-child{border-radius:8px 0 0 8px}
+.seg button:last-child{border-radius:0 8px 8px 0}
+.presets button{font-size:13px;padding:5px 9px;border-radius:20px}
+label{font-size:13px;color:var(--mute);display:flex;align-items:center;gap:6px}
+input[type=range]{flex:1;min-width:120px;accent-color:var(--acc)}
+.grow{flex:1}
+.val{font:13px ui-monospace,Menlo,monospace;min-width:44px;text-align:right}
+textarea{width:100%;font-family:ui-monospace,Menlo,monospace;font-size:13px;resize:vertical}
+input[type=text]{font-family:ui-monospace,Menlo,monospace;font-size:13px}
+.hint{font-size:12.5px;color:var(--mute)}
+.warn{color:var(--acc2)}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:16px 0 6px}
+
+/* steps */
+.steps{display:flex;flex-direction:column;gap:6px}
+.step{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;padding:10px 12px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+.step .num{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;background:#232a3a;color:var(--mute)}
+.step .st{display:flex;flex-direction:column;gap:2px}
+.step b{font-size:15px}
+.step .sh{font-size:12.5px;color:var(--mute)}
+.step .sn{display:none;font-size:13px;color:#ffd9a8;margin-top:3px}
+.step.next{border-color:var(--acc);background:#18213b}
+.step.next .num{background:var(--acc);color:#0b0d12}
+.step.done .num{background:#1f4d34;color:#7be0a5}
+.step.done .num::before{content:"✓"}
+.step.done .num span{display:none}
+.step.done .sn{display:block}
+
+/* meter */
+.meter{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:6px;margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
+.meter .c{text-align:center}
+.meter .k{font-size:10.5px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.meter .v{font-size:17px;font-weight:650}
+.meter .x .v{color:var(--acc2);font-size:19px}
+.meter .ar{color:var(--mute);font-size:15px}
+.meter .sd{grid-column:1/-1;font:11.5px ui-monospace,Menlo,monospace;color:#c9d3ff;background:#10131b;border:1px dashed var(--line);border-radius:8px;padding:6px 8px;word-break:break-all}
+.meter .sd::before{content:"seed: ";color:var(--mute)}
+.meter .ex{grid-column:1/-1;font-size:12.5px;color:var(--mute)}
+.meter .ex b{color:var(--text)}
+
+/* advanced */
+details.adv{margin-top:16px;border:1px dashed #33405e;border-radius:12px;background:#0f131c}
+details.adv>summary{padding:11px 12px;cursor:pointer;font-weight:600;color:#9bb8ff;list-style:none}
+details.adv>summary::-webkit-details-marker{display:none}
+details.adv>summary::after{content:"show ▾";float:right;font-weight:400;font-size:13px;color:var(--mute)}
+details.adv[open]>summary::after{content:"hide ▴"}
+details.adv>.in{padding:0 12px 12px}
+details.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:8px 0}
+details.card summary{padding:10px 12px;cursor:pointer;font-weight:600;font-size:14px;list-style:none}
+details.card summary::-webkit-details-marker{display:none}
+details.card summary::after{content:"＋";float:right;color:var(--mute)}
+details.card[open] summary::after{content:"－"}
+details.card>div{padding:0 12px 12px;font-size:14px;color:#cfd5e3}
+.tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:5px;margin-right:6px;vertical-align:1px}
+.tag.p{background:#173d2a;color:#7be0a5}.tag.o{background:#43321a;color:#ffc274}.tag.i{background:#1c2a4d;color:#9bb8ff}.tag.d{background:#33224a;color:#d0a6ff}
+
+/* cell rule tiles */
+.rgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin:6px 0}
+.rt{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 1px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--text);font:inherit}
+.rt .t{display:flex;gap:1px}
+.rt i{width:9px;height:9px;background:#2a3040;display:block;border-radius:1px}
+.rt i.on{background:var(--acc2)}
+.rt .b i{width:11px;height:11px}
+.rt.out1{border-color:#6b4a1f}
+.rt.flash{box-shadow:0 0 0 2px var(--acc)}
+.rt small{font:10px ui-monospace,Menlo,monospace;color:var(--mute)}
+.bin{font:15px ui-monospace,Menlo,monospace;letter-spacing:2px;color:var(--acc2)}
+.big{font-size:16px}
+
+.stepper{display:flex;align-items:center;gap:0}
+.stepper button{width:44px;font-size:20px;padding:4px 0}
+.stepper button:first-child{border-radius:8px 0 0 8px}.stepper button:last-child{border-radius:0 8px 8px 0}
+.stepper span{min-width:118px;text-align:center;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:7px 6px;background:#10131b;font-size:14px}
+
+.tablewrap{overflow-x:auto;margin:8px 0}
+table{border-collapse:collapse;font-size:13px;width:100%}
+th,td{border:1px solid var(--line);padding:5px 7px;text-align:right;white-space:nowrap}
+th{color:var(--mute);font-weight:600;background:var(--panel)}
+td:first-child,th:first-child{text-align:left}
+tr.click{cursor:pointer}
+tr.det td{white-space:normal;text-align:left;font-size:12.5px;color:#cfd5e3;background:#10131b}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<a href="../../" style="color:var(--mute);font-size:13px;text-decoration:none">← Explore</a>
+<h1>Seed → Structure Lab</h1>
+<div class="how">
+  <div><b>① Pick a lab</b>tabs below</div>
+  <div><b>② Press the steps</b>1, 2, 3… in order</div>
+  <div><b>③ Watch the numbers</b>tiny seed, huge result</div>
+</div>
+
+<nav class="tabs">
+  <button class="tab" data-t="mandel"><b>z²+c</b>Mandelbrot</button>
+  <button class="tab" data-t="rule"><b>8 bits</b>Cell rule</button>
+  <button class="tab" data-t="lsys"><b>F→</b>Growing</button>
+  <button class="tab" data-t="chaos"><b>🎲</b>Dice</button>
+  <button class="tab" data-t="ideas"><b>≡</b>Big idea</button>
+</nav>
+
+<!-- ============ MANDELBROT ============ -->
+<section class="lab" id="mandel" hidden>
+  <div class="rule">The whole rule: <code>z → z² + c</code><small>One short formula. Everything in the picture comes from it.</small></div>
+  <canvas id="mc"></canvas>
+  <div class="status" id="mstat"></div>
+  <div id="jbox" hidden><div class="hint" id="jcap" style="margin:8px 0"></div><canvas id="jc"></canvas></div>
+  <div class="row"><button id="mout">− Zoom out</button><button id="mreset">↺ Start over</button><span class="hint">Tip: tap the picture to zoom where you tap.</span></div>
+  <h3>Try this</h3>
+  <div class="steps" id="msteps"></div>
+  <div class="meter" id="mmeter"></div>
+
+  <details class="adv"><summary>⚙ Advanced</summary><div class="in">
+    <div class="row seg" id="mmode"><button data-m="zoom" class="on">Tap = zoom in</button><button data-m="julia">Tap = Julia set at that point</button></div>
+    <div class="row">
+      <select id="mfac"><option value="2">zoom ×2 per tap</option><option value="4" selected>zoom ×4 per tap</option><option value="10">zoom ×10 per tap</option></select>
+      <select id="mpal"><option value="fire">Fire</option><option value="ice">Ice</option><option value="rainbow">Rainbow</option><option value="mono">Mono</option></select>
+    </div>
+    <div class="row"><label class="grow">Iterations <input type="range" id="mit" min="50" max="3000" step="50"></label><span class="val" id="mitv"></span><label><input type="checkbox" id="mauto" checked> auto</label></div>
+    <div class="row presets" id="mpre"></div>
+    <div class="status" id="mcoord"></div>
+    <details class="card"><summary>The science</summary><div>
+      <p>Start with z = 0, apply the rule again and again. If z stays small, the point c is in the set (black). Colour = how fast z runs away.</p>
+      <p><span class="tag p">Proven</span>The set is connected (Douady–Hubbard, 1982); its boundary has dimension 2 (Shishikura, 1998).</p>
+      <p><span class="tag p">Proven</span>Every point c has its own Julia set: c inside the set → one connected piece; c outside → dust.</p>
+      <p><span class="tag o">Open</span>Is the set "locally connected"? (MLC conjecture) — unsolved.</p>
+    </div></details>
+  </div></details>
+</section>
+
+<!-- ============ CELLULAR AUTOMATON ============ -->
+<section class="lab" id="rule" hidden>
+  <div class="rule">The whole rule: these 8 tiles<small>Each cell looks at itself + its 2 neighbours (top) and the tile says what goes below. 8 tiles × on/off = 8 bits = 1 byte.</small></div>
+  <div class="rgrid" id="rgrid"></div>
+  <div class="row big">Rule <b id="rname">30</b> = <span class="bin" id="rbin"></span></div>
+  <canvas id="rc" class="pix"></canvas>
+  <div class="hint" style="margin-top:4px">Top line = start (one cell). Each line below = the rule applied once more.</div>
+  <h3>Try this</h3>
+  <div class="steps" id="rsteps"></div>
+  <div class="meter" id="rmeter"></div>
+
+  <details class="advanced adv"><summary>⚙ Advanced</summary><div class="in">
+    <div class="row"><span class="hint">Rule number</span><input type="number" id="rnum" min="0" max="255" style="width:72px"></div>
+    <div class="row"><input type="range" id="rrange" min="0" max="255" class="grow"></div>
+    <div class="row presets" id="rpre"></div>
+    <div class="row">
+      <div class="seg" id="rstart"><button data-s="single" class="on">Start: one cell</button><button data-s="random">Start: random</button></div>
+      <button id="rreroll" hidden>🎲 New random</button>
+      <select id="rw"><option value="101">101 wide</option><option value="201" selected>201 wide</option><option value="401">401 wide</option></select>
+    </div>
+    <details class="card"><summary>The science</summary><div>
+      <p><span class="tag p">Proven</span><b>Rule 90</b> = Pascal's triangle mod 2 → Sierpinski triangle.</p>
+      <p><span class="tag p">Proven</span><b>Rule 110</b> can compute anything a computer can (Cook, 2004).</p>
+      <p><span class="tag o">Open</span><b>Rule 30</b>: no known shortcut to get row n without running all n rows.</p>
+      <p><span class="tag i">Observation</span>With a random start row, the random cells are part of the seed — compare the meter.</p>
+    </div></details>
+  </div></details>
+</section>
+
+<!-- ============ L-SYSTEM ============ -->
+<section class="lab" id="lsys" hidden>
+  <div class="rule">The whole rule: <code id="lruleshow" style="display:block;white-space:pre-line;margin-top:4px;color:#ffd9a8"></code><small>Each generation, every letter is replaced by its rule. Then a turtle draws: F = line forward, + − = turn, [ ] = branch.</small></div>
+  <canvas id="lc"></canvas>
+  <div class="row">
+    <div class="stepper"><button id="lminus">−</button><span id="lgenshow">Generation 0</span><button id="lplus">+</button></div>
+    <button id="lanim" class="pri">▶ Watch it draw</button>
+  </div>
+  <h3>Try this</h3>
+  <div class="steps" id="lsteps"></div>
+  <div class="meter" id="lmeter"></div>
+
+  <details class="adv"><summary>⚙ Advanced</summary><div class="in">
+    <div class="row presets" id="lpre"></div>
+    <div class="row"><label>Axiom <input type="text" id="lax" style="width:110px"></label><label>Angle <input type="number" id="lang" step="0.5" style="width:72px"></label></div>
+    <textarea id="lrules" rows="2" spellcheck="false"></textarea>
+    <div class="row"><label class="grow">Generations <input type="range" id="lgen" min="0" max="14"></label><span class="val" id="lgenv"></span></div>
+    <div class="status" id="lstat"></div>
+    <div class="tablewrap"><table id="lgrow"></table></div>
+    <details class="card"><summary>The science</summary><div>
+      <p>Lindenmayer (1968) used this to model plant growth: the plant doesn't store its shape, it stores a branching rule.</p>
+      <p>F and G draw · f moves without drawing · + − turn · [ ] save/return · | turn around · other letters are silent.</p>
+      <p>Colour goes blue → pink along the drawing order.</p>
+    </div></details>
+  </div></details>
+</section>
+
+<!-- ============ CHAOS GAME ============ -->
+<section class="lab" id="chaos" hidden>
+  <div class="rule">The whole rule: pick a random corner, jump halfway to it, put a dot. Repeat.<small>The dice are random. Watch what happens to the shape.</small></div>
+  <canvas id="cc"></canvas>
+  <div class="status" id="cstat"></div>
+  <h3>Try this</h3>
+  <div class="steps" id="csteps"></div>
+  <div class="meter" id="cmeter"></div>
+
+  <details class="adv"><summary>⚙ Advanced</summary><div class="in">
+    <div class="row presets" id="cpre"></div>
+    <div class="row"><label class="grow">Corners <input type="range" id="cn" min="3" max="8" step="1"></label><span class="val" id="cnv"></span></div>
+    <div class="row"><label class="grow">Jump r <input type="range" id="cr" min="0.3" max="0.8" step="0.001"></label><span class="val" id="crv"></span></div>
+    <div class="row">
+      <select id="crule"><option value="any">Any corner</option><option value="norepeat">Not the same corner twice</option><option value="notnext">Not the next corner (clockwise)</option></select>
+      <button id="cplay">⏸ Pause</button><button id="cclear">↺ Rerun</button>
+    </div>
+    <details class="card"><summary>The science</summary><div>
+      <p>r = how far you jump toward the corner (0.5 = halfway).</p>
+      <p><span class="tag p">Proven</span>The shape is the unique "attractor" of the jump maps (Hutchinson, 1981). The dice only decide the order the dots appear.</p>
+    </div></details>
+  </div></details>
+</section>
+
+<!-- ============ BIG IDEA ============ -->
+<section class="lab" id="ideas" hidden>
+  <div class="rule">Encoding stores the result. Generating stores a tiny rule and runs it.<small>This table fills in from the labs you tried. Tap a row to see its seed.</small></div>
+  <div class="tablewrap"><table id="cmp"></table></div>
+
+  <h3>Main points</h3>
+  <details class="card" open><summary><span class="tag d">Idea</span>Generating isn't free</summary><div>
+    <p>A seed doesn't "contain" the picture in readable form. You pay with computing time to unfold it. Deeper zoom → more iterations → more time.</p>
+  </div></details>
+  <details class="card"><summary><span class="tag p">Proven</span>Most things can NOT come from a small seed</summary><div>
+    <p>There are 2ⁿ possible results of n bits, but fewer than 2ⁿ⁻ᶜ seeds shorter than n−c bits. So at most 1 in 2ᶜ results can be squeezed by c bits (c = 20 → at most 1 in a million).</p>
+    <p>Small rule → huge structure works only for a rare, special fraction. Real question: <b>why does our world seem to be in that fraction?</b></p>
+  </div></details>
+
+  <details class="adv"><summary>⚙ Advanced</summary><div class="in">
+    <details class="card"><summary><span class="tag d">Definition</span>Kolmogorov complexity</summary><div>
+      <p>K(x) = length of the shortest program that prints x. "Small seed, big structure" means K(x) ≪ size of x.</p>
+      <p><span class="tag p">Proven</span>K(x) is not computable: you can find <i>a</i> short seed, never prove in general it's the shortest.</p>
+    </div></details>
+    <details class="card"><summary><span class="tag o">Open</span>No shortcuts? (irreducibility)</summary><div>
+      <p>Bennett's "logical depth": short seed, long run. Wolfram: for some rules nothing is faster than running them. For Rule 30 this is a conjecture.</p>
+    </div></details>
+    <details class="card"><summary><span class="tag p">Proven</span>Randomness vs information</summary><div>
+      <p>Dice lab: random rolls, fixed shape → randomness is not information. Cell rule with random start: the random cells <i>are</i> information and change the result.</p>
+    </div></details>
+    <details class="card"><summary><span class="tag o">Open</span>Physics: short laws, but what about the start?</summary><div>
+      <p>Physics = laws (short) + initial conditions (maybe huge). For the whole universe to be "a small seed", the starting state must be simple too. Whether it is (low-entropy Big Bang, "Past Hypothesis") is open.</p>
+    </div></details>
+  </div></details>
+</section>
+</main>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+const enc = new TextEncoder();
+const bytes = s => enc.encode(s).length;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function fmtB(b){
+  if(!isFinite(b)) return '∞';
+  if(b < 1) return b.toFixed(2)+' B';
+  const u=['B','KB','MB','GB','TB','PB','EB','ZB','YB']; let i=0;
+  while(b>=1000 && i<u.length-1){b/=1000;i++;}
+  if(b>=1000) return '10<sup>'+Math.floor(Math.log10(b)+24)+'</sup> B';
+  return (b<10&&i>0?b.toFixed(1):Math.round(b))+' '+u[i];
+}
+function fmtX(r){
+  if(!isFinite(r)) return '∞';
+  if(r<10) return '×'+r.toFixed(1);
+  if(r<1e6) return '×'+Math.round(r).toLocaleString('en-US');
+  const e=Math.floor(Math.log10(r)), m=r/Math.pow(10,e);
+  return '×'+m.toFixed(1)+'·10<sup>'+e+'</sup>';
+}
+function fmtNum(n){ return n<1e6? Math.round(n).toLocaleString('en-US') : n.toExponential(2); }
+
+const STATS = {};
+function meter(el, key, name, seed, seedB, outB, outLabel, extra){
+  STATS[key] = {name, seed, seedB, outB, outLabel};
+  el.innerHTML =
+    `<div class="c"><div class="k">Seed</div><div class="v">${fmtB(seedB)}</div></div><div class="ar">→</div>`+
+    `<div class="c"><div class="k">Result</div><div class="v">${fmtB(outB)}</div></div><div class="ar">=</div>`+
+    `<div class="c x"><div class="k">bigger by</div><div class="v">${fmtX(outB/seedB)}</div></div>`+
+    `<div class="sd">${esc(seed)}</div>`+(extra?`<div class="ex">${extra}</div>`:'');
+}
+function makeSteps(el, steps){
+  el.innerHTML=''; const items=[];
+  steps.forEach((s,i)=>{
+    const b=document.createElement('button'); b.className='step'+(i===0?' next':'');
+    b.innerHTML=`<span class="num"><span>${i+1}</span></span><span class="st"><b>${s.t}</b><span class="sh">${s.h||''}</span><span class="sn">👀 ${s.n}</span></span>`;
+    b.onclick=()=>{ s.a(); b.classList.add('done'); b.classList.remove('next');
+      items.forEach(x=>x.classList.remove('next'));
+      const nx=items.slice(i+1).find(x=>!x.classList.contains('done')); if(nx) nx.classList.add('next'); };
+    el.appendChild(b); items.push(b);
+  });
+}
+function sizeCanvas(c, aspect=1, cap=720){
+  const cw = c.clientWidth || ($('main').clientWidth-24) || 360;
+  const W = Math.max(200, Math.min(cap, Math.round(cw*Math.min(DPR,1.5))));
+  c.width = W; c.height = Math.round(W*aspect);
+}
+function hsl2rgb(h,s,l){ h=((h%360)+360)%360/360;
+  const f=n=>{const k=(n+h*12)%12, a=s*Math.min(l,1-l); return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1))));};
+  return [f(0),f(8),f(4)];
+}
+function setSeg(container, attr, val){ $$(container+' button').forEach(b=>b.classList.toggle('on', b.dataset[attr]===val)); }
+const top = el => { const r=el.getBoundingClientRect(); if(r.top<70||r.top>window.innerHeight*0.6) window.scrollTo({top:window.scrollY+r.top-80,behavior:'smooth'}); };
+
+/* ---------------- tabs ---------------- */
+const LABS=['mandel','rule','lsys','chaos','ideas'];
+const inits={}, inited={};
+function show(id){
+  if(!LABS.includes(id)) id='mandel';
+  $$('.lab').forEach(s=>s.hidden = s.id!==id);
+  $$('.tab').forEach(t=>t.classList.toggle('on', t.dataset.t===id));
+  if(id!=='chaos') Chaos.pause(true); else Chaos.resumeIfAuto();
+  if(!inited[id]){ inited[id]=true; inits[id](); } else if(id==='ideas') inits.ideas();
+}
+$$('.tab').forEach(t=>t.onclick=()=>{ show(t.dataset.t); try{ history.replaceState(null,'','#'+t.dataset.t); }catch(e){ try{location.hash=t.dataset.t;}catch(_){} } window.scrollTo({top:0}); });
+window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
+
+/* ================= MANDELBROT ================= */
+function buildLUT(stops){
+  const n=1024, lut=new Uint8Array(n*3);
+  for(let i=0;i<n;i++){ const t=i/n*(stops.length-1), k=Math.floor(t), f=t-k, a=stops[k], b=stops[k+1];
+    for(let j=0;j<3;j++) lut[i*3+j]=a[j]+(b[j]-a[j])*f; }
+  return lut;
+}
+const LUTS={
+  fire: buildLUT([[0,7,30],[32,18,110],[190,40,90],[255,140,30],[255,240,180],[90,30,140],[0,7,30]]),
+  ice:  buildLUT([[2,6,30],[18,70,160],[110,200,255],[250,255,255],[40,120,200],[10,20,70],[2,6,30]]),
+  rainbow: buildLUT([0,60,120,180,240,300,360].map(h=>hsl2rgb(h,.85,.55))),
+  mono: buildLUT([[10,10,12],[235,235,240],[60,60,70],[10,10,12]])
+};
+function makeRenderer(canvas){
+  let job=0;
+  return function(p, onProgress, onDone){
+    const my=++job, ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
+    const img=ctx.createImageData(W,H), d=img.data, lut=LUTS[p.pal], maxIt=p.it;
+    const sx=p.w/W, x0=p.cx-p.w/2, y0=p.cy+sx*H/2, t0=performance.now();
+    let y=0;
+    function step(){
+      if(my!==job) return;
+      const ts=performance.now(), yS=y;
+      while(y<H && performance.now()-ts<14){
+        const ci0=y0-y*sx;
+        for(let x=0;x<W;x++){
+          const cr0=x0+x*sx, i=(y*W+x)*4; d[i+3]=255;
+          let zr,zi,cr,ci;
+          if(p.julia){ zr=cr0; zi=ci0; cr=p.jr; ci=p.ji; }
+          else { cr=cr0; ci=ci0; zr=0; zi=0;
+            const xr=cr-0.25, q=xr*xr+ci*ci;
+            if(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625){ d[i]=d[i+1]=d[i+2]=0; continue; } }
+          let n=0, zr2=zr*zr, zi2=zi*zi;
+          while(zr2+zi2<=256 && n<maxIt){ zi=2*zr*zi+ci; zr=zr2-zi2+cr; zr2=zr*zr; zi2=zi*zi; n++; }
+          if(n>=maxIt){ d[i]=d[i+1]=d[i+2]=0; }
+          else { let mu=n+1-Math.log2(Math.log(zr2+zi2)*0.5); if(!(mu>0)) mu=0;
+            const k=(((Math.sqrt(mu)*90)|0)&1023)*3; d[i]=lut[k]; d[i+1]=lut[k+1]; d[i+2]=lut[k+2]; }
+        }
+        y++;
+      }
+      ctx.putImageData(img,0,0,0,yS,W,y-yS);
+      if(y<H){ onProgress&&onProgress(y/H); requestAnimationFrame(step); }
+      else onDone&&onDone(performance.now()-t0);
+    }
+    requestAnimationFrame(step);
+  };
+}
+const MB = {cx:-0.75, cy:0, w:3.2, it:200, auto:true, mode:'zoom', fac:4, pal:'fire', jr:null, ji:null};
+const W0=3.2, DEEP=[-0.743643887037151,0.131825904205330];
+let mRender, jRender;
+const MPRE=[
+  ['Whole set',-0.75,0,3.2],['Seahorse valley',-0.7435,0.1314,0.012],['Elephant valley',0.2855,0.0109,0.012],
+  ['Mini-Mandelbrot',-1.7549,0,0.05],['Spiral',-0.761574,-0.0847596,0.00025],['Deep (×10¹⁰)',DEEP[0],DEEP[1],3e-10],
+];
+function autoIt(){ return Math.min(3000, Math.max(100, Math.round((150+140*Math.log10(W0/MB.w))/50)*50)); }
+function mDraw(){
+  if(MB.auto) MB.it=autoIt();
+  $('#mit').value=MB.it; $('#mitv').textContent=MB.it;
+  const c=$('#mc'), zoom=W0/MB.w;
+  const precisionLost = (MB.w/c.width) < 4e-16*Math.max(1,Math.abs(MB.cx),Math.abs(MB.cy));
+  const base=`zoom ×${fmtNum(zoom)}`;
+  $('#mcoord').textContent=`centre ${MB.cx.toPrecision(15)} ${MB.cy<0?'−':'+'} ${Math.abs(MB.cy).toPrecision(15)}i · width ${MB.w.toExponential(3)}`;
+  $('#mstat').textContent=base+' · drawing…';
+  mRender({cx:MB.cx,cy:MB.cy,w:MB.w,it:MB.it,pal:MB.pal},
+    f=>{$('#mstat').textContent=base+` · drawing ${Math.round(f*100)}%`;},
+    ms=>{$('#mstat').innerHTML=esc(base)+` · rule repeated up to ${MB.it}× per pixel · ${(ms/1000).toFixed(1)} s`+
+      (precisionLost?'<br><span class="warn">Number precision limit reached: the rule keeps going, this phone can\'t. (Generating needs resources too.)</span>':'');
+      if(MB.jr!==null) mMarkC(); });
+  const W=c.width, H=c.height;
+  const seed=`z→z²+c; view=(${MB.cx.toPrecision(15)}, ${MB.cy.toPrecision(15)}, ${MB.w.toExponential(3)})`;
+  const out=W*H*3, full=7.8*Math.pow(W/MB.w,2)*3;
+  meter($('#mmeter'),'mandel','Mandelbrot',seed,bytes(seed),out,'',
+    `One image of the <b>whole</b> set at this detail would be <b>${fmtB(full)}</b>. The seed above is enough to make any part of it.`);
+}
+function mMarkC(){
+  const c=$('#mc'), ctx=c.getContext('2d'), W=c.width, H=c.height, sx=MB.w/W;
+  const px=(MB.jr-(MB.cx-MB.w/2))/sx, py=((MB.cy+sx*H/2)-MB.ji)/sx;
+  if(px<0||py<0||px>W||py>H) return;
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2*DPR; ctx.beginPath(); ctx.arc(px,py,7*DPR,0,7); ctx.stroke();
+}
+function previewZoom(c, fx, fy, fac){
+  const tmp=document.createElement('canvas'); tmp.width=c.width; tmp.height=c.height; tmp.getContext('2d').drawImage(c,0,0);
+  const ctx=c.getContext('2d'), W=c.width, H=c.height;
+  if(fac>1){ const sw=W/fac, sh=H/fac; ctx.drawImage(tmp, fx*W-sw/2, fy*H-sh/2, sw, sh, 0,0,W,H); }
+  else { const f=1/fac; ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H); ctx.drawImage(tmp,0,0,W,H, W/2-W/(2*f), H/2-H/(2*f), W/f, H/f); }
+}
+function mGo(x,y,w){ MB.cx=x; MB.cy=y; MB.w=w; mDraw(); }
+function mZoomTo(x,y,fac){
+  const c=$('#mc'); const fx=(x-(MB.cx-MB.w/2))/MB.w, fy=((MB.cy+MB.w*c.height/c.width/2)-y)/(MB.w*c.height/c.width);
+  if(fx>=0&&fx<=1&&fy>=0&&fy<=1) previewZoom(c,fx,fy,fac);
+  MB.cx=x; MB.cy=y; MB.w/=fac; mDraw();
+}
+function inSet(cr,ci){ let zr=0,zi=0; for(let n=0;n<2000;n++){ const t=zr*zr-zi*zi+cr; zi=2*zr*zi+ci; zr=t; if(zr*zr+zi*zi>4) return false; } return true; }
+function jDraw(){
+  $('#jbox').hidden=false;
+  const jc=$('#jc'); if(!jc.width||jc.width<=300) sizeCanvas(jc,1,600);
+  const inside=inSet(MB.jr,MB.ji);
+  $('#jcap').innerHTML=`<b>Julia set</b> for the circled point (c = ${MB.jr.toFixed(4)} ${MB.ji<0?'−':'+'} ${Math.abs(MB.ji).toFixed(4)}i). Same rule, but c is fixed and z starts at each pixel. `+
+    (inside?'<span class="tag p">inside</span>point is inside the set → one connected shape.':'<span class="tag o">outside</span>point is outside the set → the shape breaks into dust.');
+  jRender({cx:0,cy:0,w:3.3,it:Math.max(300,MB.it),pal:MB.pal,julia:true,jr:MB.jr,ji:MB.ji});
+}
+inits.mandel=()=>{
+  const c=$('#mc'); sizeCanvas(c,1,720); mRender=makeRenderer(c); jRender=makeRenderer($('#jc'));
+  c.addEventListener('click',e=>{
+    const r=c.getBoundingClientRect(), fx=(e.clientX-r.left)/r.width, fy=(e.clientY-r.top)/r.height;
+    const x=MB.cx+(fx-0.5)*MB.w, y=MB.cy-(fy-0.5)*MB.w*(c.height/c.width);
+    if(MB.mode==='zoom'){ previewZoom(c,fx,fy,MB.fac); MB.cx=x; MB.cy=y; MB.w/=MB.fac; mDraw(); }
+    else { MB.jr=x; MB.ji=y; mMarkC(); jDraw(); }
+  });
+  $$('#mmode button').forEach(b=>b.onclick=()=>{ MB.mode=b.dataset.m; setSeg('#mmode','m',MB.mode); });
+  $('#mout').onclick=()=>{ previewZoom(c,.5,.5,1/MB.fac); MB.w=Math.min(MB.w*MB.fac,6); mDraw(); };
+  $('#mreset').onclick=()=>{ $('#jbox').hidden=true; MB.jr=null; mGo(-0.75,0,W0); };
+  $('#mfac').onchange=e=>MB.fac=+e.target.value;
+  $('#mpal').onchange=e=>{ MB.pal=e.target.value; mDraw(); if(MB.jr!==null) jDraw(); };
+  $('#mit').oninput=e=>{ MB.auto=false; $('#mauto').checked=false; MB.it=+e.target.value; $('#mitv').textContent=MB.it; };
+  $('#mit').onchange=()=>mDraw();
+  $('#mauto').onchange=e=>{ MB.auto=e.target.checked; mDraw(); };
+  MPRE.forEach(([n,x,y,w])=>{ const b=document.createElement('button'); b.textContent=n; b.onclick=()=>mGo(x,y,w); $('#mpre').appendChild(b); });
+  makeSteps($('#msteps'),[
+    {t:'Zoom into the edge', h:'Press this 4–5 times in a row.',
+     a:()=>{ if(Math.abs(MB.cx-DEEP[0])>MB.w||MB.w>3) { if(MB.w<W0) { MB.cx=-0.75;MB.cy=0;MB.w=W0; } } $('#jbox').hidden=true; MB.jr=null; mZoomTo(DEEP[0],DEEP[1],4); top($('#mc')); },
+     n:'Each press = ×4 closer. New spirals and shapes keep appearing — but the seed (bottom) stays one short line.'},
+    {t:'Find a tiny copy of the whole set', h:'Jumps to a spot far out on the left.',
+     a:()=>{ $('#jbox').hidden=true; MB.jr=null; mGo(-1.7549,0,0.05); top($('#mc')); },
+     n:'A small "mini-Mandelbrot" — the whole shape repeats inside itself, forever.'},
+    {t:'Same rule, a different world', h:'Shows the Julia set for one point.',
+     a:()=>{ mGo(-0.75,0,W0); MB.jr=-0.123; MB.ji=0.745; jDraw(); setTimeout(()=>top($('#jbox')),60); },
+     n:'Every point of the set is the "address" of another fractal. Turn on "Tap = Julia set" in Advanced to explore more.'},
+    {t:'Your turn: tap the picture', h:'Tap where black meets colour. Repeat.',
+     a:()=>{ $('#jbox').hidden=true; MB.jr=null; mGo(-0.75,0,W0); top($('#mc')); },
+     n:'Tap the border, not the black or the flat colour — the detail lives on the edge.'},
+  ]);
+  mDraw();
+};
+
+/* ================= CELLULAR AUTOMATON ================= */
+const RC={rule:30, start:'single', W:201, seed:12345};
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function rDraw(flashK){
+  const W=RC.W, H=Math.round(W*0.75), c=$('#rc'); c.width=W; c.height=H;
+  const ctx=c.getContext('2d'), img=ctx.createImageData(W,H), d=img.data;
+  let row=new Uint8Array(W), nx=new Uint8Array(W);
+  if(RC.start==='single') row[W>>1]=1; else { const rng=mulberry32(RC.seed); for(let i=0;i<W;i++) row[i]=rng()<.5?1:0; }
+  const on=[255,179,92], off=[14,17,24];
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){ const i=(y*W+x)*4, col=row[x]?on:off; d[i]=col[0]; d[i+1]=col[1]; d[i+2]=col[2]; d[i+3]=255; }
+    for(let x=0;x<W;x++){ const l=row[(x-1+W)%W], m=row[x], r=row[(x+1)%W]; nx[x]=(RC.rule>>((l<<2)|(m<<1)|r))&1; }
+    [row,nx]=[nx,row];
+  }
+  ctx.putImageData(img,0,0);
+  $('#rnum').value=RC.rule; $('#rrange').value=RC.rule; $('#rname').textContent=RC.rule; $('#rbin').textContent=RC.rule.toString(2).padStart(8,'0');
+  $$('#rgrid .rt').forEach(t=>{ const k=+t.dataset.k, b=(RC.rule>>k)&1; t.querySelector('.b i').classList.toggle('on',!!b); t.classList.toggle('out1',!!b); t.classList.toggle('flash',k===flashK); });
+  if(flashK!==undefined) setTimeout(()=>$$('#rgrid .rt').forEach(t=>t.classList.remove('flash')),1200);
+  const single=RC.start==='single';
+  const seed=`rule ${RC.rule} = ${RC.rule.toString(2).padStart(8,'0')}; start = ${single?'one cell':'random row ('+W+' cells)'}`;
+  const seedB = single ? 2 : 1+Math.ceil(W/8);
+  meter($('#rmeter'),'rule',`Cell rule ${RC.rule}`,seed,seedB,W*H/8,'',
+    single?'Seed = 1 byte of rule + "one cell". Result = every cell in the picture.':`The random start row is now part of the seed (${W} bits), so the ratio drops.`);
+}
+inits.rule=()=>{
+  const g=$('#rgrid');
+  for(let k=7;k>=0;k--){
+    const t=document.createElement('button'); t.className='rt'; t.dataset.k=k;
+    t.innerHTML=`<span class="t">${[4,2,1].map(m=>`<i class="${k&m?'on':''}"></i>`).join('')}</span><span class="b"><i></i></span><small>${k.toString(2).padStart(3,'0')}</small>`;
+    t.onclick=()=>{ RC.rule^=(1<<k); rDraw(); };
+    g.appendChild(t);
+  }
+  $('#rnum').onchange=e=>{ RC.rule=Math.max(0,Math.min(255,(+e.target.value)|0)); rDraw(); };
+  $('#rrange').oninput=e=>{ RC.rule=+e.target.value; rDraw(); };
+  [[30,'30'],[90,'90'],[110,'110'],[184,'184'],[73,'73'],[45,'45'],[150,'150'],[105,'105']].forEach(([n,l])=>{
+    const b=document.createElement('button'); b.textContent='Rule '+l; b.onclick=()=>{RC.rule=n; rDraw();}; $('#rpre').appendChild(b); });
+  $$('#rstart button').forEach(b=>b.onclick=()=>{ RC.start=b.dataset.s; setSeg('#rstart','s',RC.start); $('#rreroll').hidden=RC.start!=='random'; rDraw(); });
+  $('#rreroll').onclick=()=>{ RC.seed=(Math.random()*1e9)|0; rDraw(); };
+  $('#rw').onchange=e=>{ RC.W=+e.target.value; rDraw(); };
+  const single=()=>{ RC.start='single'; setSeg('#rstart','s','single'); $('#rreroll').hidden=true; };
+  makeSteps($('#rsteps'),[
+    {t:'Rule 30', h:'Start from one single cell.', a:()=>{ single(); RC.rule=30; rDraw(); top($('#rc')); },
+     n:'1 byte of rule → a pattern that looks random on the right side. Nobody knows a shortcut to predict it.'},
+    {t:'Rule 90', h:'Same start, different 8 tiles.', a:()=>{ single(); RC.rule=90; rDraw(); top($('#rc')); },
+     n:'A perfect fractal triangle (Sierpinski). Look at the tiles: only 4 are lit.'},
+    {t:'Flip one tile', h:'Changes one bit of the rule.', a:()=>{ const k=[1,3,4,6][(Math.random()*4)|0]; RC.rule^=(1<<k); rDraw(k); top($('#rgrid')); },
+     n:'The highlighted tile flipped. One bit changed — the whole world below changed. You can tap tiles yourself too.'},
+    {t:'Random rule', h:'Press it several times.', a:()=>{ single(); RC.rule=(Math.random()*256)|0; rDraw(); top($('#rc')); },
+     n:'Most rules are boring: they die, freeze, or repeat. Rich structure is rare — even among tiny seeds.'},
+    {t:'Rule 110', h:'The famous one.', a:()=>{ single(); RC.rule=110; rDraw(); top($('#rc')); },
+     n:'Proven: this 1-byte rule can compute anything a computer can.'},
+  ]);
+  rDraw();
+};
+
+/* ================= L-SYSTEM ================= */
+const LP={
+  'Plant':{ax:'X', rules:'X=F+[[X]-X]-F[-FX]+X\nF=FF', ang:25, gen:5, head:65},
+  'Snowflake':{ax:'F--F--F', rules:'F=F+F--F+F', ang:60, gen:4, head:0},
+  'Dragon':{ax:'FX', rules:'X=X+YF+\nY=-FX-Y', ang:90, gen:12, head:0},
+  'Bush':{ax:'F', rules:'F=FF+[+F-F-F]-[-F+F+F]', ang:22.5, gen:4, head:90},
+  'Sierpinski':{ax:'F', rules:'F=G-F-G\nG=F+G+F', ang:60, gen:7, head:0},
+  'Hilbert':{ax:'A', rules:'A=+BF-AFA-FB+\nB=-AF+BFB-FA+', ang:90, gen:5, head:0},
+};
+const LS={head:0, seg:null, anim:0, maxGen:14};
+const norm = s => s.replace(/[−–—]/g,'-');
+function countDraw(s){ let n=0; for(let i=0;i<s.length;i++){ const c=s.charCodeAt(i); if(c===70||c===71) n++; } return n; }
+function parseRules(t){ const rules={}; norm(t).split(/[\n,;]+/).forEach(l=>{ const m=l.match(/^\s*(\S)\s*(?:=|→|->|:)\s*(.*?)\s*$/); if(m) rules[m[1]]=m[2].replace(/\s+/g,''); }); return rules; }
+function lGenerate(ax, rules, g){
+  let s=norm(ax).replace(/\s+/g,''); const hist=[{len:s.length,seg:countDraw(s)}]; let capped=false;
+  for(let i=1;i<=g;i++){
+    let len=0; for(let k=0;k<s.length;k++){ const r=rules[s[k]]; len+= r!==undefined?r.length:1; }
+    if(len>3e6){ capped=true; break; }
+    const parts=new Array(s.length); for(let k=0;k<s.length;k++){ const r=rules[s[k]]; parts[k]= r!==undefined?r:s[k]; }
+    s=parts.join(''); hist.push({len:s.length,seg:countDraw(s)});
+  }
+  return {s,hist,capped};
+}
+function turtle(s, angDeg, headDeg){
+  const n=countDraw(s), seg=new Float32Array(n*4); let x=0,y=0,a=headDeg*Math.PI/180, k=0; const da=angDeg*Math.PI/180, st=[];
+  for(let i=0;i<s.length;i++){ const c=s.charCodeAt(i);
+    if(c===70||c===71){ const nx=x+Math.cos(a), ny=y+Math.sin(a); seg[k++]=x; seg[k++]=y; seg[k++]=nx; seg[k++]=ny; x=nx; y=ny; }
+    else if(c===102){ x+=Math.cos(a); y+=Math.sin(a); }
+    else if(c===43) a+=da; else if(c===45) a-=da;
+    else if(c===91) st.push(x,y,a); else if(c===93){ if(st.length){ a=st.pop(); y=st.pop(); x=st.pop(); } }
+    else if(c===124) a+=Math.PI;
+  }
+  return seg;
+}
+function lSetup(){
+  const c=$('#lc'), seg=LS.seg, n=seg.length/4, W=c.width, H=c.height, pad=12*DPR;
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+  for(let i=0;i<seg.length;i+=2){ const x=seg[i], y=seg[i+1]; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+  if(!n){ x0=x1=y0=y1=0; }
+  let sc=Math.min((W-2*pad)/((x1-x0)||1),(H-2*pad)/((y1-y0)||1)); sc=Math.min(sc,W/3);
+  LS.tf={sc, ox:W/2-sc*(x0+x1)/2, oy:H/2+sc*(y0+y1)/2};
+  const ctx=c.getContext('2d'); ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+  ctx.lineCap='round'; ctx.lineWidth=Math.max(0.6*DPR,Math.min(3*DPR,LS.tf.sc*0.22));
+}
+function lDrawRange(i0,i1){
+  const ctx=$('#lc').getContext('2d'), seg=LS.seg, n=seg.length/4, {sc,ox,oy}=LS.tf, B=60;
+  let i=i0;
+  while(i<i1){
+    const b=Math.floor(i*B/n), end=Math.min(i1, Math.floor((b+1)*n/B)||i1);
+    ctx.strokeStyle=`hsl(${205+b/B*130},85%,${60+b/B*8}%)`; ctx.beginPath();
+    for(let j=i;j<Math.max(end,i+1);j++){ const k=j*4; ctx.moveTo(ox+seg[k]*sc, oy-seg[k+1]*sc); ctx.lineTo(ox+seg[k+2]*sc, oy-seg[k+3]*sc); }
+    ctx.stroke(); i=Math.max(end,i+1);
+  }
+}
+function lDraw(animate){
+  cancelAnimationFrame(LS.anim);
+  const ax=$('#lax').value, rt=$('#lrules').value, ang=+$('#lang').value||0, g=+$('#lgen').value;
+  const rules=parseRules(rt), t0=performance.now(), R=lGenerate(ax,rules,g);
+  const realG=R.hist.length-1; LS.maxGen = R.capped ? realG : 14;
+  $('#lgenv').textContent=realG; $('#lgenshow').textContent='Generation '+realG;
+  const ruleStr=Object.entries(rules).map(([k,v])=>k+' → '+v).join('   ');
+  $('#lruleshow').textContent=`start: ${norm(ax).trim()}\n${Object.entries(rules).map(([k,v])=>k+' → '+v).join('\n')}`;
+  LS.seg=turtle(R.s,ang,LS.head); lSetup();
+  const n=LS.seg.length/4;
+  if(animate && n>0){ let i=0; const step=Math.max(1,Math.ceil(n/180));
+    const f=()=>{ const j=Math.min(n,i+step); lDrawRange(i,j); i=j; if(i<n) LS.anim=requestAnimationFrame(f); }; f(); }
+  else lDrawRange(0,n);
+  $('#lstat').innerHTML=`${fmtNum(n)} lines · word length ${fmtNum(R.s.length)} · ${Math.round(performance.now()-t0)} ms`+(R.capped?` <span class="warn">· max reached: the next generation would exceed 3 million letters</span>`:'');
+  const h=R.hist;
+  $('#lgrow').innerHTML=`<tr><th>Generation</th>${h.map((_,i)=>`<th>${i}</th>`).join('')}</tr>`+
+    `<tr><td>Letters</td>${h.map(x=>`<td>${fmtNum(x.len)}</td>`).join('')}</tr>`+
+    `<tr><td>Lines drawn</td>${h.map(x=>`<td>${fmtNum(x.seg)}</td>`).join('')}</tr>`;
+  const seed=`start=${norm(ax).trim()}; ${Object.entries(rules).map(([k,v])=>k+'→'+v).join('; ')}; angle=${ang}°; generations=${realG}`;
+  meter($('#lmeter'),'lsys','Growing (L-system)',seed,bytes(seed),Math.max(1,(n+1)*8),'',
+    `Result = ${fmtNum(n)} lines (every point stored). Add a generation: the seed grows by 1 digit, the result multiplies.`);
+}
+function lSetGen(g, animate){ $('#lgen').value=Math.max(0,Math.min(LS.maxGen,g)); lDraw(animate); }
+function lPreset(name, gen){ const p=LP[name]; $('#lax').value=p.ax; $('#lrules').value=p.rules; $('#lang').value=p.ang; LS.head=p.head; LS.maxGen=14;
+  $$('#lpre button').forEach(b=>b.classList.toggle('on',b.textContent===name)); lSetGen(gen===undefined?p.gen:gen, false); }
+inits.lsys=()=>{
+  sizeCanvas($('#lc'),1,900);
+  Object.keys(LP).forEach(n=>{ const b=document.createElement('button'); b.textContent=n; b.onclick=()=>lPreset(n); $('#lpre').appendChild(b); });
+  let deb; const redraw=()=>{ clearTimeout(deb); deb=setTimeout(()=>{ LS.maxGen=14; lDraw(false); },250); };
+  $('#lax').oninput=redraw; $('#lrules').oninput=redraw; $('#lang').oninput=redraw;
+  $('#lgen').oninput=()=>{ $('#lgenv').textContent=$('#lgen').value; redraw(); };
+  $('#lminus').onclick=()=>lSetGen(+$('#lgen').value-1,false);
+  $('#lplus').onclick=()=>lSetGen(+$('#lgen').value+1,true);
+  $('#lanim').onclick=()=>lDraw(true);
+  makeSteps($('#lsteps'),[
+    {t:'See the seed', h:'Plant at generation 0.', a:()=>{ lPreset('Plant',0); top($('#lc')); },
+     n:'Nothing drawn yet — the start is just one letter, X. Everything will grow from it.'},
+    {t:'Grow one generation', h:'Press this 5 times, slowly.', a:()=>{ if(!$('#lpre button.on')||$('#lpre button.on').textContent!=='Plant') lPreset('Plant',0); lSetGen(+$('#lgen').value+1,true); top($('#lc')); },
+     n:'Each press applies the rule once more. Branches grow on branches. Watch "Result" in the box below jump.'},
+    {t:'Snowflake', h:'A different rule, one line long.', a:()=>{ lPreset('Snowflake',0); setTimeout(()=>lSetGen(4,true),400); top($('#lc')); },
+     n:'Starts as a triangle. Each line becomes 4 smaller lines → infinite length, finite area. Use + and − to step through.'},
+    {t:'Dragon', h:'Folding a strip of paper, in code.', a:()=>{ lPreset('Dragon'); lDraw(true); top($('#lc')); },
+     n:'The line never crosses itself. Want your own? Open Advanced and edit the rule.'},
+  ]);
+  lPreset('Plant');
+};
+
+/* ================= CHAOS GAME ================= */
+const Chaos = (() => {
+  const S={n:3, r:0.5, rule:'any', running:true, count:0, x:0, y:0, last:-1, verts:[], cols:[], img:null, raf:0, frame:0, user:true};
+  const MAX=600000;
+  function reset(){
+    const c=$('#cc'); if(!c.width||c.width<=300) sizeCanvas(c,1,800);
+    const W=c.width, H=c.height, ctx=c.getContext('2d');
+    S.img=ctx.createImageData(W,H); for(let i=3;i<S.img.data.length;i+=4) S.img.data[i]=255;
+    S.verts=[]; S.cols=[];
+    const R=W*0.47, cy=H/2+(S.n%2? R*(1-Math.cos(Math.PI/S.n))/2:0);
+    for(let k=0;k<S.n;k++){ const a=-Math.PI/2+2*Math.PI*k/S.n+(S.n%2?0:Math.PI/S.n); S.verts.push([W/2+R*Math.cos(a), cy+R*Math.sin(a)]); S.cols.push(hsl2rgb(200+k*360/S.n,.8,.6)); }
+    S.x=Math.random()*W; S.y=Math.random()*H; S.last=-1; S.count=0; S.frame=0;
+    for(let i=0;i<40;i++) iter(false);
+    $('#cnv').textContent=S.n; $('#crv').textContent=S.r.toFixed(3);
+    paint(); stats();
+  }
+  function iter(plot){
+    const n=S.n; let v;
+    do { v=(Math.random()*n)|0; } while((S.rule==='norepeat'&&v===S.last) || (S.rule==='notnext'&&S.last>=0&&v===(S.last+1)%n));
+    const p=S.verts[v]; S.x+=(p[0]-S.x)*S.r; S.y+=(p[1]-S.y)*S.r; S.last=v;
+    if(plot){ const W=S.img.width, i=((S.y|0)*W+(S.x|0))*4, d=S.img.data, c=S.cols[v];
+      d[i]+=c[0]*.45; d[i+1]+=c[1]*.45; d[i+2]+=c[2]*.45; }
+  }
+  function paint(){
+    const ctx=$('#cc').getContext('2d'); ctx.putImageData(S.img,0,0);
+    S.verts.forEach((p,k)=>{ ctx.fillStyle=`rgb(${S.cols[k]})`; ctx.beginPath(); ctx.arc(p[0],p[1],4*DPR,0,7); ctx.fill(); });
+  }
+  function stats(){
+    $('#cstat').textContent=`${fmtNum(S.count)} dots`+(S.count>=MAX?' · done':'');
+    const ruleTxt={any:'any corner',norepeat:'not the same corner twice',notnext:'not the next corner clockwise'}[S.rule];
+    const seed=`corners=${S.n}; jump=${S.r}; ${ruleTxt}`;
+    meter($('#cmeter'),'chaos','Dice game',seed,bytes(seed),Math.max(1,S.count*8),'',
+      `Dice rolls used: <b>${fmtB(S.count*Math.log2(S.n)/8)}</b> of randomness — not part of the seed, because different rolls give the same shape.`);
+  }
+  function loop(){
+    if(!S.running) return;
+    const per = S.count<3000 ? 40 : S.count<30000 ? 600 : 5000;   // start slow so you can see dots appear
+    const k=Math.min(per, MAX-S.count); for(let i=0;i<k;i++) iter(true); S.count+=k;
+    paint(); if(++S.frame%6===0||S.count>=MAX) stats();
+    if(S.count<MAX) S.raf=requestAnimationFrame(loop); else { S.running=false; $('#cplay').textContent='▶ Play'; }
+  }
+  function play(){ if(S.count>=MAX) reset(); S.running=true; S.user=true; $('#cplay').textContent='⏸ Pause'; cancelAnimationFrame(S.raf); S.raf=requestAnimationFrame(loop); }
+  function pause(auto){ S.running=false; cancelAnimationFrame(S.raf); if(!auto) S.user=false; $('#cplay').textContent='▶ Play'; }
+  function set(n,r,rule){ S.n=n; S.r=r; S.rule=rule; $('#cn').value=n; $('#cr').value=r; $('#crule').value=rule; reset(); play(); }
+  const PRE=[['Triangle',3,.5,'any'],['Square',4,.5,'any'],['Square, no repeat',4,.5,'norepeat'],['Square, not next',4,.5,'notnext'],['Pentagon',5,.618,'any'],['Hexagon',6,.667,'any'],['Octagon',8,.707,'any']];
+  return {
+    init(){
+      PRE.forEach(([l,n,r,ru])=>{ const b=document.createElement('button'); b.textContent=l; b.onclick=()=>set(n,r,ru); $('#cpre').appendChild(b); });
+      $('#cn').oninput=e=>{ S.n=+e.target.value; reset(); play(); };
+      $('#cr').oninput=e=>{ S.r=+e.target.value; reset(); play(); };
+      $('#crule').onchange=e=>{ S.rule=e.target.value; reset(); play(); };
+      $('#cplay').onclick=()=>{ S.running? pause(false) : play(); };
+      $('#cclear').onclick=()=>{ reset(); play(); };
+      makeSteps($('#csteps'),[
+        {t:'Triangle', h:'3 corners, jump halfway.', a:()=>{ set(3,.5,'any'); top($('#cc')); },
+         n:'First the dots look random. Then a triangle full of holes appears (Sierpinski).'},
+        {t:'Roll new dice', h:'Same rule, completely new random rolls.', a:()=>{ reset(); play(); top($('#cc')); },
+         n:'Different dice, same shape. The randomness carries no information — the rule decides the shape.'},
+        {t:'Square', h:'Same rule, just 4 corners.', a:()=>{ set(4,.5,'any'); top($('#cc')); },
+         n:'No structure at all — it just fills the square. A small seed does not guarantee structure.'},
+        {t:'Square + one restriction', h:'"Never pick the same corner twice."', a:()=>{ set(4,.5,'norepeat'); top($('#cc')); },
+         n:'One extra sentence in the rule and structure comes back. The seed grew by a few bytes; the picture changed completely.'},
+      ]);
+      set(3,.5,'any');
+    },
+    pause, resumeIfAuto(){ if(inited.chaos && S.user && S.count<MAX && !S.running) play(); }
+  };
+})();
+inits.chaos=()=>Chaos.init();
+
+/* ================= BIG IDEA ================= */
+inits.ideas=()=>{
+  const order=['mandel','rule','lsys','chaos'], names={mandel:'Mandelbrot',rule:'Cell rule',lsys:'Growing',chaos:'Dice'};
+  let h='<tr><th>Lab</th><th>Seed</th><th>Result</th><th>Bigger by</th></tr>';
+  order.forEach(k=>{ const s=STATS[k];
+    if(!s){ h+=`<tr><td>${names[k]}</td><td colspan="3" style="text-align:center;color:var(--mute)">try this lab first</td></tr>`; return; }
+    h+=`<tr class="click" data-k="${k}"><td>${esc(names[k])} ▸</td><td>${fmtB(s.seedB)}</td><td>${fmtB(s.outB)}</td><td><b>${fmtX(s.outB/s.seedB)}</b></td></tr>`+
+       `<tr class="det" data-d="${k}" hidden><td colspan="4"><span class="mono">${esc(s.seed)}</span></td></tr>`;
+  });
+  const t=$('#cmp'); t.innerHTML=h;
+  $$('#cmp tr.click').forEach(r=>r.onclick=()=>{ const d=$(`#cmp tr[data-d="${r.dataset.k}"]`); d.hidden=!d.hidden; });
+};
+
+let rz, lastW=window.innerWidth;
+window.addEventListener('resize',()=>{ if(Math.abs(window.innerWidth-lastW)<40) return; lastW=window.innerWidth; clearTimeout(rz); rz=setTimeout(()=>{
+  if(inited.mandel){ sizeCanvas($('#mc'),1,720); if(!$('#mandel').hidden) mDraw(); }
+  if(inited.lsys){ sizeCanvas($('#lc'),1,900); if(!$('#lsys').hidden) lDraw(false); }
+},300); });
+
+show(location.hash.slice(1));
+})();
+</script>
+</body>
+</html>

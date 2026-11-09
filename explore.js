@@ -34,5 +34,12 @@ window.EXPLORE = [
     title: 'Table of Physical Constants',
     path: 'explore/constants-table/',
     desc: 'c, ħ, G, k_B and k_e as switches. A 5 × 5 table of what each pair of constants builds, opening into a 60-cell table of triples, one per element of A₅, each with its symmetry group.'
+  },
+  {
+    id: 'seed-lab',
+    badge: 'z²',
+    title: 'Seed → Structure Lab',
+    path: 'explore/seed-lab/',
+    desc: 'A tiny rule, an enormous structure. Zoom into the Mandelbrot set, flip the 8 bits of a cell rule, grow a plant from one letter, roll dice into a fractal, and compare seed size with result size.'
   }
 ];
