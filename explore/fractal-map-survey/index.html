@@ -273,23 +273,47 @@ function drawCompass(){
 
 /* ---------- pin: tap a point, read its coordinates ---------- */
 let pin=null, labelBox=null;
-function escapeCount(cr,ci,maxIt){
-  let zr=0,zi=0,zr2=0,zi2=0,n=0;
-  while(zr2+zi2<=4 && n<maxIt){ zi=2*zr*zi+ci; zr=zr2-zi2+cr; zr2=zr*zr; zi2=zi*zi; n++; }
-  return zr2+zi2>4 ? n : -1;
+// What the orbit of 0 does under z → z² + c, independent of the zoom:
+//   escape — |z| passes 2 after n steps;
+//   inside — the orbit settles onto a repeating cycle of period p whose multiplier |λ| = |Π 2z| is below 1
+//            (an attracting cycle, so c lies inside a period-p component; |λ| is 0 at its centre, 1 on its edge);
+//   open   — neither happened within the limit (very close to the boundary).
+const PIN_LIMIT=200000, PIN_PMAX=1024;
+function classify(cr,ci){
+  let zr=0,zi=0,n=0;
+  const step=()=>{ const t=zr*zr-zi*zi+cr; zi=2*zr*zi+ci; zr=t; n++; return zr*zr+zi*zi>4; };
+  while(n<PIN_LIMIT){
+    for(let k=0;k<1000;k++) if(step()) return {kind:'escape',n};
+    const ar=zr, ai=zi;
+    for(let p=1;p<=PIN_PMAX;p++){
+      if(step()) return {kind:'escape',n};
+      if(Math.abs(zr-ar)+Math.abs(zi-ai)<1e-10){
+        let lr=1,li=0;
+        for(let k=0;k<p;k++){ const tr=2*(lr*zr-li*zi), ti=2*(lr*zi+li*zr); lr=tr; li=ti; step(); }
+        const lam=Math.hypot(lr,li);
+        if(lam<1) return {kind:'inside',period:p,lam,n};
+        break;
+      }
+    }
+  }
+  return {kind:'open',n};
 }
 function placePin(px,py){
   if(pin){
     const [sx,sy]=toScreen(pin.re,pin.im);
     if(Math.hypot(sx-px,sy-py)<26*DPR){ pin=null; needDraw=true; return; }   // tap the pin again to remove it
   }
-  const [re,im]=toWorld(px,py), pix=view.w/Wd*DPR, maxIt=itFor(view.w);
-  pin={re,im,d:digitsFor(pix),pix,maxIt,n:escapeCount(re,im,maxIt)};
+  const [re,im]=toWorld(px,py), pix=view.w/Wd*DPR;
+  pin={re,im,d:digitsFor(pix),pix,r:classify(re,im)};
   needDraw=true;
 }
+function orbitText(r){
+  if(r.kind==='escape') return 'escapes after '+r.n.toLocaleString('en-US')+' steps';
+  if(r.kind==='inside') return 'inside · period-'+r.period+' cycle · |λ| '+(r.lam<0.995?r.lam.toFixed(2):r.lam.toFixed(4));
+  return 'undecided after '+r.n.toLocaleString('en-US')+' steps';
+}
 function pinText(){
-  return { re:fixed(pin.re,pin.d), im:(pin.im<0?'− ':'+ ')+Math.abs(pin.im).toFixed(pin.d)+' i',
-           n: pin.n<0 ? 'no escape in '+pin.maxIt+' steps' : 'escapes after '+pin.n+' steps' };
+  return { re:fixed(pin.re,pin.d), im:(pin.im<0?'− ':'+ ')+Math.abs(pin.im).toFixed(pin.d)+' i', n:orbitText(pin.r) };
 }
 function drawPin(){
   labelBox=null; if(!pin) return;
@@ -488,7 +512,7 @@ function takeShot(){
   g.restore();
   const meta={viewer:'Mandelbrot Survey Map', map:'z -> z^2 + c',
     centre:{re:view.cx, im:view.cy}, width:view.w, rotationDeg:-view.a*180/Math.PI,
-    pin: pin ? {re:pin.re, im:pin.im, escapes:pin.n<0?null:pin.n, maxIter:pin.maxIt} : null,
+    pin: pin ? {re:pin.re, im:pin.im, orbit:pin.r.kind, steps:pin.r.n, period:pin.r.period||null, multiplier:pin.r.lam==null?null:pin.r.lam} : null,
     taken:new Date().toISOString()};
   c.toBlob(async b=>{
     if(!b){ toast('Could not make the image'); return; }
