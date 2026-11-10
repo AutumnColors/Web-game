@@ -71,6 +71,13 @@ window.EXPLORE = [
     desc: 'The Riemann zeta function as a map. Colour is the direction of ζ(s), darkness its size; zeros are the points where every colour meets. Drag and pinch anywhere, and where the numbers run out the view comes back.'
   },
   {
+    id: 'riemann-explorer',
+    badge: 'π(x)',
+    title: 'Riemann Explorer',
+    path: 'explore/riemann-explorer/',
+    desc: 'Five functions behind the primes: the prime count π(x), li(x) and its error against the √x · ln x bound, ζ(s), η(s), and the raw sum of n⁻ˢ with no continuation. Colour or black-and-white styles with adjustable thresholds.'
+  },
+  {
     id: 'snowflake',
     badge: 'D₆',
     title: 'Snowflake Group',

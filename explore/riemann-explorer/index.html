@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riemann Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* layout: a one-screen instrument. Function table across the top, the plate (canvas) in the middle,
+     a ruled readout grid under it, settings docked below (phone) or to the right (wide). */
+  --bg:#e8ebef; --surface:#f6f7f9; --ink:#131822; --muted:#566070; --rule:#c9cfd8; --accent:#2440c9;
+  --f-display:'STIX Two Text','Cambria Math','Times New Roman',serif;
+  --f-body:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1116; --surface:#161a21; --ink:#e8ebf0; --muted:#929cab; --rule:#2b323e; --accent:#93a6ff;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1116; --surface:#161a21; --ink:#e8ebf0; --muted:#929cab; --rule:#2b323e; --accent:#93a6ff;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.4 var(--f-body);-webkit-text-size-adjust:100%;overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column;min-height:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.m{font-family:var(--f-display);font-style:italic;font-size:1.08em}
+
+.top{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px 12px;padding:10px 16px 0}
+h1{font:italic 600 21px/1 var(--f-display);margin:0;white-space:nowrap}
+.back{color:var(--muted);text-decoration:none;font-style:normal;font-weight:400;margin-right:.15em}
+.back:hover,.back:focus-visible{color:var(--ink)}
+.actions{display:flex;gap:6px}
+.btn{font:500 12.5px/1 var(--f-body);padding:9px 11px;border:1px solid var(--rule);background:var(--surface);color:var(--ink);border-radius:3px;cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.btn[aria-expanded="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tabs{grid-column:1/-1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid var(--ink)}
+.tab{display:flex;flex-direction:column;gap:3px;padding:7px 6px 8px 8px;text-decoration:none;color:var(--muted);border-right:1px solid var(--rule);min-width:0}
+.tab:last-child{border-right:0}
+.tab .fn{font:italic 400 19px/1.1 var(--f-display);color:var(--ink);white-space:nowrap}
+.tab .cap{font-size:10.5px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tab:hover{background:var(--surface)}
+.tab[aria-current="page"]{background:var(--ink);color:var(--bg)}
+.tab[aria-current="page"] .fn{color:var(--bg)}
+.tab[aria-current="page"] .cap{opacity:.72}
+
+.work{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;border-top:1px solid var(--ink)}
+.stage{position:relative;min-height:120px;background:#000;overflow:hidden}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+.stage canvas:focus-visible{outline-offset:-3px}
+.prog{position:absolute;left:0;top:0;height:2px;width:0;background:var(--accent);pointer-events:none}
+
+.readout{padding:8px 16px 10px;border-top:1px solid var(--ink);background:var(--surface);min-width:0}
+.readout .cap{margin:0 0 7px;font-size:12.5px;line-height:1.35;color:var(--muted);max-width:68ch}
+.cells{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:0;background:var(--rule);border:1px solid var(--rule)}
+.cells>div{background:var(--surface);padding:5px 8px;min-width:0}
+.cells>div:last-child{grid-column:span 2}
+.cells dt{font-size:10.5px;color:var(--muted);line-height:1.2}
+.cells dd{margin:1px 0 0;font:500 12.5px/1.3 var(--f-mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.jump{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:8px}
+.note{font-size:12px;color:var(--muted)}
+.tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:4px 8px;border-bottom:1px solid var(--rule);text-align:right;font-weight:400}
+.tbl thead th{font-size:10.5px;color:var(--muted);border-bottom:1px solid var(--ink)}
+.tbl th:first-child{text-align:left;padding-left:0}
+.tbl td{font:500 12.5px/1.3 var(--f-mono)}
+.tbl tbody tr[data-t]{cursor:pointer}
+.tog{display:inline-flex;align-items:center;gap:8px;background:none;border:0;padding:3px 0;margin:0;color:var(--ink);font:13px/1.2 var(--f-body);cursor:pointer;text-align:left}
+.sw{display:inline-block;width:22px;height:0;border-top:2px solid var(--ink);flex:none}
+tr[data-on="0"] .tog,tr[data-on="0"] td{opacity:.42}
+tr[data-on="0"] .sw{border-top-style:dotted!important;border-top-color:var(--muted)!important}
+
+.panel{border-top:1px solid var(--ink);background:var(--bg);max-height:min(46vh,430px);overflow:auto;padding:4px 16px 16px;min-width:0}
+fieldset{border:0;border-top:1px solid var(--rule);margin:0;padding:10px 0 4px;min-width:0}
+fieldset:first-of-type{border-top:0}
+legend{padding:0;font:italic 600 15px/1 var(--f-display);float:left;width:100%;margin-bottom:8px}
+.row{clear:both;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);align-items:center;gap:10px;min-height:34px}
+.row>label{font-size:12.5px;line-height:1.25}
+.rng{display:grid;grid-template-columns:minmax(0,1fr) 56px;align-items:center;gap:8px}
+.rng output{font:500 11.5px/1 var(--f-mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0;justify-self:start}
+input[type=color]{width:56px;height:28px;padding:0;border:1px solid var(--rule);background:var(--surface);border-radius:3px;justify-self:start}
+select{font:13px/1.2 var(--f-body);padding:6px 8px;border:1px solid var(--rule);border-radius:3px;background:var(--surface);color:var(--ink);width:100%;min-width:0}
+.seg{clear:both;display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--ink);border-radius:3px;overflow:hidden}
+.seg label{display:block;cursor:pointer}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;padding:9px 8px;text-align:center;font-size:12.5px;font-weight:500}
+.seg label+label span{border-left:1px solid var(--ink)}
+.seg input:checked+span{background:var(--ink);color:var(--bg)}
+.seg input:focus-visible+span{outline:2px solid var(--accent);outline-offset:-3px}
+.panel .btn{margin-top:12px}
+
+@media (max-width:899px){
+  .work.open .readout .cap,.work.open .jump{display:none}
+  .work.open .panel{max-height:42vh}
+}
+@media (min-width:900px){
+  .top{padding:12px 20px 0}
+  .work.open{grid-template-columns:minmax(0,1fr) 350px;grid-template-rows:minmax(0,1fr) auto}
+  .work.open .panel{grid-column:2;grid-row:1/3;max-height:none;border-top:0;border-left:1px solid var(--ink)}
+  .readout{padding:10px 20px 12px}
+  .cells{grid-template-columns:1.4fr 1.6fr 1fr 1fr 1fr}
+  .cells>div:last-child{grid-column:auto}
+  .tab{padding:8px 10px 9px 12px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <h1><a class="back" href="../../" aria-label="Back to the landing page">←</a> Riemann Explorer</h1>
+    <div class="actions">
+      <button class="btn" type="button" id="btnHome">Reset view</button>
+      <button class="btn" type="button" id="btnPanel" aria-expanded="false" aria-controls="panel">Advanced</button>
+    </div>
+    <nav class="tabs" aria-label="Function">
+      <a class="tab" href="#pi" data-tab="pi"><span class="fn">π(x)</span><span class="cap">primes</span></a>
+      <a class="tab" href="#li" data-tab="li"><span class="fn">li(x)</span><span class="cap">estimate</span></a>
+      <a class="tab" href="#zeta" data-tab="zeta"><span class="fn">ζ(s)</span><span class="cap">continued</span></a>
+      <a class="tab" href="#eta" data-tab="eta"><span class="fn">η(s)</span><span class="cap">alternating</span></a>
+      <a class="tab" href="#series" data-tab="series"><span class="fn">Σ n⁻ˢ</span><span class="cap">raw sum</span></a>
+    </nav>
+  </header>
+  <div class="work" id="work">
+    <main class="stage" id="stage">
+      <canvas id="cv" tabindex="0" aria-label="Plot. Drag to move, pinch or scroll to zoom, tap to read a value."></canvas>
+      <div class="prog" id="prog"></div>
+    </main>
+    <section class="readout" id="readout" aria-label="Readout"></section>
+    <aside class="panel" id="panel" hidden aria-label="Advanced settings">
+      <fieldset>
+        <legend>Style</legend>
+        <div class="seg">
+          <label><input type="radio" name="style" id="styleColour" data-k="style" value="colour"><span>Colour</span></label>
+          <label><input type="radio" name="style" id="styleBw" data-k="style" value="bw"><span>Black and white</span></label>
+        </div>
+      </fieldset>
+      <fieldset data-for="map" data-style="colour">
+        <legend>Colour</legend>
+        <div class="row"><label for="palette">Palette</label>
+          <select id="palette" data-k="palette"><option value="rainbow">Rainbow wheel</option><option value="dusk">Dusk wheel</option><option value="duo">Two colours</option></select></div>
+        <div class="row" data-if="duo"><label for="colA">Colour at phase 0</label><input type="color" id="colA" data-k="colA"></div>
+        <div class="row" data-if="duo"><label for="colB">Colour at phase π</label><input type="color" id="colB" data-k="colB"></div>
+        <div class="row"><label for="hue">Turn the wheel</label><span class="rng"><input type="range" id="hue" data-k="hue" min="0" max="360" step="5"><output data-o="hue"></output></span></div>
+        <div class="row"><label for="sat">Saturation</label><span class="rng"><input type="range" id="sat" data-k="sat" min="0" max="100" step="5"><output data-o="sat"></output></span></div>
+      </fieldset>
+      <fieldset data-for="map" data-style="bw">
+        <legend>Spectrum</legend>
+        <div class="row"><label for="bwSrc">Brightness shows</label>
+          <select id="bwSrc" data-k="bwSrc"><option value="relief">Size of f, smooth</option><option value="rings">Size of f, in rings</option><option value="phase">Phase of f</option></select></div>
+        <div class="row"><label for="levels">Grey levels</label><span class="rng"><input type="range" id="levels" data-k="levels" min="0" max="16" step="1"><output data-o="levels"></output></span></div>
+        <div class="row"><label for="invert">Invert</label><input type="checkbox" id="invert" data-k="invert"></div>
+      </fieldset>
+      <fieldset data-for="map">
+        <legend>Thresholds</legend>
+        <div class="row"><label for="lo">Black below |f| =</label><span class="rng"><input type="range" id="lo" data-k="lo" min="-8" max="-0.25" step="0.25"><output data-o="lo"></output></span></div>
+        <div class="row"><label for="hi">White above |f| =</label><span class="rng"><input type="range" id="hi" data-k="hi" min="0.25" max="8" step="0.25"><output data-o="hi"></output></span></div>
+        <div class="row"><label for="sink">Flag where |f| is below</label><span class="rng"><input type="range" id="sink" data-k="sink" min="0" max="1" step="0.01"><output data-o="sink"></output></span></div>
+        <div class="row" data-style="colour"><label for="sinkCol">Flag colour</label><input type="color" id="sinkCol" data-k="sinkCol"></div>
+      </fieldset>
+      <fieldset data-for="map">
+        <legend>Series</legend>
+        <div class="row"><label for="terms">Terms N in the raw sum</label><span class="rng"><input type="range" id="terms" data-k="terms" min="1" max="300" step="1"><output data-o="terms"></output></span></div>
+        <div class="row"><label for="etaMode">η(s) is drawn from</label>
+          <select id="etaMode" data-k="etaMode"><option value="exact">the continued function</option><option value="series">its series, N terms</option></select></div>
+      </fieldset>
+      <fieldset data-for="map">
+        <legend>Lines and marks</legend>
+        <div class="row"><label for="rings">Rings where |f| doubles</label><input type="checkbox" id="rings" data-k="rings"></div>
+        <div class="row"><label for="phaseLines">Phase lines</label><input type="checkbox" id="phaseLines" data-k="phaseLines"></div>
+        <div class="row"><label for="phaseN">Phase lines per turn</label>
+          <select id="phaseN" data-k="phaseN" data-num="1"><option>4</option><option>8</option><option>12</option><option>16</option><option>24</option></select></div>
+        <div class="row"><label for="contour">Line strength</label><span class="rng"><input type="range" id="contour" data-k="contour" min="0" max="80" step="5"><output data-o="contour"></output></span></div>
+        <div class="row"><label for="guides">Guides at σ = 0, ½, 1</label><input type="checkbox" id="guides" data-k="guides"></div>
+        <div class="row"><label for="guideCol">Guide colour</label><input type="color" id="guideCol" data-k="guideCol"></div>
+        <div class="row"><label for="markers">Mark zeros ○ and poles □</label><input type="checkbox" id="markers" data-k="markers"></div>
+        <div class="row"><label for="axes">Axis numbers</label><input type="checkbox" id="axes" data-k="axes"></div>
+      </fieldset>
+      <fieldset data-for="line">
+        <legend>Curves</legend>
+        <div class="row"><label for="waveK">Zeros used in Riemann's formula</label><span class="rng"><input type="range" id="waveK" data-k="waveK" min="1" max="100" step="1"><output data-o="waveK"></output></span></div>
+        <div class="row"><label for="lineW">Line weight</label><span class="rng"><input type="range" id="lineW" data-k="lineW" min="1" max="4" step="0.5"><output data-o="lineW"></output></span></div>
+        <div class="row" data-style="colour"><label for="liCol">li(x) colour</label><input type="color" id="liCol" data-k="liCol"></div>
+        <div class="row" data-style="colour"><label for="xlnCol">x / ln x colour</label><input type="color" id="xlnCol" data-k="xlnCol"></div>
+        <div class="row" data-style="colour"><label for="RCol">R(x) colour</label><input type="color" id="RCol" data-k="RCol"></div>
+        <div class="row" data-style="colour"><label for="waveCol">Riemann's formula colour</label><input type="color" id="waveCol" data-k="waveCol"></div>
+      </fieldset>
+      <fieldset data-for="map">
+        <legend>Rendering</legend>
+        <div class="row"><label for="quality">Sharpness</label>
+          <select id="quality" data-k="quality"><option value="fast">Fast</option><option value="balanced">Balanced</option><option value="full">Full</option></select></div>
+      </fieldset>
+      <button class="btn" type="button" id="btnReset">Restore default settings</button>
+    </aside>
+  </div>
+</div>
+<script>
+function MathLib(){
+  'use strict';
+  var PI=Math.PI, TAU=2*PI, LN2=Math.LN2, LNPI=Math.log(PI), HL2P=0.5*Math.log(TAU), EG=0.5772156649015329;
+  // Bernoulli B2k/(2k)! for the Euler-Maclaurin tail
+  var EMC=[1/12,-1/720,1/30240,-1/1209600,1/47900160,-691/1307674368000,1/74724249600,-3617/10670622842880000];
+  var LOG=new Float64Array(2);
+  function ensureLog(n){
+    if(LOG.length>n) return;
+    var m=Math.max(n+1,LOG.length*2), a=new Float64Array(m);
+    for(var i=1;i<m;i++) a[i]=Math.log(i);
+    LOG=a;
+  }
+  function nTerms(t){ return 12+Math.ceil(Math.abs(t)/2.2); }
+  function wrap(a){ return a-TAU*Math.round(a/TAU); }
+
+  var ZR=0, ZI=0;
+  // finishes zeta(s) from the head sum (re,im) and N^-s = pr + i pi
+  function emTail(sig,t,N,pr,pi_,re,im){
+    re+=0.5*pr; im+=0.5*pi_;
+    var dr=sig-1, dd=dr*dr+t*t;
+    re+=N*(pr*dr+pi_*t)/dd; im+=N*(pi_*dr-pr*t)/dd;
+    var qr=pr/N, qi=pi_/N, Pr=sig, Pi=t, iN2=1/(N*N);
+    for(var k=1;k<=8;k++){
+      var c=EMC[k-1];
+      re+=c*(Pr*qr-Pi*qi); im+=c*(Pr*qi+Pi*qr);
+      var ar=sig+2*k-1, br=sig+2*k;
+      var xr=Pr*ar-Pi*t, xi=Pr*t+Pi*ar;
+      Pr=xr*br-xi*t; Pi=xr*t+xi*br;
+      qr*=iN2; qi*=iN2;
+    }
+    ZR=re; ZI=im;
+  }
+  // zeta(sig+it) for sig >= 0 by Euler-Maclaurin; result in ZR, ZI
+  function zetaEM(sig,t){
+    var N=nTerms(t); ensureLog(N+1);
+    var re=0, im=0, L, a;
+    for(var n=1;n<N;n++){ L=LOG[n]; a=Math.exp(-sig*L); re+=a*Math.cos(t*L); im-=a*Math.sin(t*L); }
+    L=LOG[N]; a=Math.exp(-sig*L);
+    emTail(sig,t,N,a*Math.cos(t*L),-a*Math.sin(t*L),re,im);
+  }
+  var GR=0, GI=0;
+  function lnGamma(x,y){
+    var pr=1, pi_=0, nr;
+    while(x<8){ nr=pr*x-pi_*y; pi_=pr*y+pi_*x; pr=nr; x+=1; }
+    var lr=0.5*Math.log(x*x+y*y), la=Math.atan2(y,x);
+    var re=(x-0.5)*lr-y*la-x+HL2P, im=(x-0.5)*la+y*lr-y;
+    var d=x*x+y*y, ir=x/d, ii=-y/d, i2r=ir*ir-ii*ii, i2i=2*ir*ii;
+    var tr=ir, ti=ii; re+=tr/12; im+=ti/12;
+    var ur=tr*i2r-ti*i2i, ui=tr*i2i+ti*i2r; re-=ur/360; im-=ui/360;
+    tr=ur*i2r-ui*i2i; ti=ur*i2i+ui*i2r; re+=tr/1260; im+=ti/1260;
+    ur=tr*i2r-ti*i2i; ui=tr*i2i+ti*i2r; re-=ur/1680; im-=ui/1680;
+    re-=0.5*Math.log(pr*pr+pi_*pi_); im-=Math.atan2(pi_,pr);
+    GR=re; GI=im;
+  }
+  var CR=0, CI=0;
+  // ln chi(s), where zeta(s) = chi(s) zeta(1-s)
+  function lnChi(sig,t){
+    var re=sig*LN2+(sig-1)*LNPI, im=t*(LN2+LNPI);
+    var x=PI*sig/2, y=PI*t/2, e, wr, wi;
+    if(y>=0){ e=Math.exp(-2*y); wr=1-e*Math.cos(2*x); wi=-e*Math.sin(2*x); re+=-LN2+y; im+=PI/2-x; }
+    else { e=Math.exp(2*y); wr=1-e*Math.cos(2*x); wi=e*Math.sin(2*x); re+=-LN2-y; im+=-PI/2+x; }
+    re+=0.5*Math.log(wr*wr+wi*wi); im+=Math.atan2(wi,wr);
+    lnGamma(1-sig,-t);
+    CR=re+GR; CI=im+GI;
+  }
+  var OL=0, OA=0;
+  function zetaLA(sig,t){
+    if(sig>=0){ zetaEM(sig,t); OL=0.5*Math.log(ZR*ZR+ZI*ZI); OA=Math.atan2(ZI,ZR); }
+    else { zetaEM(1-sig,-t); lnChi(sig,t); OL=CR+0.5*Math.log(ZR*ZR+ZI*ZI); OA=CI+Math.atan2(ZI,ZR); }
+  }
+  // value of one of the plane functions at a point: returns [ln|f|, arg f]
+  function evalLA(fn,sig,t,terms){
+    var l, a;
+    if(fn==='zeta'||fn==='eta'){
+      zetaLA(sig,t); l=OL; a=OA;
+      if(fn==='eta'){
+        var m=Math.exp((1-sig)*LN2), wr=1-m*Math.cos(t*LN2), wi=m*Math.sin(t*LN2);
+        l+=0.5*Math.log(wr*wr+wi*wi); a+=Math.atan2(wi,wr);
+      }
+    } else {
+      ensureLog(terms+1);
+      var re=0, im=0, sg=1;
+      for(var n=1;n<=terms;n++){
+        var L=LOG[n], q=sg*Math.exp(-sig*L); re+=q*Math.cos(t*L); im-=q*Math.sin(t*L);
+        if(fn==='esum') sg=-sg;
+      }
+      l=Math.log(Math.hypot(re,im)); a=Math.atan2(im,re);
+    }
+    return [l,wrap(a)];
+  }
+
+  // ---- strip renderer with shared row / column tables ----
+  var ck='', ctab=null, cst=0, csig=null, crf=null, C=new Float64Array(2), S=new Float64Array(2);
+  function cols(job){
+    var exact=(job.fn==='zeta'||job.fn==='eta');
+    var key=job.fn+'|'+job.x0+'|'+job.d+'|'+job.w+'|'+job.cap;
+    if(key===ck) return;
+    var cap=job.cap, w=job.w, st=cap+1;
+    ensureLog(cap+1);
+    var tab=new Float64Array(w*st), sg=new Float64Array(w), rf=new Uint8Array(w);
+    for(var i=0;i<w;i++){
+      var s=job.x0+(i+0.5)*job.d, r=(exact&&s<0)?1:0, se=r?1-s:s, b=i*st;
+      sg[i]=s; rf[i]=r;
+      for(var n=1;n<=cap;n++) tab[b+n]=Math.exp(-se*LOG[n]);
+    }
+    ctab=tab; cst=st; csig=sg; crf=rf; ck=key;
+    if(C.length<st+1){ C=new Float64Array(st+1); S=new Float64Array(st+1); }
+  }
+  function renderStrip(job,r0,r1){
+    cols(job);
+    var w=job.w, fn=job.fn, exact=(fn==='zeta'||fn==='eta'), eta=(fn==='eta'), alt=(fn==='esum');
+    var Lo=new Float32Array(w*(r1-r0)), Ao=new Float32Array(w*(r1-r0)), o=0;
+    var tab=ctab, st=cst, sg=csig, rf=crf, n, i, b, a, re, im, l, ar;
+    for(var j=r0;j<r1;j++){
+      var t=job.top-(j+0.5)*job.d;
+      if(exact){
+        var N=nTerms(t); if(N>job.cap) N=job.cap;
+        for(n=1;n<=N;n++){ C[n]=Math.cos(t*LOG[n]); S[n]=Math.sin(t*LOG[n]); }
+        var c2=Math.cos(t*LN2), s2=Math.sin(t*LN2);
+        for(i=0;i<w;i++){
+          b=i*st; re=0; im=0;
+          var sig=sg[i];
+          if(!rf[i]){
+            for(n=1;n<N;n++){ a=tab[b+n]; re+=a*C[n]; im-=a*S[n]; }
+            a=tab[b+N]; emTail(sig,t,N,a*C[N],-a*S[N],re,im);
+            l=0.5*Math.log(ZR*ZR+ZI*ZI); ar=Math.atan2(ZI,ZR);
+          } else {
+            for(n=1;n<N;n++){ a=tab[b+n]; re+=a*C[n]; im+=a*S[n]; }
+            a=tab[b+N]; emTail(1-sig,-t,N,a*C[N],a*S[N],re,im);
+            lnChi(sig,t);
+            l=CR+0.5*Math.log(ZR*ZR+ZI*ZI); ar=CI+Math.atan2(ZI,ZR);
+          }
+          if(eta){
+            var m=Math.exp((1-sig)*LN2), wr=1-m*c2, wi=m*s2;
+            l+=0.5*Math.log(wr*wr+wi*wi); ar+=Math.atan2(wi,wr);
+          }
+          Lo[o]=l; Ao[o]=ar-TAU*Math.round(ar/TAU); o++;
+        }
+      } else {
+        var T=job.cap, sgn=1;
+        for(n=1;n<=T;n++){ C[n]=sgn*Math.cos(t*LOG[n]); S[n]=sgn*Math.sin(t*LOG[n]); if(alt) sgn=-sgn; }
+        for(i=0;i<w;i++){
+          b=i*st; re=0; im=0;
+          for(n=1;n<=T;n++){ a=tab[b+n]; re+=a*C[n]; im-=a*S[n]; }
+          Lo[o]=Math.log(Math.hypot(re,im)); Ao[o]=Math.atan2(im,re); o++;
+        }
+      }
+    }
+    return {L:Lo,A:Ao};
+  }
+
+  // ---- real-line functions ----
+  // Ei(u) for real u != 0 (principal value)
+  function eiReal(u){
+    var s=EG+Math.log(Math.abs(u)), term=1;
+    for(var k=1;k<400;k++){ term*=u/k; var add=term/k; s+=add; if(Math.abs(add)<1e-17*Math.abs(s)&&k>Math.abs(u)) break; }
+    return s;
+  }
+  function li(x){ return eiReal(Math.log(x)); }
+  var ZK=null;
+  function gramR(x){
+    if(!ZK){ ZK=new Float64Array(140); for(var q=1;q<140;q++){ zetaEM(q+1,0); ZK[q]=ZR; } }
+    var u=Math.log(x), s=1, term=1;
+    for(var k=1;k<140;k++){ term*=u/k; var add=term/(k*ZK[k]); s+=add; if(Math.abs(add)<1e-16*Math.abs(s)&&k>u) break; }
+    return s;
+  }
+  // real part of Ei(x+iy), y != 0
+  function eiRe(x,y){
+    var r2=x*x+y*y, r=Math.sqrt(r2), k, tr, ti, nr;
+    if(r<20){
+      var sr=0; tr=1; ti=0;
+      for(k=1;k<200;k++){
+        nr=(tr*x-ti*y)/k; ti=(tr*y+ti*x)/k; tr=nr;
+        sr+=tr/k;
+        if(k>r&&Math.abs(tr)+Math.abs(ti)<1e-17) break;
+      }
+      return EG+Math.log(r)+sr;
+    }
+    // asymptotic: e^z/z * sum k!/z^k
+    var ir=x/r2, ii=-y/r2, sR=1, sI=0; tr=1; ti=0;
+    var prev=1;
+    for(k=1;k<60;k++){
+      nr=(tr*ir-ti*ii)*k; ti=(tr*ii+ti*ir)*k; tr=nr;
+      var mag=Math.abs(tr)+Math.abs(ti);
+      if(mag>prev) break;
+      sR+=tr; sI+=ti; prev=mag;
+      if(mag<1e-16) break;
+    }
+    var e=Math.exp(x), er=e*Math.cos(y), ei=e*Math.sin(y);
+    var qr=er*ir-ei*ii, qi=er*ii+ei*ir;
+    return qr*sR-qi*sI;
+  }
+  // Riemann's formula for pi(x) using the first K zero pairs (gammas = imaginary parts)
+  function waves(x,K,gammas){
+    var u=Math.log(x), s=gramR(x)-1/u+Math.atan(PI/u)/PI;
+    for(var k=0;k<K;k++) s-=2*eiRe(0.5*u,gammas[k]*u);
+    return s;
+  }
+  return {nTerms:nTerms, evalLA:evalLA, renderStrip:renderStrip, li:li, gramR:gramR, eiRe:eiRe, waves:waves, wrap:wrap};
+}
+
+</script>
+<script>
+(function(){
+'use strict';
+var M=MathLib();
+var ZEROS=[14.134725,21.022040,25.010858,30.424876,32.935062,37.586178,40.918719,43.327073,48.005151,49.773832,52.970321,56.446248,59.347044,60.831779,65.112544,67.079811,69.546402,72.067158,75.704691,77.144840,79.337375,82.910381,84.735493,87.425275,88.809111,92.491899,94.651344,95.870634,98.831194,101.317851,103.725538,105.446623,107.168611,111.029536,111.874659,114.320221,116.226680,118.790783,121.370125,122.946829,124.256819,127.516684,129.578704,131.087689,133.497737,134.756510,138.116042,139.736209,141.123707,143.111846,146.000982,147.422765,150.053520,150.925258,153.024694,156.112909,157.597592,158.849988,161.188964,163.030710,165.537069,167.184440,169.094515,169.911976,173.411537,174.754192,176.441434,178.377408,179.916484,182.207078,184.874468,185.598784,187.228923,189.416159,192.026656,193.079727,195.265397,196.876482,198.015310,201.264752,202.493595,204.189672,205.394697,207.906259,209.576510,211.690863,213.347919,214.547045,216.169539,219.067596,220.714919,221.430706,224.007000,224.983325,227.421444,229.337413,231.250189,231.987235,233.693404,236.524230];
+var PI=Math.PI, TAU=2*PI, LN2=Math.LN2, LN10=Math.LN10, XMAX=1e7, KEY='riemann-explorer-v1';
+var $=function(id){return document.getElementById(id);};
+var DEF={style:'colour',palette:'rainbow',colA:'#1f3fb0',colB:'#f0b429',hue:0,sat:100,bwSrc:'relief',levels:0,invert:false,
+  lo:-2,hi:4,sink:0,sinkCol:'#ff3ad0',rings:true,phaseLines:false,phaseN:12,contour:30,
+  guides:true,guideCol:'#ffffff',markers:true,axes:true,terms:30,etaMode:'exact',quality:'balanced',
+  waveK:30,lineW:2,liCol:'#d1495b',xlnCol:'#1f8f7a',RCol:'#7a5fd0',waveCol:'#d98a1a',
+  show:{pi:{li:true,xln:true,R:false,wave:false},li:{li:true,R:true,xln:false,env:true}}};
+var TAB={
+  pi:{kind:'line',cap:'<i class="m">π(x)</i> counts the primes up to <i class="m">x</i>. Tap a row to show or hide its curve.'},
+  li:{kind:'line',cap:'Each estimate minus the true count. Under the Riemann hypothesis, <i class="m">li(x) − π(x)</i> stays inside the dashed bound.'},
+  zeta:{kind:'map',cap:'<i class="m">ζ(s)</i> on the whole plane. Zeros are the dark sinks, the pole at <i class="m">s</i> = 1 is the bright peak.'},
+  eta:{kind:'map',cap:'<i class="m">η(s) = (1 − 2¹⁻ˢ)·ζ(s)</i>. Its series converges for σ &gt; 0 and carries ζ into the critical strip.'},
+  series:{kind:'map',cap:'The raw sum of <i class="m">n⁻ˢ</i> up to <i class="m">N</i>, with no continuation. It settles to <i class="m">ζ(s)</i> only right of σ = 1.'}
+};
+function clone(o){return JSON.parse(JSON.stringify(o));}
+var S=clone(DEF);
+var st={tab:'pi',view:null,range:{pi:[0,110],li:[0,100000]},px:{pi:100,li:50000},probe:{s:0.5,t:ZEROS[0]}};
+
+var stage=$('stage'), cv=$('cv'), ctx=cv.getContext('2d'), panel=$('panel'), readout=$('readout'), prog=$('prog');
+var W=0, H=0, DPR=1;
+
+// ---------- persistence ----------
+function merge(d){
+  if(!d||typeof d!=='object') return;
+  if(d.S){ for(var k in DEF){ if(k==='show') continue; if(typeof d.S[k]===typeof DEF[k]) S[k]=d.S[k]; }
+    if(d.S.show){ ['pi','li'].forEach(function(t){ for(var q in DEF.show[t]) if(d.S.show[t]&&typeof d.S.show[t][q]==='boolean') S.show[t][q]=d.S.show[t][q]; }); } }
+  if(d.view&&isFinite(d.view.cx)&&isFinite(d.view.cy)&&d.view.d>0) st.view={cx:d.view.cx,cy:d.view.cy,d:d.view.d};
+  if(d.range){ ['pi','li'].forEach(function(t){ var r=d.range[t]; if(r&&r[1]>r[0]&&r[0]>=0&&r[1]<=XMAX) st.range[t]=[r[0],r[1]]; }); }
+  if(d.px){ ['pi','li'].forEach(function(t){ if(d.px[t]>0) st.px[t]=d.px[t]; }); }
+  if(d.probe&&isFinite(d.probe.s)&&isFinite(d.probe.t)) st.probe={s:d.probe.s,t:d.probe.t};
+}
+function snapshot(){ return {S:S,view:st.view,range:st.range,px:st.px,probe:st.probe}; }
+var saveT=0;
+function saveSoon(){ clearTimeout(saveT); saveT=setTimeout(function(){ try{ localStorage.setItem(KEY,JSON.stringify(snapshot())); }catch(e){} },400); }
+
+// ---------- formatting ----------
+function fmtNum(v){
+  if(v!==v) return '–';
+  if(v===0) return '0';
+  var a=Math.abs(v), s;
+  if(a>=1e6||a<1e-4) s=a.toExponential(3);
+  else if(a>=1000) s=a.toFixed(1);
+  else if(a>=1) s=a.toFixed(4);
+  else s=a.toFixed(5);
+  return (v<0?'−':'')+s.replace('e-','e−');
+}
+function fmtC(re,im){ return fmtNum(re)+(im<0?' − ':' + ')+fmtNum(Math.abs(im))+' i'; }
+function group(v,dec){ return v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}).replace('-','−'); }
+function fmtV(v){ if(v!==v) return '–'; var a=Math.abs(v); return group(v,a>=10000?0:a>=1000?1:3); }
+function fmtD(v){ if(v!==v) return '–'; return (v>=0?'+':'')+fmtV(v); }
+function fmtX(x){ return x>=10000?group(Math.round(x),0):String(Math.round(x*100)/100); }
+function niceStep(raw){ var p=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/p; return (f<=1?1:f<=2?2:f<=5?5:10)*p; }
+function fmtTick(v,step){
+  if(Math.abs(v)<step*1e-6) return '0';
+  var s;
+  if(step>=1e6) s=(v/1e6)+'M';
+  else if(step>=1e3) s=(v/1e3)+'k';
+  else { var dec=Math.max(0,Math.ceil(-Math.log10(step)-1e-9)); s=v.toFixed(Math.min(dec,12)); }
+  return s.replace('-','−');
+}
+function hex(h){ var n=parseInt(String(h).slice(1),16)||0; return [(n>>16)&255,(n>>8)&255,n&255]; }
+function tok(){ var c=getComputedStyle(document.documentElement), g=function(n){return c.getPropertyValue(n).trim();};
+  return {bg:g('--bg'),surface:g('--surface'),ink:g('--ink'),muted:g('--muted'),rule:g('--rule'),accent:g('--accent')}; }
+var MONO='"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace';
+
+// ---------- which function ----------
+function kind(){ return TAB[st.tab].kind; }
+function mapFn(){ return st.tab==='zeta'?'zeta':st.tab==='series'?'zsum':(S.etaMode==='series'?'esum':'eta'); }
+function fnKey(){ var f=mapFn(); return (f==='zsum'||f==='esum')?f+':'+S.terms:f; }
+function fnLabel(){ var f=mapFn(); return f==='zeta'?'ζ(s)':f==='eta'?'η(s)':f==='zsum'?'sum to N = '+S.terms:'η series to N = '+S.terms; }
+
+// ---------- colour ----------
+var LUT=new Uint8Array(1024*3), sinkRGB=[255,58,208];
+var DUSK=[[45,108,223],[162,59,214],[232,73,63],[232,162,26],[42,165,138]];
+var HS=[[1,2,0],[2,1,0],[0,1,2],[0,2,1],[2,0,1],[1,0,2]];
+function buildLUT(){
+  var stops=S.palette==='dusk'?DUSK:S.palette==='duo'?[hex(S.colA),hex(S.colB)]:null, sat=S.sat/100;
+  for(var i=0;i<1024;i++){
+    var u=i/1024, r, g, b;
+    if(!stops){
+      var h=u*6, x=1-Math.abs(h%2-1), c=HS[Math.floor(h)%6], v=[0,255,x*255];
+      r=v[c[0]]; g=v[c[1]]; b=v[c[2]];
+    } else {
+      var n=stops.length, f=u*n, k=Math.floor(f)%n, q=f-Math.floor(f), A=stops[k], B=stops[(k+1)%n];
+      r=A[0]+(B[0]-A[0])*q; g=A[1]+(B[1]-A[1])*q; b=A[2]+(B[2]-A[2])*q;
+    }
+    var gy=0.299*r+0.587*g+0.114*b;
+    LUT[i*3]=gy+(r-gy)*sat; LUT[i*3+1]=gy+(g-gy)*sat; LUT[i*3+2]=gy+(b-gy)*sat;
+  }
+  sinkRGB=hex(S.sinkCol);
+}
+function shade(im,r0,r1,buf){
+  var w=im.w, L=im.L, A=im.A, ilo=0.5/(Math.min(S.lo,-0.25)*LN10), ihi=0.5/(Math.max(S.hi,0.25)*LN10);
+  var bw=S.style==='bw', src=S.bwSrc, lev=S.levels, invt=S.invert, off=S.hue/360+1, cs=S.contour/100;
+  var rings=S.rings&&cs>0&&!(bw&&src==='rings'), pl=S.phaseLines&&cs>0, pn=S.phaseN/TAU;
+  var sinkL=S.sink>0?Math.log(S.sink):-Infinity, sr=sinkRGB[0], sg=sinkRGB[1], sb=sinkRGB[2];
+  if(bw){ sr=sg=sb=invt?0:255; }
+  var o=0, l, a, v, r, g, b, q, m, ix;
+  for(var k=r0*w, e=r1*w;k<e;k++,o+=4){
+    l=L[k]; a=A[k]; v=l<0?0.5-l*ilo:0.5+l*ihi;
+    if(!(v>0)) v=(l!==l)?0.5:0; else if(v>1) v=1;
+    if(l<sinkL){ r=sr; g=sg; b=sb; }
+    else {
+      if(bw){
+        if(src==='relief') q=v;
+        else if(src==='rings'){ q=l/LN2; q-=Math.floor(q); if(q!==q) q=v; }
+        else { q=1-Math.abs(a)/PI; if(q!==q) q=0.5; }
+        if(lev>1){ q=Math.floor(q*lev); if(q>=lev) q=lev-1; q/=(lev-1); }
+        if(invt) q=1-q;
+        r=g=b=q*255;
+      } else {
+        q=a/TAU+off; q-=Math.floor(q); ix=((q*1024)|0)*3; if(!(ix>=0&&ix<3072)) ix=0;
+        r=LUT[ix]; g=LUT[ix+1]; b=LUT[ix+2];
+        if(v<0.5){ q=2*v; r*=q; g*=q; b*=q; }
+        else { q=2*v-1; r+=(255-r)*q; g+=(255-g)*q; b+=(255-b)*q; }
+      }
+      m=1;
+      if(rings){ q=l/LN2; q-=Math.floor(q); if(q===q) m*=1-cs*(1-q); }
+      if(pl){ q=a*pn; q-=Math.floor(q); if(q===q) m*=1-cs*(1-q); }
+      if(m<1){ r*=m; g*=m; b*=m; }
+    }
+    buf[o]=r; buf[o+1]=g; buf[o+2]=b; buf[o+3]=255;
+  }
+}
+function paintRows(im,r0,r1){
+  var id=im.ctx.createImageData(im.w,r1-r0);
+  shade(im,r0,r1,id.data);
+  im.ctx.putImageData(id,0,r0);
+}
+function recolour(){
+  if(!img) return;
+  var j=0, h=img.h;
+  while(j<h){
+    if(!img.done[j]){ j++; continue; }
+    var a=j; while(j<h&&img.done[j]) j++;
+    paintRows(img,a,j);
+  }
+}
+
+// ---------- plane renderer: jobs, workers ----------
+var img=null, cur=null, jobSeq=0, viewStamp=0, settled=true, settleT=0, marks=null;
+var workers=[], inline=false, pumpT=0;
+function makeWorkers(){
+  try{
+    var src='var M=('+MathLib.toString()+')();onmessage=function(e){var d=e.data,r=M.renderStrip(d.job,d.r0,d.r1);postMessage({id:d.job.id,r0:d.r0,r1:d.r1,L:r.L,A:r.A},[r.L.buffer,r.A.buffer]);};';
+    var url=URL.createObjectURL(new Blob([src],{type:'text/javascript'}));
+    var n=Math.max(1,Math.min(4,(navigator.hardwareConcurrency||4)-1));
+    for(var i=0;i<n;i++){ (function(){
+      var w=new Worker(url); w.busy=false;
+      w.onmessage=function(e){ w.busy=false; var d=e.data; accept(d.id,d.r0,d.r1,d.L,d.A); pump(); };
+      w.onerror=function(){ goInline(); };
+      workers.push(w);
+    })(); }
+  }catch(e){ workers=[]; inline=true; }
+}
+function goInline(){
+  if(inline) return;
+  inline=true;
+  workers.forEach(function(w){ try{w.terminate();}catch(e){} });
+  workers=[];
+  if(cur&&cur.left>0) startJob(cur.kind);
+}
+function pump(){
+  if(!cur||!cur.queue.length) return;
+  if(inline){ inlinePump(); return; }
+  for(var i=0;i<workers.length&&cur.queue.length;i++){
+    var w=workers[i]; if(w.busy) continue;
+    var q=cur.queue.shift(); w.busy=true;
+    w.postMessage({job:cur.job,r0:q[0],r1:q[1]});
+  }
+}
+function inlinePump(){
+  if(pumpT) return;
+  pumpT=setTimeout(function(){
+    pumpT=0;
+    var t0=performance.now();
+    while(cur&&cur.queue.length&&performance.now()-t0<14){
+      var c=cur, q=c.queue.shift(), r=M.renderStrip(c.job,q[0],q[1]);
+      accept(c.job.id,q[0],q[1],r.L,r.A);
+    }
+    if(cur&&cur.queue.length) inlinePump();
+  },0);
+}
+function qScale(){ return S.quality==='fast'?1:S.quality==='full'?Math.min(DPR,2.5):Math.min(DPR,1.5); }
+function startJob(k){
+  if(kind()!=='map'||W<4||H<4||!st.view) return;
+  var v=st.view, pr=k==='coarse'?0.25:qScale();
+  var w=Math.max(16,Math.round(W*pr)), ds=v.d*W/w, h=Math.max(1,Math.ceil(H*v.d/ds));
+  var x0=v.cx-W/2*v.d, top=v.cy+H/2*v.d, fn=mapFn(), cap;
+  if(fn==='zeta'||fn==='eta') cap=M.nTerms(Math.max(Math.abs(top),Math.abs(top-h*ds)));
+  else cap=S.terms;
+  var c=document.createElement('canvas'); c.width=w; c.height=h;
+  var c2=c.getContext('2d');
+  c2.fillStyle='#000'; c2.fillRect(0,0,w,h);
+  if(img&&img.key===fnKey()){
+    var sc=img.d/ds;
+    c2.imageSmoothingEnabled=true;
+    c2.drawImage(img.canvas,(img.x0-x0)/ds,(top-img.top)/ds,img.w*sc,img.h*sc);
+  }
+  img={x0:x0,top:top,d:ds,w:w,h:h,L:new Float32Array(w*h),A:new Float32Array(w*h),done:new Uint8Array(h),canvas:c,ctx:c2,key:fnKey()};
+  var queue=[], step=k==='coarse'?6:8;
+  for(var r=0;r<h;r+=step) queue.push([r,Math.min(h,r+step)]);
+  cur={job:{id:++jobSeq,fn:fn,x0:x0,top:top,d:ds,w:w,cap:cap},kind:k,queue:queue,left:queue.length,total:queue.length,stamp:viewStamp};
+  setProg();
+  pump();
+}
+function accept(id,r0,r1,L,A){
+  if(!cur||id!==cur.job.id||!img) return;
+  img.L.set(L,r0*img.w); img.A.set(A,r0*img.w);
+  for(var j=r0;j<r1;j++) img.done[j]=1;
+  paintRows(img,r0,r1);
+  cur.left--;
+  setProg();
+  requestDraw();
+  if(cur.left===0) jobDone();
+}
+function jobDone(){
+  if(cur.stamp!==viewStamp){ startJob('coarse'); return; }
+  if(cur.kind==='coarse'){ if(settled) startJob('fine'); }
+  else { marks=detect(img); mapReadout(); requestDraw(); }
+}
+function setProg(){
+  var on=cur&&cur.kind==='fine'&&cur.left>0;
+  prog.style.width=on?(100*(1-cur.left/cur.total)).toFixed(1)+'%':'0';
+}
+function kick(){
+  if(kind()!=='map') return;
+  if(cur&&cur.left>0&&cur.kind==='coarse') return;
+  startJob('coarse');
+}
+function settle(){
+  if(ptrs.size){ settleT=setTimeout(settle,160); return; }
+  settled=true;
+  if(kind()!=='map') return;
+  if(!cur){ startJob('coarse'); return; }
+  if(cur.left>0) return;
+  if(cur.stamp!==viewStamp) startJob('coarse');
+  else if(cur.kind==='coarse') startJob('fine');
+}
+function viewMoved(){
+  viewStamp++; settled=false;
+  requestDraw(); kick();
+  clearTimeout(settleT); settleT=setTimeout(settle,160);
+  saveSoon();
+}
+function newFunction(){
+  img=null; marks=null; cur=null; viewStamp++; settled=true;
+  startJob('coarse');
+  mapReadout(); requestDraw();
+}
+function wr(x){ return x-TAU*Math.round(x/TAU); }
+function detect(im){
+  var w=im.w, h=im.h, A=im.A, out=[];
+  for(var j=0;j<h-1;j++){
+    for(var i=0,k=j*w;i<w-1;i++,k++){
+      var a=A[k], b=A[k+1], c=A[k+w+1], d=A[k+w];
+      var s=wr(b-a)+wr(c-b)+wr(d-c)+wr(a-d);
+      if(s>3||s<-3){
+        out.push({s:im.x0+(i+1)*im.d,t:im.top-(j+1)*im.d,zero:s<0});
+        if(out.length>500) return 'many';
+      }
+    }
+  }
+  return out;
+}
+
+// ---------- view helpers ----------
+function fitHome(){ st.view={cx:0.5,cy:9,d:Math.max(16/W,24/H)}; }
+function clampView(){
+  var v=st.view;
+  v.d=Math.min(0.12,Math.max(1e-11,v.d));
+  v.cx=Math.min(60,Math.max(-60,v.cx)); v.cy=Math.min(2000,Math.max(-2000,v.cy));
+}
+var PLOT={ml:50,mr:12,mt:12,mb:26};
+function clampRange(r){
+  var span=Math.min(XMAX,Math.max(6,r[1]-r[0])), x0=r[0];
+  if(x0<0) x0=0;
+  if(x0+span>XMAX) x0=XMAX-span;
+  r[0]=x0; r[1]=x0+span;
+}
+function xAt(px){ var r=st.range[st.tab]; return r[0]+(px-PLOT.ml)/(W-PLOT.ml-PLOT.mr)*(r[1]-r[0]); }
+function pan(dx,dy){
+  if(kind()==='map'){ var v=st.view; v.cx-=dx*v.d; v.cy+=dy*v.d; clampView(); viewMoved(); }
+  else { var r=st.range[st.tab], sh=-dx/(W-PLOT.ml-PLOT.mr)*(r[1]-r[0]); r[0]+=sh; r[1]+=sh; clampRange(r); requestDraw(); saveSoon(); }
+}
+function zoom(px,py,ratio){
+  if(!(ratio>0)||!isFinite(ratio)) return;
+  if(kind()==='map'){
+    var v=st.view, sp=v.cx+(px-W/2)*v.d, tp=v.cy-(py-H/2)*v.d;
+    v.d/=ratio; clampView();
+    v.cx=sp-(px-W/2)*v.d; v.cy=tp+(py-H/2)*v.d; clampView(); viewMoved();
+  } else {
+    var r=st.range[st.tab], xf=Math.min(r[1],Math.max(r[0],xAt(px)));
+    r[0]=xf-(xf-r[0])/ratio; r[1]=xf+(r[1]-xf)/ratio; clampRange(r); requestDraw(); saveSoon();
+  }
+}
+function tap(px,py){
+  if(kind()==='map'){
+    var v=st.view; st.probe={s:v.cx+(px-W/2)*v.d,t:v.cy-(py-H/2)*v.d};
+    var z=$('zLab'); if(z) z.textContent='';
+    mapReadout();
+  } else {
+    var x=Math.min(XMAX,Math.max(0,xAt(px))), r=st.range[st.tab];
+    st.px[st.tab]=(r[1]-r[0])>3000?Math.round(x):Math.round(x*100)/100;
+    lineReadout();
+  }
+  requestDraw(); saveSoon();
+}
+
+// ---------- gestures ----------
+var ptrs=new Map(), moved=false, downAt=null;
+function pos(e){ var r=cv.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+cv.addEventListener('pointerdown',function(e){
+  try{ cv.setPointerCapture(e.pointerId); }catch(x){}
+  var p=pos(e); ptrs.set(e.pointerId,p);
+  if(ptrs.size===1){ moved=false; downAt={x:p.x,y:p.y}; } else moved=true;
+});
+cv.addEventListener('pointermove',function(e){
+  var p=ptrs.get(e.pointerId); if(!p) return;
+  var n=pos(e);
+  if(ptrs.size===1){
+    if(!moved&&Math.hypot(n.x-downAt.x,n.y-downAt.y)<6) return;
+    moved=true;
+    var dx=n.x-p.x, dy=n.y-p.y; p.x=n.x; p.y=n.y;
+    pan(dx,dy);
+  } else if(ptrs.size===2){
+    var o=null; ptrs.forEach(function(q,id){ if(id!==e.pointerId) o=q; });
+    var c0x=(p.x+o.x)/2, c0y=(p.y+o.y)/2, d0=Math.hypot(p.x-o.x,p.y-o.y);
+    p.x=n.x; p.y=n.y;
+    var c1x=(p.x+o.x)/2, c1y=(p.y+o.y)/2, d1=Math.hypot(p.x-o.x,p.y-o.y);
+    if(d0>8&&d1>8) zoom(c1x,c1y,d1/d0);
+    if(c1x!==c0x||c1y!==c0y) pan(c1x-c0x,c1y-c0y);
+  }
+});
+function up(e){
+  if(!ptrs.has(e.pointerId)) return;
+  var p=pos(e); ptrs.delete(e.pointerId);
+  if(ptrs.size===0&&!moved&&e.type==='pointerup') tap(p.x,p.y);
+}
+cv.addEventListener('pointerup',up);
+cv.addEventListener('pointercancel',up);
+cv.addEventListener('wheel',function(e){ e.preventDefault(); var p=pos(e); zoom(p.x,p.y,Math.exp(-e.deltaY*(e.deltaMode?0.05:0.0015))); },{passive:false});
+cv.addEventListener('keydown',function(e){
+  var k=e.key, s=48;
+  if(k==='ArrowLeft') pan(s,0); else if(k==='ArrowRight') pan(-s,0);
+  else if(k==='ArrowUp') pan(0,s); else if(k==='ArrowDown') pan(0,-s);
+  else if(k==='+'||k==='=') zoom(W/2,H/2,1.3); else if(k==='-'||k==='_') zoom(W/2,H/2,1/1.3);
+  else return;
+  e.preventDefault();
+});
+
+// ---------- drawing ----------
+var drawQ=false;
+function requestDraw(){ if(drawQ) return; drawQ=true; requestAnimationFrame(function(){ drawQ=false; if(W<4||H<4) return; if(kind()==='map') drawMap(); else drawLine(); }); }
+function pill(text,x,y,align){
+  ctx.font='500 11px '+MONO;
+  var tw=ctx.measureText(text).width, w=tw+10, h=17, bx=align==='right'?x-w:align==='center'?x-w/2:x;
+  bx=Math.min(W-w-2,Math.max(2,bx));
+  ctx.fillStyle='rgba(8,10,14,0.68)';
+  ctx.fillRect(bx,y,w,h);
+  ctx.fillStyle='#fff'; ctx.textBaseline='middle'; ctx.textAlign='left';
+  ctx.fillText(text,bx+5,y+h/2+0.5);
+}
+function twoStroke(col,lw,dash){
+  ctx.setLineDash([]); ctx.strokeStyle='rgba(0,0,0,0.5)'; ctx.lineWidth=lw+2; ctx.stroke();
+  ctx.setLineDash(dash||[]); ctx.strokeStyle=col; ctx.lineWidth=lw; ctx.stroke(); ctx.setLineDash([]);
+}
+function drawMap(){
+  var v=st.view; if(!v) return;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,cv.width,cv.height);
+  var x0=v.cx-W/2*v.d, top=v.cy+H/2*v.d;
+  if(img){
+    var sc=img.d/v.d;
+    ctx.imageSmoothingEnabled=true;
+    ctx.drawImage(img.canvas,(img.x0-x0)/v.d*DPR,(top-img.top)/v.d*DPR,img.w*sc*DPR,img.h*sc*DPR);
+  }
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  var X=function(s){return (s-x0)/v.d;}, Y=function(t){return (top-t)/v.d;};
+  var fn=mapFn(), wall=fn==='zsum'?1:fn==='esum'?0:null, gc=S.guideCol;
+  if(S.guides){
+    var vl=function(s,dash){ var x=X(s); if(x<-2||x>W+2) return; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); twoStroke(gc,wall===s?1.6:1,wall===s?[]:dash); };
+    var y0=Y(0);
+    if(y0>-2&&y0<H+2){ ctx.beginPath(); ctx.moveTo(0,y0); ctx.lineTo(W,y0); twoStroke(gc,1,[2,5]); }
+    vl(0,[2,5]); vl(1,[2,5]); vl(0.5,[7,5]);
+    var gap=X(1)-X(0.5);
+    if(gap>46){ pill('σ = 0',X(0),6,'center'); pill('σ = 1',X(1),6,'center'); }
+    if(X(0.5)>-20&&X(0.5)<W+20) pill('σ = ½',X(0.5),6,'center');
+    if(wall!==null){ var xw=X(wall); if(xw>60&&xw<W-60){ pill('no limit',xw-7,28,'right'); pill('converges',xw+7,28,'left'); } }
+  }
+  if(S.axes){
+    var step=niceStep(v.d*84), a, p;
+    ctx.strokeStyle='rgba(255,255,255,0.9)'; ctx.lineWidth=1;
+    for(a=Math.ceil((x0+v.d*40)/step)*step;a<x0+(W-24)*v.d;a+=step){
+      p=X(a); ctx.beginPath(); ctx.moveTo(p,H); ctx.lineTo(p,H-5); ctx.stroke();
+      pill(fmtTick(a,step),p,H-24,'center');
+    }
+    for(a=Math.ceil((top-(H-34)*v.d)/step)*step;a<top-34*v.d;a+=step){
+      p=Y(a); ctx.beginPath(); ctx.moveTo(0,p); ctx.lineTo(5,p); ctx.stroke();
+      pill(fmtTick(a,step)+(Math.abs(a)<step*1e-6?'':' i'),8,p-8,'left');
+    }
+  }
+  if(S.markers&&marks&&marks!=='many'){
+    for(var i=0;i<marks.length;i++){
+      var mk=marks[i], mx=X(mk.s), my=Y(mk.t);
+      if(mx<-10||mx>W+10||my<-10||my>H+10) continue;
+      ctx.beginPath();
+      if(mk.zero) ctx.arc(mx,my,6.5,0,TAU); else ctx.rect(mx-6,my-6,12,12);
+      twoStroke('#fff',1.6);
+    }
+  }
+  var qx=X(st.probe.s), qy=Y(st.probe.t);
+  if(qx>-20&&qx<W+20&&qy>-20&&qy<H+20){
+    ctx.beginPath();
+    ctx.moveTo(qx-16,qy); ctx.lineTo(qx-9,qy); ctx.moveTo(qx+9,qy); ctx.lineTo(qx+16,qy);
+    ctx.moveTo(qx,qy-16); ctx.lineTo(qx,qy-9); ctx.moveTo(qx,qy+9); ctx.lineTo(qx,qy+16);
+    twoStroke('#fff',1.4);
+  }
+}
+
+// ---------- real line ----------
+var sv=null;
+function ensureSieve(){
+  if(sv) return;
+  var n=XMAX, c=new Uint8Array(n+1), i, j;
+  c.fill(1); c[0]=0; c[1]=0;
+  for(i=2;i*i<=n;i++) if(c[i]) for(j=i*i;j<=n;j+=i) c[j]=0;
+  var pf=new Uint32Array((n>>9)+2), k=0;
+  for(i=0;i<=n;i++){ if((i&511)===0) pf[i>>9]=k; k+=c[i]; }
+  sv={n:n,p:c,pf:pf};
+}
+function primePi(x){
+  if(x<2) return 0;
+  var m=Math.floor(x); if(m>sv.n) m=sv.n;
+  var b=m>>9, k=sv.pf[b];
+  for(var i=b<<9;i<=m;i++) k+=sv.p[i];
+  return k;
+}
+function curveVal(k,x){
+  if(k==='li') return M.li(x);
+  if(k==='xln') return x/Math.log(x);
+  if(k==='R') return M.gramR(x);
+  if(k==='wave') return M.waves(x,S.waveK,ZEROS);
+  return Math.sqrt(x)*Math.log(x)/(8*PI);
+}
+var DASH={pi:[],li:[],xln:[7,4],R:[2,3],wave:[9,3,2,3],env:[4,5]};
+function curveCol(k,T){ if(S.style==='bw'||k==='pi') return T.ink; if(k==='env') return T.muted; return S[k+'Col']; }
+function curveDash(k){ return (S.style==='bw'||k==='env')?DASH[k]:[]; }
+function drawLine(){
+  ensureSieve();
+  var T=tok(), gap=st.tab==='li', R=st.range[st.tab], x0=R[0], x1=R[1], show=S.show[st.tab];
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.fillStyle=T.surface; ctx.fillRect(0,0,W,H);
+  var ml=PLOT.ml, mt=PLOT.mt, pw=W-ml-PLOT.mr, ph=H-mt-PLOT.mb;
+  if(pw<20||ph<20) return;
+  var n=Math.max(8,Math.floor(pw/2)), xs=new Float64Array(n+1), i, k, v;
+  for(i=0;i<=n;i++) xs[i]=x0+(x1-x0)*i/n;
+  var keys=gap?['xln','R','li']:['xln','R','wave','li'], data={}, lo=Infinity, hi=-Infinity;
+  keys.forEach(function(key){
+    if(!show[key]) return;
+    var a=new Float64Array(n+1), xmin=(gap||key==='wave')?2:1.02;
+    for(var q=0;q<=n;q++){
+      var x=xs[q];
+      if(x<xmin){ a[q]=NaN; continue; }
+      var val=curveVal(key,x); if(gap) val-=primePi(x);
+      a[q]=val;
+      if(x>=2){ if(val<lo) lo=val; if(val>hi) hi=val; }
+    }
+    data[key]=a;
+  });
+  if(gap){
+    lo=Math.min(lo,0); hi=Math.max(hi,0);
+    if(show.env&&x1>2657){ var ev=curveVal('env',x1); lo=Math.min(lo,-ev); hi=Math.max(hi,ev); }
+    if(hi-lo<1){ lo-=0.5; hi+=0.5; }
+  } else {
+    lo=Math.min(lo,primePi(x0)); hi=Math.max(hi,primePi(x1));
+    if(hi-lo<3) hi=lo+3;
+  }
+  var pad=(hi-lo)*0.07; lo-=pad; hi+=pad;
+  var X=function(x){return ml+(x-x0)/(x1-x0)*pw;}, Y=function(y){return mt+(hi-y)/(hi-lo)*ph;};
+  // grid
+  ctx.font='11px '+MONO; ctx.lineWidth=1;
+  var sx=niceStep((x1-x0)/Math.max(2,pw/80)), sy=niceStep((hi-lo)/Math.max(2,ph/44)), a, p;
+  ctx.textBaseline='top'; ctx.textAlign='center';
+  for(a=Math.ceil(x0/sx)*sx;a<=x1+sx*1e-9;a+=sx){
+    p=Math.round(X(a))+0.5;
+    ctx.strokeStyle=T.rule; ctx.beginPath(); ctx.moveTo(p,mt); ctx.lineTo(p,mt+ph); ctx.stroke();
+    ctx.fillStyle=T.muted; ctx.fillText(fmtTick(a,sx),Math.min(W-18,Math.max(ml+8,p)),mt+ph+7);
+  }
+  ctx.textBaseline='middle'; ctx.textAlign='right';
+  for(a=Math.ceil(lo/sy)*sy;a<=hi;a+=sy){
+    p=Math.round(Y(a))+0.5;
+    ctx.strokeStyle=T.rule; ctx.beginPath(); ctx.moveTo(ml,p); ctx.lineTo(ml+pw,p); ctx.stroke();
+    ctx.fillStyle=T.muted; ctx.fillText(fmtTick(a,sy),ml-7,p);
+  }
+  ctx.strokeStyle=T.ink; ctx.lineWidth=1; ctx.strokeRect(ml+0.5,mt+0.5,pw,ph);
+  ctx.save(); ctx.beginPath(); ctx.rect(ml,mt,pw,ph); ctx.clip();
+  ctx.lineJoin='round'; ctx.lineCap='butt';
+  var lw=S.lineW;
+  if(gap){
+    ctx.strokeStyle=T.ink; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(ml,Y(0)); ctx.lineTo(ml+pw,Y(0)); ctx.stroke();
+    if(show.env&&x1>2657){
+      ctx.strokeStyle=curveCol('env',T); ctx.lineWidth=Math.max(1,lw-0.5); ctx.setLineDash(DASH.env);
+      [1,-1].forEach(function(sgn){
+        ctx.beginPath(); var first=true;
+        for(var q=0;q<=n;q++){ var x=xs[q]; if(x<2657) continue; var yy=Y(sgn*curveVal('env',x)); if(first){ctx.moveTo(X(x),yy);first=false;} else ctx.lineTo(X(x),yy); }
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+    }
+  }
+  keys.forEach(function(key){
+    var arr=data[key]; if(!arr) return;
+    ctx.strokeStyle=curveCol(key,T); ctx.lineWidth=(S.style==='bw'&&key!=='li')?Math.max(1,lw-0.5):lw; ctx.setLineDash(curveDash(key));
+    ctx.beginPath(); var first=true;
+    for(var q=0;q<=n;q++){ var val=arr[q]; if(val!==val){ first=true; continue; } var yy=Y(val); if(yy<-1e5) yy=-1e5; if(yy>1e5) yy=1e5; if(first){ctx.moveTo(X(xs[q]),yy);first=false;} else ctx.lineTo(X(xs[q]),yy); }
+    ctx.stroke(); ctx.setLineDash([]);
+  });
+  if(!gap){
+    ctx.strokeStyle=T.ink; ctx.lineWidth=lw+0.6; ctx.lineJoin='miter';
+    ctx.beginPath();
+    var c;
+    if(x1-x0<=3*pw){
+      var m0=Math.max(0,Math.ceil(x0)); c=primePi(m0-1);
+      ctx.moveTo(X(x0),Y(c));
+      for(var m=m0;m<=Math.floor(x1);m++){ if(sv.p[m]){ ctx.lineTo(X(m),Y(c)); c++; ctx.lineTo(X(m),Y(c)); } }
+      ctx.lineTo(X(x1),Y(c));
+    } else {
+      c=primePi(x0); ctx.moveTo(ml,Y(c));
+      for(i=1;i<=pw;i++){ var xx=x0+(x1-x0)*i/pw, c2=primePi(xx); ctx.lineTo(ml+i,Y(c)); if(c2!==c){ ctx.lineTo(ml+i,Y(c2)); c=c2; } }
+    }
+    ctx.stroke();
+  }
+  // probe
+  var px=st.px[st.tab];
+  if(px>=x0&&px<=x1){
+    p=Math.round(X(px))+0.5;
+    ctx.strokeStyle=T.accent; ctx.lineWidth=1; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.moveTo(p,mt); ctx.lineTo(p,mt+ph); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=T.accent;
+    var dot=function(val){ if(val!==val) return; ctx.beginPath(); ctx.arc(X(px),Y(val),3.2,0,TAU); ctx.fill(); };
+    var pp=primePi(px);
+    if(!gap) dot(pp);
+    keys.forEach(function(key){ if(!show[key]||px<2) return; var val=curveVal(key,px); dot(gap?val-pp:val); });
+  }
+  ctx.restore();
+}
+
+// ---------- readout ----------
+function set(id,t){ var e=$(id); if(e) e.textContent=t; }
+function buildReadout(){
+  var t=st.tab, h='<p class="cap">'+TAB[t].cap+'</p>';
+  if(kind()==='map'){
+    h+='<dl class="cells"><div><dt>point <i class="m">s</i></dt><dd id="r-s"></dd></div><div><dt>value, <span id="r-lab"></span></dt><dd id="r-f"></dd></div><div><dt>size</dt><dd id="r-abs"></dd></div><div><dt>phase</dt><dd id="r-arg"></dd></div><div><dt>in view</dt><dd id="r-view"></dd></div></dl>'+
+       '<div class="jump" id="jump"><button class="btn" type="button" id="zPrev">◂ Zero below</button><button class="btn" type="button" id="zNext">Zero above ▸</button><span class="note" id="zLab"></span></div>';
+  } else if(t==='pi'){
+    h+='<table class="tbl"><thead><tr><th scope="col">curve</th><th scope="col" id="thx"></th><th scope="col">minus <i class="m">π(x)</i></th></tr></thead><tbody>'+
+      '<tr><th scope="row"><span class="tog"><i class="sw" data-c="pi"></i><i class="m">π(x)</i></span></th><td id="v-pi"></td><td>–</td></tr>'+
+      row('li','<i class="m">li(x)</i>',true)+row('xln','<i class="m">x / ln x</i>',true)+row('R','<i class="m">R(x)</i>',true)+
+      row('wave','Riemann\'s formula, <span id="lab-K"></span> zeros',true)+'</tbody></table>';
+  } else {
+    h+='<table class="tbl"><thead><tr><th scope="col">curve</th><th scope="col" id="thx"></th></tr></thead><tbody>'+
+      row('li','<i class="m">li(x) − π(x)</i>')+row('R','<i class="m">R(x) − π(x)</i>')+row('xln','<i class="m">x / ln x − π(x)</i>')+
+      row('env','bound <i class="m">±√x · ln x / 8π</i>')+'</tbody></table>';
+  }
+  readout.innerHTML=h;
+  if(kind()==='map') mapReadout(); else lineReadout();
+}
+function row(k,label,diff){
+  return '<tr data-t="'+k+'"><th scope="row"><button class="tog" type="button" aria-pressed="true"><i class="sw" data-c="'+k+'"></i><span>'+label+'</span></button></th><td id="v-'+k+'"></td>'+(diff?'<td id="d-'+k+'"></td>':'')+'</tr>';
+}
+function mapReadout(){
+  if(kind()!=='map'||!$('r-s')) return;
+  var p=st.probe, fn=mapFn(), la=M.evalLA(fn,p.s,p.t,S.terms), l=la[0], a=la[1];
+  var dec=st.view?Math.min(12,Math.max(3,Math.ceil(-Math.log10(st.view.d))+1)):4;
+  set('r-s',p.s.toFixed(dec).replace('-','−')+(p.t<0?' − ':' + ')+Math.abs(p.t).toFixed(dec)+' i');
+  set('r-lab',fnLabel());
+  if(l!==l){ set('r-f','–'); set('r-abs','–'); set('r-arg','–'); }
+  else if(l===-Infinity){ set('r-f','0'); set('r-abs','0'); set('r-arg','–'); }
+  else if(l>690||l===Infinity){ set('r-f','too large'); set('r-abs',l===Infinity?'∞':'10^'+(l/LN10).toFixed(1)); set('r-arg',(a*180/PI).toFixed(1).replace('-','−')+'°'); }
+  else { var r=Math.exp(l); set('r-f',fmtC(r*Math.cos(a),r*Math.sin(a))); set('r-abs',fmtNum(r)); set('r-arg',(a*180/PI).toFixed(1).replace('-','−')+'°'); }
+  var txt='…';
+  if(marks==='many') txt='too many to mark';
+  else if(marks){ var z=0, q=0; marks.forEach(function(m){ if(m.zero) z++; else q++; }); txt=z+(z===1?' zero':' zeros')+(q?', '+q+(q===1?' pole':' poles'):''); }
+  set('r-view',txt);
+  var j=$('jump'); if(j) j.hidden=(fn==='zsum'||fn==='esum');
+}
+function swatch(el,k){
+  var T=tok(), d=curveDash(k);
+  el.style.borderTopColor=curveCol(k,T);
+  el.style.borderTopStyle=!d.length?'solid':d[0]<=2?'dotted':'dashed';
+  el.style.borderTopWidth=(k==='pi'?3:2)+'px';
+}
+function lineReadout(){
+  if(kind()!=='line'||!$('thx')) return;
+  ensureSieve();
+  var t=st.tab, x=st.px[t], gap=t==='li', p=primePi(x), ok=x>=2;
+  set('thx','at x = '+fmtX(x));
+  if(!gap){
+    set('v-pi',group(p,0)); set('lab-K',S.waveK);
+    ['li','xln','R','wave'].forEach(function(k){ var v=ok?curveVal(k,x):NaN; set('v-'+k,fmtV(v)); set('d-'+k,fmtD(v-p)); });
+  } else {
+    ['li','R','xln'].forEach(function(k){ set('v-'+k,ok?fmtD(curveVal(k,x)-p):'–'); });
+    set('v-env',x>=2657?'± '+fmtV(curveVal('env',x)):'needs x ≥ 2657');
+  }
+  readout.querySelectorAll('tr[data-t]').forEach(function(tr){
+    var on=!!S.show[t][tr.getAttribute('data-t')];
+    tr.setAttribute('data-on',on?'1':'0');
+    tr.querySelector('button').setAttribute('aria-pressed',on?'true':'false');
+  });
+  readout.querySelectorAll('.sw').forEach(function(el){ swatch(el,el.getAttribute('data-c')); });
+}
+readout.addEventListener('click',function(e){
+  var b=e.target.closest('#zPrev,#zNext');
+  if(b){ jump(b.id==='zNext'?1:-1); return; }
+  var tr=e.target.closest('tr[data-t]');
+  if(tr&&kind()==='line'){ var k=tr.getAttribute('data-t'), sh=S.show[st.tab]; sh[k]=!sh[k]; lineReadout(); requestDraw(); saveSoon(); }
+});
+function jump(dir){
+  var t=st.probe.t, i=-1, k;
+  if(dir>0){ for(k=0;k<ZEROS.length;k++) if(ZEROS[k]>t+1e-6){ i=k; break; } }
+  else { for(k=ZEROS.length-1;k>=0;k--) if(ZEROS[k]<t-1e-6){ i=k; break; } }
+  if(i<0){ set('zLab',dir>0?'This list holds the first '+ZEROS.length+' zeros.':'That was the first zero.'); return; }
+  st.probe={s:0.5,t:ZEROS[i]}; st.view.cx=0.5; st.view.cy=ZEROS[i]; clampView();
+  viewMoved(); mapReadout();
+  set('zLab','zero no. '+(i+1));
+}
+
+// ---------- settings panel ----------
+var OUT={hue:function(v){return v+'°';},sat:function(v){return v+'%';},levels:function(v){return v<2?'smooth':String(v);},
+  lo:function(v){return String(parseFloat(Math.pow(10,v).toPrecision(2)));},hi:function(v){return String(parseFloat(Math.pow(10,v).toPrecision(2)));},sink:function(v){return v>0?v.toFixed(2):'off';},
+  terms:function(v){return 'N = '+v;},contour:function(v){return v+'%';},waveK:function(v){return String(v);},lineW:function(v){return v+' px';}};
+function outputs(){ panel.querySelectorAll('output[data-o]').forEach(function(o){ var k=o.getAttribute('data-o'); o.textContent=OUT[k](S[k]); }); }
+function visibility(){
+  var kd=kind();
+  panel.querySelectorAll('[data-for],[data-style],[data-if]').forEach(function(el){
+    var ok=true, d=el.dataset;
+    if(d.for&&d.for!==kd) ok=false;
+    if(d.style&&d.style!==S.style) ok=false;
+    if(d.if==='duo'&&S.palette!=='duo') ok=false;
+    el.hidden=!ok;
+  });
+}
+function syncPanel(){
+  panel.querySelectorAll('[data-k]').forEach(function(el){
+    var v=S[el.getAttribute('data-k')];
+    if(el.type==='checkbox') el.checked=!!v; else if(el.type==='radio') el.checked=(el.value===v); else el.value=String(v);
+  });
+  outputs(); visibility();
+}
+function onCtl(e){
+  var el=e.target, k=el.getAttribute&&el.getAttribute('data-k'); if(!k) return;
+  if(el.type==='radio'&&!el.checked) return;
+  var v=el.type==='checkbox'?el.checked:(el.type==='range'||el.hasAttribute('data-num'))?Number(el.value):el.value;
+  if(S[k]===v) return;
+  S[k]=v;
+  outputs(); visibility(); buildLUT(); saveSoon();
+  if(kind()==='map'){
+    if(k==='quality'||k==='terms'||k==='etaMode'){ if(k==='quality'||(img&&img.key!==fnKey())) newFunction(); else mapReadout(); }
+    else recolour();
+  } else lineReadout();
+  requestDraw();
+}
+panel.addEventListener('input',onCtl);
+panel.addEventListener('change',onCtl);
+$('btnPanel').addEventListener('click',function(){
+  var open=panel.hidden; panel.hidden=!open;
+  $('work').classList.toggle('open',open);
+  this.setAttribute('aria-expanded',open?'true':'false');
+});
+$('btnReset').addEventListener('click',function(){
+  S=clone(DEF); syncPanel(); buildLUT(); saveSoon();
+  if(kind()==='map') newFunction(); else lineReadout();
+  requestDraw();
+});
+$('btnHome').addEventListener('click',function(){
+  if(kind()==='map'){ fitHome(); st.probe={s:0.5,t:ZEROS[0]}; set('zLab',''); viewMoved(); mapReadout(); }
+  else { st.range.pi=[0,110]; st.range.li=[0,100000]; st.px={pi:100,li:50000}; lineReadout(); requestDraw(); saveSoon(); }
+});
+
+// ---------- tabs ----------
+function setTab(t){
+  if(!TAB[t]) t='pi';
+  st.tab=t;
+  document.querySelectorAll('.tab').forEach(function(a){ if(a.getAttribute('data-tab')===t) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
+  visibility(); buildReadout();
+  if(kind()==='map'){
+    if(!st.view&&W>4) fitHome();
+    if(st.view){ if(!img||img.key!==fnKey()) newFunction(); else { viewStamp++; settled=true; startJob('coarse'); } }
+  } else { cur=null; setProg(); }
+  requestDraw();
+}
+function route(){ var t=(location.hash||'').replace('#',''); if(!TAB[t]) t='pi'; if(t!==st.tab||!readout.firstChild) setTab(t); }
+document.querySelector('.tabs').addEventListener('click',function(e){ var a=e.target.closest('.tab'); if(a) setTab(a.getAttribute('data-tab')); });
+window.addEventListener('hashchange',route);
+
+// ---------- size, theme, boot ----------
+function resize(){
+  var r=stage.getBoundingClientRect(), w=Math.round(r.width), h=Math.round(r.height), d=window.devicePixelRatio||1;
+  if(w<4||h<4||(w===W&&h===H&&d===DPR)) return;
+  W=w; H=h; DPR=d;
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+  if(kind()==='map'){
+    if(!st.view) fitHome();
+    if(!img||img.key!==fnKey()) newFunction(); else { viewStamp++; settled=true; startJob('coarse'); }
+  }
+  requestDraw();
+}
+function start(data){
+  try{ merge(JSON.parse(localStorage.getItem(KEY)||'null')); }catch(e){}
+  merge(data);
+  buildLUT(); syncPanel(); makeWorkers(); route();
+  if(window.ResizeObserver) new ResizeObserver(resize).observe(stage); else window.addEventListener('resize',resize);
+  resize();
+  var redraw=function(){ if(kind()==='line') lineReadout(); requestDraw(); };
+  try{ new MutationObserver(redraw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']}); }catch(e){}
+  try{ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw); }catch(e){}
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(requestDraw);
+}
+var hot=window.claude&&window.claude.hot;
+if(hot&&hot.snapshot){ try{ hot.snapshot(snapshot); }catch(e){} }
+if(hot&&hot.ready) hot.ready(start); else start(hot&&hot.data?hot.data:{});
+})();
+
+</script>
+</body>
+</html>
