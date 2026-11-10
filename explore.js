@@ -62,5 +62,12 @@ window.EXPLORE = [
     title: 'Julia Lab',
     path: 'explore/julia-lab/',
     desc: 'Pick a seed c on the Mandelbrot plane or type it, watch its Julia set change live, then explore it with the survey tools: scale, compass, tap coordinates with the orbit, screenshots that keep the seed.'
+  },
+  {
+    id: 'zeta-map',
+    badge: 'ζ',
+    title: 'Zeta Map',
+    path: 'explore/zeta-map/',
+    desc: 'The Riemann zeta function as a map. Colour is the direction of ζ(s), darkness its size; zeros are the points where every colour meets. Drag and pinch anywhere, and where the numbers run out the view comes back.'
   }
 ];
