@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>Zeta Map</title>
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none}
+canvas{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+canvas.drag{cursor:grabbing}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+'use strict';
+/* One map of the Riemann zeta function ζ(s), s = σ + it. Gestures only.
+   Colour  = the direction (phase) of ζ(s): red where ζ is a positive real number, then round the wheel.
+   Light   = the size of ζ(s): dark towards a zero, pale towards the pole at s = 1.
+   Tiles   = steps of equal ratio in size and equal angle in phase. ζ is conformal, so every tile is a small square.
+   A zero is a point where all colours meet inside dark rings.
+   Every pixel is computed live. Where the numbers stop being trustworthy the view lets go and comes back:
+     too deep  (64-bit numbers can no longer separate neighbouring pixels) → it rises back to the wide view,
+     too far   (height beyond ±TMAX, or |σ| beyond SMAX)                  → it returns to the start. */
+
+const TMAX=10000;   // height limit: the sum needs about |t|/3 terms per pixel
+const SMAX=60;      // side limit: right of σ ≈ 53 a 64-bit number cannot tell ζ(s) from 1
+
+/* ---------- colour: hue × lightness table in OKLCH (even brightness round the wheel) ---------- */
+const HN=512, NL=256, LMIN=0.16, LMAX=0.97;
+function oklch(L,C,h){
+  const a=C*Math.cos(h), b=C*Math.sin(h);
+  const l=(L+0.3963377774*a+0.2158037573*b)**3, m=(L-0.1055613458*a-0.0638541728*b)**3, s=(L-0.0894841775*a-1.2914855480*b)**3;
+  return [4.0767416621*l-3.3077115913*m+0.2309699292*s, -1.2684380046*l+2.6097574011*m-0.3413193965*s, -0.0041960863*l-0.7034186147*m+1.7076147010*s];
+}
+const inGamut=c=>c[0]>=-1e-4&&c[0]<=1.0001&&c[1]>=-1e-4&&c[1]<=1.0001&&c[2]>=-1e-4&&c[2]<=1.0001;
+const enc=v=>{ v=Math.min(1,Math.max(0,v)); return 255*(v<=0.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-0.055); };
+function buildLUT(){
+  const lut=new Uint8Array(HN*NL*3), grey=new Uint8Array(NL), H0=29*Math.PI/180;      // phase 0 → red
+  for(let li=0;li<NL;li++){
+    const L=LMIN+(LMAX-LMIN)*li/(NL-1);
+    grey[li]=enc(L*L*L);
+    // the largest chroma every hue can show at this lightness, so no hue shouts louder than another
+    let lo=0, hi=0.4;
+    for(let it=0;it<18;it++){ const C=(lo+hi)/2; let ok=true;
+      for(let k=0;k<72&&ok;k++) ok=inGamut(oklch(L,C,k*Math.PI/36));
+      if(ok) lo=C; else hi=C; }
+    const want=Math.min(0.19,lo*1.7);
+    for(let hi2=0;hi2<HN;hi2++){
+      const h=H0+hi2/HN*2*Math.PI; let C=want, c=oklch(L,C,h);
+      if(!inGamut(c)){ let a=lo, b=want;      // this hue cannot reach it: take the most it can show
+        for(let it=0;it<16;it++){ C=(a+b)/2; if(inGamut(oklch(L,C,h))) a=C; else b=C; }
+        C=a; c=oklch(L,C,h); }
+      const o=(hi2*NL+li)*3; lut[o]=enc(c[0]); lut[o+1]=enc(c[1]); lut[o+2]=enc(c[2]);
+    }
+  }
+  return {lut,grey};
+}
+const LUT=buildLUT();
+
+/* ---------- worker: one strip of rows ----------
+   ζ(s) by Euler–Maclaurin summation:  Σ_{n<N} n^-s + N^-s/2 + N^(1-s)/(s-1) + Σ_k B2k/(2k)! · s(s+1)…(s+2k-2) · N^(1-s-2k)
+   Left of σ = 0 the functional equation ζ(s) = 2^s π^(s-1) sin(πs/2) Γ(1-s) ζ(1-s) is used, in logarithms so nothing overflows.
+   Below the real axis ζ(s̄) = conj ζ(s).
+   On a pixel grid n^-s splits into a column part n^-σ and a row part n^-it, so the inner loop has no exp, sin or cos. */
+const WORKER_SRC=`
+'use strict';
+const TAU=6.283185307179586, PI=Math.PI, LN2=Math.LN2, LNPI=Math.log(Math.PI);
+const HN=${HN}, NL=${NL}, LMIN=${LMIN}, LMAX=${LMAX}, KT=12/TAU;
+let lut=null, grey=null, LN=new Float64Array(2), GR=0, GI=0;
+const EMC=[];
+for(let k=1;k<=32;k++){ const p=2*k, M=200; let z=0; for(let n=M-1;n>=1;n--) z+=Math.pow(n,-p);
+  z+=Math.pow(M,1-p)/(p-1)+0.5*Math.pow(M,-p)+p/12*Math.pow(M,-p-1)-p*(p+1)*(p+2)/720*Math.pow(M,-p-3);
+  EMC.push((k%2?2:-2)*z/Math.pow(TAU,p)); }
+function lgam(x,y){            // log Γ(x+iy) for x ≥ 1, y ≥ 0 (any branch of the imaginary part)
+  let pr=1, pi=0;
+  while(x*x+y*y<196){ const nr=pr*x-pi*y; pi=pr*y+pi*x; pr=nr; x+=1; }
+  const r2=x*x+y*y, lr=0.5*Math.log(r2), th=Math.atan2(y,x);
+  const wr=x/r2, wi=-y/r2, ar=wr*wr-wi*wi, ai=2*wr*wi;
+  let sr=1/156, si=0, q;
+  q=sr*ar-si*ai-691/360360; si=sr*ai+si*ar; sr=q;
+  q=sr*ar-si*ai+1/1188;     si=sr*ai+si*ar; sr=q;
+  q=sr*ar-si*ai-1/1680;     si=sr*ai+si*ar; sr=q;
+  q=sr*ar-si*ai+1/1260;     si=sr*ai+si*ar; sr=q;
+  q=sr*ar-si*ai-1/360;      si=sr*ai+si*ar; sr=q;
+  q=sr*ar-si*ai+1/12;       si=sr*ai+si*ar; sr=q;
+  GR=(x-0.5)*lr-y*th-x+0.9189385332046727+(sr*wr-si*wi)-0.5*Math.log(pr*pr+pi*pi);
+  GI=(x-0.5)*th+y*lr-y+(sr*wi+si*wr)-Math.atan2(pi,pr);
+}
+onmessage=function(e){
+  const m=e.data;
+  if(m.lut){ lut=m.lut; grey=m.grey; return; }
+  const W=m.W, rows=m.rows, N=m.N, sx=m.sx, N2=2*N;
+  if(LN.length<N+1){ LN=new Float64Array(N+1); for(let n=1;n<=N;n++) LN[n]=Math.log(n); }
+  const cs=new Float64Array(rows*N2), ta=new Float64Array(rows), neg=new Uint8Array(rows);
+  for(let r=0;r<rows;r++){
+    const t=m.y0-(m.y0row+r)*sx, at=Math.abs(t), o=r*N2-2; ta[r]=at; neg[r]=t<0?1:0;
+    for(let n=1;n<=N;n++){ const a=at*LN[n]; cs[o+2*n]=Math.cos(a); cs[o+2*n+1]=Math.sin(a); }
+  }
+  const a=new Float64Array(N+1), invN=1/N, invN2=invN*invN, KM=EMC.length;
+  const raw=m.raw?new Float64Array(W*rows*2):null, out=raw?null:new Uint8ClampedArray(W*rows*4);
+  const cl=new Float64Array(rows), cp=new Float64Array(rows);
+  for(let x=0;x<W;x++){
+    const sig=m.x0+x*sx, mir=sig<0, se=mir?1-sig:sig;
+    let nc=N; if(se>1){ const c=Math.exp(46/se); if(c<N) nc=Math.max(1,Math.floor(c)); }   // later terms are below 1e-20
+    for(let n=1;n<=nc;n++) a[n]=Math.exp(-se*LN[n]);
+    const full=nc===N, ns=full?N-1:nc;
+    for(let r=0;r<rows;r++){
+      const o=r*N2-2, t=ta[r];
+      let re=0, im=0;
+      for(let n=1;n<=ns;n++){ const an=a[n]; re+=an*cs[o+2*n]; im-=an*cs[o+2*n+1]; }
+      if(full){
+        const ur=a[N]*cs[o+N2], ui=-a[N]*cs[o+N2+1], dr=mir?-sig:sig-1, d=dr*dr+t*t;
+        if(d<1e-300){ re=Infinity; im=0; }
+        else {
+          re+=0.5*ur+N*(ur*dr+ui*t)/d; im+=0.5*ui+N*(ui*dr-ur*t)/d;
+          let pr=(se*ur-t*ui)*invN, pi=(se*ui+t*ur)*invN, prev=Infinity;
+          const tol=1e-34*(re*re+im*im);
+          for(let k=0;k<KM;k++){
+            const c=EMC[k], tr=c*pr, ti=c*pi, m2=tr*tr+ti*ti;
+            if(m2>prev) break;
+            re+=tr; im+=ti; prev=m2;
+            if(m2<=tol) break;
+            const a1=se+2*k+1, a2=a1+1, qr=a1*a2-t*t, qi=t*(a1+a2), nr=(pr*qr-pi*qi)*invN2;
+            pi=(pr*qi+pi*qr)*invN2; pr=nr;
+          }
+        }
+      }
+      let lm, ph;
+      if(!mir){ lm=0.5*Math.log(re*re+im*im); ph=Math.atan2(im,re); }
+      else {
+        lgam(se,t);
+        const ex=Math.exp(-PI*t), sh=Math.sin(0.5*PI*sig);
+        const fr=-Math.expm1(-PI*t)+2*ex*sh*sh, fi=-ex*Math.sin(PI*sig);
+        lm=-LN2+0.5*PI*t+sig*LN2+(sig-1)*LNPI+GR+0.5*Math.log(fr*fr+fi*fi)+0.5*Math.log(re*re+im*im);
+        ph=0.5*PI-0.5*PI*sig+t*(LN2+LNPI)-GI+Math.atan2(fi,fr)-Math.atan2(im,re);
+      }
+      if(neg[r]) ph=-ph;
+      if(raw){ const i=r*W+x; raw[2*i]=lm; raw[2*i+1]=ph; continue; }
+      if(!(lm>-700)) lm=-700; else if(lm>700) lm=700;
+      if(ph!==ph) ph=0;
+      cl[r]=lm; cp[r]=ph;
+    }
+    if(raw) continue;
+    for(let r=0;r<rows;r++){
+      const lm=cl[r], ph=cp[r];
+      // ζ is conformal, so the change along the column gives the whole rate of change |ζ'/ζ| per pixel
+      let d=0;
+      if(rows>1){ const r0=r>0?r-1:0; let dp=cp[r0+1]-cp[r0]; dp-=TAU*Math.round(dp/TAU); const dl=cl[r0+1]-cl[r0]; d=Math.sqrt(dp*dp+dl*dl); if(!(d>=0)) d=0; }
+      let tf=1, cf=1;
+      if(d>0.0873){ tf=(0.5236/d-2.5)/3.5; if(tf<0) tf=0; }     // tiles fade out below ~6 pixels across
+      if(d>1.2){ cf=(2.4-d)/1.2; if(cf<0) cf=0; }               // phase turns too fast for one pixel: no honest colour
+      let h=ph/TAU; h-=Math.floor(h);
+      let sm=lm*KT+0.5; sm-=Math.floor(sm);
+      let sp=h*12+0.5; sp-=Math.floor(sp);
+      const L=0.66+(lm<0?0.23*Math.tanh(0.45*lm):0.12*lm/(5+lm))+tf*(0.055*(sm-0.5)+0.04*(sp-0.5));
+      let li=((L-LMIN)/(LMAX-LMIN)*(NL-1)+0.5)|0; if(li<0) li=0; else if(li>=NL) li=NL-1;
+      let hi=(h*HN)|0; if(hi>=HN) hi=HN-1;
+      const k=(hi*NL+li)*3, j=(r*W+x)*4;
+      if(cf>=1){ out[j]=lut[k]; out[j+1]=lut[k+1]; out[j+2]=lut[k+2]; }
+      else { const g=grey[li]; out[j]=g+(lut[k]-g)*cf; out[j+1]=g+(lut[k+1]-g)*cf; out[j+2]=g+(lut[k+2]-g)*cf; }
+      out[j+3]=255;
+    }
+  }
+  if(raw) postMessage({job:m.job,pass:m.pass,y0row:m.y0row,rows:rows,raw:raw},[raw.buffer]);
+  else postMessage({job:m.job,pass:m.pass,y0row:m.y0row,rows:rows,out:out},[out.buffer]);
+};`;
+const NW=Math.max(2,Math.min(8,(navigator.hardwareConcurrency||4)));
+const workerURL=URL.createObjectURL(new Blob([WORKER_SRC],{type:'text/javascript'}));
+const idle=[];
+for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.postMessage(LUT); w.onmessage=onStrip; idle.push(w); }
+
+/* ---------- view ---------- */
+const HOME={cx:-1.5, cy:15, w:22};
+const view={...HOME};
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+let DPR=1, Wd=1, Hd=1;
+function fitHome(){ // the pole, the first trivial zeros and the first five zeros on the critical line, whatever the screen shape
+  HOME.w=Math.max(22, 44*Wd/Hd);
+}
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  Wd=Math.max(1,Math.round(innerWidth*DPR)); Hd=Math.max(1,Math.round(innerHeight*DPR));
+  cv.width=Wd; cv.height=Hd;
+  const first=!resize.done; resize.done=true;
+  fitHome(); if(first){ Object.assign(view,HOME); readHash(); }
+  dirty=true; draw();
+}
+const hOf=w=>w*Hd/Wd;
+// 64-bit floats hold ~16 digits; past this, neighbouring pixels share the same number.
+function atLimit(v){ return v.w/Wd < 2.5e-15*Math.max(1,Math.abs(v.cx),Math.abs(v.cy)); }
+// number of terms: the Euler–Maclaurin tail needs N well above |s|/2π
+function termsFor(left,top,w,h){
+  const tm=Math.max(Math.abs(top),Math.abs(top-h)), sm=Math.max(Math.abs(left),Math.abs(left+w))+1;
+  return Math.ceil(Math.max(24, 0.36*Math.hypot(tm,sm)+14));
+}
+
+/* ---------- progressive render jobs ---------- */
+const PASSES=[{ds:8,over:1.5},{ds:3,over:1},{ds:1,over:1}];   // rough (wider than the screen) → sharp
+const BACKPASS=[{ds:6,over:1.5}];
+let job=0, queue=[], cur=null, dirty=true, lastStart=0, roughMs=60;
+let wide=null, sharp=null;       // layers {img,left,top,w,h,px}: last rough overscan picture, last sharper picture
+function startJob(){
+  job++; queue=[]; dirty=false; lastStart=performance.now();
+  // while coming back, draw where the view will be shortly, so frames arrive ahead of it
+  const v= back ? backView(performance.now()+Math.min(400,Math.max(40,roughMs*1.15))) : view, vh=hOf(v.w);
+  cur={id:job, passes:[]};
+  (back?BACKPASS:PASSES).forEach((ps,p)=>{
+    const W=Math.ceil(Wd*ps.over/ps.ds), H=Math.ceil(Hd*ps.over/ps.ds), sx=v.w*ps.over/W;
+    const left=v.cx-W*sx/2, top=v.cy+H*sx/2, N=termsFor(left,top,W*sx,H*sx);
+    const P={W,H,left,top,sx,rough:ps.over>1,rowsLeft:H,data:new Uint8ClampedArray(W*H*4)}; cur.passes.push(P);
+    const rows=Math.max(4,Math.min(48,Math.ceil(H/(2*NW))));
+    for(let y=0;y<H;){ let n=Math.min(rows,H-y); if(H-y-n<2) n=H-y;      // no 1-row leftovers: a strip needs a neighbour row
+      queue.push({job,pass:p,W,y0row:y,rows:n,x0:left+sx/2,y0:top-sx/2,sx,N}); y+=n; }
+  });
+  pump();
+}
+function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
+function onStrip(e){
+  idle.push(e.target);
+  const m=e.data;
+  if(!cur || m.job!==cur.id){ pump(); return; }
+  const P=cur.passes[m.pass];
+  P.data.set(m.out, m.y0row*P.W*4); P.rowsLeft-=m.rows;
+  if(P.rowsLeft<=0){
+    if(m.pass===0) roughMs=0.6*roughMs+0.4*(performance.now()-lastStart);
+    const c=document.createElement('canvas'); c.width=P.W; c.height=P.H;
+    c.getContext('2d').putImageData(new ImageData(P.data,P.W,P.H),0,0);
+    const layer={img:c,left:P.left,top:P.top,w:P.W*P.sx,h:P.H*P.sx,px:P.sx};
+    if(P.rough) wide=layer; else sharp=layer;
+    needDraw=true;
+    if(m.pass===cur.passes.length-1 && !back) writeHash();
+  }
+  pump();
+}
+
+/* ---------- drawing ---------- */
+let needDraw=true, dim=0;
+function blit(L){
+  const s=Wd/view.w, vl=view.cx-view.w/2, vt=view.cy+hOf(view.w)/2;
+  ctx.drawImage(L.img, (L.left-vl)*s, (vt-L.top)*s, L.w*s, L.h*s);
+}
+function draw(){
+  needDraw=false;
+  ctx.fillStyle='#08080c'; ctx.fillRect(0,0,Wd,Hd);
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  if(wide) blit(wide);
+  // ζ never changes, so an older sharp picture stays true wherever it still covers the view
+  if(sharp && (!wide || sharp.px<=wide.px*1.01)) blit(sharp);
+  graticule();
+  if(dim>0){ ctx.fillStyle='rgba(0,0,0,'+Math.min(1,dim).toFixed(3)+')'; ctx.fillRect(0,0,Wd,Hd); }
+}
+
+/* ---------- graticule: critical line with heights, strip edges, real axis with σ ---------- */
+function niceStep(raw){ const p=Math.pow(10,Math.floor(Math.log10(raw))), m=raw/p; return (m<=1?1:m<=2?2:m<=5?5:10)*p; }
+function fmt(v,step){
+  const d=Math.max(0,Math.min(16,-Math.floor(Math.log10(step)+1e-9)));
+  let s=v.toFixed(d); if(+s===0) s=(0).toFixed(d);
+  return s.replace('-','−');
+}
+function label(txt,x,y,align,base){
+  ctx.textAlign=align; ctx.textBaseline=base;
+  ctx.lineWidth=3*DPR; ctx.strokeStyle='rgba(0,0,0,.42)'; ctx.strokeText(txt,x,y);
+  ctx.fillStyle='rgba(255,255,255,.86)'; ctx.fillText(txt,x,y);
+}
+function graticule(){
+  const s=Wd/view.w, vh=hOf(view.w), vl=view.cx-view.w/2, vt=view.cy+vh/2;
+  const X=sig=>(sig-vl)*s, Y=t=>(vt-t)*s;
+  const vline=(x,a,lw)=>{ if(x<-2||x>Wd+2) return; ctx.strokeStyle='rgba(255,255,255,'+a+')'; ctx.lineWidth=lw*DPR; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,Hd); ctx.stroke(); };
+  const hline=(y,a,lw)=>{ if(y<-2||y>Hd+2) return; ctx.strokeStyle='rgba(255,255,255,'+a+')'; ctx.lineWidth=lw*DPR; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(Wd,y); ctx.stroke(); };
+  ctx.lineJoin='round';
+  vline(X(0),.16,1); vline(X(1),.16,1);       // critical strip
+  hline(Y(0),.16,1);                           // real axis
+  vline(X(0.5),.5,1);                          // critical line
+  ctx.font=(11*DPR)+'px system-ui,-apple-system,Segoe UI,sans-serif';
+  const pad=8*DPR, tick=5*DPR;
+  // heights: on the critical line, or pinned to the nearer screen edge when the line is out of view
+  const xc=X(0.5), rx=Math.max(pad,Math.min(Wd-pad,xc)), flip=rx>Wd-70*DPR;
+  const ya=Y(0), ry=Math.max(pad,Math.min(Hd-pad,ya)), up=ry>Hd-26*DPR;
+  const st=niceStep(90*DPR/s);
+  ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=DPR;
+  for(let k=Math.ceil((vt-vh)/st); k*st<=vt; k++){
+    const t=k*st, y=Y(t);
+    if(y<12*DPR||y>Hd-12*DPR) continue;
+    if(Math.abs(y-ry)<16*DPR) continue;        // leave the crossing to the σ labels
+    ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=DPR; ctx.beginPath(); ctx.moveTo(rx-tick,y); ctx.lineTo(rx+tick,y); ctx.stroke();
+    label(fmt(t,st), flip?rx-tick-4*DPR:rx+tick+4*DPR, y, flip?'right':'left','middle');
+  }
+  // σ: on the real axis, or pinned to the nearer screen edge
+  const tw=ctx.measureText(fmt(vl,st)).width+18*DPR, ss=niceStep(Math.max(90*DPR,tw)/s);
+  for(let k=Math.ceil(vl/ss); k*ss<=vl+view.w; k++){
+    const sg=k*ss, x=X(sg);
+    if(x<16*DPR||x>Wd-16*DPR) continue;
+    ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=DPR; ctx.beginPath(); ctx.moveTo(x,ry-tick); ctx.lineTo(x,ry+tick); ctx.stroke();
+    label(fmt(sg,ss), x, up?ry-tick-3*DPR:ry+tick+3*DPR, 'center', up?'bottom':'top');
+  }
+}
+
+/* ---------- letting go ---------- */
+let back=null;
+const smooth=t=>t*t*(3-2*t);
+function release(kind){
+  if(back) return;
+  endGesture(); vel.x=vel.y=0; glide=null;
+  const from={...view}, now=performance.now();
+  if(kind==='deep'){      // rise back to the wide view of the same place
+    const to={cx:from.cx,cy:from.cy,w:HOME.w}, dec=Math.abs(Math.log10(to.w/from.w));
+    back={mode:'drift',from,to,t0:now,dur:Math.min(8000,Math.max(3000,dec*520))};
+    return;
+  }
+  const to={...HOME}, unit=Math.min(HOME.w,hOf(HOME.w)), dx=to.cx-from.cx, dy=to.cy-from.cy, dist=Math.hypot(dx,dy);
+  const dec=Math.abs(Math.log10(to.w/from.w));
+  if(dist<=6*unit){       // close enough to glide all the way
+    back={mode:'drift',from,to,t0:now,dur:Math.min(8000,Math.max(1400+450*dist/unit,dec*520))};
+  } else {                // too far to show the road: wide view, into the dark, out at the start
+    back={mode:'tunnel',from,to,t0:now,ux:dx/dist,uy:dy/dist,unit,dA:dec<0.03?0:Math.min(8000,Math.max(500,dec*520)),dB:900,dC:1300};
+    back.dur=back.dA+back.dB+back.dC;
+  }
+}
+function backView(now){
+  const b=back, {from,to}=b, e=now-b.t0;
+  if(b.mode==='drift'){
+    const t=Math.min(1,Math.max(0,e/b.dur)), s=smooth(t), R=to.w/from.w, w=from.w*Math.pow(R,s);
+    // the centre moves in proportion to the width: a steady pace on the screen
+    const k=Math.abs(R-1)<1e-6 ? s : (w-from.w)/(to.w-from.w);
+    return {w, cx:from.cx+(to.cx-from.cx)*k, cy:from.cy+(to.cy-from.cy)*k, t, dim:0, wait:true};
+  }
+  if(e<b.dA){ const s=smooth(Math.max(0,e/b.dA)); return {w:from.w*Math.pow(to.w/from.w,s), cx:from.cx, cy:from.cy, t:0, dim:0, wait:true}; }
+  if(e<b.dA+b.dB){ const q=(e-b.dA)/b.dB, d=1.5*b.unit*q*q; return {w:to.w, cx:from.cx+b.ux*d, cy:from.cy+b.uy*d, t:0, dim:q, wait:false}; }
+  const q=Math.min(1,(e-b.dA-b.dB)/b.dC), r=1-q, d=1.5*b.unit*r*r;
+  return {w:to.w, cx:to.cx-b.ux*d, cy:to.cy-b.uy*d, t:q, dim:r*r, wait:true};
+}
+function covered(v){
+  if(!wide) return false;
+  const h=hOf(v.w), tol=0.04*v.w;
+  return v.cx-v.w/2>=wide.left-tol && v.cx+v.w/2<=wide.left+wide.w+tol && v.cy+h/2<=wide.top+tol && v.cy-h/2>=wide.top-wide.h-tol;
+}
+function stepBack(now,dt){
+  let b=backView(now);
+  // never outrun the pictures: if the last rough frame no longer covers the screen, wait for the next one
+  if(b.t<1 && b.wait && !covered(b)){ back.t0+=dt; b=backView(now); }
+  view.w=b.w; view.cx=b.cx; view.cy=b.cy; dim=b.dim;
+  dirty=true; needDraw=true;
+  if(b.t>=1){ Object.assign(view,back.to); dim=0; back=null; }
+}
+
+/* ---------- moving the map ---------- */
+function clampView(){
+  view.w=Math.min(view.w, HOME.w*3);
+  if(atLimit(view)) release('deep');
+  else if(Math.abs(view.cy)>TMAX || Math.abs(view.cx)>SMAX) release('far');
+}
+function toWorld(px,py){ const s=view.w/Wd; return [view.cx+(px-Wd/2)*s, view.cy-(py-Hd/2)*s]; }
+function zoomAt(px,py,f){ // f>1 = closer; keeps the point under the finger fixed
+  const [wx,wy]=toWorld(px,py);
+  view.w/=f; const s=view.w/Wd;
+  view.cx=wx-(px-Wd/2)*s; view.cy=wy+(py-Hd/2)*s;
+  clampView(); dirty=true; needDraw=true;
+}
+function panBy(dx,dy){ const s=view.w/Wd; view.cx-=dx*s; view.cy+=dy*s; clampView(); dirty=true; needDraw=true; }
+
+const ptrs=new Map(); let blocked=false;
+const vel={x:0,y:0}; let lastMove=0, tapT=0, tapX=0, tapY=0, moved=0, glide=null;
+const P=e=>[e.clientX*DPR, e.clientY*DPR];
+function endGesture(){ ptrs.clear(); cv.classList.remove('drag'); blocked=true; }
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  if(back) return;
+  if(blocked && ptrs.size===0) blocked=false;
+  if(blocked) return;
+  cv.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId,P(e)); cv.classList.add('drag');
+  glide=null; vel.x=vel.y=0; moved=0; lastMove=performance.now();
+});
+cv.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId) || back || blocked) return;
+  const ids=[...ptrs.keys()].slice(0,2);
+  const before=ids.map(id=>ptrs.get(id));      // positions before this move
+  const np=P(e); ptrs.set(e.pointerId,np);
+  const after=ids.map(id=>ptrs.get(id));
+  const now=performance.now();
+  if(ptrs.size===1){
+    const dx=after[0][0]-before[0][0], dy=after[0][1]-before[0][1]; moved+=Math.abs(dx)+Math.abs(dy);
+    panBy(dx,dy);
+    const dt=Math.max(1,now-lastMove), a=0.75; vel.x=a*dx/dt+(1-a)*vel.x; vel.y=a*dy/dt+(1-a)*vel.y; lastMove=now;
+  } else {
+    if(!ids.includes(e.pointerId)) return;     // a 3rd finger does nothing
+    const mid=q=>[(q[0][0]+q[1][0])/2,(q[0][1]+q[1][1])/2], dist=q=>Math.hypot(q[0][0]-q[1][0],q[0][1]-q[1][1]);
+    const m0=mid(before), m1=mid(after), d0=dist(before), d1=dist(after);
+    moved+=99; vel.x=vel.y=0;
+    panBy(m1[0]-m0[0], m1[1]-m0[1]);
+    if(d0>2 && d1>2 && !back) zoomAt(m1[0],m1[1],d1/d0);
+  }
+});
+function up(e){
+  if(!ptrs.has(e.pointerId)) return;
+  const was=ptrs.size; ptrs.delete(e.pointerId);
+  const now=performance.now();
+  if(was===1){
+    cv.classList.remove('drag');
+    if(moved<12){ // tap: two quick taps = closer
+      if(now-tapT<320 && Math.hypot(e.clientX*DPR-tapX,e.clientY*DPR-tapY)<40*DPR){ glide={px:tapX,py:tapY,f:2.5,t0:now,dur:280,done:1}; tapT=0; }
+      else { tapT=now; tapX=e.clientX*DPR; tapY=e.clientY*DPR; }
+    } else if(now-lastMove<60 && Math.hypot(vel.x,vel.y)>0.15){ glide={fling:true}; }
+  } else if(was>=2){ vel.x=vel.y=0; }
+}
+cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
+cv.addEventListener('wheel',e=>{
+  e.preventDefault(); if(back) return;
+  const d=e.deltaMode===1?e.deltaY*16:e.deltaY;
+  zoomAt(e.clientX*DPR,e.clientY*DPR,Math.exp(-d*0.0018));
+},{passive:false});
+['gesturestart','gesturechange','contextmenu'].forEach(t=>document.addEventListener(t,e=>e.preventDefault()));
+
+/* ---------- the place lives in the address: #s=σ,t,width ---------- */
+function readHash(){
+  const m=/^#s=(-?[\d.]+(?:e-?\d+)?),(-?[\d.]+(?:e-?\d+)?)(?:,([\d.]+(?:e-?\d+)?))?$/i.exec(location.hash);
+  if(!m) return;
+  const cx=+m[1], cy=+m[2], w=m[3]?+m[3]:HOME.w;
+  if(!isFinite(cx)||!isFinite(cy)||!(w>0)) return;
+  const v={cx,cy,w:Math.min(w,HOME.w*3)};
+  if(atLimit(v)||Math.abs(cy)>TMAX||Math.abs(cx)>SMAX) return;
+  Object.assign(view,v);
+}
+function writeHash(){
+  const d=Math.max(2,Math.min(16,3-Math.floor(Math.log10(view.w))));
+  try{ history.replaceState(null,'','#s='+view.cx.toFixed(d)+','+view.cy.toFixed(d)+','+view.w.toPrecision(4)); }catch(_){}
+}
+addEventListener('hashchange',()=>{ if(back) return; readHash(); dirty=true; needDraw=true; });
+
+/* ---------- loop ---------- */
+let lastT=performance.now();
+function frame(now){
+  const dt=Math.min(50,now-lastT); lastT=now;
+  if(back) stepBack(now,dt);
+  else if(glide){
+    if(glide.fling){
+      panBy(vel.x*dt, vel.y*dt);
+      const k=Math.pow(0.994,dt); vel.x*=k; vel.y*=k;
+      if(Math.hypot(vel.x,vel.y)<0.02) glide=null;
+    } else {
+      const g=glide, t=Math.min(1,(now-g.t0)/g.dur), e=1-Math.pow(1-t,3), target=Math.pow(g.f,e);
+      zoomAt(g.px,g.py,target/g.done); g.done=target;
+      if(t>=1 || back) glide=null;
+    }
+  }
+  // restart rendering when the view changed, but let the rough pass land first
+  const roughDone=cur && cur.passes[0].rowsLeft<=0;
+  if(dirty && (!cur || roughDone || (!back && now-lastStart>140))) startJob();
+  if(needDraw) draw();
+  requestAnimationFrame(frame);
+}
+addEventListener('resize',resize);
+resize(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
