@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snowflake Group Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=STIX+Two+Text:ital,wght@0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one screen. The snowflake fills the stage; the 12 group elements
+   sit below as a 6 x 2 grid that doubles as the colour legend for the wedges. */
+:root {
+  --bg: #f3f6f9;
+  --ink: #14283b;
+  --muted: #5a7186;
+  --tone-a: #a9c8e0;      /* the 6 rotations */
+  --tone-b: #dde9f2;      /* the 6 mirrors */
+  --line: #1d3b57;
+  --accent: #f29a3e;      /* the one marked wedge */
+  --on-accent: #14283b;
+  --font-display: "STIX Two Text", "Cambria", Georgia, serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c151e;
+    --ink: #dbe9f4;
+    --muted: #8aa2b6;
+    --tone-a: #2c5578;
+    --tone-b: #172b3d;
+    --line: #bfdcf0;
+    --accent: #ff9a4a;
+    --on-accent: #10202f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c151e;
+  --ink: #dbe9f4;
+  --muted: #8aa2b6;
+  --tone-a: #2c5578;
+  --tone-b: #172b3d;
+  --line: #bfdcf0;
+  --accent: #ff9a4a;
+  --on-accent: #10202f;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.35;
+  -webkit-text-size-adjust: 100%;
+  overflow: hidden;
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px 6px;
+}
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.3rem;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+}
+h1 i { font-weight: 600; margin-left: 0.25em; }
+h1 sub { font-size: 0.62em; }
+.back { color: var(--muted); text-decoration: none; font-family: var(--font-body); font-weight: 400; margin-right: 0.2em; }
+.back:hover, .back:focus-visible { color: var(--ink); }
+.order { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+
+.stage { position: relative; flex: 1; min-height: 120px; }
+canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+  outline: none;
+}
+canvas:active { cursor: grabbing; }
+canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--line); }
+.hint {
+  position: absolute; left: 16px; right: 16px; top: 4px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  pointer-events: none;
+  transition: opacity 0.6s;
+}
+.hint.gone { opacity: 0; }
+
+.panel { padding: 6px 16px 16px; max-width: 560px; width: 100%; }
+.status {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  min-height: 1.6rem;
+  margin-bottom: 6px;
+}
+#eq { margin: 0; color: var(--muted); }
+#eq .m { font-family: var(--font-display); font-style: italic; font-size: 1.15rem; color: var(--ink); }
+#zoom {
+  margin: 0; color: var(--muted); font-size: 0.8rem; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+#zoom sup { font-size: 0.75em; }
+
+.rowname {
+  margin: 8px 0 4px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.row button {
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s, background-color 0.25s;
+}
+.row.rot button { background: var(--tone-a); }
+.row.mir button { background: var(--tone-b); }
+.row button:active { transform: scale(0.94); }
+.row button:focus-visible { outline: 2px solid var(--line); outline-offset: 2px; }
+.row button.now { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .row button, .hint { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><a class="back" href="../../" aria-label="Back to the landing page">←</a> Snowflake group <i>D</i><sub>6</sub></h1>
+  <span class="order">12 symmetries</span>
+</header>
+
+<div class="stage" id="stage">
+  <canvas id="view" tabindex="0" aria-label="Koch snowflake. Drag to move, pinch or scroll to zoom, double-tap to return."></canvas>
+  <p class="hint" id="hint">Pinch or scroll to zoom. Drag to move. Double-tap to return.</p>
+</div>
+
+<section class="panel" aria-label="Group elements">
+  <div class="status">
+    <p id="eq" aria-live="polite">Tap a symmetry to apply it. The orange wedge shows where you are.</p>
+    <p id="zoom"></p>
+  </div>
+  <p class="rowname">6 rotations</p>
+  <div class="row rot" id="rot"></div>
+  <p class="rowname">6 mirrors</p>
+  <div class="row mir" id="mir"></div>
+</section>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- the group D6: elements are r^k s^f, k = 0..5, f = 0 or 1 ---------- */
+  var POW = ['', 'r', 'r²', 'r³', 'r⁴', 'r⁵'];
+  function name(g) { return g.f ? POW[g.k] + 's' : (POW[g.k] || 'e'); }
+  // g * h means: h first, then g.  Uses s r^k = r^-k s.
+  function mul(g, h) {
+    return g.f ? { k: ((g.k - h.k) % 6 + 6) % 6, f: 1 - h.f }
+               : { k: (g.k + h.k) % 6, f: h.f };
+  }
+  // 2x2 matrix [a, b, c, d] (row-major) of r^k s^f; r = rotation by 60 deg, s = mirror in the x-axis
+  function matrix(g) {
+    var t = g.k * Math.PI / 3, c = Math.cos(t), s = Math.sin(t);
+    return g.f ? [c, s, s, -c] : [c, -s, s, c];
+  }
+  function mm(A, B) {
+    return [A[0] * B[0] + A[1] * B[2], A[0] * B[1] + A[1] * B[3],
+            A[2] * B[0] + A[3] * B[2], A[2] * B[1] + A[3] * B[3]];
+  }
+  function describe(g) {
+    if (g.f) return 'mirror across the ' + (g.k * 30) + ' degree axis';
+    return g.k ? 'rotation by ' + (g.k * 60) + ' degrees' : 'identity';
+  }
+
+  /* ---------- state ---------- */
+  var cv = document.getElementById('view');
+  var ctx = cv.getContext('2d');
+  var stage = document.getElementById('stage');
+  var eqEl = document.getElementById('eq');
+  var zoomEl = document.getElementById('zoom');
+  var hintEl = document.getElementById('hint');
+
+  var W = 0, H = 0, dpr = 1;
+  var home = 100, zoom = 100, vx = 0, vy = 0;   // view: pixels per unit, world centre
+  var MAX_REL = Math.pow(3, 22);                // deepest zoom before the map lets go
+  var state = { k: 0, f: 0 };
+  var anim = null;    // { from, g, t0, dur }
+  var glide = null;   // { t0, dur, z0, x0, y0, locked }
+  var colors = {};
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  /* ---------- colours come from the CSS tokens ---------- */
+  function readColors() {
+    var cs = getComputedStyle(document.documentElement);
+    ['ink', 'tone-a', 'tone-b', 'line', 'accent', 'on-accent'].forEach(function (k) {
+      colors[k] = cs.getPropertyValue('--' + k).trim();
+    });
+  }
+
+  /* ---------- Koch curve, refined only where the screen can show it ---------- */
+  var PX = [], PY = [], PF = [], n = 0;
+  var ta, tb, tc, td, te, tf;      // model -> screen affine
+  var minLen = 1, BUDGET = 120000;
+  var S60 = Math.sqrt(3) / 2;
+
+  function emit(x, y, fl) { PX[n] = x; PY[n] = y; PF[n] = fl; n++; }
+
+  function koch(ax, ay, bx, by, len, depth) {
+    var sax = ta * ax + tb * ay + te, say = tc * ax + td * ay + tf;
+    var sbx = ta * bx + tb * by + te, sby = tc * bx + td * by + tf;
+    var L = len * zoom, pad = 0.29 * L + 2;
+    // the whole curve over AB stays within 0.289 * |AB| of the chord
+    if ((sax > sbx ? sax : sbx) < -pad || (sax < sbx ? sax : sbx) > W + pad ||
+        (say > sby ? say : sby) < -pad || (say < sby ? say : sby) > H + pad) {
+      emit(sbx, sby, 0); return;
+    }
+    if (L < minLen || depth >= 44 || n > BUDGET) { emit(sbx, sby, 1); return; }
+    var dx = (bx - ax) / 3, dy = (by - ay) / 3;
+    var p1x = ax + dx, p1y = ay + dy;
+    var p3x = ax + 2 * dx, p3y = ay + 2 * dy;
+    var p2x = p1x + 0.5 * dx + S60 * dy;      // d rotated by -60 deg: bump points outward
+    var p2y = p1y - S60 * dx + 0.5 * dy;
+    var l3 = len / 3, d1 = depth + 1;
+    koch(ax, ay, p1x, p1y, l3, d1);
+    koch(p1x, p1y, p2x, p2y, l3, d1);
+    koch(p2x, p2y, p3x, p3y, l3, d1);
+    koch(p3x, p3y, bx, by, l3, d1);
+  }
+
+  // Sutherland-Hodgman against a rectangle, so no path ever carries huge coordinates
+  function clipRect(inX, inY, cnt, x0, y0, x1, y1) {
+    var ax = inX, ay = inY, m = cnt;
+    for (var edge = 0; edge < 4 && m > 0; edge++) {
+      var ox = [], oy = [];
+      var px = ax[m - 1], py = ay[m - 1];
+      var pin = edge === 0 ? px >= x0 : edge === 1 ? px <= x1 : edge === 2 ? py >= y0 : py <= y1;
+      for (var i = 0; i < m; i++) {
+        var qx = ax[i], qy = ay[i];
+        var qin = edge === 0 ? qx >= x0 : edge === 1 ? qx <= x1 : edge === 2 ? qy >= y0 : qy <= y1;
+        if (qin !== pin) {
+          var t;
+          if (edge === 0) t = (x0 - px) / (qx - px);
+          else if (edge === 1) t = (x1 - px) / (qx - px);
+          else if (edge === 2) t = (y0 - py) / (qy - py);
+          else t = (y1 - py) / (qy - py);
+          ox.push(px + t * (qx - px)); oy.push(py + t * (qy - py));
+        }
+        if (qin) { ox.push(qx); oy.push(qy); }
+        px = qx; py = qy; pin = qin;
+      }
+      ax = ox; ay = oy; m = ox.length;
+    }
+    return { x: ax, y: ay, n: m };
+  }
+
+  function tracePoly(p) {
+    ctx.beginPath();
+    if (p.n < 3) return false;
+    ctx.moveTo(p.x[0], p.y[0]);
+    for (var i = 1; i < p.n; i++) ctx.lineTo(p.x[i], p.y[i]);
+    ctx.closePath();
+    return true;
+  }
+
+  function wedge(a0, a1) {
+    var R = 1.06;
+    var xs = [te, ta * R * Math.cos(a0) + tb * R * Math.sin(a0) + te, ta * R * Math.cos(a1) + tb * R * Math.sin(a1) + te];
+    var ys = [tf, tc * R * Math.cos(a0) + td * R * Math.sin(a0) + tf, tc * R * Math.cos(a1) + td * R * Math.sin(a1) + tf];
+    var p = clipRect(xs, ys, 3, -8, -8, W + 8, H + 8);
+    if (tracePoly(p)) ctx.fill();
+  }
+
+  /* ---------- animation of a group element acting on the picture ---------- */
+  function ease(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+  function currentMatrix(now) {
+    if (!anim) return matrix(state);
+    var u = ease(Math.min(1, (now - anim.t0) / anim.dur));
+    var g = anim.g, A;
+    if (g.f) {                              // flip about the mirror axis at 30k degrees
+      var phi = g.k * Math.PI / 6, c = Math.cos(phi), s = Math.sin(phi), q = Math.cos(Math.PI * u);
+      A = [c * c + q * s * s, c * s * (1 - q), c * s * (1 - q), s * s + q * c * c];
+    } else {                                // turn the short way round
+      var ang = (g.k <= 3 ? g.k : g.k - 6) * Math.PI / 3 * u;
+      A = [Math.cos(ang), -Math.sin(ang), Math.sin(ang), Math.cos(ang)];
+    }
+    return mm(A, matrix(anim.from));
+  }
+
+  /* ---------- draw ---------- */
+  function draw(now) {
+    var M = currentMatrix(now);
+    var cx = W / 2, cy = H / 2;
+    ta = zoom * M[0]; tb = zoom * M[1]; te = cx - zoom * vx;
+    tc = -zoom * M[2]; td = -zoom * M[3]; tf = cy + zoom * vy;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    // boundary: triangle (counter-clockwise, one vertex up) refined into the Koch curve
+    n = 0;
+    var V = [[0, 1], [-S60, -0.5], [S60, -0.5]];
+    var side = Math.sqrt(3);
+    emit(ta * V[0][0] + tb * V[0][1] + te, tc * V[0][0] + td * V[0][1] + tf, 0);
+    for (var i = 0; i < 3; i++) {
+      var A = V[i], B = V[(i + 1) % 3];
+      koch(A[0], A[1], B[0], B[1], side, 0);
+    }
+
+    // body in the rotation tone
+    var body = clipRect(PX, PY, n, -8, -8, W + 8, H + 8);
+    if (tracePoly(body)) { ctx.fillStyle = colors['tone-a']; ctx.fill(); }
+
+    // paint the 6 mirror wedges and the marked wedge only where the body already is
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = colors['tone-b'];
+    var D = Math.PI / 180;
+    for (var k = 0; k < 6; k++) wedge((60 * k - 30) * D, 60 * k * D);
+    ctx.fillStyle = colors.accent;
+    wedge(0, 30 * D);
+    ctx.globalCompositeOperation = 'source-over';
+
+    // outline: only the refined, visible pieces
+    ctx.beginPath();
+    var pen = false;
+    for (var j = 1; j < n; j++) {
+      if (PF[j] && Math.abs(PX[j]) < 1e5 && Math.abs(PY[j]) < 1e5 &&
+          Math.abs(PX[j - 1]) < 1e5 && Math.abs(PY[j - 1]) < 1e5) {
+        if (!pen) { ctx.moveTo(PX[j - 1], PY[j - 1]); pen = true; }
+        ctx.lineTo(PX[j], PY[j]);
+      } else pen = false;
+    }
+    ctx.strokeStyle = colors.line;
+    ctx.lineWidth = 1.1;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    var rel = zoom / home;
+
+    // the mirror line, while a flip is running
+    if (anim && anim.g.f && rel < 200) {
+      var phi = anim.g.k * Math.PI / 6, r = 1.2 * zoom;
+      var ox = cx - zoom * vx, oy = cy + zoom * vy;
+      ctx.beginPath();
+      ctx.moveTo(ox - r * Math.cos(phi), oy + r * Math.sin(phi));
+      ctx.lineTo(ox + r * Math.cos(phi), oy - r * Math.sin(phi));
+      ctx.setLineDash([6, 5]);
+      ctx.strokeStyle = colors.ink;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // names of the 12 places; they stay put while the picture moves
+    var alpha = Math.max(0, Math.min(1, (6 - rel) / 3));
+    if (alpha > 0) {
+      var size = Math.max(11, Math.min(20, zoom * 0.085));
+      ctx.font = 'italic 600 ' + size + 'px "STIX Two Text", Cambria, Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (var f = 0; f < 2; f++) for (var kk = 0; kk < 6; kk++) {
+        var mid = (60 * kk + (f ? -15 : 15)) * D, rho = 0.42;
+        var lx = cx + zoom * (rho * Math.cos(mid) - vx);
+        var ly = cy - zoom * (rho * Math.sin(mid) - vy);
+        var here = !anim && state.k === kk && state.f === f;
+        ctx.globalAlpha = alpha * (here ? 1 : 0.72);
+        ctx.fillStyle = here ? colors['on-accent'] : colors.ink;
+        ctx.fillText(name({ k: kk, f: f }), lx, ly);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /* ---------- readouts ---------- */
+  var lastZoomText = '';
+  function showZoom() {
+    var rel = zoom / home;
+    var num = rel < 100 ? rel.toFixed(1) : rel < 1e6 ? Math.round(rel).toLocaleString('en-US') : rel.toExponential(1).replace('e+', '·10^');
+    var p = (Math.log(rel) / Math.log(3)).toFixed(1);
+    if (p === '-0.0') p = '0.0';
+    var txt = '×' + num + ' = 3<sup>' + p + '</sup>';
+    if (txt !== lastZoomText) { zoomEl.innerHTML = txt; lastZoomText = txt; }
+  }
+
+  var buttons = [];
+  function markNow() {
+    buttons.forEach(function (b) {
+      var on = b.g.k === state.k && b.g.f === state.f;
+      b.el.classList.toggle('now', on);
+      if (on) b.el.setAttribute('aria-current', 'true'); else b.el.removeAttribute('aria-current');
+    });
+  }
+
+  /* ---------- frame loop: runs only while something is moving ---------- */
+  var raf = 0;
+  function request() { if (!raf) raf = requestAnimationFrame(frame); }
+  function frame(now) {
+    raf = 0;
+    var again = false;
+    if (anim) {
+      if (now - anim.t0 >= anim.dur) { state = mul(anim.g, anim.from); anim = null; markNow(); }
+      else again = true;
+    }
+    if (glide) {
+      var t = Math.min(1, (now - glide.t0) / glide.dur), e = ease(t);
+      zoom = glide.z0 * Math.pow(home / glide.z0, e);
+      var den = 1 / home - 1 / glide.z0;
+      var w = Math.abs(den) < 1e-12 ? e : (1 / zoom - 1 / glide.z0) / den;
+      vx = glide.x0 * (1 - w); vy = glide.y0 * (1 - w);
+      if (t >= 1) { zoom = home; vx = 0; vy = 0; glide = null; } else again = true;
+    }
+    draw(now);
+    showZoom();
+    if (again) request();
+  }
+
+  function apply(g) {
+    if (anim) { state = mul(anim.g, anim.from); anim = null; }
+    var from = state, to = mul(g, from);
+    eqEl.innerHTML = '<span class="m">' + name(g) + ' · ' + name(from) + ' = ' + name(to) + '</span>';
+    if (g.k === 0 && g.f === 0) { markNow(); request(); return; }
+    if (reduced.matches) { state = to; markNow(); request(); return; }
+    anim = { from: from, g: g, t0: performance.now(), dur: g.f ? 900 : 450 + 150 * Math.min(g.k, 6 - g.k) };
+    request();
+  }
+
+  function goHome(locked) {
+    if (reduced.matches) { zoom = home; vx = 0; vy = 0; glide = null; request(); return; }
+    var steps = Math.abs(Math.log(zoom / home) / Math.log(3));
+    glide = { t0: performance.now(), dur: Math.min(4500, 600 + 180 * steps), z0: zoom, x0: vx, y0: vy, locked: !!locked };
+    request();
+  }
+
+  // zoom by a factor, keeping the world point under (sx, sy) in place
+  function zoomAt(sx, sy, factor, nx, ny) {
+    var wx = vx + (sx - W / 2) / zoom, wy = vy - (sy - H / 2) / zoom;
+    var z = zoom * factor, over = false;
+    if (z < home * 0.4) z = home * 0.4;
+    if (z > home * MAX_REL) { z = home * MAX_REL; over = true; }
+    zoom = z;
+    if (nx === undefined) { nx = sx; ny = sy; }
+    vx = wx - (nx - W / 2) / zoom; vy = wy + (ny - H / 2) / zoom;
+    if (over) goHome(true);      // at the precision limit the map lets go and drifts back
+    request();
+  }
+
+  /* ---------- gestures ---------- */
+  var pts = new Map();
+  var down = null, lastTap = null;
+  function pos(ev) { var r = cv.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; }
+  function touched() { hintEl.classList.add('gone'); }
+
+  cv.addEventListener('pointerdown', function (ev) {
+    try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
+    var p = pos(ev);
+    pts.set(ev.pointerId, p);
+    if (glide && !glide.locked) glide = null;
+    down = pts.size === 1 ? { x: p.x, y: p.y, t: performance.now(), moved: false } : null;
+  });
+
+  cv.addEventListener('pointermove', function (ev) {
+    var old = pts.get(ev.pointerId);
+    if (!old) return;
+    var p = pos(ev);
+    if (glide && glide.locked) { pts.set(ev.pointerId, p); return; }
+    if (pts.size === 1) {
+      vx -= (p.x - old.x) / zoom; vy += (p.y - old.y) / zoom;
+      if (down && Math.hypot(p.x - down.x, p.y - down.y) > 8) { down.moved = true; touched(); }
+      pts.set(ev.pointerId, p);
+      request();
+    } else if (pts.size === 2) {
+      var other = null;
+      pts.forEach(function (v, id) { if (id !== ev.pointerId) other = v; });
+      var d0 = Math.hypot(old.x - other.x, old.y - other.y) || 1;
+      var d1 = Math.hypot(p.x - other.x, p.y - other.y) || 1;
+      pts.set(ev.pointerId, p);
+      touched();
+      zoomAt((old.x + other.x) / 2, (old.y + other.y) / 2, d1 / d0, (p.x + other.x) / 2, (p.y + other.y) / 2);
+    } else {
+      pts.set(ev.pointerId, p);
+    }
+  });
+
+  function release(ev) {
+    if (!pts.has(ev.pointerId)) return;
+    var p = pos(ev);
+    pts.delete(ev.pointerId);
+    var now = performance.now();
+    if (ev.type === 'pointerup' && pts.size === 0 && down && !down.moved && now - down.t < 320) {
+      if (lastTap && now - lastTap.t < 340 && Math.hypot(p.x - lastTap.x, p.y - lastTap.y) < 32) {
+        lastTap = null; touched(); goHome(false);
+      } else lastTap = { x: p.x, y: p.y, t: now };
+    }
+    down = null;
+  }
+  cv.addEventListener('pointerup', release);
+  cv.addEventListener('pointercancel', release);
+
+  cv.addEventListener('wheel', function (ev) {
+    ev.preventDefault();
+    if (glide) { if (glide.locked) return; glide = null; }
+    var p = pos(ev);
+    touched();
+    zoomAt(p.x, p.y, Math.exp(-ev.deltaY * (ev.ctrlKey ? 0.01 : 0.0015)));
+  }, { passive: false });
+
+  cv.addEventListener('keydown', function (ev) {
+    if (glide && glide.locked) return;
+    var step = 48 / zoom, used = true;
+    if (ev.key === '+' || ev.key === '=') zoomAt(W / 2, H / 2, 1.5);
+    else if (ev.key === '-' || ev.key === '_') zoomAt(W / 2, H / 2, 1 / 1.5);
+    else if (ev.key === '0' || ev.key === 'Home') goHome(false);
+    else if (ev.key === 'ArrowLeft') vx -= step;
+    else if (ev.key === 'ArrowRight') vx += step;
+    else if (ev.key === 'ArrowUp') vy += step;
+    else if (ev.key === 'ArrowDown') vy -= step;
+    else used = false;
+    if (used) { ev.preventDefault(); touched(); request(); }
+  });
+
+  /* ---------- the 12 buttons ---------- */
+  [0, 1].forEach(function (f) {
+    var host = document.getElementById(f ? 'mir' : 'rot');
+    for (var k = 0; k < 6; k++) (function (g) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.id = 'el-' + g.k + '-' + g.f;
+      b.textContent = name(g);
+      b.setAttribute('aria-label', 'Apply ' + name(g) + ': ' + describe(g));
+      b.addEventListener('click', function () { apply(g); });
+      host.appendChild(b);
+      buttons.push({ g: g, el: b });
+    })({ k: k, f: f });
+  });
+
+  /* ---------- sizing, themes, boot ---------- */
+  var first = true;
+  function resize() {
+    var w = stage.clientWidth, h = stage.clientHeight;
+    if (!w || !h) return;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var rel = zoom / home;
+    W = w; H = h;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    minLen = 1.6 / dpr;
+    home = 0.46 * Math.min(w, h);
+    zoom = first ? home : rel * home;
+    first = false;
+    request();
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
+  window.addEventListener('resize', resize);
+
+  function retheme() { readColors(); request(); }
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
+  new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(request);
+
+  readColors();
+  markNow();
+  resize();
+})();
+</script>
+</body>
+</html>

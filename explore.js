@@ -69,5 +69,12 @@ window.EXPLORE = [
     title: 'Zeta Map',
     path: 'explore/zeta-map/',
     desc: 'The Riemann zeta function as a map. Colour is the direction of ζ(s), darkness its size; zeros are the points where every colour meets. Drag and pinch anywhere, and where the numbers run out the view comes back.'
+  },
+  {
+    id: 'snowflake',
+    badge: 'D₆',
+    title: 'Snowflake Group',
+    path: 'explore/snowflake/',
+    desc: 'The Koch snowflake and its 12 symmetries. Tap a rotation or a mirror to apply it, follow the orange wedge and the product g · h, and pinch into the edge down to 3²² before it drifts back.'
   }
 ];
