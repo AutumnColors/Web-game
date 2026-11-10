@@ -1,6 +1,13 @@
 // Explore registry: interactive math pages (no score). Group viewers are listed in groups.js. To add one: create explore/name/index.html, then add an entry here.
 window.EXPLORE = [
   {
+    id: 'calculus-lab',
+    badge: '∇',
+    title: 'Calculus Lab',
+    path: 'explore/calculus-lab/',
+    desc: 'Interactive vector calculus in two dimensions.'
+  },
+  {
     id: 'rainbow',
     badge: 'RGB',
     title: 'Rainbow vectors',
