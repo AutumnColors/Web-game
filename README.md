@@ -43,6 +43,7 @@ explore/
   fractal-map-survey/ Mandelbrot Survey Map (same engine plus scale bar, twist-to-rotate with compass, tap-a-point coordinates and orbit, screenshots with the coordinates stored in the PNG)
   julia-lab/          Julia Lab (pick the seed c on the Mandelbrot plane with a live Julia preview, type it, or use a preset; then the Survey Map tools on the Julia set of z → z² + c; #c=re,im links open a seed)
   zeta-map/           Zeta Map (Riemann zeta as a full-screen phase map, gestures only: hue = arg ζ, darkness = |ζ|, conformal tiles; ζ by Euler–Maclaurin plus the functional equation, checked against mpmath to 2e-11; heights to ±10000; too deep → rises back to the wide view, too far → returns to the start; #s=σ,t,width links open a place)
+  snowflake/          Snowflake Group (Koch snowflake and its symmetry group D₆: 12 wedges, one per element; tap a rotation or mirror to apply it and see the product g · h; boundary refined only where visible, zoom to 3²² then it drifts back)
 world/
   index.html          World viewer: one base map, switchable data layers, country panel, ranking
   countries.json      Natural Earth id → ISO-3 code and display name (outlines load from world-atlas on jsDelivr, projected to Equal Earth)
