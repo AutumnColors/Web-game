@@ -71,6 +71,13 @@ window.EXPLORE = [
     desc: 'Pick a seed c on the Mandelbrot plane or type it, watch its Julia set change live, then explore it with the survey tools: scale, compass, tap coordinates with the orbit, screenshots that keep the seed.'
   },
   {
+    id: 'fractal-lab',
+    badge: 'f(z)',
+    title: 'Fractal Universe Lab',
+    path: 'explore/fractal-lab/',
+    desc: 'Choose the universe first: Mandelbrot, Julia or Multibrot, how it is measured (escape time, black and white, orbit sensitivity, gradients, four synced panels), a zoom depth limit and a colour scheme. Then one camera for all of them, cross-sections with CSV export, and captures that carry their full configuration.'
+  },
+  {
     id: 'zeta-map',
     badge: 'ζ',
     title: 'Zeta Map',
