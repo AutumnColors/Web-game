@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Fractal Universe Lab</title>
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#fff}
+*{box-sizing:border-box}
+#c{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#c.drag{cursor:grabbing}
+#c.aim{cursor:crosshair}
+#sa{position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
+.glass{border:1.5px solid rgba(255,255,255,.5);background:rgba(0,0,0,.5);color:#fff;cursor:pointer;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+/* tools, bottom left */
+#tools{position:fixed;left:calc(12px + env(safe-area-inset-left));bottom:calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;z-index:2}
+#tools button{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;padding:0}
+#tools button:active{transform:scale(.94)}
+#tools button.on{background:#fff;color:#000;border-color:#fff}
+#tools svg{width:22px;height:22px}
+#shot.busy{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.45}}
+
+/* chip, top left */
+#chip{position:fixed;left:calc(12px + env(safe-area-inset-left));top:calc(12px + env(safe-area-inset-top));padding:7px 12px;border-radius:13px;text-align:left;max-width:calc(100vw - 100px);z-index:2}
+#chip b{display:block;font-size:13px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chip small{display:block;font-size:11px;color:rgba(255,255,255,.72);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.clean #chip,body.clean #tools,body.clean #pop,body.cmp #chip{display:none}
+
+#toast{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(0,0,0,.78);color:#fff;font-size:13.5px;
+  padding:7px 14px;border-radius:18px;pointer-events:none;opacity:0;transition:opacity .25s;max-width:92vw;text-align:center;z-index:20}
+#toast.on{opacity:1}
+
+/* view popover */
+#pop{position:fixed;left:calc(64px + env(safe-area-inset-left));bottom:calc(12px + env(safe-area-inset-bottom));width:min(300px,calc(100vw - 80px));max-height:calc(100dvh - 40px);overflow:auto;
+  background:rgba(12,12,14,.94);border:1px solid rgba(255,255,255,.22);border-radius:16px;padding:10px;display:none;z-index:4}
+#pop.on{display:block}
+.lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#9a9aa2;margin:8px 4px 6px}
+.lbl:first-child{margin-top:2px}
+.list{display:grid;gap:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.opt{display:block;width:100%;text-align:left;padding:8px 10px;border-radius:11px;border:1px solid rgba(255,255,255,.2);background:#141416;cursor:pointer}
+.opt b{display:block;font-size:13.5px;font-weight:600}
+.opt small{display:block;font-size:11px;color:#a0a0a8;margin-top:2px;line-height:1.3}
+.opt.on{background:#fff;color:#000;border-color:#fff}
+.opt.on small{color:#444}
+.seg .opt{width:auto;flex:1;text-align:center;min-width:54px}
+.opt canvas{display:block;width:100%;aspect-ratio:4/3;border-radius:7px;background:#000;margin-bottom:6px}
+
+/* full-screen sheets */
+.sheet{position:fixed;inset:0;display:none;justify-content:center;z-index:10;background:rgba(0,0,0,.9)}
+.sheet.on{display:flex}
+.box{width:min(100vw,640px);height:100%;overflow:auto;-webkit-overflow-scrolling:touch;
+  padding:calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left))}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.top h1{font-size:19px;margin:0;font-weight:700}
+.top a{color:#9fd4ff;font-size:13px;text-decoration:none}
+.x{width:36px;height:36px;border-radius:50%;font-size:21px;line-height:1;padding:0;display:grid;place-items:center;flex:none}
+.sub{color:#a0a0a8;font-size:13px;margin:0 0 10px;line-height:1.4}
+h2{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#9a9aa2;margin:18px 2px 8px;font-weight:650}
+.params{margin-top:8px;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:#0c0c0e;display:none}
+.params.on{display:block}
+.params input{width:100%;font:16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:9px 11px;border-radius:10px;border:1.5px solid rgba(255,255,255,.3);background:#111;color:#fff;outline:none}
+.params input.bad{border-color:#ff5a4d}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;font-size:12.5px;padding:6px 10px;border-radius:14px;border:1px solid rgba(255,255,255,.28);background:#141416;cursor:pointer;white-space:nowrap}
+.note{font-size:12px;color:#8d8d95;line-height:1.4;margin:6px 2px 0}
+#palPrev{display:block;width:100%;height:18px;border-radius:9px;margin-top:8px}
+.bar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#000 35%);pointer-events:none}
+.bar button{pointer-events:auto}
+.pill{font-size:15px;padding:11px 20px;border-radius:24px;border:1.5px solid rgba(255,255,255,.5);background:#151515;color:#fff;cursor:pointer}
+.pill.main{background:#fff;color:#000;border-color:#fff;font-weight:650}
+.pill.small{font-size:13px;padding:8px 13px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row.c{justify-content:center}
+
+/* tables */
+table{border-collapse:collapse;width:100%;font-size:13px}
+td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.1);vertical-align:top}
+td:first-child{color:#a0a0a8;width:38%;white-space:nowrap}
+td:last-child{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;word-break:break-word}
+td i{font-style:normal;color:#8d8d95;font-family:system-ui,sans-serif;font-size:11.5px}
+
+/* capture */
+#cap{flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;background:rgba(0,0,0,.86)}
+#cap img{max-width:min(92vw,900px);max-height:62vh;border-radius:10px;box-shadow:0 6px 30px rgba(0,0,0,.6);-webkit-touch-callout:default}
+#cap .hint{color:#aaa;font-size:13px;text-align:center;max-width:520px}
+
+/* cross-sections: bottom sheet, the map stays visible above */
+#sec{position:fixed;left:0;right:0;bottom:0;max-height:64dvh;overflow:auto;background:rgba(10,10,12,.96);border-top:1px solid rgba(255,255,255,.25);border-radius:16px 16px 0 0;
+  padding:10px calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));display:none;z-index:6}
+#sec.on{display:block}
+#secTabs{display:flex;gap:6px;flex:1;overflow-x:auto}
+#secTabs button{flex:none;min-width:36px;height:32px;border-radius:16px;border:1px solid rgba(255,255,255,.3);background:#141416;cursor:pointer;font-size:13px}
+#secTabs button.on{background:#fff;color:#000}
+#plot{display:block;width:100%;height:250px;margin:8px 0;border-radius:10px;background:#050506}
+#sec select{font:inherit;font-size:13px;background:#141416;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;padding:7px 9px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="sa"></div>
+
+<button id="chip" class="glass" type="button" aria-label="Information"><b id="chipT"></b><small id="chipS"></small></button>
+
+<div id="tools">
+  <button id="bSetup" class="glass" type="button" aria-label="New simulation" title="New simulation">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></svg></button>
+  <button id="bView" class="glass" type="button" aria-label="Measurement and colour" title="Measurement and colour">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 4l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/></svg></button>
+  <button id="bSec" class="glass" type="button" aria-label="Cross-section" title="Cross-section">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19L19 5"/><circle cx="5" cy="19" r="2.2" fill="currentColor"/><circle cx="19" cy="5" r="2.2" fill="currentColor"/></svg></button>
+  <button id="bInfo" class="glass" type="button" aria-label="Information" title="Information">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5" stroke-width="1.8"/><path d="M12 11v6M12 7.5v.2"/></svg></button>
+  <button id="bHome" class="glass" type="button" aria-label="Reset the camera" title="Reset the camera">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M4 11l8-7 8 7M6.5 9.5V20h11V9.5"/></svg></button>
+  <button id="shot" class="glass" type="button" aria-label="Capture" title="Capture">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8h3l1.6-2.2h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.3" r="3.6"/></svg></button>
+</div>
+
+<div id="pop">
+  <div class="lbl">Measurement</div>
+  <div class="list grp" id="qMode"></div>
+  <div class="lbl">Colour</div>
+  <div class="seg grp" id="qPal"></div>
+  <div class="lbl">View</div>
+  <button class="opt" id="qClean" type="button"><b>Clean view</b><small>Only the image. Press and hold the map to bring the tools back.</small></button>
+</div>
+
+<div id="toast"></div>
+
+<!-- configuration -->
+<div id="cfg" class="sheet on">
+  <div class="box">
+    <div class="top"><h1>Fractal Universe Lab</h1><a href="../../">‹ Games</a></div>
+    <p class="sub">Choose the universe, how it is measured, and how far the camera may go. Every fractal then uses the same camera, capture and information tools.</p>
+
+    <h2>1 · Fractal library</h2>
+    <div class="grid3 grp" id="gFractal"></div>
+    <div class="params" id="pJulia">
+      <input id="cin" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="-0.8 + 0.156i" aria-label="Seed c">
+      <div class="chips" id="seeds"></div>
+      <div class="note">The seed c is fixed; every pixel is a starting point z₀. In a Mandelbrot simulation you can also pin a point and open its Julia set from ⓘ.</div>
+    </div>
+    <div class="params" id="pMulti">
+      <div class="seg grp" id="gPower"></div>
+      <div class="note">Power n in z → zⁿ + c. The set has n − 1 fold symmetry.</div>
+    </div>
+    <div class="note">Zeta Map and Snowflake Group are different kinds of engine (a phase map and a geometric curve) and keep their own viewers.</div>
+
+    <h2>2 · Measurement</h2>
+    <div class="grid2 grp" id="gMode"></div>
+
+    <h2>3 · Maximum zoom depth</h2>
+    <div class="seg grp" id="gDepth"></div>
+    <div class="note">Depth D = log₂(W₀ / W): each level halves the visible width. A limit stops zooming in only; panning and zooming out stay free.</div>
+
+    <h2>4 · Colour scheme</h2>
+    <div class="seg grp" id="gPal"></div>
+    <canvas id="palPrev" width="600" height="18"></canvas>
+    <div class="note">Colour is applied after the computation, so switching scheme never changes the numbers.</div>
+
+    <h2>5 · Numerics</h2>
+    <div class="lbl">Iteration limit</div>
+    <div class="seg grp" id="gIter"></div>
+    <div class="lbl">Escape radius</div>
+    <div class="seg grp" id="gRad"></div>
+    <div class="note">Auto raises the limit with depth, as the Mandelbrot Map does. Radius 2 is the textbook threshold; 16 gives a smoother μ and the look of the existing maps.</div>
+
+    <h2>6 · Display</h2>
+    <button class="opt" id="gClean" type="button"><b>Clean view</b><small>Show only the fractal: no buttons, labels or overlays.</small></button>
+
+    <h2>Shortcuts</h2>
+    <div class="row">
+      <button class="pill small" id="preWave" type="button">Wave experiment</button>
+      <button class="pill small" id="openCap" type="button">Open a capture (PNG)</button>
+      <input id="capFile" type="file" accept="image/png" hidden>
+    </div>
+    <div class="note">Wave experiment: Mandelbrot, centre −0.7274552961 + 0.3586441332 i, width 5.19 × 10⁻⁷, camera −70°, 1600 iterations, radius 2, comparison view. On a 640 × 960 grid this frame gives r(T, S) = 0.866; any other grid gives its own value, shown in ⓘ.</div>
+  </div>
+  <div class="bar"><button class="pill main" id="useCfg" type="button">Use this configuration</button></div>
+</div>
+
+<!-- information -->
+<div id="info" class="sheet">
+  <div class="box">
+    <div class="top"><h1>Information</h1><button class="x glass" id="infoX" type="button" aria-label="Close">×</button></div>
+    <table id="infoT"></table>
+    <div class="row" style="margin-top:14px">
+      <button class="pill small" id="copyLink" type="button">Copy link</button>
+      <button class="pill small" id="copyJson" type="button">Copy as JSON</button>
+      <button class="pill small" id="pinJulia" type="button">Julia set of the pin</button>
+    </div>
+    <p class="note" id="infoNote"></p>
+  </div>
+</div>
+
+<!-- cross-sections -->
+<div id="sec">
+  <div class="top"><div id="secTabs"></div><button class="x glass" id="secX" type="button" aria-label="Close">×</button></div>
+  <canvas id="plot"></canvas>
+  <table id="secT"></table>
+  <div class="row" style="margin-top:10px;align-items:center">
+    <select id="secN" aria-label="Samples"><option value="512">512 samples</option><option value="2048" selected>2048 samples</option><option value="8192">8192 samples</option></select>
+    <button class="pill small" id="secCsv" type="button">CSV · this line</button>
+    <button class="pill small" id="secAll" type="button">CSV · all lines</button>
+    <button class="pill small" id="secDel" type="button">Delete line</button>
+    <button class="pill small" id="secAdd" type="button">Add a line</button>
+  </div>
+  <p class="note" id="secNote"></p>
+</div>
+
+<!-- capture -->
+<div id="cap" class="sheet">
+  <img id="capImg" alt="Capture">
+  <div class="row c">
+    <button id="capSave" class="pill main" type="button">Save</button>
+    <button id="capShare" class="pill" type="button">Share</button>
+    <button id="capLabels" class="pill" type="button">Labels: on</button>
+    <button id="capClose" class="pill" type="button">Close</button>
+  </div>
+  <div class="hint">The full configuration and the camera are stored inside the PNG. “Open a capture” on the configuration screen restores them.</div>
+</div>
+
+<script src="engine.js"></script>
+<script src="overlays.js"></script>
+<script src="lab.js"></script>
+</body>
+</html>
