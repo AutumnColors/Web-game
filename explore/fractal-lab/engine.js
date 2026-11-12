@@ -36,6 +36,7 @@ const MODES=[
   {v:'escape', t:'Escape time',       s:'smooth μ = n + 1 − log₂ log₂|zₙ|',          tag:'Escape time μ'},
   {v:'binary', t:'Black / white',     s:'white: escaped · black: no escape detected', tag:'Escape / no escape'},
   {v:'sens',   t:'Orbit sensitivity', s:'S = ln(1 + |dzₙ/dc|) at escape',            tag:'Sensitivity S'},
+  {v:'potential', t:"Green's potential", s:'Exterior potential G ≈ log|zₙ| / pⁿ; colors show log G (finite-escape estimate)', tag:'Green potential (estimated)'},
   {v:'flat',   t:'Sensitivity, bands removed', s:'ln(|D| / (|z| ln|z|)): exact |∇μ| by the chain rule', tag:'S, bands removed'},
   {v:'gradt',  t:'Gradient of T',     s:'|∇T| of the whole-step count: band edges',   tag:'|∇T| whole steps'},
   {v:'gradmu', t:'Gradient of μ',     s:'|∇μ| of the smooth escape time',             tag:'|∇μ| smooth'},
@@ -273,7 +274,13 @@ function paint(L,mode){
     for(let i=0;i<N;i++){ if(T[i]===NO){ o[i]=BLACK; continue; } const mu=T[i]+F[i]+0.5288; o[i]=C[((Math.sqrt(mu>0?mu:0)*90)|0)&1023]; }
   } else {
     let get, lo=0.01, hi=0.99;
-    if(mode==='sens') get=i=>T[i]===NO?NaN:S[i];
+    if(mode==='potential'){ // Finite-escape approximation to the exterior Green function.
+      // F = 1 - log_p(log_2|z_T|), hence ln G_T = ln(ln 2) + (1-F-T) ln p.
+      // Work in log space to avoid underflow at high iteration counts.
+      const lp=Math.log(L.pw);
+      get=i=>T[i]===NO?NaN:Math.log(Math.LN2)+(1-F[i]-T[i])*lp;
+    }
+    else if(mode==='sens') get=i=>T[i]===NO?NaN:S[i];
     else if(mode==='flat'){ // F = 1 − log_p log₂|z| gives |z| back, so the overshoot past the escape radius can be divided out
       const lp=Math.log(L.pw), off=Math.log(lp);
       get=i=>{ if(T[i]===NO) return NaN; const lz=Math.LN2*Math.exp((1-F[i])*lp); return Math.log(Math.expm1(S[i]))-lz-Math.log(lz)-off; }; }
