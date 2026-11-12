@@ -17,10 +17,11 @@ const LIBRARY=[
   {v:'rect',     t:'Rectangle',       params:['size','aspect','round','rot']},
   {v:'star',     t:'Star',            params:['n','size','depth','rot']},
   {v:'pair',     t:'Two circles',     params:['size','sep','rot']},
-  {v:'combination', t:'Combination · fractal research', params:[]}
+  {v:'combination', t:'Combination · fractal research', params:['variant']}
 ];
 // slider ranges; `when` hides a control that would do nothing
 const PARAMS={
+  variant:{t:'Mandelbrot region',min:0,max:2,step:1,fmt:v=>['Whole set','Narrow valley','Branches and bulbs'][Math.round(v)]},
   size:  {t:'Size',                 min:0.06, max:0.42, step:0.01,  fmt:v=>Math.round(v*100)+' %', note:'Radius (or half-width) as a fraction of the domain width.'},
   eps:   {t:'Deformation ε',        min:0,    max:0.3,  step:0.005, fmt:v=>v.toFixed(3), note:'r(θ) = R [1 + ε cos(kθ)]. ε = 0 is the perfect circle.'},
   k:     {t:'Lobes k',              min:1,    max:12,   step:1,     fmt:v=>String(v), when:g=>g.eps>0},
@@ -34,7 +35,7 @@ const PARAMS={
   x:     {t:'Position x',           min:-0.3, max:0.3,  step:0.01,  fmt:v=>(v>0?'+':'')+v.toFixed(2)},
   y:     {t:'Position y',           min:-0.3, max:0.3,  step:0.01,  fmt:v=>(v>0?'+':'')+v.toFixed(2)}
 };
-const DEFAULT_GEOM={type:'circle', x:0, y:0, size:0.32, rot:0, eps:0, k:5, aspect:0.6, inner:0.6, n:3, round:0, depth:0.5, sep:0.4};
+const DEFAULT_GEOM={variant:0,type:'circle', x:0, y:0, size:0.32, rot:0, eps:0, k:5, aspect:0.6, inner:0.6, n:3, round:0, depth:0.5, sep:0.4};
 
 /* ---------- symmetry groups ---------- */
 const O2={group:'O(2)', order:Infinity, continuous:true, text:'continuous: every rotation about the centre and every mirror line through it'};
@@ -82,12 +83,40 @@ function build(g){
   let f, exact=true, paths, sym, name, formula='';
   switch(g.type){
     case 'combination': {
-      // Research extension point. No fractal seeds or boundary data have been defined yet.
-      // Deliberately do not substitute a circle or fabricate a fractal mask.
-      f=()=>1; paths=[]; exact=false;
-      sym={group:'undetermined',order:null,continuous:false,text:'awaiting a computed fractal boundary and field'};
-      name='Combination · fractal research';
-      formula='No initial positions or fractal field supplied yet';
+      const data=root.BRLFractalData, region=data&&data.regions[Math.round(g.variant)||0];
+      if(!region){ throw new Error('Precomputed Mandelbrot field missing'); }
+      const N=data.N, hex=region.hex, vals=new Uint16Array(N*N), inside=new Uint8Array(N*N);
+      for(let q=0;q<vals.length;q++){ const v=parseInt(hex.slice(q*4,q*4+4),16); vals[q]=v; inside[q]=v===65535?1:0; }
+      // Two-pass chamfer approximation to the signed distance of the computed set.
+      const dist=new Float32Array(N*N); dist.fill(1e5);
+      const boundary=[];
+      for(let j=1;j<N-1;j++)for(let i=1;i<N-1;i++){const q=j*N+i,v=inside[q];
+        if(v!==inside[q-1]||v!==inside[q+1]||v!==inside[q-N]||v!==inside[q+N]){dist[q]=0;boundary.push([i,j]);}}
+      for(let j=0;j<N;j++)for(let i=0;i<N;i++){const q=j*N+i;
+        if(i)dist[q]=Math.min(dist[q],dist[q-1]+1);
+        if(j)dist[q]=Math.min(dist[q],dist[q-N]+1);
+        if(i&&j)dist[q]=Math.min(dist[q],dist[q-N-1]+Math.SQRT2);
+        if(i<N-1&&j)dist[q]=Math.min(dist[q],dist[q-N+1]+Math.SQRT2);}
+      for(let j=N-1;j>=0;j--)for(let i=N-1;i>=0;i--){const q=j*N+i;
+        if(i<N-1)dist[q]=Math.min(dist[q],dist[q+1]+1);
+        if(j<N-1)dist[q]=Math.min(dist[q],dist[q+N]+1);
+        if(i<N-1&&j<N-1)dist[q]=Math.min(dist[q],dist[q+N+1]+Math.SQRT2);
+        if(i&&j<N-1)dist[q]=Math.min(dist[q],dist[q+N-1]+Math.SQRT2);}
+      const sample=(a,x,y)=>{const xx=Math.max(0,Math.min(N-1,(x+0.5)*N-0.5)),yy=Math.max(0,Math.min(N-1,(0.5-y)*N-0.5));
+        const i=Math.min(N-2,Math.floor(xx)),j=Math.min(N-2,Math.floor(yy)),fx=xx-i,fy=yy-j,q=j*N+i;
+        return (a[q]*(1-fx)+a[q+1]*fx)*(1-fy)+(a[q+N]*(1-fx)+a[q+N+1]*fx)*fy;};
+      f=(x,y)=>{const d=sample(dist,x,y)/N,insideHere=sample(inside,x,y)>0.5;return (insideHere?-1:1)*Math.max(0.00001,d);};
+      const initial=(x,y,sd)=>{if(sd<=0)return 0;
+        const nu=sample(vals,x,y)/64;
+        // Contours are sourced from actual smooth escape iteration counts, not distance-to-wall rings.
+        const taper=Math.min(1,Math.max(0,sd*N/2));
+        return Math.sin(2*Math.PI*nu/8)*taper;
+      };
+      // Independent short line segments, following the pixel-level set/exterior interface.
+      paths=boundary.map(p=>[[((p[0]+0.5)/N)-0.5,0.5-((p[1]+0.5)/N)]]);
+      exact=false; sym={group:'not classified',order:null,continuous:false,text:'sampled Mandelbrot escape boundary; no assumed rotational symmetry'};
+      name=region.name;formula='z₀=0, zₙ₊₁=zₙ²+c · '+data.maxIter+' iterations · '+N+'² cached samples';
+      var fractalInitial=initial;
       break;
     }
     case 'ellipse': { const a=R, b=R*g.aspect;
@@ -122,6 +151,7 @@ function build(g){
   const world=p=>[g.x+p[0]*cr-p[1]*sr, g.y+p[0]*sr+p[1]*cr];
   return {
     type:g.type, name, formula, exact, symmetry:sym, centre:[g.x,g.y], params:g,
+    initialField:typeof fractalInitial==='function'?fractalInitial:null,
     sdf:(x,y)=>{ const dx=x-g.x, dy=y-g.y; return f(dx*cr+dy*sr,-dx*sr+dy*cr); },
     paths:paths.map(p=>p.map(world))
   };
