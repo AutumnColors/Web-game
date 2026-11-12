@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#05020b">
+<title>Boundary Release Lab</title>
+<style>
+:root{--bg:#05020b;--card:#0c0716;--line:rgba(190,150,255,.2);--ink:#f1eaff;--dim:#a79bbd;--acc:#b98cff}
+html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;overscroll-behavior:none;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:var(--ink)}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.glass{border:1.5px solid rgba(215,190,255,.45);background:rgba(8,4,16,.6);color:#fff;cursor:pointer;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+
+/* layout: the wave image first, the instruments below it (beside it on a wide screen) */
+#app{position:fixed;inset:0;display:flex;flex-direction:column}
+#stage{position:relative;flex:none;width:100%;height:min(100vw,56dvh);background:var(--bg);touch-action:none;overflow:hidden;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#bar{flex:none;padding:8px calc(10px + env(safe-area-inset-right)) 8px calc(10px + env(safe-area-inset-left));border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#080410}
+#panel{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px calc(10px + env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left))}
+#side{display:contents}
+@media (min-aspect-ratio:11/10){
+  #app{flex-direction:row}
+  #stage{width:min(100dvh,60vw);height:100%}
+  #side{display:flex;flex-direction:column;flex:1;min-width:0;border-left:1px solid var(--line)}
+  #bar{border-top:0}
+}
+#row1{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#clock b{display:block;font-size:19px;font-weight:600;letter-spacing:.01em}
+#clock small{display:block;font-size:11.5px;color:var(--dim);margin-top:1px}
+#tools{display:flex;gap:6px}
+#tools button{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;padding:0}
+#tools button:active{transform:scale(.94)}
+#tools button.on{background:#fff;color:#000;border-color:#fff}
+#tools svg{width:19px;height:19px}
+#transport{display:flex;gap:6px;margin-top:8px}
+#transport button{flex:1;min-width:0;font-size:13.5px;padding:10px 4px;border-radius:12px;border:1.5px solid rgba(215,190,255,.4);background:#120a20;cursor:pointer;white-space:nowrap}
+#transport button:active{transform:scale(.97)}
+#transport button.main{flex:1.7;background:var(--acc);color:#12041f;border-color:var(--acc);font-weight:700}
+#transport button:disabled{opacity:.38;cursor:default}
+
+/* instruments */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 10px 8px;margin-bottom:10px}
+.card h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:0 2px 6px;font-weight:650;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card h3 button{font-size:11px;letter-spacing:0;text-transform:none;padding:4px 9px;border-radius:11px;border:1px solid var(--line);background:#150c25;cursor:pointer}
+.card canvas{display:block;width:100%;height:132px;border-radius:9px;background:#07030e}
+.card .read{font-size:12px;color:var(--dim);margin:6px 2px 0;line-height:1.45}
+.card .read b{color:var(--ink);font-weight:600}
+#marks{display:flex;flex-wrap:wrap;gap:6px}
+#marks button{font-size:12px;padding:5px 9px;border-radius:12px;border:1px solid var(--line);background:#150c25;cursor:pointer}
+
+table{border-collapse:collapse;width:100%;font-size:13px}
+td{padding:7px 8px;border-bottom:1px solid rgba(190,150,255,.12);vertical-align:top}
+td:first-child{color:var(--dim);width:38%}
+td:last-child{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;word-break:break-word}
+td i{font-style:normal;color:#9186a6;font-family:system-ui,sans-serif;font-size:11.5px}
+td em{font-style:normal;font-family:system-ui,sans-serif;font-size:10px;letter-spacing:.05em;text-transform:uppercase;border:1px solid var(--line);border-radius:6px;padding:1px 5px;color:var(--acc);margin-right:5px;white-space:nowrap}
+
+/* film session: only the image; tap for the controls */
+body.film #stage{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;z-index:5;cursor:default}
+body.film #side,body.film #pop{display:none}
+#filmBar{position:absolute;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);display:none;align-items:center;gap:8px;padding:8px 10px;border-radius:28px;
+  background:rgba(8,4,16,.78);border:1px solid rgba(215,190,255,.35);opacity:0;transition:opacity .3s;pointer-events:none;z-index:2;max-width:calc(100vw - 16px)}
+body.film #filmBar{display:flex}
+body.film #filmBar.on{opacity:1;pointer-events:auto}
+#filmBar button{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;padding:0}
+#filmBar svg{width:20px;height:20px}
+#filmBar span{font-size:13px;min-width:86px;text-align:center}
+
+#toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(8,4,16,.86);border:1px solid var(--line);color:#fff;font-size:13.5px;
+  padding:7px 14px;border-radius:18px;pointer-events:none;opacity:0;transition:opacity .25s;max-width:92vw;text-align:center;z-index:30}
+#toast.on{opacity:1}
+
+/* popover and option buttons (same parts as the Fractal Universe Lab) */
+#pop{position:fixed;left:8px;bottom:calc(8px + env(safe-area-inset-bottom));width:min(360px,calc(100vw - 16px));max-height:calc(100dvh - 40px);overflow:auto;
+  background:rgba(12,7,22,.97);border:1px solid rgba(215,190,255,.3);border-radius:16px;padding:10px;display:none;z-index:8}
+#pop.on{display:block}
+.lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:10px 4px 6px}
+.lbl:first-child{margin-top:2px}
+.list{display:grid;gap:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.opt{display:block;width:100%;text-align:left;padding:8px 10px;border-radius:11px;border:1px solid rgba(215,190,255,.22);background:#120a20;cursor:pointer}
+.opt b{display:block;font-size:13.5px;font-weight:600}
+.opt small{display:block;font-size:11px;color:var(--dim);margin-top:2px;line-height:1.3}
+.opt.on{background:var(--acc);color:#12041f;border-color:var(--acc)}
+.opt.on small{color:#3a2358}
+.seg .opt{width:auto;flex:1;text-align:center;min-width:54px}
+.opt canvas{display:block;width:100%;aspect-ratio:1;border-radius:7px;background:#05020b;margin-bottom:6px}
+
+/* full-screen sheets */
+.sheet{position:fixed;inset:0;display:none;justify-content:center;z-index:10;background:var(--bg)}
+.sheet.on{display:flex}
+.box{width:min(100vw,640px);height:100%;overflow:auto;-webkit-overflow-scrolling:touch;
+  padding:calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(104px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left))}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.top h1{font-size:20px;margin:0;font-weight:700}
+.top a{color:#cdb3ff;font-size:13px;text-decoration:none}
+.x{width:36px;height:36px;border-radius:50%;font-size:21px;line-height:1;padding:0;display:grid;place-items:center;flex:none}
+.sub{color:var(--dim);font-size:13.5px;margin:2px 0 12px;line-height:1.45}
+h2{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin:18px 2px 8px;font-weight:650}
+details{border:1px solid var(--line);border-radius:14px;background:var(--card);margin-top:8px}
+summary{list-style:none;cursor:pointer;padding:12px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14.5px;font-weight:650}
+summary::-webkit-details-marker{display:none}
+summary small{font-weight:400;font-size:12px;color:var(--dim);text-align:right;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+summary::after{content:'+';color:var(--dim);font-size:18px;font-weight:400;flex:none}
+details[open] summary::after{content:'−'}
+.in{padding:0 12px 12px}
+.note{font-size:12px;color:#9186a6;line-height:1.45;margin:8px 2px 0}
+.sl{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;margin-top:10px;font-size:13px}
+.sl output{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;color:var(--acc)}
+.sl input{grid-column:1/3;width:100%;accent-color:var(--acc);height:28px;margin:0}
+.bar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:center;gap:10px;padding:14px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 38%);pointer-events:none}
+.bar button{pointer-events:auto}
+.pill{font-size:15px;padding:11px 20px;border-radius:24px;border:1.5px solid rgba(215,190,255,.45);background:#120a20;color:#fff;cursor:pointer}
+.pill.main{background:var(--acc);color:#12041f;border-color:var(--acc);font-weight:700;padding:11px 34px}
+.pill.small{font-size:13px;padding:8px 13px}
+.pill.on{background:#fff;color:#000;border-color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row.c{justify-content:center}
+#cap{flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px}
+#cap img{max-width:min(92vw,900px);max-height:62vh;border-radius:10px;box-shadow:0 6px 30px rgba(0,0,0,.6);-webkit-touch-callout:default}
+#cap .hint{color:var(--dim);font-size:13px;text-align:center;max-width:520px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="gl"></canvas>
+    <canvas id="ov"></canvas>
+    <div id="filmBar">
+      <button id="fPlay" class="glass" type="button" aria-label="Pause or resume"></button>
+      <button id="fRestart" class="glass" type="button" aria-label="Restart the film" title="Restart the film">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v5h5"/></svg></button>
+      <span id="fTime" class="mono"></span>
+      <button id="fFull" class="glass" type="button" aria-label="Fullscreen" title="Fullscreen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button id="fExit" class="glass" type="button" aria-label="Leave the film session" title="Leave the film session">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+  </div>
+
+  <div id="side">
+    <div id="bar">
+      <div id="row1">
+        <div id="clock"><b id="tNow" class="mono">t = 0.000</b><small id="status"></small></div>
+        <div id="tools">
+          <button id="bSetup" class="glass" type="button" aria-label="New experiment" title="New experiment">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></svg></button>
+          <button id="bView" class="glass" type="button" aria-label="Visualization and speed" title="Visualization and speed">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 4l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/></svg></button>
+          <button id="bInfo" class="glass" type="button" aria-label="Information" title="Information">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5" stroke-width="1.8"/><path d="M12 11v6M12 7.5v.2"/></svg></button>
+          <button id="bShot" class="glass" type="button" aria-label="Capture" title="Capture">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8h3l1.6-2.2h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.3" r="3.6"/></svg></button>
+          <button id="bFilm" class="glass" type="button" aria-label="Film session" title="Film session">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="M10 9.2v5.6l4.8-2.8z" fill="currentColor"/></svg></button>
+        </div>
+      </div>
+      <div id="transport">
+        <button id="bRelease" class="main" type="button">Release wall</button>
+        <button id="bPlay" type="button">Play</button>
+        <button id="bStep" type="button">Step</button>
+        <button id="bReset" type="button">Reset</button>
+        <button id="bMark" type="button">Mark</button>
+      </div>
+    </div>
+
+    <div id="panel">
+      <div class="card"><h3><span id="radT">Radial cross-section</span><button id="radMode" type="button"></button></h3><canvas id="pRad"></canvas><div class="read" id="radRead"></div></div>
+      <div class="card"><h3><span>Centre displacement u(0, 0, t)</span></h3><canvas id="pCen"></canvas><div class="read" id="cenRead"></div></div>
+      <div class="card"><h3><span>Energy</span></h3><canvas id="pEn"></canvas><div class="read" id="enRead"></div></div>
+      <div class="card"><h3><span>Symmetry</span></h3><table id="symT"></table></div>
+      <div class="card"><h3><span>Marked moments</span></h3><div id="marks"></div><div class="read" id="marksNote">Press Mark when something interesting happens. Marks are drawn on the time plots and saved with the data.</div></div>
+      <div class="row" style="margin:2px 0 6px">
+        <button class="pill small" id="xCsv" type="button">Time series · CSV</button>
+        <button class="pill small" id="xJson" type="button">Configuration · JSON</button>
+        <button class="pill small" id="xLink" type="button">Copy link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="pop">
+  <div class="lbl">Visualization</div>
+  <div class="grid3 grp" id="qMode"></div>
+  <div class="lbl">Sensitivity</div>
+  <div class="seg grp" id="qGain"></div>
+  <div class="lbl" id="qLevL">Contour spacing</div>
+  <div class="seg grp" id="qLev"></div>
+  <div class="lbl">Playback speed</div>
+  <div class="seg grp" id="qRate"></div>
+  <div class="note">Playback changes how fast you watch. It never changes the wave speed c or the time step.</div>
+</div>
+
+<div id="toast"></div>
+
+<!-- configuration -->
+<div id="cfg" class="sheet on">
+  <div class="box">
+    <div class="top"><h1>Boundary Release Lab</h1><a href="../../">‹ Games</a></div>
+    <p class="sub">A boundary. Waves around it. Remove the boundary. Observe.<br>The default is ready: press Start.</p>
+
+    <h2>Experiment</h2>
+    <div class="grid3 grp" id="gPreset"></div>
+
+    <details id="dGeom"><summary>1 · Geometry<small id="sGeom"></small></summary><div class="in">
+      <div class="grid3 grp" id="gGeom"></div>
+      <div id="pGeom"></div>
+      <table id="symCfg" style="margin-top:10px"></table>
+      <div class="note">The symmetry of the obstacle is not the symmetry of the experiment: the initial field, the outer edge and the square grid all take part. After Start the lab reports which symmetries of the grid the whole state really has.</div>
+    </div></details>
+
+    <details id="dField"><summary>2 · Initial wave field<small id="sField"></small></summary><div class="in">
+      <div class="grid2 grp" id="gField"></div>
+      <div id="pField"></div>
+      <div class="lbl">Contours follow</div>
+      <div class="seg grp" id="gFollow"></div>
+      <div class="note">A standing field starts at rest and splits into an inward and an outward part. A travelling field starts already moving. They are different initial conditions, not two views of one.</div>
+    </div></details>
+
+    <details id="dPhys"><summary>3 · Physics<small id="sPhys"></small></summary><div class="in">
+      <div id="pPhys"></div>
+      <div class="lbl">Obstacle wall</div>
+      <div class="seg grp" id="gObs"></div>
+      <div class="lbl">Outer edge</div>
+      <div class="grid2 grp" id="gOuter"></div>
+      <div class="lbl">Domain</div>
+      <div class="seg grp" id="gDomain"></div>
+      <div class="note">∂²u/∂t² + γ ∂u/∂t = c² ∇²u. A scalar wave equation: it can look like water, but it is not a fluid simulation.</div>
+    </div></details>
+
+    <details id="dRel"><summary>4 · Release behaviour<small id="sRel"></small></summary><div class="in">
+      <div class="grid3 grp" id="gRel"></div>
+      <div id="pRel"></div>
+      <div class="lbl">Release moment</div>
+      <div class="seg grp" id="gAt"></div>
+      <div class="note">Rule: a released cell starts at rest with zero displacement. With a fixed obstacle this adds no energy; with a free obstacle the step it creates is measured and shown.</div>
+    </div></details>
+
+    <details id="dVis"><summary>5 · Visualization<small id="sVis"></small></summary><div class="in">
+      <div class="grid2 grp" id="gMode"></div>
+      <div class="note">All views read the same simulation state. A contour is a line of equal displacement, not a moving material surface.</div>
+    </div></details>
+
+    <details id="dNum"><summary>6 · Numerical quality<small id="sNum"></small></summary><div class="in">
+      <div class="lbl">Grid</div>
+      <div class="seg grp" id="gN"></div>
+      <div class="lbl">Stencil</div>
+      <div class="seg grp" id="gSten"></div>
+      <div class="lbl">Courant number c Δt / Δx</div>
+      <div class="seg grp" id="gCour"></div>
+      <div class="note" id="numNote"></div>
+    </div></details>
+
+    <h2>Shortcuts</h2>
+    <div class="row">
+      <button class="pill small" id="useLast" type="button">Restore the previous experiment</button>
+      <button class="pill small" id="openCap" type="button">Open a capture or configuration</button>
+      <input id="capFile" type="file" accept="image/png,application/json,.json" hidden>
+    </div>
+  </div>
+  <div class="bar">
+    <button class="pill" id="filmT" type="button" aria-pressed="false">Film Session: off</button>
+    <button class="pill main" id="start" type="button">Start</button>
+  </div>
+</div>
+
+<!-- information -->
+<div id="info" class="sheet">
+  <div class="box">
+    <div class="top"><h1>Information</h1><button class="x glass" id="infoX" type="button" aria-label="Close">×</button></div>
+    <table id="infoT"></table>
+    <p class="note" id="infoNote"></p>
+  </div>
+</div>
+
+<!-- capture -->
+<div id="cap" class="sheet">
+  <img id="capImg" alt="Capture">
+  <div class="row c">
+    <button id="capSave" class="pill main" type="button">Save</button>
+    <button id="capShare" class="pill" type="button">Share</button>
+    <button id="capLabels" class="pill" type="button">Labels: on</button>
+    <button id="capClose" class="pill" type="button">Close</button>
+  </div>
+  <div class="hint">The whole configuration and the simulation time are stored inside the PNG. “Open a capture” on the configuration screen restores the experiment.</div>
+</div>
+
+<script src="geometry.js"></script>
+<script src="wave.js"></script>
+<script src="lab.js"></script>
+</body>
+</html>
