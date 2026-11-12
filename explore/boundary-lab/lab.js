@@ -131,6 +131,26 @@ function drawMarks(){ const el=$('marks'); el.innerHTML='';
 
 /* ---------- field renderer: WebGL2 (bicubic sampling of the grid, colour computed per pixel) ---------- */
 const stage=$('stage'), ov=$('ov'), og=ov.getContext('2d');
+// Session-only comparison. Never persisted in experiment settings, links, or captures.
+let signedComparison=false;
+const effectiveViewMode=()=>signedComparison?'field':cfg.view.mode;
+const signedButton=document.createElement('button');
+signedButton.type='button';
+signedButton.title='Toggle signed displacement: orange/pink = positive, blue = negative. Display only; physics unchanged.';
+signedButton.style.cssText='position:absolute;left:12px;bottom:12px;z-index:20;background:#17102bed;color:#f1eaff;border:1px solid #8165ad;border-radius:9px;padding:10px 12px;font:13px system-ui;cursor:pointer';
+stage.appendChild(signedButton);
+const signedConfigButton=document.createElement('button');
+signedConfigButton.type='button';
+signedConfigButton.className='pill';
+signedConfigButton.style.cssText='width:100%;margin:8px 0;padding:12px';
+const updateSignedButtons=()=>{
+  signedButton.textContent=signedComparison?'Signed ± ON · show contours':'Signed ± OFF · show signs';
+  signedConfigButton.textContent=signedComparison?'Signed displacement: ON (blue − / pink +)':'Signed displacement: OFF (contours)';
+};
+const toggleSigned=()=>{signedComparison=!signedComparison;updateSignedButtons();needDraw=true;};
+signedButton.onclick=toggleSigned;signedConfigButton.onclick=toggleSigned;
+$('gMode').parentElement.insertBefore(signedConfigButton,$('gMode').nextSibling);
+updateSignedButtons();
 let showReleasedBoundary=false;
 const boundaryToggle=document.createElement('button');
 boundaryToggle.type='button';
@@ -196,7 +216,7 @@ function initGL(){
 cv.addEventListener('webglcontextlost',e=>{ e.preventDefault(); gl=null; });
 cv.addEventListener('webglcontextrestored',()=>{ initGL(); needDraw=true; });
 function shade(u,v,gr,px,sc){ // the same colours as the shader, on the processor (fallback without WebGL2). gr: |∇u| per cell
-  const a=u*cfg.view.gain, m=cfg.view.mode, N=sim.N; let r=0.020, g=0.008, b=0.043;
+  const a=u*cfg.view.gain, m=effectiveViewMode(), N=sim.N; let r=0.020, g=0.008, b=0.043;
   const mix=(c,t,w)=>{ r=r+(c[0]-r)*t+w*t*t*t; g=g+(c[1]-g)*t+w*t*t*t; b=b+(c[2]-b)*t+w*t*t*t; };
   if(m==='contours'){ const hi=a>0?[.84,.60,1]:[.50,.42,1], D=cfg.view.levels*cfg.field.amp, s=a/D, gs=gr*cfg.view.gain/D*N/sc, dp=Math.abs(s-Math.floor(s)-.5)/Math.max(gs,1e-6);
     const x=Math.max(0,Math.min(1,(dp-px*.55)/px)), line=1-x*x*(3-2*x), k=(1-Math.exp(-Math.abs(a)*1.2))*.14+Math.exp(-dp/(px*4))*.30;
@@ -236,7 +256,7 @@ function draw(){
     gl.uniform1i(U.uF,0); gl.uniform2f(U.uRes,Wp,Hp); gl.uniform3f(U.uCam,view.x,view.y,sc);
     gl.uniform1f(U.uN,sim.N); gl.uniform1f(U.uPad,sim.pad); gl.uniform1f(U.uGain,cfg.view.gain); gl.uniform1f(U.uDelta,cfg.view.levels*cfg.field.amp);
     gl.uniform1f(U.uRefG,refG); gl.uniform1f(U.uRefE,refE); gl.uniform1f(U.uC,sim.c); gl.uniform1f(U.uPx,rs());
-    gl.uniform1i(U.uMode,MODES.findIndex(m=>m.v===cfg.view.mode)); gl.uniform1i(U.uM,M); gl.uniform1f(U.uRd,sim.disc?sim.Rd:0);
+    gl.uniform1i(U.uMode,MODES.findIndex(m=>m.v===effectiveViewMode())); gl.uniform1i(U.uM,M); gl.uniform1f(U.uRd,sim.disc?sim.Rd:0);
     gl.drawArrays(gl.TRIANGLES,0,3);
   } else if(c2d) draw2D(Wp,Hp,sc);
   drawOverlay(og,Wp,Hp);
@@ -407,7 +427,7 @@ group($('qMode'),MODES.map(m=>({v:m.v,t:m.t})),()=>cfg.view.mode,v=>{ cfg.view.m
 group($('qGain'),[1,2,4,8,16].map(v=>({v,t:v+'×'})),()=>cfg.view.gain,v=>{ cfg.view.gain=v; syncQuick(); needDraw=true; });
 group($('qLev'),[{v:1,t:'A'},{v:0.5,t:'A / 2'},{v:0.25,t:'A / 4'}],()=>cfg.view.levels,v=>{ cfg.view.levels=v; syncQuick(); needDraw=true; });
 group($('qRate'),[0.25,0.5,1,2,4].map(v=>({v,t:v+'×'})),()=>cfg.play.rate,v=>{ cfg.play.rate=v; syncQuick(); });
-function syncQuick(){ syncGroups($('pop')); const c=cfg.view.mode==='contours'; $('qLev').style.display=$('qLevL').style.display=c?'':'none'; }
+function syncQuick(){ syncGroups($('pop')); const c=effectiveViewMode()==='contours'; $('qLev').style.display=$('qLevL').style.display=c?'':'none'; }
 const closePop=()=>{ $('pop').classList.remove('on'); $('bView').classList.remove('on'); };
 $('bView').onclick=()=>{ const on=!$('pop').classList.contains('on'), p=$('pop'); p.classList.toggle('on',on); $('bView').classList.toggle('on',on); syncQuick();
   if(on){ const r=$('panel').getBoundingClientRect(); p.style.left=(r.left+8)+'px'; p.style.width=Math.min(360,r.width-16)+'px'; p.style.maxHeight=Math.max(160,r.height-10)+'px'; } };   // over the instruments, never over the picture
@@ -492,6 +512,7 @@ function syncCfg(light){
 function openCfg(){ setPlaying(false); if(film.on) exitFilm(); closePop(); draft=clone(cfg); paramKey=''; $('cfg').classList.add('on'); $('cfg').firstElementChild.scrollTop=0; syncCfg(); disarm(); }
 $('bSetup').onclick=openCfg;
 $('start').onclick=()=>{
+  signedComparison=false;updateSignedButtons();
   cfg=clone(draft); try{ localStorage.setItem('brl.last',JSON.stringify(diff(cfg))); }catch(_){}
   $('cfg').classList.remove('on'); started=true; view.x=view.y=0; view.z=1;
   build(); syncQuick(); writeHash(); arm();
