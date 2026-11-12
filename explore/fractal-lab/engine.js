@@ -46,7 +46,7 @@ const modeOf=v=>MODES.find(m=>m.v===v)||MODES[0];
 const SEEDS=[['Rabbit',-0.122561166876654,0.744861766619744],['Basilica',-1,0],['Dendrite',0,1],['Siegel disk',-0.390540870218399,-0.586787907346969],
   ['Cauliflower',0.25,0],['Airplane',-1.754877666246693,0],['Spiral',-0.8,0.156],['Galaxy',0.285,0.01],['Seahorse',-0.745,0.113],['Dust',0.3,0.5]];
 const DEFAULTS={fractal:'mandelbrot', power:3, seed:{re:SEEDS[0][1],im:SEEDS[0][2]}, mode:'escape', panels:['escape','sens','gradt','flat'],
-  depth:0, palette:'classic', iter:0, radius:16, clean:false};
+  depth:0, palette:'classic', iter:0, radius:16, clean:false, contours:true, contourLevels:8, contourOpacity:70, contourColor:'white'};
 const clone=c=>({...c, seed:{...c.seed}, panels:[...c.panels]});
 let cfg=clone(DEFAULTS), started=false;
 const SUP={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
@@ -292,8 +292,51 @@ function paint(L,mode){
     for(let i=0;i<N;i++){ const v=get(i); if(v!==v){ o[i]=T[i]===NO?BLACK:floor; continue; } const t=(v-rng[0])*k; o[i]=Q[t<0?0:t>1023?1023:t|0]; }
     L.rng[mode]=rng;
   }
-  const c=document.createElement('canvas'); c.width=W; c.height=H; c.getContext('2d').putImageData(img,0,0); return c;
+  const c=document.createElement('canvas'); c.width=W; c.height=H; c.getContext('2d').putImageData(img,0,0); if(mode==='potential')drawGreenContours(c,L); return c;
 }
+
+function drawGreenContours(canvas,L){
+  if(!cfg.contours)return;
+  const {W,H,T,F,pw}=L, N=W*H, v=new Float64Array(N), samples=[];
+  const lp=Math.log(pw), offset=Math.log(Math.LN2);
+  for(let i=0;i<N;i++){
+    v[i]=T[i]===NO?NaN:offset+(1-F[i]-T[i])*lp;
+    if(Number.isFinite(v[i]))samples.push(v[i]);
+  }
+  if(samples.length<8)return;
+  samples.sort((a,b)=>a-b);
+  const low=samples[Math.floor(samples.length*.02)], high=samples[Math.floor(samples.length*.98)];
+  if(!(high>low))return;
+  const ctx=canvas.getContext('2d');
+  ctx.save();ctx.strokeStyle=cfg.contourColor==='black'?'#000':cfg.contourColor==='colored'?'#50e5de':'#fff';
+  ctx.globalAlpha=cfg.contourOpacity/100;ctx.lineWidth=1;
+  for(let k=1;k<=cfg.contourLevels;k++){
+    const level=low+(high-low)*k/(cfg.contourLevels+1);
+    ctx.beginPath();
+    for(let y=0;y<H-1;y++)for(let x=0;x<W-1;x++){
+      const i=y*W+x, a=[v[i],v[i+1],v[i+W+1],v[i+W]];
+      if(!a.every(Number.isFinite))continue;
+      const p=[[x,y],[x+1,y],[x+1,y+1],[x,y+1]], cross=[];
+      for(let j=0;j<4;j++){
+        const t=(j+1)%4;
+        if((a[j]<level)===(a[t]<level))continue;
+        const f=(level-a[j])/(a[t]-a[j]);
+        cross.push([p[j][0]+f*(p[t][0]-p[j][0]),p[j][1]+f*(p[t][1]-p[j][1]),j]);
+      }
+      const line=(a,b)=>{ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);};
+      if(cross.length===2)line(cross[0],cross[1]);
+      else if(cross.length===4){
+        const mid=(a[0]+a[1]+a[2]+a[3])/4;
+        const edge=j=>cross.find(q=>q[2]===j);
+        if((a[0]>=level)===(mid>=level)){line(edge(0),edge(1));line(edge(2),edge(3));}
+        else{line(edge(0),edge(3));line(edge(1),edge(2));}
+      }
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 const shown=()=>cmp()?cfg.panels:[cfg.mode];
 function paintLayer(L){ L.imgs=shown().map((m,k)=>paint(L,m) || L.imgs[k] || paint(L,'escape')); }
 function repaint(){ if(home) paintLayer(home); if(base) paintLayer(base); needDraw=true; }
