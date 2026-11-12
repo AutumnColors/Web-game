@@ -154,10 +154,11 @@ function group(el,items,get,set){
 function syncGroups(root){ root.querySelectorAll('.grp').forEach(g=>[...g.children].forEach(b=>b.classList.toggle('on',b._v===g._get()))); }
 group($('qMode'),MODES,()=>cfg.mode,v=>setMode(v));
 group($('qPal'),Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t})),()=>cfg.palette,v=>setPalette(v));
-function syncQuick(){ syncGroups($('pop')); $('qClean').classList.toggle('on',cfg.clean); }
+function syncQuick(){ syncGroups($('pop')); $('qClean').classList.toggle('on',cfg.clean); $('qContours').classList.toggle('on',cfg.contours); }
 const closePop=()=>{ $('pop').classList.remove('on'); $('bView').classList.remove('on'); };
 $('bView').onclick=()=>{ const on=!$('pop').classList.contains('on'); $('pop').classList.toggle('on',on); $('bView').classList.toggle('on',on); syncQuick(); };
 $('qClean').onclick=()=>setClean(!cfg.clean);
+$('qContours').onclick=()=>{cfg.contours=!cfg.contours;syncContourSettings(cfg);repaint();syncQuick();writeHash();};
 $('bHome').onclick=()=>{ closePop(); release(true); };
 $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(); };
 
@@ -165,7 +166,7 @@ $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(
 function applyConfig(next,cam){
   const world=!started || next.fractal!==cfg.fractal || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im));
   const numeric=next.radius!==cfg.radius || next.iter!==cfg.iter;
-  cfg=clone(next); eng=engineOf(cfg); started=true;
+  cfg=clone(next); eng=engineOf(cfg); started=true; syncContourSettings(cfg);
   document.body.classList.toggle('cmp',cmp()); document.body.classList.toggle('clean',cfg.clean);
   fitHome();
   if(world){ pin=null; sections=[]; secSel=-1; closeSec(); base=null; back=null; rotAnim=null; glide=null; lastMin=0; boost=1; stats=null; Object.assign(view,HOME); }
@@ -185,6 +186,19 @@ group($('gPal'),Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t})),()=>draft.pa
 group($('gIter'),[{v:0,t:'Auto'},{v:400,t:'400'},{v:1600,t:'1,600'},{v:6400,t:'6,400'},{v:25600,t:'25,600'}],()=>draft.iter,v=>{ draft.iter=v; syncCfg(); });
 group($('gRad'),[{v:2,t:'2'},{v:16,t:'16'}],()=>draft.radius,v=>{ draft.radius=v; syncCfg(); });
 $('gClean').onclick=()=>{ draft.clean=!draft.clean; syncCfg(); };
+function syncContourSettings(c){
+  $('contourOn').checked=c.contours;
+  $('contourLevels').value=c.contourLevels;
+  $('contourOpacity').value=c.contourOpacity;
+  $('contourColor').value=c.contourColor;
+  $('contourLevelsOut').textContent=c.contourLevels;
+  $('contourOpacityOut').textContent=c.contourOpacity+'%';
+}
+$('contourOn').onchange=()=>{draft.contours=$('contourOn').checked;syncContourSettings(draft);};
+$('contourLevels').oninput=()=>{draft.contourLevels=+$('contourLevels').value;syncContourSettings(draft);};
+$('contourOpacity').oninput=()=>{draft.contourOpacity=+$('contourOpacity').value;syncContourSettings(draft);};
+$('contourColor').onchange=()=>{draft.contourColor=$('contourColor').value;syncContourSettings(draft);};
+syncContourSettings(draft);
 SEEDS.forEach(([name,re,im])=>{ const b=document.createElement('button'); b.type='button'; b.textContent=name; b.onclick=()=>{ draft.seed={re,im}; $('cin').value=cText(re,im,15).replace(/−/g,'-'); $('cin').classList.remove('bad'); thumbs(); }; $('seeds').append(b); });
 function parseC(s){ // "−0.8 + 0.156i", "-0.8, 0.156", "i", "-0.5i", "0.25"
   s=String(s).trim().replace(/[−–—]/g,'-').replace(/^c\s*=\s*/i,'').replace(/\*/g,'').replace(/j/gi,'i');
@@ -223,7 +237,7 @@ function snapshot(){ // everything needed to reproduce this frame
   const a=view.a*180/Math.PI;
   return {viewer:'Fractal Universe Lab', version:1,
     config:{fractal:cfg.fractal, rule:asciiRule(), power:eng.pw, seed:cfg.fractal==='julia'?{...cfg.seed}:null, measurement:cfg.mode, panels:cmp()?[...cfg.panels]:null,
-      palette:cfg.palette, iterations:{mode:cfg.iter?'fixed':'auto', limit:itFor(view.w)}, escapeRadius:Math.sqrt(eng.R2), maxDepth:cfg.depth||null, cleanView:cfg.clean},
+      palette:cfg.palette, contours:{show:cfg.contours,levels:cfg.contourLevels,opacity:cfg.contourOpacity,color:cfg.contourColor}, iterations:{mode:cfg.iter?'fixed':'auto', limit:itFor(view.w)}, escapeRadius:Math.sqrt(eng.R2), maxDepth:cfg.depth||null, cleanView:cfg.clean},
     camera:{centre:{re:view.cx, im:view.cy}, width:view.w, cameraAngleDeg:a, planeTurnDeg:-a, depth:depthOf(view.w), homeWidth:HOME.w},
     render: stats ? {width:stats.W, height:stats.H, pixelSize:stats.pix, escaped:stats.esc, pixels:stats.N, Tmin:stats.esc?stats.tmin:null, Tmax:stats.esc?stats.tmax:null,
       r_T_S:isFinite(stats.rTS)?stats.rTS:null, r_T_stretchRate:isFinite(stats.rTR)?stats.rTR:null, neighboursSkippingABand:stats.multi} : null,
@@ -272,7 +286,7 @@ let hashT=0;
 function writeHash(){
   if(!started) return; clearTimeout(hashT);
   hashT=setTimeout(()=>{
-    const q={f:cfg.fractal, m:cfg.mode, pal:cfg.palette, it:cfg.iter, R:cfg.radius, d:cfg.depth, x:view.cx, y:view.cy, w:view.w, r:+(view.a*180/Math.PI).toFixed(4)};
+    const q={f:cfg.fractal, m:cfg.mode, pal:cfg.palette, it:cfg.iter, R:cfg.radius, d:cfg.depth, x:view.cx, y:view.cy, w:view.w, r:+(view.a*180/Math.PI).toFixed(4), co:+cfg.contours, cn:cfg.contourLevels, ca:cfg.contourOpacity, cc:cfg.contourColor};
     if(cfg.fractal==='multibrot') q.n=cfg.power; if(cfg.fractal==='julia') q.c=cfg.seed.re+','+cfg.seed.im;
     if(cmp()) q.ps=cfg.panels.join('.'); if(cfg.clean) q.clean=1;
     try{ history.replaceState(null,'','#'+Object.entries(q).map(([k,v])=>k+'='+v).join('&')); }catch(_){}
@@ -287,6 +301,10 @@ function readHash(){
   if(+q.n>=3 && +q.n<=8) c.power=Math.round(+q.n);
   if(q.c){ const s=parseC(q.c); if(s) c.seed=s; }
   if(q.ps){ const ps=q.ps.split('.'); if(ps.length===4 && ps.every(p=>MODES.some(m=>m.v===p&&p!=='compare'))) c.panels=ps; }
+  if(q.co!==undefined)c.contours=q.co==='1';
+  if(+q.cn>=1&&+q.cn<=20)c.contourLevels=+q.cn;
+  if(q.ca!==undefined&&+q.ca>=0&&+q.ca<=100)c.contourOpacity=+q.ca;
+  if(['white','black','colored'].includes(q.cc))c.contourColor=q.cc;
   c.clean=q.clean==='1';
   const cam= isFinite(+q.x)&&isFinite(+q.y)&&+q.w>0 ? {cx:+q.x, cy:+q.y, w:+q.w, a:(+q.r||0)*Math.PI/180} : null;
   return {c,cam};
@@ -364,6 +382,7 @@ function fromMeta(m){
     const k=m.config||{}; if(FRACTALS.some(f=>f.v===k.fractal)) c.fractal=k.fractal;
     if(k.fractal==='multibrot' && k.power>=3 && k.power<=8) c.power=k.power; if(k.seed) c.seed={re:+k.seed.re,im:+k.seed.im};
     if(MODES.some(x=>x.v===k.measurement)) c.mode=k.measurement; if(Array.isArray(k.panels)&&k.panels.length===4) c.panels=k.panels;
+    if(k.contours){c.contours=!!k.contours.show;c.contourLevels=Math.max(1,Math.min(20,+k.contours.levels||8));c.contourOpacity=Math.max(0,Math.min(100,+k.contours.opacity));if(['white','black','colored'].includes(k.contours.color))c.contourColor=k.contours.color;}
     if(PALETTES[k.palette]) c.palette=k.palette; if(k.iterations&&k.iterations.mode==='fixed') c.iter=k.iterations.limit;
     c.radius=k.escapeRadius<4?2:16; c.depth=k.maxDepth||0;
     return {c,cam:{cx:m.camera.centre.re, cy:m.camera.centre.im, w:m.camera.width, a:m.camera.cameraAngleDeg*Math.PI/180}};
