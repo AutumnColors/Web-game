@@ -403,6 +403,7 @@ let paramKey='';
 function syncCfg(light){
   syncGroups($('cfg'));
   const g=draft.geom, f=draft.field, built=G.build(g), lib=G.LIBRARY.find(l=>l.v===g.type);
+  const awaitingFractalSeed=g.type==='combination';
   // only the parameters this shape and this field really have
   const gp=lib.params.filter(p=>!G.PARAMS[p].when||G.PARAMS[p].when(g)).concat(['x','y']);
   const wave=['standing','inward','outward','plane'].includes(f.kind);
@@ -443,7 +444,10 @@ function syncCfg(light){
     +(wave?' One wavelength spans '+cells.toFixed(1)+' cells'+(cells<10?' — <b style="color:#ffb46b">too few: expect visible numerical dispersion. Raise the grid or lower the density.</b>':'.'):'')
     +' The time step is fixed; playback speed only changes how many steps are shown per second.';
   $('filmT').textContent='Film Session: '+(draft.film?'on':'off'); $('filmT').classList.toggle('on',draft.film); $('filmT').setAttribute('aria-pressed',draft.film);
-  $('start').textContent=started?'Start new':'Start';
+  $('start').textContent=awaitingFractalSeed?'Awaiting starting positions':started?'Start new':'Start';
+  $('start').disabled=awaitingFractalSeed;
+  $('start').title=awaitingFractalSeed?'Combination is ready for the next step: computed fractal seeds and wave field.':'';
+  if(awaitingFractalSeed) $('symCfg').innerHTML='<tr><td>Combination</td><td>Fractal research extension point. Next step: specify exponent, orbit seed, complex-plane camera, computed boundary mask and wave field. No artificial waves or placeholder circle will be simulated.</td></tr>';
   $('resume').style.display=started?'':'none';
   let last=null; try{ last=localStorage.getItem('brl.last'); }catch(_){}
   $('useLast').style.display=last&&last!==JSON.stringify(diff(draft))?'':'none';
