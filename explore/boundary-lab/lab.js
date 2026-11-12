@@ -239,6 +239,23 @@ function drawOverlay(g,Wp,Hp){
   const sc=Math.min(Wp,Hp)*view.z, X=x=>Wp/2+(x-view.x)*sc, Y=y=>Hp/2-(y-view.y)*sc, d=rs();
   if(sim.disc){ g.beginPath(); g.arc(X(0),Y(0),sim.Rd*sc,0,7); g.strokeStyle='rgba(215,190,255,.28)'; g.lineWidth=d; g.stroke(); }
   if(!sim.hasObstacle) return;
+  if(geom.mask){
+    const n=geom.maskN, mask=geom.mask;
+    if(!geom._wallCanvas){
+      const make=(edge)=>{const c=document.createElement('canvas');c.width=c.height=n;
+        const ctx=c.getContext('2d'),img=ctx.createImageData(n,n);
+        for(let j=0;j<n;j++)for(let i=0;i<n;i++){const q=j*n+i,v=mask[q],boundary=i>0&&i<n-1&&j>0&&j<n-1&&(v!==mask[q-1]||v!==mask[q+1]||v!==mask[q-n]||v!==mask[q+n]);
+          const k=q*4;if(edge?boundary:v){img.data[k]=edge?220:15;img.data[k+1]=edge?180:8;img.data[k+2]=edge?255:30;img.data[k+3]=edge?185:245;}}
+        ctx.putImageData(img,0,0);return c;};
+      geom._wallCanvas=make(false);geom._edgeCanvas=make(true);
+    }
+    const size=sc, xx=X(-0.5),yy=Y(0.5);
+    g.imageSmoothingEnabled=false;
+    if(!sim.released)g.drawImage(geom._wallCanvas,xx,yy,size,size);
+    g.globalAlpha=sim.released?0.45:0.95;
+    g.drawImage(geom._edgeCanvas,xx,yy,size,size);g.globalAlpha=1;
+    return;
+  }
   g.beginPath(); geom.paths.forEach(p=>{ p.forEach((q,i)=>i?g.lineTo(X(q[0]),Y(q[1])):g.moveTo(X(q[0]),Y(q[1]))); g.closePath(); });
   g.lineJoin='round';
   if(!sim.released){
@@ -366,6 +383,10 @@ function slider(el,o){
 }
 function thumb(c,g){ // the obstacle alone, in the domain square
   const x=c.getContext('2d'), n=c.width, o=G.build(g); x.clearRect(0,0,n,n); x.fillStyle='#07030e'; x.fillRect(0,0,n,n);
+  if(o.mask){const N=o.maskN,im=x.createImageData(n,n);
+    for(let j=0;j<n;j++)for(let i=0;i<n;i++){const sx=Math.min(N-1,Math.floor((i+0.5)*N/n)),sy=Math.min(N-1,Math.floor((j+0.5)*N/n)),q=(j*n+i)*4;
+      if(o.mask[sy*N+sx]){im.data[q]=115;im.data[q+1]=70;im.data[q+2]=175;im.data[q+3]=255;}}
+    x.putImageData(im,0,0);return;}
   x.beginPath(); o.paths.forEach(p=>{ p.forEach((q,i)=>{ const a=(q[0]+0.5)*n, b=(0.5-q[1])*n; i?x.lineTo(a,b):x.moveTo(a,b); }); x.closePath(); });
   x.fillStyle='rgba(185,140,255,.2)'; x.fill('evenodd'); x.strokeStyle='#cba6ff'; x.lineWidth=2; x.lineJoin='round'; x.stroke();
 }
