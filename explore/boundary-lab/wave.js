@@ -106,7 +106,7 @@ Sim.prototype={
         }
         this.kind[q]=kd;
         if(kd===0 && e<=0){
-          const d=F.follow==='radial'?Math.hypot(x-gx,y-gy)-R0:sd, w=fieldAt(F,this.c,x,y,d), env=F.taper>0?smooth(0,F.taper,-e):1;
+          const d=F.follow==='radial'?Math.hypot(x-gx,y-gy)-R0:sd, w=geom.initialField?[F.amp*geom.initialField(x,y,sd),0]:fieldAt(F,this.c,x,y,d), env=F.taper>0?smooth(0,F.taper,-e):1;
           u[q]=w[0]*env; v[q]=w[1]*env;
         }
       } }
