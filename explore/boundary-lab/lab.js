@@ -131,6 +131,14 @@ function drawMarks(){ const el=$('marks'); el.innerHTML='';
 
 /* ---------- field renderer: WebGL2 (bicubic sampling of the grid, colour computed per pixel) ---------- */
 const stage=$('stage'), ov=$('ov'), og=ov.getContext('2d');
+let showReleasedBoundary=false;
+const boundaryToggle=document.createElement('button');
+boundaryToggle.type='button';
+boundaryToggle.textContent='Show old boundary';
+boundaryToggle.title='Optional reference overlay; never changes the wave simulation';
+boundaryToggle.style.cssText='position:absolute;right:12px;bottom:12px;z-index:20;background:#17102bdc;color:#e9d8ff;border:1px solid #8165ad;border-radius:9px;padding:9px 12px;font:12px system-ui;cursor:pointer;display:none';
+stage.appendChild(boundaryToggle);
+boundaryToggle.onclick=()=>{showReleasedBoundary=!showReleasedBoundary;boundaryToggle.textContent=showReleasedBoundary?'Hide old boundary':'Show old boundary';needDraw=true;};
 let cv=$('gl'), gl=null, U=null, tex=null, texM=0, fbuf=null, c2d=null, off=null, offImg=null;
 const FRAG=`#version 300 es
 precision highp float;
@@ -238,7 +246,8 @@ function drawOverlay(g,Wp,Hp){
   g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,Wp,Hp);
   const sc=Math.min(Wp,Hp)*view.z, X=x=>Wp/2+(x-view.x)*sc, Y=y=>Hp/2-(y-view.y)*sc, d=rs();
   if(sim.disc){ g.beginPath(); g.arc(X(0),Y(0),sim.Rd*sc,0,7); g.strokeStyle='rgba(215,190,255,.28)'; g.lineWidth=d; g.stroke(); }
-  if(!sim.hasObstacle) return;
+  boundaryToggle.style.display=geom.mask&&sim.released?'block':'none';
+  if(!sim.hasObstacle && !(geom.mask&&sim.released&&showReleasedBoundary)) return;
   if(geom.mask){
     const n=geom.maskN, mask=geom.mask;
     if(!geom._wallCanvas){
@@ -252,8 +261,10 @@ function drawOverlay(g,Wp,Hp){
     const size=sc, xx=X(-0.5),yy=Y(0.5);
     g.imageSmoothingEnabled=false;
     if(!sim.released)g.drawImage(geom._wallCanvas,xx,yy,size,size);
-    g.globalAlpha=sim.released?0.45:0.95;
-    g.drawImage(geom._edgeCanvas,xx,yy,size,size);g.globalAlpha=1;
+    if(!sim.released||showReleasedBoundary){
+      g.globalAlpha=sim.released?0.45:0.95;
+      g.drawImage(geom._edgeCanvas,xx,yy,size,size);g.globalAlpha=1;
+    }
     return;
   }
   g.beginPath(); geom.paths.forEach(p=>{ p.forEach((q,i)=>i?g.lineTo(X(q[0]),Y(q[1])):g.moveTo(X(q[0]),Y(q[1]))); g.closePath(); });
