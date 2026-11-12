@@ -129,7 +129,7 @@ td i{font-style:normal;color:#8d8d95;font-family:system-ui,sans-serif;font-size:
   <div class="lbl">Measurement</div>
   <div class="list grp" id="qMode"></div>
   <div class="lbl">Colour</div>
-  <div class="seg grp" id="qPal"></div>
+  <div class="seg grp" id="qPal"></div><button class="opt" id="qContours" type="button"><b>Equipotential lines</b><small>Toggle contour overlay</small></button>
   <div class="lbl">View</div>
   <button class="opt" id="qClean" type="button"><b>Clean view</b><small>Only the image. Press and hold the map to bring the tools back.</small></button>
 </div>
@@ -157,6 +157,17 @@ td i{font-style:normal;color:#8d8d95;font-family:system-ui,sans-serif;font-size:
 
     <h2>2 · Measurement</h2>
     <div class="grid2 grp" id="gMode"></div>
+    <div class="params" id="greenContourSettings">
+      <div class="lbl">Green potential contour lines</div>
+      <label><input type="checkbox" id="contourOn" checked> Show lines</label>
+      <div class="lbl">Levels: <output id="contourLevelsOut">8</output></div>
+      <input type="range" min="1" max="20" value="8" id="contourLevels" style="width:100%">
+      <div class="lbl">Opacity: <output id="contourOpacityOut">70%</output></div>
+      <input type="range" min="0" max="100" step="5" value="70" id="contourOpacity" style="width:100%">
+      <div class="lbl">Line color</div>
+      <select id="contourColor"><option value="white">White</option><option value="black">Black</option><option value="colored">Cyan</option></select>
+      <div class="note">Logarithmically spaced estimated Green-potential contours, calculated with marching squares.</div>
+    </div>
 
     <h2>3 · Maximum zoom depth</h2>
     <div class="seg grp" id="gDepth"></div>
