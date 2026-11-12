@@ -45,6 +45,9 @@ const PRESETS=[
   {v:'pair',     t:'Two circles',       s:'two separate obstacles', patch:{geom:{type:'pair',size:0.13,sep:0.4}}},
   {v:'box',      t:'Square box',        s:'the edge breaks the symmetry', patch:{phys:{domain:'square'}}},
   {v:'open',     t:'Open space',        s:'what leaves never returns', patch:{phys:{outer:'absorb'}}},
+  {v:'combination',t:'Combination · Mandelbrot',s:'computed escape contours → release',patch:{geom:{type:'combination',variant:0},num:{N:256}}},
+  {v:'valley',t:'Mandelbrot · valley',s:'screenshot A · actual orbit contours',patch:{geom:{type:'combination',variant:1}}},
+  {v:'branches',t:'Mandelbrot · branches',s:'screenshot B · actual orbit contours',patch:{geom:{type:'combination',variant:2}}},
   {v:'pulse',    t:'One pulse',         s:'a single ring moving inward', patch:{field:{kind:'pulse'}}}
 ];
 const MODES=[
@@ -424,7 +427,9 @@ function syncCfg(light){
     const pr=$('pRel'); pr.innerHTML='';
     if(draft.release.mode==='gradual') slider(pr,{t:'Duration',min:0.05,max:1,step:0.05,fmt:v=>v.toFixed(2)+' time units',get:()=>draft.release.duration,set:v=>draft.release.duration=v});
   }
-  $('gFollow').style.display=$('gFollow').previousElementSibling.style.display=(f.kind==='gauss'||f.kind==='plane')?'none':'';
+  $('gFollow').style.display=$('gFollow').previousElementSibling.style.display=(awaitingFractalSeed||f.kind==='gauss'||f.kind==='plane')?'none':'';
+  $('gField').style.display=awaitingFractalSeed?'none':'';
+  $('pField').style.display=awaitingFractalSeed?'none':'';
   $('gAt').style.display=$('gAt').previousElementSibling.style.display=draft.release.mode==='none'?'none':'';
   // thumbnails
   LIB.forEach(l=>thumb(l.cv,Object.assign({},G.DEFAULT_GEOM,l.v===g.type?g:{type:l.v,size:l.v==='pair'?0.13:0.32,n:l.v==='star'?5:3,x:0,y:0})));
@@ -435,7 +440,7 @@ function syncCfg(light){
     +(built.exact?'':'<tr><td>Distance field</td><td><i>The outline is exact; distances away from it are a first-order approximation. Contours that follow this boundary are therefore approximate offsets.</i></td></tr>');
   const dx=1/draft.num.N, lim=W.LIMIT[draft.num.stencil], C=Math.min(draft.num.courant,0.95*lim), cells=draft.num.N/f.density;
   $('sGeom').textContent=built.name+' · '+s.group;
-  $('sField').textContent=W.FIELDS.find(x=>x.v===f.kind).t+(wave?' · density '+f.density:'');
+  $('sField').textContent=awaitingFractalSeed?'Mandelbrot escape contours · initial velocity 0':W.FIELDS.find(x=>x.v===f.kind).t+(wave?' · density '+f.density:'');
   $('sPhys').textContent='c = '+draft.phys.c.toFixed(2)+' · '+({wide:'wide circular',disc:'circular',square:'square'})[draft.phys.domain]+', '+draft.phys.outer+' edge';
   $('sRel').textContent=({instant:'Instant',gradual:'Gradual, '+draft.release.duration.toFixed(2),none:'Permanent obstacle'})[draft.release.mode]+(draft.release.mode!=='none'&&draft.release.at>=0?' at t = '+draft.release.at:'');
   $('sVis').textContent=MODES.find(m=>m.v===draft.view.mode).t;
@@ -444,10 +449,10 @@ function syncCfg(light){
     +(wave?' One wavelength spans '+cells.toFixed(1)+' cells'+(cells<10?' — <b style="color:#ffb46b">too few: expect visible numerical dispersion. Raise the grid or lower the density.</b>':'.'):'')
     +' The time step is fixed; playback speed only changes how many steps are shown per second.';
   $('filmT').textContent='Film Session: '+(draft.film?'on':'off'); $('filmT').classList.toggle('on',draft.film); $('filmT').setAttribute('aria-pressed',draft.film);
-  $('start').textContent=awaitingFractalSeed?'Awaiting starting positions':started?'Start new':'Start';
-  $('start').disabled=awaitingFractalSeed;
-  $('start').title=awaitingFractalSeed?'Combination is ready for the next step: computed fractal seeds and wave field.':'';
-  if(awaitingFractalSeed) $('symCfg').innerHTML='<tr><td>Combination</td><td>Fractal research extension point. Next step: specify exponent, orbit seed, complex-plane camera, computed boundary mask and wave field. No artificial waves or placeholder circle will be simulated.</td></tr>';
+  $('start').textContent=started?'Start new':'Start';
+  $('start').disabled=false;
+  $('start').title='';
+  if(awaitingFractalSeed) $('symCfg').innerHTML+='<tr><td>Initial field</td><td>Computed Mandelbrot smooth escape-time contours, sampled from a precomputed 160² grid. Zero initial velocity. After release, a separate scalar wave equation evolves the displacement. This is not fluid dynamics and escape contours are not physical waves.</td></tr>';
   $('resume').style.display=started?'':'none';
   let last=null; try{ last=localStorage.getItem('brl.last'); }catch(_){}
   $('useLast').style.display=last&&last!==JSON.stringify(diff(draft))?'':'none';
