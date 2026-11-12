@@ -16,7 +16,8 @@ const LIBRARY=[
   {v:'polygon',  t:'Regular polygon', params:['n','size','round','rot']},
   {v:'rect',     t:'Rectangle',       params:['size','aspect','round','rot']},
   {v:'star',     t:'Star',            params:['n','size','depth','rot']},
-  {v:'pair',     t:'Two circles',     params:['size','sep','rot']}
+  {v:'pair',     t:'Two circles',     params:['size','sep','rot']},
+  {v:'combination', t:'Combination · fractal research', params:[]}
 ];
 // slider ranges; `when` hides a control that would do nothing
 const PARAMS={
@@ -80,6 +81,15 @@ function build(g){
   const R=g.size, rot=g.rot*Math.PI/180, cr=Math.cos(rot), sr=Math.sin(rot);
   let f, exact=true, paths, sym, name, formula='';
   switch(g.type){
+    case 'combination': {
+      // Research extension point. No fractal seeds or boundary data have been defined yet.
+      // Deliberately do not substitute a circle or fabricate a fractal mask.
+      f=()=>1; paths=[]; exact=false;
+      sym={group:'undetermined',order:null,continuous:false,text:'awaiting a computed fractal boundary and field'};
+      name='Combination · fractal research';
+      formula='No initial positions or fractal field supplied yet';
+      break;
+    }
     case 'ellipse': { const a=R, b=R*g.aspect;
       if(g.aspect>=0.999){ f=(x,y)=>Math.hypot(x,y)-R; sym=O2; }
       else { f=curveSDF((t,o)=>{ const c=Math.cos(t), s=Math.sin(t); o[0]=a*c; o[1]=b*s; o[2]=-a*s; o[3]=b*c; o[4]=-a*c; o[5]=-b*s; },
