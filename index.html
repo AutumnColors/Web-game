@@ -31,27 +31,7 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
 </head>
 <body>
 <main>
-  <h1>Games</h1>
-  <p class="sub">Pick a level.</p>
-  <ol class="levels" id="levels"></ol>
-  <h2 class="sec">Explore</h2>
-  <p class="sub">Interactive math. No score, just play with it.</p>
-  <ul class="levels" id="explore"></ul>
-  <h3 class="sec subsec">Explore › Groups</h3>
-  <p class="sub">Viewers for groups, from the 8 symmetries of a square to M₂₄ and the periodic table of simple groups.</p>
-  <ul class="levels" id="groups"></ul>
-  <h2 class="sec">World</h2>
-  <p class="sub">One world map, many layers. Tap a country to see its numbers.</p>
-  <ul class="levels" id="world"></ul>
-  <h2 class="sec">Sketches</h2>
-  <p class="sub">Drawings from the sketchbook, rebuilt in 3D. Drag to turn them.</p>
-  <ul class="levels" id="sketches"></ul>
-  <h2 class="sec">Research</h2>
-  <p class="sub">Investigations of the Mandelbrot map. Every picture is computed live on your device.</p>
-  <ul class="levels" id="research"></ul>
-  <h2 class="sec">Music</h2>
-  <p class="sub">Symmetry you can hear. Press play.</p>
-  <ul class="levels" id="music"></ul>
+  <h1>Games & Labs</h1><p class="sub">Latest GitHub HTML updates first.</p><p class="sub" id="status">Loading timestamps…</p><ol class="levels" id="recent"></ol>
   <div class="foot"><button class="reset" id="reset" type="button">Reset progress</button></div>
 </main>
 <script src="shared/progress.js"></script>
@@ -64,55 +44,52 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
 <script src="research.js"></script>
 <script>
 'use strict';
-function card(href,badge,badgeClass,title,metaHtml,extraClass){
-  const li=document.createElement('li');
-  const a=document.createElement('a');
-  a.className='level'+(extraClass||'');
-  a.href=href;
-  a.innerHTML=`<span class="num${badgeClass}"></span><span class="info"><div class="title"></div></span><span class="meta">${metaHtml}</span>`;
-  a.querySelector('.num').textContent=badge;
-  a.querySelector('.title').textContent=title;
-  li.append(a);return li;
+const repo='AutumnColors/Web-game',cacheKey='html-dates-v1';
+function items(){
+const p=GameKit.get(),out=[];
+function add(arr,category){(arr||[]).forEach((x,i)=>out.push({path:x.path,title:x.title,badge:x.badge||String(i+1),category,done:category==='Games'&&!!p[x.id]?.completed}));}
+add(window.LEVELS,'Games');add(window.EXPLORE,'Explore');add(window.GROUPS,'Groups');
+(window.WORLD_LAYERS||[]).forEach(x=>out.push({path:'world/#layer='+x.id,title:x.title,badge:x.badge,category:'World'}));
+add(window.SKETCHES,'Sketches');add(window.RESEARCH,'Research');add(window.MUSIC,'Music');
+out.push({path:'explore/boundary-lab/',title:'Boundary Lab',badge:'≈',category:'Explore'});
+out.push({path:'boundary-wave-lab.html',title:'Circular Boundary Wave Lab',badge:'◯',category:'Explore'});
+return out;
 }
-function render(){
-  const progress=GameKit.get();
-  const list=document.getElementById('levels');
-  list.replaceChildren();
-  LEVELS.forEach((lv,i)=>{
-    const p=progress[lv.id]||{};
-    const meta=[];
-    if(p.completed)meta.push('<span class="ok">✓ Cleared</span>');
-    if(typeof p.best==='number')meta.push('Best: '+p.best);
-    else if(p.played)meta.push('Played');
-    list.append(card(lv.path,String(i+1),'',lv.title,meta.join('<br>'),p.completed?' done':''));
-  });
-  const ex=document.getElementById('explore');
-  ex.replaceChildren();
-  (window.EXPLORE||[]).forEach(e=>ex.append(card(e.path,e.badge||'?',' badge',e.title,'','')));
-  const gr=document.getElementById('groups');
-  gr.replaceChildren();
-  (window.GROUPS||[]).forEach(e=>gr.append(card(e.path,e.badge||'?',' badge',e.title,'','')));
-  const wo=document.getElementById('world');
-  wo.replaceChildren();
-  (window.WORLD_LAYERS||[]).forEach(l=>wo.append(card('world/#layer='+l.id,l.badge||'?',' badge',l.title,'','')));
-  const sk=document.getElementById('sketches');
-  sk.replaceChildren();
-  (window.SKETCHES||[]).forEach(s=>sk.append(card(s.path,s.badge||'?',' badge',s.title,'','')));
-  const mu=document.getElementById('music');
-  mu.replaceChildren();
-  (window.MUSIC||[]).forEach(m=>mu.append(card(m.path,m.badge||'?',' badge',m.title,'','')));
-  const rs=document.getElementById('research');
-  rs.replaceChildren();
-  (window.RESEARCH||[]).forEach(e=>rs.append(card(e.path,e.badge||'?',' badge',e.title,'','')));
-}
-document.getElementById('reset').addEventListener('click',()=>{
-  if(!confirm('Reset all progress?'))return;
-  try{localStorage.removeItem(GameKit.key)}catch{}
-  render();
+function htmlPath(p){p=p.split('#')[0].split('?')[0];return p.endsWith('/')?p+'index.html':p;}
+function draw(arr){
+const list=document.getElementById('recent');list.replaceChildren();
+arr.forEach(e=>{
+const li=document.createElement('li'),a=document.createElement('a');a.href=e.path;a.className='level'+(e.done?' done':'');
+const num=document.createElement('span');num.className='num badge';num.textContent=e.badge||'•';
+const info=document.createElement('span');info.className='info';
+const title=document.createElement('div');title.className='title';title.textContent=e.title;
+const category=document.createElement('small');category.textContent=e.category;info.append(title,category);
+const meta=document.createElement('span');meta.className='meta';meta.textContent=e.date?new Date(e.date).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'—';
+if(e.done){const ok=document.createElement('div');ok.className='ok';ok.textContent='✓ Cleared';meta.append(ok)}
+a.append(num,info,meta);li.append(a);list.append(li);
 });
-// Re-render when returning via the browser back button (page restored from cache).
-window.addEventListener('pageshow',render);
-render();
+}
+async function render(){
+const arr=items();draw(arr);let cache={};
+try{const v=JSON.parse(localStorage.getItem(cacheKey)||'{}');if(Date.now()-v.time<43200000)cache=v.dates||{}}catch{}
+const paths=[...new Set(arr.map(e=>htmlPath(e.path)))],missing=paths.filter(p=>!(p in cache));
+let index=0,failed=0;
+async function worker(){while(index<missing.length){const path=missing[index++];
+try{const url='https://api.github.com/repos/'+repo+'/commits?sha=main&per_page=1&path='+encodeURIComponent(path);
+const response=await fetch(url,{headers:{Accept:'application/vnd.github+json'}});
+if(!response.ok)throw Error(response.status);
+const commits=await response.json();cache[path]=commits[0]?.commit?.committer?.date||null;
+}catch{failed++}
+}}
+await Promise.all([worker(),worker(),worker()]);
+try{localStorage.setItem(cacheKey,JSON.stringify({time:failed?0:Date.now(),dates:cache}))}catch{}
+arr.forEach(e=>e.date=cache[htmlPath(e.path)]||null);
+arr.sort((a,b)=>(Date.parse(b.date)||0)-(Date.parse(a.date)||0)||a.title.localeCompare(b.title));
+draw(arr);
+document.getElementById('status').textContent=failed?'Sorted by available dates; GitHub rate limits prevented some timestamps.':'Sorted by latest HTML commit on main · newest first';
+}
+document.getElementById('reset').addEventListener('click',()=>{if(!confirm('Reset all progress?'))return;try{localStorage.removeItem(GameKit.key)}catch{}render()});
+window.addEventListener('pageshow',render);render();
 </script>
 </body>
 </html>
