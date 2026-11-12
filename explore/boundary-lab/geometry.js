@@ -117,6 +117,7 @@ function build(g){
       exact=false; sym={group:'not classified',order:null,continuous:false,text:'sampled Mandelbrot escape boundary; no assumed rotational symmetry'};
       name=region.name;formula='z₀=0, zₙ₊₁=zₙ²+c · '+data.maxIter+' iterations · '+N+'² cached samples';
       var fractalInitial=initial;
+      var fractalMask=inside, fractalN=N;
       break;
     }
     case 'ellipse': { const a=R, b=R*g.aspect;
@@ -152,6 +153,8 @@ function build(g){
   return {
     type:g.type, name, formula, exact, symmetry:sym, centre:[g.x,g.y], params:g,
     initialField:typeof fractalInitial==='function'?fractalInitial:null,
+    mask:typeof fractalMask!=='undefined'?fractalMask:null,
+    maskN:typeof fractalN!=='undefined'?fractalN:null,
     sdf:(x,y)=>{ const dx=x-g.x, dy=y-g.y; return f(dx*cr+dy*sr,-dx*sr+dy*cr); },
     paths:paths.map(p=>p.map(world))
   };
