@@ -97,5 +97,12 @@ window.EXPLORE = [
     title: 'Snowflake Group',
     path: 'explore/snowflake/',
     desc: 'The Koch snowflake and its 12 symmetries. Tap a rotation or a mirror to apply it, follow the orange wedge and the product g · h, and pinch into the edge down to 3²² before it drifts back.'
+  },
+  {
+    id: 'logistic-lab',
+    badge: 'rx',
+    title: 'Logistic Map Lab',
+    path: 'explore/logistic-lab/',
+    desc: 'x → r·x(1 − x). Cobwebs, the bifurcation diagram with its Lyapunov exponent, period doubling down to Feigenbaum\'s δ and α, basins on the line and in the complex plane, and an atlas of landmarks and periodic windows.'
   }
 ];

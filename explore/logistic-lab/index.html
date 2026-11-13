@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Logistic Map Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* VOICE everyday research bench, single dark theme to match the Web-game app
+   IDEA a lab notebook: one shared r dial drives five instruments
+   PICTURE the live instrument of each tab drawn large (cobweb, bifurcation, basin map)
+   COLOUR app ink-blue ground, amber for the orbit, one hue per period, phase wheel for basins
+   TYPE Spectral 600 + Atkinson Hyperlegible, JetBrains Mono for numbers
+   LAYOUT sticky r bar, tabs, then instrument left and readouts right; one column on phones */
+:root{--bg:oklch(0.185 0.018 265);--surface:oklch(0.228 0.020 265);--ink:oklch(0.935 0.012 260);--muted:oklch(0.74 0.02 260);--line:oklch(0.335 0.022 265);--accent:#f0a33c;--teal:#3cc8b4;--hot:#ff6b5b;--f-display:"Spectral",Georgia,serif;--f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;--f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);overflow-x:clip}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top{padding-top:14px;padding-bottom:8px;display:grid;gap:6px}
+.back{justify-self:start;padding:7px 12px;border-radius:9px;background:rgba(240,163,60,.14);color:var(--ink);font-weight:700;font-size:14px;text-decoration:none}
+.back:hover{color:var(--accent)}
+h1{font:600 clamp(32px,5vw,48px)/1.05 var(--f-display);letter-spacing:-.02em;margin:6px 0 0}
+.eq{font:15px var(--f-mono);color:var(--muted);margin:0}
+.rbar{position:sticky;top:0;z-index:20;background:color-mix(in oklab,var(--bg) 90%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.rrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding-block:8px}
+.rrow label{font:600 22px var(--f-display)}
+#rS{flex:1 1 220px;accent-color:var(--accent);height:32px}
+#rN{width:9.5em}
+input[type=number],select{font:16px var(--f-mono);padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+select{font:15px var(--f-body)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);font:13px var(--f-mono);white-space:nowrap;background:var(--surface)}
+.sw{width:10px;height:10px;border-radius:50%;flex:none}
+button{font:14px var(--f-body);min-height:36px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.on{background:var(--accent);color:#1d1305;border-color:var(--accent);font-weight:700}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-block:10px}
+.tabs button{border-radius:999px;white-space:nowrap;flex:none}
+main{padding-bottom:40px}
+section[hidden]{display:none}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px;align-content:start}
+.ph{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+h2{font:600 22px/1.15 var(--f-display);margin:0;letter-spacing:-.01em}
+.grid2{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.stack{display:grid;gap:14px;align-content:start}
+@media(min-width:880px){.grid2{grid-template-columns:minmax(0,1.08fr) minmax(0,1fr)}}
+.fig{position:relative;width:100%}
+.fig>canvas,.fig>svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.sq{height:clamp(300px,calc(100vw - 64px),520px)}
+.ts{height:210px}
+.bif{height:clamp(300px,56vh,580px);touch-action:none}
+.ly{height:120px}
+.bm{height:clamp(240px,42vh,420px)}
+.strip{height:66px}
+.cx{height:clamp(280px,calc(100vw - 64px),440px)}
+.mini{height:150px}
+#minis{grid-template-columns:repeat(2,minmax(0,1fr))}
+.lg{height:240px}
+.note{color:var(--muted);font-size:14px;margin:0;max-width:72ch}
+.note b{color:var(--ink)}
+.ctl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.ctl label{display:flex;align-items:center;gap:8px;font-size:14px}
+.ctl input[type=range]{accent-color:var(--accent);width:150px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;min-height:34px;padding:4px 11px;font-family:var(--f-mono)}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5em,1fr));gap:8px}
+.kv>div{border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--bg)}
+.kv small{display:block;color:var(--muted);font-size:13px}
+.kv span{font:15px var(--f-mono)}
+.kv .wide{grid-column:1/-1}
+.kv.nt{grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));font-size:14px}
+.cyc{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font:13px var(--f-mono)}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{font:700 13px var(--f-body);color:var(--muted)}
+td:first-child,th:first-child{text-align:left}
+.hit{color:var(--accent)}
+td button{min-height:30px;padding:2px 10px;font-size:13px}
+.rows{border-top:1px solid var(--line)}
+.rows details{border-bottom:1px solid var(--line)}
+.rows summary{display:grid;grid-template-columns:7.4rem minmax(0,1fr) 5.4rem 5rem;gap:10px;align-items:center;padding:10px 4px;cursor:pointer;list-style:none}
+.rows summary::-webkit-details-marker{display:none}
+.rows summary:hover{background:color-mix(in oklab,var(--accent) 7%,transparent)}
+.rows .hd{display:grid;grid-template-columns:7.4rem minmax(0,1fr) 5.4rem 5rem;gap:10px;padding:8px 4px;color:var(--muted);font-weight:700;font-size:13px}
+.rows details[open] summary{background:color-mix(in oklab,var(--accent) 9%,transparent)}
+.m{font-family:var(--f-mono);font-size:13px}
+.more{padding:4px 4px 14px;display:grid;gap:10px}
+.more p{margin:0;max-width:72ch}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.cen{display:grid;grid-template-columns:4em 5em 6em minmax(0,1fr);gap:10px}
+.rows.c summary,.rows.c .hd{grid-template-columns:4.6rem 4.6rem 5.6rem minmax(0,1fr)}
+.tapr{cursor:pointer}
+.legend{display:flex;flex-wrap:wrap;gap:6px}
+.read{font:13px var(--f-mono);color:var(--muted);margin:0;overflow-wrap:anywhere}
+@media(max-width:600px){.rbar .chip{font-size:12px;padding:2px 8px}.rows summary,.rows .hd{grid-template-columns:6.6rem minmax(0,1fr) 4.4rem}.rows .lam{display:none}.rows.c summary,.rows.c .hd{grid-template-columns:4rem 4.2rem 5.2rem minmax(0,1fr)}table{font-size:12.5px}th,td{padding:6px 5px}.ctl input[type=range]{width:120px}}
+</style>
+</head>
+<body>
+<header class="wrap top">
+  <a class="back" href="../../">← Home</a>
+  <h1>Logistic Map Lab</h1>
+  <p class="eq">x<sub>n+1</sub> = r · x<sub>n</sub> · (1 − x<sub>n</sub>), &nbsp;x ∈ [0, 1], &nbsp;r ∈ [0, 4]</p>
+</header>
+<div class="rbar"><div class="wrap">
+  <div class="rrow">
+    <label for="rS">r</label>
+    <input type="range" id="rS" min="0" max="4" step="0.0001" value="3.2">
+    <input type="number" id="rN" min="0" max="4" step="0.0001" value="3.2" aria-label="r value">
+    <button id="rDn" aria-label="decrease r">−</button><button id="rUp" aria-label="increase r">+</button>
+    <select id="rStep" aria-label="step size"><option value="0.01">0.01</option><option value="0.001" selected>0.001</option><option value="0.0001">0.0001</option><option value="0.00001">0.00001</option></select>
+    <div class="chips" id="chips"></div>
+  </div>
+</div></div>
+<nav class="wrap tabs" id="tabs">
+  <button data-t="orbit">Orbit &amp; cobweb</button>
+  <button data-t="bifurcation">Bifurcation &amp; λ</button>
+  <button data-t="doubling">Period doubling</button>
+  <button data-t="basins">Basins</button>
+  <button data-t="atlas">Atlas grid</button>
+</nav>
+<main class="wrap">
+
+<section id="t-orbit" data-t="orbit">
+<div class="grid2">
+  <div class="panel">
+    <div class="ph"><h2>Cobweb</h2><div class="seg" id="kSeg"><button data-k="1">f</button><button data-k="2">f²</button><button data-k="3">f³</button><button data-k="4">f⁴</button><button data-k="8">f⁸</button></div></div>
+    <div class="fig sq"><canvas id="cob"></canvas></div>
+    <div class="ctl">
+      <label>x₀ <input type="range" id="x0S" min="0" max="1" step="0.001" value="0.2"><span class="m" id="x0V">0.200</span></label>
+      <label>steps <input type="range" id="nS" min="5" max="400" step="1" value="60"><span class="m" id="nV">60</span></label>
+      <button id="anim">Animate</button>
+    </div>
+    <p class="note">Up to the curve, across to the diagonal, repeat. Switch to <b>f²</b> or <b>f⁴</b>: a 2-cycle of f is a fixed point of f². Filled dots on the diagonal are stable fixed points of the chosen iterate, rings are unstable.</p>
+  </div>
+  <div class="stack">
+    <div class="panel">
+      <div class="ph"><h2>Orbit in time</h2><label class="ctl"><input type="checkbox" id="twin" checked> twin orbit at x₀ + 10⁻⁶</label></div>
+      <div class="fig ts"><canvas id="ts"></canvas></div>
+      <p class="read" id="twinR"></p>
+    </div>
+    <div class="panel">
+      <h2>Attractor at this r</h2>
+      <div class="kv" id="kv"></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="t-bifurcation" data-t="bifurcation" hidden>
+<div class="panel">
+  <div class="ph"><h2>Bifurcation diagram</h2>
+    <div class="ctl"><select id="bifP" aria-label="view preset"></select><button id="bifBack">Back</button><button id="bifReset">Reset</button></div></div>
+  <div class="fig bif"><canvas id="bif"></canvas></div>
+  <div class="fig ly"><canvas id="ly"></canvas></div>
+  <p class="read" id="bifR"></p>
+  <div class="kv nt">
+    <div><small>Reading it</small>Each column is one r: the long-run values of x. One line = fixed point, two = 2-cycle. Colour = detected period, white = no period found.</div>
+    <div><small>Lyapunov exponent λ</small>Average of ln|r(1 − 2x)| along the orbit. Below 0 (teal) nearby orbits converge; above 0 (red) they separate: chaos. It touches 0 at every doubling.</div>
+    <div><small>Use it</small>Drag a box to zoom. Tap to set r. Inside the chaos, look for the white stripes that turn into colour: periodic windows, each with its own doubling cascade.</div>
+  </div>
+</div>
+</section>
+
+<section id="t-doubling" data-t="doubling" hidden>
+<div class="grid2">
+  <div class="panel">
+    <h2>Feigenbaum table</h2>
+    <p class="note"><b>rₙ</b>: the 2ⁿ⁻¹-cycle loses stability (multiplier −1) and the 2ⁿ-cycle is born. <b>Rₙ</b>: the 2ⁿ-cycle is superstable (it contains x = ½). Both are solved here by Newton's method, live. Amber digits agree with δ = 4.669201609… and α = 2.502907875….</p>
+    <div class="scroll"><table id="feTab"></table></div>
+    <p class="note">δ = ratio of successive gaps in r. α = ratio of successive distances dₙ = f^(2ⁿ⁻¹)(½) − ½ at Rₙ, with alternating sign. Both are universal: every smooth one-hump map gives the same numbers.</p>
+  </div>
+  <div class="stack">
+    <div class="panel">
+      <h2>Distance to chaos shrinks by δ</h2>
+      <div class="fig lg"><svg id="lg" aria-label="log distance to r infinity against n"></svg></div>
+      <p class="note">log₁₀(r∞ − rₙ) against n is a straight line with slope −log₁₀ δ ≈ −0.669. r∞ ≈ 3.5699456718709.</p>
+    </div>
+    <div class="panel">
+      <h2>Same picture, rescaled</h2>
+      <div class="kv" id="minis"></div>
+      <p class="note">Each panel zooms the previous one by δ in r and by α in x around (r∞, ½), flipped upside down every step because α is negative. The branching repeats.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="t-basins" data-t="basins" hidden>
+<div class="stack">
+<div class="panel">
+  <div class="ph"><h2>Basins on the line</h2><select id="bmP" aria-label="basin range"></select></div>
+  <div class="fig bm"><canvas id="bm"></canvas></div>
+  <div class="fig strip"><canvas id="strip"></canvas></div>
+  <div class="legend" id="leg"></div>
+  <div class="kv nt">
+    <div><small>Map above</small>Horizontal r, vertical starting point x₀. Each pixel is coloured by which point of the attracting cycle its orbit lines up with (its phase), brighter = faster. Grey = chaotic attractor, dark red bands = escape to −∞ (x₀ outside [0, 1]).</div>
+    <div><small>Strip at current r</small>Basins of the p cycle points under fᵖ. Triangles: attracting points. Rings: repelling periodic points. Basin edges sit on repellers and their preimages.</div>
+    <div><small>Why one attractor</small>The logistic map has negative Schwarzian derivative, so it has at most one attracting cycle and x = ½ always falls into it (Singer). On the line the basins differ only in phase.</div>
+  </div>
+</div>
+<div class="grid2">
+  <div class="panel">
+    <h2>Basins in the complex plane</h2>
+    <div class="fig cx"><canvas id="cx"></canvas></div>
+    <p class="note">The same map with complex z at the current r. Coloured: the basin of each cycle point (filled Julia set). Dark blue: escape to ∞. The edge is the Julia set; at r = 4 it shrinks to [0, 1].</p>
+  </div>
+  <div class="panel">
+    <h2>Parameter plane: complex r</h2>
+    <div class="fig cx"><canvas id="pp"></canvas></div>
+    <p class="read" id="ppR">Tap anywhere to read the period at a complex r. Taps near the real axis also set r.</p>
+    <p class="note">Each r coloured by the period of its attracting cycle. This is the Mandelbrot set in disguise: c = r/2 − r²/4. The real segment 1 ≤ r ≤ 4 is its spine from c = ¼ to c = −2; every bulb is a periodic window.</p>
+  </div>
+</div>
+</div>
+</section>
+
+<section id="t-atlas" data-t="atlas" hidden>
+<div class="grid2">
+  <div class="panel">
+    <h2>Landmarks</h2>
+    <p class="note">Tap a row to open it. Period and λ are computed live at that r.</p>
+    <div class="rows" id="lmk"></div>
+  </div>
+  <div class="panel">
+    <h2>Window census</h2>
+    <p class="note">Every superstable cycle of period n (x = ½ returns after exactly n steps), found by root search on [2, 4]. The count matches Metropolis, Stein &amp; Stein (1973). Tap a row for its windows, tap a value to go there.</p>
+    <div class="rows c" id="cen"></div>
+  </div>
+</div>
+</section>
+</main>
+<script>
+{
+// ---- logistic map math (shared by page and tests) ----
+const DELTA=4.669201609102990, ALPHA=2.502907875095892, RINF=3.569945671870944;
+const lf=(r,x)=>r*x*(1-x);
+function attractor(r){
+  let x=0.5,p=0;
+  if(r<=0)return{p:1,cycle:[0],lyap:r===0?-Infinity:Math.log(Math.abs(r)),mult:r};
+  for(let b=0;b<24&&!p;b++){
+    for(let i=0;i<1000;i++)x=r*x*(1-x);
+    if(!isFinite(x)||Math.abs(x)>1e6)return{p:0,escape:true,lyap:NaN};
+    let y=x;
+    for(let k=1;k<=256;k++){y=r*y*(1-y);if(Math.abs(y-x)<1e-10){p=k;break}}
+  }
+  if(p){ // slow convergence can report a doubled period: try each divisor with Newton
+    for(let d=1;d<p;d++){
+      if(p%d)continue;
+      const y=cycleNewton(r,d,x),[fy,md]=iterX(r,d,y);
+      if(Math.abs(fy-y)<1e-11&&Math.abs(y-x)<1e-3&&Math.abs(md)<=1.0000001){p=d;x=y;break}
+    }
+    if(Math.abs(iterX(r,p,x)[1])>1.0001){p=0;x=0.3141592}// landed exactly on a repelling cycle (r=4)
+    else x=cycleNewton(r,p,x);
+  }
+  let s=0,z=p?0.5:x;const n=4000;
+  if(!p)for(let i=0;i<200;i++)z=r*z*(1-z);
+  for(let i=0;i<n;i++){s+=Math.log(Math.max(Math.abs(r*(1-2*z)),1e-300));z=r*z*(1-z)}
+  const lyap=s/n;
+  if(!p)return{p:0,cycle:null,lyap};
+  const c=[];let y=x,mult=1;
+  for(let k=0;k<p;k++){c.push(y);mult*=r*(1-2*y);y=r*y*(1-y)}
+  // rotate so cycle starts at its smallest point (stable phase labels)
+  let m=0;for(let k=1;k<p;k++)if(c[k]<c[m])m=k;
+  const cycle=c.slice(m).concat(c.slice(0,m));
+  return{p,cycle,lyap:Math.abs(mult)<1e-300?-Infinity:Math.log(Math.abs(mult))/p,mult};
+}
+function lyapFast(r,T,N){let x=0.5;for(let i=0;i<T;i++)x=r*x*(1-x);let s=0;for(let i=0;i<N;i++){s+=Math.log(Math.max(Math.abs(r*(1-2*x)),1e-300));x=r*x*(1-x)}return s/N}
+// f^p(x0) and d/dr
+function iterR(r,p,x0){let x=x0,dx=0;for(let i=0;i<p;i++){dx=x*(1-x)+r*(1-2*x)*dx;x=r*x*(1-x)}return[x,dx]}
+// f^p(x) and d/dx
+function iterX(r,p,x0){let x=x0,d=1;for(let i=0;i<p;i++){d*=r*(1-2*x);x=r*x*(1-x)}return[x,d]}
+function newtonR(p,r){for(let i=0;i<60;i++){const[x,dx]=iterR(r,p,0.5);const st=(x-0.5)/dx;r-=st;if(Math.abs(st)<1e-15)break}return r}
+// superstable parameters R_n of the 2^n cycle
+function superstables(nmax){
+  const R=[2,1+Math.sqrt(5)];
+  for(let n=2;n<=nmax;n++){const g=R[n-1]+(R[n-1]-R[n-2])/DELTA;R.push(newtonR(2**n,g))}
+  return R;
+}
+// p-cycle point near guess at parameter r (Newton on f^p(x)=x)
+function cycleNewton(r,p,x){for(let i=0;i<50;i++){const[y,d]=iterX(r,p,x);const st=(y-x)/(d-1);x-=st;if(Math.abs(st)<1e-15)break}return x}
+// bifurcation points r_n: the 2^(n-1) cycle has multiplier -1
+function doublings(R){
+  const out=[3];
+  for(let n=2;n<R.length;n++){
+    const p=2**(n-1);let a=R[n-1],b=R[n],xa=0.5;
+    for(let it=0;it<70;it++){
+      const m=(a+b)/2,x=cycleNewton(m,p,xa),mu=iterX(m,p,x)[1];
+      if(mu>-1){a=m;xa=x}else b=m;
+      if(b-a<1e-15)break;
+    }
+    out.push((a+b)/2);
+  }
+  return out;
+}
+// d_n: distance from x=1/2 to its nearest cycle partner at R_n
+function dees(R){return R.map((r,n)=>n===0?NaN:iterR(r,2**(n-1),0.5)[0]-0.5)}
+function minPeriodAtCrit(r,n){let x=0.5;for(let d=1;d<=n;d++){x=r*x*(1-x);if(n%d===0&&Math.abs(x-0.5)<1e-7)return d}return n}
+// all superstable parameters of minimal period n in [1.9,4]
+function census(n,N){
+  N=N||200000;const roots=[];
+  const rr=u=>4-2.1*(1-u)**3;
+  const g=r=>{let x=0.5;for(let i=0;i<n;i++)x=r*x*(1-x);return x-0.5};
+  let r0=rr(0),g0=g(r0);
+  for(let i=1;i<=N;i++){
+    const r1=rr(i/N),g1=g(r1);
+    if(g0===0||g0*g1<0){
+      let a=r0,b=r1,ga=g0;
+      if(g0!==0)for(let k=0;k<80;k++){const m=(a+b)/2,gm=g(m);if(ga*gm<=0)b=m;else{a=m;ga=gm}}
+      const r=(a+b)/2;if(minPeriodAtCrit(r,n)===n)roots.push(r);
+    }
+    r0=r1;g0=g1;
+  }
+  return roots;
+}
+const MSS=[0,1,1,1,2,3,5,9,16,28,51,93,170];
+if(typeof module!=='undefined')module.exports={attractor,superstables,doublings,dees,census,lyapFast,MSS,RINF,DELTA,ALPHA};
+
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const S={r:3.2,x0:0.2,n:60,k:1,twin:true,tab:'orbit',A:null,bif:null,hist:[],bm:0,anim:-1};
+const BG=[24,27,38],INK='#e6e9f0',MUT='rgba(200,206,220,.62)',GRID='rgba(160,170,190,.16)',ACC='#f0a33c',TEAL='#3cc8b4',HOT='#ff6b5b';
+const PC={1:'#f0a33c',2:'#3cc8b4',3:'#9ad94f',4:'#5b8cff',5:'#ff6fa8',6:'#b48cff',7:'#ff7a45',8:'#4fc3ff'};
+const pcol=p=>PC[p]||`hsl(${(p*47)%360} 70% 64%)`;
+function hsl(h,s,l){h=((h%360)+360)%360/360;const q=l<.5?l*(1+s):l+s-l*s,p=2*l-q;const t=x=>{x=(x+1)%1;return x<1/6?p+(q-p)*6*x:x<.5?q:x<2/3?p+(q-p)*(2/3-x)*6:p};return[t(h+1/3)*255,t(h)*255,t(h-1/3)*255]}
+const hexrgb=h=>{if(h[0]!=='#'){const m=h.match(/\d+/g);return hsl(+m[0],+m[1]/100,+m[2]/100)}return[1,3,5].map(i=>parseInt(h.slice(i,i+2),16))};
+const PRGB={};const prgb=p=>PRGB[p]||(PRGB[p]=hexrgb(pcol(p)));
+const phase=(k,p)=>hsl(28+360*k/p,.78,.6);
+const fmt=(v,d=4)=>v===-Infinity?'−∞':isFinite(v)?(v<0&&Math.abs(v)>=.5*10**-d?'−':'')+Math.abs(v).toFixed(d):'—';
+const LMK=[
+ {r:0.5,n:'Extinction',t:'For r < 1 every population dies out: 0 is the only attractor and its multiplier is r.'},
+ {r:1,n:'Transcritical exchange',t:'x* = 1 − 1/r passes through 0 and takes over stability. Convergence here is slow (algebraic), not geometric.'},
+ {r:2,n:'Superstable fixed point',t:'x* = ½ and its multiplier 2 − r is 0. Orbits converge quadratically: the fastest r of the whole map.'},
+ {r:2.9,n:'Spiral approach',t:'For 2 < r < 3 the multiplier 2 − r is negative, so orbits approach x* from alternate sides: the cobweb spirals in.'},
+ {r:3,n:'First doubling r₁',t:'The multiplier of x* reaches −1 (flip bifurcation). In f² the fixed point splits into three; the outer two form the new 2-cycle.',z:[2.8,3.2,.4,.9]},
+ {r:1+Math.sqrt(5),n:'Superstable 2-cycle R₁',t:'R₁ = 1 + √5. The 2-cycle passes through ½ and has multiplier 0.'},
+ {r:1+Math.sqrt(6),n:'2 → 4 at r₂',t:'r₂ = 1 + √6. The 2-cycle multiplier 4 + 2r − r² reaches −1.',z:[3.38,3.52,.3,.95]},
+ {r:3.5440903596,n:'4 → 8 at r₃',t:'No closed form any more. Gaps between doublings shrink by about 4.67 each time.',z:[3.53,3.575,.3,.95]},
+ {r:3.5644072661,n:'8 → 16 at r₄',t:'From here on the doublings pile up geometrically towards r∞.',z:[3.56,3.572,.3,.95]},
+ {r:RINF,n:'Feigenbaum point r∞',t:'Infinitely many doublings have accumulated. The attractor is a Cantor set, λ = 0, and no cycle is stable. Chaos starts just after.',z:[3.54,3.6,.3,.95]},
+ {r:3.5925721841,n:'Bands merge 4 → 2',t:'Chaotic bands meet. The orbit of ½ lands exactly on the unstable 2-cycle after 5 steps (a Misiurewicz point).'},
+ {r:3.6275575,n:'Period-6 window',t:'One of the first periodic windows inside chaos. Its superstable value is 3.627558.'},
+ {r:3.6785735104,n:'Bands merge 2 → 1',t:'The two chaotic bands fuse into one. f³(½) lands exactly on the unstable fixed point 1 − 1/r.'},
+ {r:3.7389149,n:'Period-5 window',t:'Superstable period 5 at 3.738915. Periods 5, 7, 9, … appear before period 3.',z:[3.735,3.745,0,1]},
+ {r:1+Math.sqrt(8),n:'Period-3 window opens',t:'r = 1 + √8: f³ touches the diagonal and a stable and an unstable 3-cycle are born together (tangent bifurcation). Just below, orbits linger near the ghost cycle: intermittency. Period 3 implies cycles of every period (Sharkovskii, Li–Yorke).',z:[3.82,3.86,0,1]},
+ {r:3.8318741,n:'Superstable 3-cycle',t:'The 3-cycle passes through ½.'},
+ {r:3.8414990,n:'3 → 6 inside the window',t:'The window repeats the whole cascade in miniature, 3 → 6 → 12 → …, with the same δ.',z:[3.8402,3.8572,.44,.56]},
+ {r:3.85683,n:'Window ends in a crisis',t:'The 3-band chaotic attractor hits the unstable 3-cycle and suddenly widens to the full interval (interior crisis, about 3.8568).'},
+ {r:4,n:'Full chaos',t:'With x = sin²θ the map becomes θ → 2θ: doubling an angle. λ = ln 2 ≈ 0.693, and the invariant density is 1/(π√(x(1 − x))).'}];
+const BIFP=[['Full 0 – 4',0,4,0,1],['Classic 2.5 – 4',2.5,4,0,1],['Doubling cascade',2.95,3.6,.25,.95],['Accumulation at r∞',3.54,3.6,.3,.95],['Period-3 window',3.82,3.86,0,1],['Mini cascade in the 3-window',3.8402,3.8572,.44,.56],['Period-5 window',3.735,3.745,0,1]];
+const BMP=[['r from 2.9 to 4',2.9,4],['Cascade 2.95 – 3.6',2.95,3.6],['Fine 3.44 – 3.58',3.44,3.58],['Period-3 window',3.82,3.86],['Whole range 0 – 4',0,4]];
+// ---------- helpers ----------
+function fit(cv){const d=Math.min(2,window.devicePixelRatio||1),w=cv.clientWidth,h=cv.clientHeight,W=Math.max(1,Math.round(w*d)),H=Math.max(1,Math.round(h*d));if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H}const c=cv.getContext('2d');c.setTransform(d,0,0,d,0,0);return{c,w,h,d}}
+function ticks(a,b,n){const st=Math.pow(10,Math.floor(Math.log10((b-a)/n))),e=(b-a)/n/st,s=st*(e>5?10:e>2?5:e>1?2:1),o=[];for(let v=Math.ceil(a/s)*s;v<=b+s*1e-9;v+=s)o.push(+v.toFixed(12));return o}
+const tl=(v,s)=>v.toFixed(Math.min(8,Math.max(0,-Math.floor(Math.log10(s)+1e-9))));
+function axes(c,X,Y,xr,yr,L,T,PW,PH,nx,ny){c.font='12px "JetBrains Mono",monospace';c.fillStyle=MUT;c.strokeStyle=GRID;c.lineWidth=1;const tx=ticks(xr[0],xr[1],nx),ty=ticks(yr[0],yr[1],ny),sx=tx[1]-tx[0]||1,sy=ty[1]-ty[0]||1;c.textAlign='center';c.textBaseline='top';tx.forEach(v=>{const x=X(v);c.beginPath();c.moveTo(x,T);c.lineTo(x,T+PH);c.stroke();c.fillText(tl(v,sx),x,T+PH+5)});c.textAlign='right';c.textBaseline='middle';ty.forEach(v=>{const y=Y(v);c.beginPath();c.moveTo(L,y);c.lineTo(L+PW,y);c.stroke();c.fillText(tl(v,sy),L-5,y)})}
+// progressive jobs
+const jobs={};let ticking=false;
+function job(k,g){jobs[k]=g;if(!ticking){ticking=true;requestAnimationFrame(tick)}}
+function tick(){const t0=performance.now();for(const k of Object.keys(jobs)){const g=jobs[k];while(performance.now()-t0<14){if(g.next().done){delete jobs[k];break}}if(performance.now()-t0>=14)break}if(Object.keys(jobs).length)requestAnimationFrame(tick);else ticking=false}
+function periodic(r,k){const g=x=>iterX(r,k,x)[0]-x,M=Math.min(20000,600*2**k),o=[{x:0,s:Math.abs(r)<1}];let a=1e-9,ga=g(a);for(let i=1;i<=M;i++){const b=i/M,gb=g(b);if(gb===0&&b<1)o.push({x:b,s:Math.abs(iterX(r,k,b)[1])<1});else if(ga*gb<0){let lo=a,hi=b,gl=ga;for(let j=0;j<55;j++){const m=(lo+hi)/2,gm=g(m);if(gl*gm<=0)hi=m;else{lo=m;gl=gm}}const x=(lo+hi)/2;o.push({x,s:Math.abs(iterX(r,k,x)[1])<1})}a=b;ga=gb}return o}
+// ---------- r state ----------
+function regime(A){if(A.escape)return['escapes','#888'];if(A.p){const st=Math.abs(A.mult)<.02?'superstable ':'';return[`${st}${A.p}-cycle`,pcol(A.p)]}if(Math.abs(A.lyap)<.01)return['marginal: at a bifurcation','#ccc'];return A.lyap>0?['chaos',HOT]:['no cycle found (very slow)','#ccc']}
+function setR(r,src){r=Math.min(4,Math.max(0,+r));if(!isFinite(r))return;r=Math.round(r*1e10)/1e10;S.r=r;if(src!=='s')$('#rS').value=r;if(src!=='n')$('#rN').value=+r.toFixed(10);S.A=attractor(r);const A=S.A,[rg,col]=regime(A);
+ $('#chips').innerHTML=`<span class="chip"><span class="sw" style="background:${col}"></span>${rg}</span><span class="chip">period ${A.p||'—'}</span><span class="chip">λ ${fmt(A.lyap,4)}</span>`+(A.p?`<span class="chip">multiplier ${fmt(A.mult,4)}</span>`:'');
+ refresh()}
+function refresh(){const t=S.tab;if(t==='orbit'){drawCob();drawTS();drawKV()}else if(t==='bifurcation'){drawBif();drawLy()}else if(t==='basins'){drawBM();drawStrip();clearTimeout(S.cxT);S.cxT=setTimeout(renderCX,90);drawPP()}}
+// ---------- orbit tab ----------
+function drawCob(upto){const {c,w,h}=fit($('#cob'));c.clearRect(0,0,w,h);const L=38,T=12,s=Math.min(w-L-12,h-T-28),X=x=>L+x*s,Y=y=>T+s-y*s,r=S.r,k=S.k;
+ axes(c,X,Y,[0,1],[0,1],L,T,s,s,4,4);
+ c.strokeStyle=MUT;c.setLineDash([4,4]);c.beginPath();c.moveTo(X(0),Y(0));c.lineTo(X(1),Y(1));c.stroke();c.setLineDash([]);
+ const curve=(kk,st,lw)=>{c.strokeStyle=st;c.lineWidth=lw;c.beginPath();const M=Math.min(4000,400*kk);for(let i=0;i<=M;i++){const x=i/M,y=iterX(r,kk,x)[0];i?c.lineTo(X(x),Y(y)):c.moveTo(X(x),Y(y))}c.stroke()};
+ if(k>1)curve(1,'rgba(230,233,240,.25)',1.2);curve(k,INK,1.8);
+ c.save();c.beginPath();c.rect(L,T,s,s);c.clip();
+ let x=S.x0;const N=upto??S.n;c.lineWidth=1.3;let px=X(x),py=Y(0);
+ for(let i=0;i<N;i++){const y=iterX(r,k,x)[0];if(!isFinite(y)||Math.abs(y)>10)break;c.strokeStyle=`rgba(240,163,60,${.18+.82*Math.pow((i+1)/N,1.4)})`;c.beginPath();c.moveTo(px,py);c.lineTo(X(x),Y(y));c.lineTo(X(y),Y(y));c.stroke();px=X(y);py=Y(y);x=y}
+ c.restore();
+ periodic(r,k).forEach(o=>{c.beginPath();c.arc(X(o.x),Y(o.x),4.5,0,7);if(o.s){c.fillStyle=TEAL;c.fill()}else{c.strokeStyle=INK;c.lineWidth=1.5;c.stroke()}});
+ c.fillStyle=MUT;c.font='13px "JetBrains Mono",monospace';c.textAlign='left';c.textBaseline='top';c.fillText(['','f','f²','f³','f⁴','','','','f⁸'][k]+'(x)',L+8,T+6);c.textAlign='right';c.textBaseline='bottom';c.fillText('x',L+s,T+s+26)}
+function drawTS(){const {c,w,h}=fit($('#ts'));c.clearRect(0,0,w,h);const L=38,T=8,PW=w-L-10,PH=h-T-26,N=S.n,X=i=>L+i/N*PW,Y=y=>T+PH-y*PH;axes(c,X,Y,[0,N],[0,1],L,T,PW,PH,6,2);
+ const orbit=x0=>{const o=[x0];let x=x0;for(let i=0;i<N;i++){x=S.r*x*(1-x);o.push(x)}return o};const a=orbit(S.x0);
+ const line=(o,col,w2)=>{c.strokeStyle=col;c.lineWidth=w2;c.beginPath();o.forEach((y,i)=>{const yy=Y(Math.max(-.05,Math.min(1.05,y)));i?c.lineTo(X(i),yy):c.moveTo(X(i),yy)});c.stroke();if(N<=120){c.fillStyle=col;o.forEach((y,i)=>{c.beginPath();c.arc(X(i),Y(Math.max(-.05,Math.min(1.05,y))),2,0,7);c.fill()})}};
+ let sep='';if(S.twin){const b=orbit(S.x0+1e-6);line(b,TEAL,1.2);let n=b.findIndex((v,i)=>Math.abs(v-a[i])>.1);sep=n<0?`Twin orbit stays within 0.1 of the original for all ${N} steps.`:`Twin orbit (start 10⁻⁶ away) separates by more than 0.1 at step ${n}.`+(S.A.lyap>0?` λ predicts about ln(10⁵)/λ ≈ ${Math.round(Math.log(1e5)/S.A.lyap)}.`:'')}
+ line(a,ACC,1.6);$('#twinR').textContent=sep}
+function drawKV(){const A=S.A,r=S.r,xs=1-1/r,cyc=A.p&&A.p<=32?`<div class="cyc">${A.cycle.map((v,i)=>{const [R,G,B]=phase(i,A.p);return`<span class="chip"><span class="sw" style="background:rgb(${R|0},${G|0},${B|0})"></span>${v.toFixed(6)}</span>`}).join('')}</div>`:'';
+ $('#kv').innerHTML=`<div><small>Period</small><span>${A.p||'none'}</span></div><div><small>Lyapunov λ</small><span>${fmt(A.lyap,4)}</span></div><div><small>Cycle multiplier μ</small><span>${A.p?fmt(A.mult,5):'—'}</span></div><div><small>Fixed point 1 − 1/r</small><span>${r>0?fmt(xs,5):'—'}</span><small>multiplier ${fmt(2-r,3)}</small></div>`+(A.p?`<div class="wide"><small>Attracting cycle (orbit order, from smallest)</small>${cyc||`<span>${A.p} points</span>`}</div>`:'')+`<div class="wide"><small>Reading</small>${A.p?`|μ| = ${Math.abs(A.mult).toFixed(3)} &lt; 1, so the ${A.p}-cycle attracts. Errors shrink by about ${Math.abs(A.mult).toFixed(3)} every ${A.p} step${A.p>1?'s':''}`+(Math.abs(A.mult)>.9?'; close to 1, so convergence is slow and a bifurcation is near.':'.'):A.lyap>0?`No stable cycle. λ = ${A.lyap.toFixed(3)} &gt; 0: a small error grows by e^λ ≈ ${Math.exp(A.lyap).toFixed(2)}× per step.`:'λ ≈ 0: the orbit sits exactly on a bifurcation and converges very slowly.'}</div>`}
+// ---------- bifurcation ----------
+function bifView(v){S.bif={r0:v[0],r1:v[1],y0:v[2],y1:v[3]};renderBif()}
+function renderBif(){const cv=$('#bif');if(!cv.clientWidth)return;const {w,h,d}=fit(cv),L=40,T=10,PW=w-L-10,PH=h-T-24,pw=Math.max(1,Math.round(PW*d)),ph=Math.max(1,Math.round(PH*d)),V=S.bif;
+ const img=new ImageData(pw,ph),lam=new Float32Array(pw),cnt=new Uint16Array(ph),zr=4/(V.r1-V.r0),zy=1/(V.y1-V.y0),Tn=Math.min(30000,Math.round(1500*Math.sqrt(zr))),N=Math.min(40000,Math.round(Math.max(ph*5,1500)*Math.sqrt(zy)));
+ S.bifImg={img,lam,L,T,PW,PH,pw,ph,done:0};
+ job('bif',(function*(){for(let i=0;i<pw;i++){const r=V.r0+(i+.5)/pw*(V.r1-V.r0);let x=0.5;for(let t=0;t<Tn;t++)x=r*x*(1-x);
+  let p=0,y=x;for(let k=1;k<=64;k++){y=r*y*(1-y);if(Math.abs(y-x)<1e-7){p=k;break}}
+  cnt.fill(0);let s=0;for(let t=0;t<N;t++){x=r*x*(1-x);s+=Math.log(Math.max(Math.abs(r*(1-2*x)),1e-300));const j=Math.floor((V.y1-x)/(V.y1-V.y0)*ph);if(j>=0&&j<ph)cnt[j]++}
+  lam[i]=s/N;const col=p?prgb(p):[245,236,214],ref=N/ph*2.5;
+  for(let j=0;j<ph;j++){const q=(j*pw+i)*4;let v=cnt[j]?Math.min(1,.25+.75*Math.sqrt(cnt[j]/ref)):0;img.data[q]=BG[0]+(col[0]-BG[0])*v;img.data[q+1]=BG[1]+(col[1]-BG[1])*v;img.data[q+2]=BG[2]+(col[2]-BG[2])*v;img.data[q+3]=255}
+  if(p)for(let j=0;j<ph;j++)if(cnt[j]){for(const jj of [j-1,j+1]){if(jj<0||jj>=ph||cnt[jj])continue;const q=(jj*pw+i)*4;img.data[q]=BG[0]+(col[0]-BG[0])*.75;img.data[q+1]=BG[1]+(col[1]-BG[1])*.75;img.data[q+2]=BG[2]+(col[2]-BG[2])*.75}}
+  S.bifImg.done=i+1;if(i%6===5||i===pw-1){drawBif();drawLy();yield}}})())}
+function drawBif(box){const cv=$('#bif'),B=S.bifImg;if(!B||!cv.clientWidth)return;const {c,w,h,d}=fit(cv);c.clearRect(0,0,w,h);const V=S.bif,{L,T,PW,PH}=B,X=r=>L+(r-V.r0)/(V.r1-V.r0)*PW,Y=y=>T+(V.y1-y)/(V.y1-V.y0)*PH;
+ c.fillStyle=`rgb(${BG})`;c.fillRect(L,T,PW,PH);c.putImageData(B.img,Math.round(L*d),Math.round(T*d));c.setTransform(d,0,0,d,0,0);axes(c,X,Y,[V.r0,V.r1],[V.y0,V.y1],L,T,PW,PH,w<520?4:7,4);
+ const R=FE.r.slice(0,7).map((v,i)=>[v,'r'+'₁₂₃₄₅₆₇'[i]]).concat([[RINF,'r∞'],[1+Math.sqrt(8),'1+√8']]);let last=-99;c.font='11px "JetBrains Mono",monospace';c.textAlign='center';c.textBaseline='top';
+ R.forEach(([v,l])=>{if(v<V.r0||v>V.r1)return;const x=X(v);c.strokeStyle='rgba(240,163,60,.28)';c.setLineDash([2,4]);c.beginPath();c.moveTo(x,T);c.lineTo(x,T+PH);c.stroke();c.setLineDash([]);if(x-last>30){c.fillStyle=ACC;c.fillText(l,x,T+3);last=x}});
+ if(S.r>=V.r0&&S.r<=V.r1){const x=X(S.r);c.strokeStyle=INK;c.lineWidth=1.2;c.beginPath();c.moveTo(x,T);c.lineTo(x,T+PH);c.stroke()}
+ if(box){c.strokeStyle=ACC;c.lineWidth=1.5;c.fillStyle='rgba(240,163,60,.12)';c.fillRect(box[0],box[1],box[2]-box[0],box[3]-box[1]);c.strokeRect(box[0],box[1],box[2]-box[0],box[3]-box[1])}
+ $('#bifR').textContent=`r ${V.r0.toFixed(6)} – ${V.r1.toFixed(6)} · x ${V.y0.toFixed(4)} – ${V.y1.toFixed(4)} · zoom ${(4/(V.r1-V.r0)).toPrecision(3)}× in r`+(B.done<B.pw?` · drawing ${Math.round(B.done/B.pw*100)}%`:'')}
+function drawLy(){const cv=$('#ly'),B=S.bifImg;if(!B||!cv.clientWidth)return;const {c,w,h}=fit(cv);c.clearRect(0,0,w,h);const V=S.bif,L=B.L,T=6,PW=B.PW,PH=h-T-8,lo=-2.5,hi=1,Y=v=>T+(hi-Math.max(lo,Math.min(hi,v)))/(hi-lo)*PH,x0=Y(0);
+ c.font='12px "JetBrains Mono",monospace';c.fillStyle=MUT;c.textAlign='right';c.textBaseline='middle';[[0,'0'],[-2,'−2'],[Math.LN2,'ln2']].forEach(([v,t])=>{c.strokeStyle=v?GRID:MUT;c.beginPath();c.moveTo(L,Y(v));c.lineTo(L+PW,Y(v));c.stroke();c.fillText(t,L-5,Y(v))});c.textAlign='left';c.fillText('λ',L+6,T+10);
+ const k=PW/B.pw;for(let i=0;i<B.done;i++){const v=B.lam[i];c.fillStyle=v<0?TEAL:HOT;const y=Y(v);c.fillRect(L+i*k,Math.min(x0,y),Math.max(k,.6),Math.max(1,Math.abs(y-x0)))}
+ if(S.r>=V.r0&&S.r<=V.r1){const x=L+(S.r-V.r0)/(V.r1-V.r0)*PW;c.strokeStyle=INK;c.beginPath();c.moveTo(x,T);c.lineTo(x,T+PH);c.stroke()}}
+function bifPointer(){const cv=$('#bif');let st=null;const pos=e=>{const b=cv.getBoundingClientRect();return[e.clientX-b.left,e.clientY-b.top]};
+ cv.addEventListener('pointerdown',e=>{st=pos(e);cv.setPointerCapture(e.pointerId)});
+ cv.addEventListener('pointermove',e=>{if(!st)return;const p=pos(e);if(Math.hypot(p[0]-st[0],p[1]-st[1])>6)drawBif([Math.min(st[0],p[0]),Math.min(st[1],p[1]),Math.max(st[0],p[0]),Math.max(st[1],p[1])])});
+ cv.addEventListener('pointerup',e=>{if(!st)return;const p=pos(e),B=S.bifImg,V=S.bif,R=x=>V.r0+(x-B.L)/B.PW*(V.r1-V.r0),Yv=y=>V.y1-(y-B.T)/B.PH*(V.y1-V.y0);
+  if(Math.hypot(p[0]-st[0],p[1]-st[1])<=6)setR(R(p[0]));else{const a=Math.min(st[0],p[0]),b=Math.max(st[0],p[0]),u=Math.min(st[1],p[1]),v=Math.max(st[1],p[1]);if(b-a>8){S.hist.push([V.r0,V.r1,V.y0,V.y1]);const nv=[R(a),R(b),v-u>8?Yv(v):V.y0,v-u>8?Yv(u):V.y1];bifView(nv)}else drawBif()}st=null});
+ $('#ly').addEventListener('click',e=>{const b=e.target.getBoundingClientRect(),B=S.bifImg,V=S.bif;setR(V.r0+(e.clientX-b.left-B.L)/B.PW*(V.r1-V.r0))})}
+// ---------- doubling ----------
+const FE=(()=>{const R=superstables(12),r=doublings(R),d=dees(R);return{R,r,d}})();
+function hiDigits(v,ref){const s=v.toFixed(6),t=ref.toFixed(6);let i=0;while(i<s.length&&s[i]===t[i])i++;return`<span class="hit">${s.slice(0,i)}</span>${s.slice(i)}`}
+function buildFE(){const {R,r,d}=FE;let h='<tr><th>n</th><th>period</th><th>rₙ born</th><th>Rₙ superstable</th><th>δ from r</th><th>δ from R</th><th>α</th><th></th></tr>';
+ for(let n=0;n<R.length;n++){const dr=n>=3?(r[n-2]-r[n-3])/(r[n-1]-r[n-2]):NaN,dR=n>=2?(R[n-1]-R[n-2])/(R[n]-R[n-1]):NaN,al=n>=2?-d[n-1]/d[n]:NaN;
+  h+=`<tr><td>${n}</td><td>${2**n}</td><td>${n?r[n-1].toFixed(9):'—'}</td><td>${R[n].toFixed(9)}</td><td>${isFinite(dr)?hiDigits(dr,DELTA):''}</td><td>${isFinite(dR)?hiDigits(dR,DELTA):''}</td><td>${isFinite(al)?hiDigits(al,ALPHA):''}</td><td><button data-r="${R[n]}">go</button></td></tr>`}
+ $('#feTab').innerHTML=h;$('#feTab').onclick=e=>{const b=e.target.closest('button');if(b)setR(+b.dataset.r)}}
+function drawLG(){const s=$('#lg'),W=s.clientWidth,H=s.clientHeight;if(!W)return;const L=44,T=12,PW=W-L-14,PH=H-T-30,{r,R}=FE,n1=1,n2=r.length,a=[],b=[];for(let n=1;n<=n2;n++){a.push([n,Math.log10(RINF-r[n-1])]);if(n<R.length)b.push([n,Math.log10(RINF-R[n])])}
+ const lo=Math.floor(Math.min(...a.map(p=>p[1]),...b.map(p=>p[1]))),hi=0,X=n=>L+(n-n1)/(n2-n1)*PW,Y=v=>T+(hi-v)/(hi-lo)*PH;let g='';
+ for(let v=lo;v<=hi;v+=2)g+=`<line x1="${L}" x2="${L+PW}" y1="${Y(v)}" y2="${Y(v)}" stroke="${GRID}"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end">10${v<0?'⁻':''}${String(Math.abs(v)).split('').map(c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[c]).join('')}</text>`;
+ for(let n=n1;n<=n2;n++)if(W>420||n%2)g+=`<text x="${X(n)}" y="${T+PH+18}" text-anchor="middle">${n}</text>`;
+ const y1=a[0][1];g+=`<line x1="${X(1)}" y1="${Y(y1)}" x2="${X(n2)}" y2="${Y(y1-(n2-1)*Math.log10(DELTA))}" stroke="${MUT}" stroke-dasharray="5 5"/>`;
+ g+=a.map(p=>`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="4.5" fill="${ACC}"/>`).join('')+b.map(p=>`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="3.5" fill="none" stroke="${TEAL}" stroke-width="1.8"/>`).join('');
+ g+=`<text x="${X(n2)-4}" y="${T+14}" text-anchor="end" fill="${ACC}">● rₙ born</text><text x="${X(n2)-4}" y="${T+32}" text-anchor="end" fill="${TEAL}">○ Rₙ superstable</text>`;
+ s.innerHTML=`<g font-family="JetBrains Mono,monospace" font-size="12" fill="${MUT}" style="paint-order:stroke;stroke-linejoin:round">${g}</g>`}
+function renderMinis(){const box=$('#minis');if(!box.children.length)box.innerHTML=[0,1,2,3].map(k=>`<div><small>${k?`zoom ${(DELTA**k).toPrecision(3)}× r, ${(ALPHA**k).toPrecision(3)}× x`:'start'}</small><div class="fig mini"><canvas id="mn${k}"></canvas></div></div>`).join('');
+ [0,1,2,3].forEach(k=>{const cv=$('#mn'+k);const {w,h,d}=fit(cv),pw=Math.round(w*d),ph=Math.round(h*d),img=new ImageData(pw,ph),Dr=RINF-2.95,r0=RINF-Dr/DELTA**k,r1=RINF+.12*Dr/DELTA**k,hx=.5/ALPHA**k,flip=k%2,cnt=new Uint16Array(ph),N=1500*(k+1);
+  job('mini'+k,(function*(){for(let i=0;i<pw;i++){const r=r0+(i+.5)/pw*(r1-r0);let x=.5;for(let t=0;t<3000*(k+1);t++)x=r*x*(1-x);cnt.fill(0);for(let t=0;t<N;t++){x=r*x*(1-x);let u=(x-.5)/hx;if(flip)u=-u;const j=Math.floor((1-u)/2*ph);if(j>=0&&j<ph)cnt[j]++}
+   for(let j=0;j<ph;j++){const q=(j*pw+i)*4,v=cnt[j]?Math.min(1,.3+.7*Math.sqrt(cnt[j]/(N/ph*2))):0;img.data[q]=BG[0]+(245-BG[0])*v;img.data[q+1]=BG[1]+(200-BG[1])*v;img.data[q+2]=BG[2]+(120-BG[2])*v;img.data[q+3]=255}
+   if(i%20===19||i===pw-1){cv.getContext('2d').putImageData(img,0,0);yield}}})())})}
+// ---------- basins ----------
+function cycInfo(A){if(!A||!A.p||A.p>256)return null;const p=A.p,idx=A.cycle.map((v,i)=>i).sort((a,b)=>A.cycle[a]-A.cycle[b]),vals=idx.map(i=>A.cycle[i]);let gap=1;for(let i=1;i<p;i++)gap=Math.min(gap,vals[i]-vals[i-1]);return{p,idx,vals,eps:Math.min(2e-3,gap/4)}}
+function near(C,x){let lo=0,hi=C.p-1;while(hi-lo>1){const m=(lo+hi)>>1;if(C.vals[m]<x)lo=m;else hi=m}const j=Math.abs(C.vals[lo]-x)<Math.abs(C.vals[hi]-x)?lo:hi;return Math.abs(C.vals[j]-x)<C.eps?C.idx[j]:-1}
+const MAXT=600;
+function basinCol(r,C,x0){if(x0<0||x0>1){let x=x0,t=0;while(t<200&&Math.abs(x)<1e6){x=r*x*(1-x);t++}const v=t%2?.32:.22;return[90*v+20,40*v+18,40*v+22]}
+ if(!C){return x0===0||x0===1?[10,10,14]:[66,72,90]}
+ let x=x0;for(let t=0;t<MAXT;t++){const j=near(C,x);if(j>=0){const ph=((j-t)%C.p+C.p)%C.p,c=phase(ph,C.p),b=1-.72*Math.min(1,Math.log(1+t)/Math.log(1+MAXT*.5));return[c[0]*b,c[1]*b,c[2]*b]}x=r*x*(1-x)}return[12,12,16]}
+function renderBM(){const cv=$('#bm');if(!cv.clientWidth)return;const {w,h,d}=fit(cv),L=46,T=8,PW=w-L-10,PH=h-T-24,sc=Math.min(1,Math.sqrt(90000/(PW*PH))),pw=Math.max(1,Math.round(PW*sc)),ph=Math.max(1,Math.round(PH*sc)),[,r0,r1]=BMP[S.bm],y0=-.12,y1=1.12;
+ const off=document.createElement('canvas');off.width=pw;off.height=ph;const img=new ImageData(pw,ph);S.bmI={off,L,T,PW,PH,r0,r1,y0,y1};
+ job('bm',(function*(){for(let i=0;i<pw;i++){const r=r0+(i+.5)/pw*(r1-r0),C=cycInfo(attractor(r));for(let j=0;j<ph;j++){const c=basinCol(r,C,y1-(j+.5)/ph*(y1-y0)),q=(j*pw+i)*4;img.data[q]=c[0];img.data[q+1]=c[1];img.data[q+2]=c[2];img.data[q+3]=255}
+  if(i%8===7||i===pw-1){off.getContext('2d').putImageData(img,0,0);drawBM();yield}}})())}
+function drawBM(){const cv=$('#bm'),B=S.bmI;if(!B||!cv.clientWidth)return;const {c,w,h}=fit(cv);c.clearRect(0,0,w,h);const {L,T,PW,PH,r0,r1,y0,y1}=B,X=r=>L+(r-r0)/(r1-r0)*PW,Y=y=>T+(y1-y)/(y1-y0)*PH;c.imageSmoothingEnabled=false;c.drawImage(B.off,L,T,PW,PH);
+ c.font='12px "JetBrains Mono",monospace';c.fillStyle=MUT;c.textAlign='center';c.textBaseline='top';ticks(r0,r1,w<520?4:7).forEach(v=>c.fillText(tl(v,(r1-r0)/7),X(v),T+PH+5));c.textAlign='right';c.textBaseline='middle';[0,.5,1].forEach(v=>{c.fillText(v,L-5,Y(v));c.strokeStyle='rgba(255,255,255,.18)';c.beginPath();c.moveTo(L,Y(v));c.lineTo(L+PW,Y(v));c.stroke()});c.save();c.translate(10,T+PH/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText('x₀',0,0);c.restore();
+ if(S.r>=r0&&S.r<=r1){const x=X(S.r);c.strokeStyle=INK;c.lineWidth=1.4;c.beginPath();c.moveTo(x,T);c.lineTo(x,T+PH);c.stroke()}}
+function drawStrip(){const cv=$('#strip');if(!cv.clientWidth)return;const {c,w,h,d}=fit(cv),L=46,PW=w-L-10,T=16,PH=h-T-20,pw=Math.round(PW*d),A=S.A,C=cycInfo(A),r=S.r;
+ const img=new ImageData(pw,1);for(let i=0;i<pw;i++){const cc=basinCol(r,C,(i+.5)/pw);img.data.set([cc[0],cc[1],cc[2],255],i*4)}const off=document.createElement('canvas');off.width=pw;off.height=1;off.getContext('2d').putImageData(img,0,0);c.imageSmoothingEnabled=false;c.drawImage(off,L,T,PW,PH);
+ c.font='12px "JetBrains Mono",monospace';c.fillStyle=MUT;c.textAlign='right';c.textBaseline='middle';c.fillText('r='+r.toFixed(4).replace(/0+$/,''),L+PW,8);c.textAlign='center';c.textBaseline='top';[0,.5,1].forEach(v=>c.fillText(v,L+v*PW,T+PH+3));
+ if(C){C.vals.forEach(v=>{const x=L+v*PW;c.fillStyle=INK;c.beginPath();c.moveTo(x,T-1);c.lineTo(x-5,T-9);c.lineTo(x+5,T-9);c.fill()});if(A.p<=8)periodic(r,A.p).filter(o=>!o.s).forEach(o=>{const x=L+o.x*PW;c.strokeStyle=INK;c.lineWidth=1.5;c.beginPath();c.arc(x,T+PH/2,4,0,7);c.stroke()})}
+ $('#leg').innerHTML=C&&A.p<=16?A.cycle.map((v,i)=>{const[R,G,B]=phase(i,A.p);return`<span class="chip"><span class="sw" style="background:rgb(${R|0},${G|0},${B|0})"></span>phase ${i}: ${v.toFixed(4)}</span>`}).join(''):`<span class="chip">${C?A.p+'-cycle: '+A.p+' phases':'no attracting cycle: one chaotic attractor, its basin is all of (0, 1)'}</span>`}
+function renderCX(){const cv=$('#cx');if(!cv.clientWidth)return;const {w,h,d}=fit(cv),sc=Math.min(1,Math.sqrt(70000/(w*h))),pw=Math.round(w*sc),ph=Math.round(h*sc),r=S.r,A=S.A,C=cycInfo(A),hw=.85,hh=hw*h/w,img=new ImageData(pw,ph),off=document.createElement('canvas');off.width=pw;off.height=ph;
+ job('cx',(function*(){for(let j=0;j<ph;j++){const yi=hh-(j+.5)/ph*2*hh;for(let i=0;i<pw;i++){let a=.5-hw+(i+.5)/pw*2*hw,b=yi,col=null;
+  for(let t=0;t<400;t++){if(C&&Math.abs(b)<C.eps){const k=near(C,a);if(k>=0){const p2=((k-t)%C.p+C.p)%C.p,c=phase(p2,C.p),br=1-.65*Math.min(1,Math.log(1+t)/Math.log(200));col=[c[0]*br,c[1]*br,c[2]*br];break}}
+   const m=a*a+b*b;if(m>1e4){const v=t+1-Math.log2(Math.log2(m)/2),s=.5+.5*Math.sin(v*.45);col=[20+30*s,28+44*s,58+80*s];break}const na=r*(a-a*a+b*b),nb=r*(b-2*a*b);a=na;b=nb}
+  if(!col)col=C?[14,14,18]:[70,76,94];const q=(j*pw+i)*4;img.data[q]=col[0];img.data[q+1]=col[1];img.data[q+2]=col[2];img.data[q+3]=255}
+  if(j%6===5||j===ph-1){off.getContext('2d').putImageData(img,0,0);const c=cv.getContext('2d');c.setTransform(1,0,0,1,0,0);c.imageSmoothingEnabled=true;c.drawImage(off,0,0,cv.width,cv.height);if(j===ph-1)cxAxes(cv,w,h,hw,hh,d);yield}}})())}
+function cxAxes(cv,w,h,hw,hh,d){const c=cv.getContext('2d');c.setTransform(d,0,0,d,0,0);const X=a=>(a-.5+hw)/(2*hw)*w,Y=b=>(hh-b)/(2*hh)*h;c.strokeStyle='rgba(255,255,255,.25)';c.beginPath();c.moveTo(0,Y(0));c.lineTo(w,Y(0));c.stroke();c.font='12px "JetBrains Mono",monospace';c.fillStyle=INK;c.textAlign='center';c.textBaseline='top';[0,1].forEach(v=>{c.beginPath();c.moveTo(X(v),Y(0)-4);c.lineTo(X(v),Y(0)+4);c.stroke();c.fillText(v,X(v),Y(0)+6)});c.textAlign='left';c.fillText('z-plane, r = '+S.r.toFixed(4),8,8)}
+let PPV={a0:-2.25,a1:4.25};
+function renderPP(){const cv=$('#pp');if(!cv.clientWidth)return;const {w,h}=fit(cv),sc=Math.min(1.5,Math.sqrt(80000/(w*h))),pw=Math.round(w*sc),ph=Math.round(h*sc),{a0,a1}=PPV,hh=(a1-a0)*h/w/2,img=new ImageData(pw,ph),off=document.createElement('canvas');off.width=pw;off.height=ph;S.ppI={off,hh};
+ job('pp',(function*(){for(let j=0;j<ph;j++){const ri=hh-(j+.5)/ph*2*hh;for(let i=0;i<pw;i++){const rr=a0+(i+.5)/pw*(a1-a0);let a=.5,b=0,col=null;
+  for(let t=0;t<500;t++){const na=rr*(a-a*a+b*b)-ri*(b-2*a*b),nb=rr*(b-2*a*b)+ri*(a-a*a+b*b);a=na;b=nb;const m=a*a+b*b;if(m>1e6){const v=t+1-Math.log2(Math.log2(m)/2),s=.5+.5*Math.sin(v*.5);col=[18+22*s,24+30*s,44+56*s];break}}
+  if(!col){const a0_=a,b0=b;let p=0;for(let k=1;k<=40;k++){const na=rr*(a-a*a+b*b)-ri*(b-2*a*b),nb=rr*(b-2*a*b)+ri*(a-a*a+b*b);a=na;b=nb;if(Math.abs(a-a0_)+Math.abs(b-b0)<1e-6){p=k;break}}col=p?prgb(p):[200,196,186]}
+  const q=(j*pw+i)*4;img.data[q]=col[0];img.data[q+1]=col[1];img.data[q+2]=col[2];img.data[q+3]=255}
+  if(j%5===4||j===ph-1){off.getContext('2d').putImageData(img,0,0);drawPP();yield}}})())}
+function drawPP(){const cv=$('#pp'),B=S.ppI;if(!B||!cv.clientWidth)return;const {c,w,h}=fit(cv),{a0,a1}=PPV,hh=B.hh,X=a=>(a-a0)/(a1-a0)*w,Y=b=>(hh-b)/(2*hh)*h;c.imageSmoothingEnabled=true;c.drawImage(B.off,0,0,w,h);
+ c.strokeStyle='rgba(255,255,255,.3)';c.beginPath();c.moveTo(0,Y(0));c.lineTo(w,Y(0));c.stroke();c.font='12px "JetBrains Mono",monospace';c.fillStyle=INK;c.textAlign='center';c.textBaseline='top';[-2,0,1,2,3,4].forEach(v=>{c.beginPath();c.moveTo(X(v),Y(0)-4);c.lineTo(X(v),Y(0)+4);c.stroke();c.fillText(v,X(v),Y(0)+6)});
+ const x=X(S.r);c.strokeStyle=ACC;c.lineWidth=2;c.beginPath();c.arc(x,Y(0),6,0,7);c.stroke();if(S.pt){c.strokeStyle=INK;c.lineWidth=1.5;const[u,v]=[X(S.pt[0]),Y(S.pt[1])];c.beginPath();c.moveTo(u-8,v);c.lineTo(u+8,v);c.moveTo(u,v-8);c.lineTo(u,v+8);c.stroke()}
+ c.textAlign='left';c.fillStyle=INK;c.fillText('r-plane',8,8)}
+function ppPeriod(rr,ri){let a=.5,b=0;for(let t=0;t<4000;t++){const na=rr*(a-a*a+b*b)-ri*(b-2*a*b),nb=rr*(b-2*a*b)+ri*(a-a*a+b*b);a=na;b=nb;if(a*a+b*b>1e6)return-1}const a0=a,b0=b;for(let k=1;k<=200;k++){const na=rr*(a-a*a+b*b)-ri*(b-2*a*b),nb=rr*(b-2*a*b)+ri*(a-a*a+b*b);a=na;b=nb;if(Math.abs(a-a0)+Math.abs(b-b0)<1e-8)return k}return 0}
+// ---------- atlas ----------
+function buildAtlas(){$('#lmk').innerHTML='<div class="hd"><span>r</span><span>event</span><span>period</span><span class="lam">λ</span></div>'+LMK.map((L,i)=>{const A=attractor(L.r);const p=A.p?`<span class="chip"><span class="sw" style="background:${pcol(A.p)}"></span>${A.p}</span>`:`<span class="chip">${A.lyap>.01?'chaos':'≈0'}</span>`;return`<details><summary><span class="m">${L.r.toFixed(7)}</span><span>${L.n}</span><span>${p}</span><span class="m lam">${fmt(A.lyap,3)}</span></summary><div class="more"><p>${L.t}</p><div class="btns"><button data-go="${i}">Set r</button><button data-bif="${i}">Show in bifurcation</button><button data-orb="${i}">Show cobweb</button></div></div></details>`}).join('');
+ $('#lmk').onclick=e=>{const b=e.target.closest('button');if(!b)return;const L=LMK[b.dataset.go??b.dataset.bif??b.dataset.orb];setR(L.r);if(b.dataset.bif){const z=L.z||[Math.max(0,L.r-.06),Math.min(4,L.r+.06),0,1];S.hist.push(Object.values(S.bif));S.bif={r0:z[0],r1:z[1],y0:z[2],y1:z[3]};go('bifurcation')}if(b.dataset.orb)go('orbit')};
+ const cen=$('#cen');cen.innerHTML='<div class="hd"><span>period</span><span>found</span><span>expected</span><span>first window at r</span></div><p class="read" id="cenW">computing…</p>';
+ job('cen',(function*(){let h='<div class="hd"><span>period</span><span>found</span><span>expected</span><span>first window at r</span></div>';for(let n=1;n<=11;n++){const c=census(n,n>9?600000:200000);h+=`<details><summary><span class="chip"><span class="sw" style="background:${pcol(n)}"></span>${n}</span><span class="m">${c.length}</span><span class="m">${MSS[n]} ${c.length===MSS[n]?'✓':''}</span><span class="m">${c[0].toFixed(6)}</span></summary><div class="more"><div class="cyc">${c.map(v=>`<button class="chip tapr" data-r="${v}">${v.toFixed(6)}</button>`).join('')}</div></div></details>`;cen.innerHTML=h+(n<11?'<p class="read">computing…</p>':'');yield}})());
+ cen.onclick=e=>{const b=e.target.closest('button[data-r]');if(b)setR(+b.dataset.r)}}
+// ---------- tabs & wiring ----------
+const built={};
+function go(t){location.hash=t;show(t)}
+function show(t){if(!['orbit','bifurcation','doubling','basins','atlas'].includes(t))t='orbit';S.tab=t;$$('main>section').forEach(s=>s.hidden=s.dataset.t!==t);$$('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+ requestAnimationFrame(()=>{if(t==='bifurcation'){renderBif()}else if(t==='doubling'){if(!built.fe){buildFE();built.fe=1}drawLG();renderMinis()}else if(t==='basins'){renderBM();renderPP()}else if(t==='atlas'&&!built.at){buildAtlas();built.at=1}refresh()})}
+$('#tabs').onclick=e=>{const b=e.target.closest('button');if(b)go(b.dataset.t)};
+window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
+$('#rS').addEventListener('input',e=>setR(e.target.value,'s'));
+$('#rN').addEventListener('change',e=>setR(e.target.value,'n'));
+$('#rDn').onclick=()=>setR(S.r-+$('#rStep').value);$('#rUp').onclick=()=>setR(S.r+ +$('#rStep').value);
+$('#x0S').addEventListener('input',e=>{S.x0=+e.target.value;$('#x0V').textContent=S.x0.toFixed(3);drawCob();drawTS()});
+$('#nS').addEventListener('input',e=>{S.n=+e.target.value;$('#nV').textContent=S.n;drawCob();drawTS()});
+$('#twin').addEventListener('change',e=>{S.twin=e.target.checked;drawTS()});
+$('#kSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.k=+b.dataset.k;$$('#kSeg button').forEach(x=>x.classList.toggle('on',x===b));drawCob()};
+$('#anim').onclick=()=>{if(matchMedia('(prefers-reduced-motion: reduce)').matches){drawCob();return}const t0=performance.now(),D=Math.min(4000,600+S.n*40);const f=t=>{const u=Math.min(1,(t-t0)/D);drawCob(Math.max(1,Math.round(u*S.n)));if(u<1)requestAnimationFrame(f)};requestAnimationFrame(f)};
+$('#bifP').innerHTML=BIFP.map((p,i)=>`<option value="${i}">${p[0]}</option>`).join('');$('#bifP').value=1;
+$('#bifP').onchange=e=>{S.hist.push(Object.values(S.bif));bifView(BIFP[e.target.value].slice(1))};
+$('#bifBack').onclick=()=>{if(S.hist.length)bifView(S.hist.pop())};
+$('#bifReset').onclick=()=>{S.hist=[];$('#bifP').value=1;bifView(BIFP[1].slice(1))};
+$('#bmP').innerHTML=BMP.map((p,i)=>`<option value="${i}">${p[0]}</option>`).join('');
+$('#bmP').onchange=e=>{S.bm=+e.target.value;renderBM()};
+$('#bm').addEventListener('click',e=>{const B=S.bmI;if(!B)return;const b=e.target.getBoundingClientRect(),x=e.clientX-b.left;if(x>=B.L&&x<=B.L+B.PW)setR(B.r0+(x-B.L)/B.PW*(B.r1-B.r0))});
+$('#pp').addEventListener('click',e=>{const B=S.ppI;if(!B)return;const b=e.target.getBoundingClientRect(),a=PPV.a0+(e.clientX-b.left)/b.width*(PPV.a1-PPV.a0),im=B.hh-(e.clientY-b.top)/b.height*2*B.hh,p=ppPeriod(a,im);S.pt=[a,im];
+ $('#ppR').textContent=`r = ${a.toFixed(4)} ${im<0?'−':'+'} ${Math.abs(im).toFixed(4)}i · ${p<0?'critical orbit escapes: outside the set':p?'attracting '+p+'-cycle':'bounded, no cycle up to 200 (chaotic or very slow)'} · c = r/2 − r²/4 = ${(a/2-(a*a-im*im)/4).toFixed(4)} ${(im/2-a*im/2)<0?'−':'+'} ${Math.abs(im/2-a*im/2).toFixed(4)}i`;
+ if(Math.abs(im)<B.hh*.04&&a>=0&&a<=4)setR(a);else drawPP()});
+bifPointer();
+S.bif={r0:2.5,r1:4,y0:0,y1:1};
+let rsT,lastW=0;new ResizeObserver(()=>{const W=document.body.clientWidth;if(W===lastW)return;lastW=W;clearTimeout(rsT);rsT=setTimeout(()=>{const t=S.tab;if(t==='bifurcation')renderBif();if(t==='basins'){renderBM();renderPP();renderCX()}if(t==='doubling'){drawLG();renderMinis()}refresh()},150)}).observe(document.body);
+$$('#kSeg button')[0].classList.add('on');
+setR(3.2);show(location.hash.slice(1));
+}
+</script>
+</body>
+</html>
