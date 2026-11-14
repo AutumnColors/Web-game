@@ -319,6 +319,22 @@ footer p{ margin: 0; }
   .tile, .panel{ transition: none !important; }
   .tile.hit{ animation: none; }
 }
+/* ---------- rules: generators and relations ---------- */
+.rule{ margin: 0 0 10px; padding: 10px 12px; border: 1.5px solid var(--ink); border-radius: 3px; background: var(--surface); font-family: var(--f-math); font-size: 16.5px; line-height: 1.7; overflow-wrap: anywhere; }
+.rule sup, .rule sub{ font-size: .68em; line-height: 0; }
+.rule .rb{ color: var(--muted); }
+.rule .rs{ white-space: nowrap; }
+.rule .rline{ padding-left: 1.1em; }
+.rule .rnote{ font-family: var(--f-ui); font-size: 11.5px; color: var(--muted); margin-left: .5em; }
+.rule .rmore{ font-family: var(--f-ui); font-size: 12.5px; color: var(--muted); }
+.rule .rwhere{ margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); font-size: 14.5px; }
+.h3sub{ text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 4px; }
+.rkv{ margin-bottom: 18px; }
+.rcap{ margin: -2px 0 14px; font-size: 12.5px; line-height: 1.45; color: var(--ink-2); }
+.card-sub{ margin: 6px 0 6px; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.card .rule{ font-size: 15.5px; background: var(--surface); }
+.card .rcap{ margin-bottom: 10px; }
+.ydiag{ color: var(--ink-2); max-width: 100%; height: auto; }
 </style>
 </head>
 <body>
@@ -353,7 +369,7 @@ footer p{ margin: 0; }
       <button type="button" role="radio" aria-checked="true" data-mode="family" id="mode-family">Color by family</button>
       <button type="button" role="radio" aria-checked="false" data-mode="size" id="mode-size">Color by size</button>
     </div>
-    <p class="hint">Tap any tile for its order, factorization and members. <span class="narrow-only">The table scrolls sideways.</span></p>
+    <p class="hint">Tap any tile for its order, factorization, members and its rule: the generators and relations that create it. <span class="narrow-only">The table scrolls sideways.</span></p>
   </div>
 
   <div class="layout">
@@ -370,6 +386,7 @@ footer p{ margin: 0; }
   <footer>
     <p>Notation: A<sub>n</sub>(q) = PSL<sub>n+1</sub>(q), B<sub>n</sub>(q) = Ω<sub>2n+1</sub>(q), C<sub>n</sub>(q) = PSp<sub>2n</sub>(q), D<sub>n</sub>(q) = PΩ<sub>2n</sub><sup>+</sup>(q), <sup>2</sup>A<sub>n</sub>(q<sup>2</sup>) = PSU<sub>n+1</sub>(q), <sup>2</sup>D<sub>n</sub>(q<sup>2</sup>) = PΩ<sub>2n</sub><sup>−</sup>(q). Here q is a prime power. Twisted families sit in the row of their untwisted diagram's rank.</p>
     <p>Every order, factorization and lookup is computed exactly in your browser with big-integer arithmetic. The lookup checks every family at every rank and field size, so a "no" is a theorem, not a guess.</p>
+    <p>Rules: the sporadic presentations are from the ATLAS of Group Representations; the families use the presentations of Steinberg, Carmichael, and Behr and Mennicke, and Conway’s Y-diagrams. “Checked here” means verified with the GAP computer algebra system when this page was built.</p>
   </footer>
 
 <div class="ctv" id="ctv" role="dialog" aria-modal="true" aria-labelledby="ctv-title" hidden>
@@ -1167,6 +1184,260 @@ for (const b of document.querySelectorAll('.seg button')) b.addEventListener('cl
 let savedMode = 'family'; try { savedMode = localStorage.getItem('fsg-mode') || 'family'; } catch (e) {}
 setMode(savedMode === 'size' ? 'size' : 'family');
 
+/* ---------- rules: generators and relations ---------- */
+/* Every group gets a "rule": a presentation ⟨generators | relations⟩, or for the twisted families the construction that cuts it out of a larger group.
+   Sources and checks are stated per rule. "Checked here" means verified with GAP while building this page:
+   coset enumeration for the order, and the relations tested inside the actual group. */
+function rw(s) {
+  const lett = c => `<i>${c}</i>`;
+  const inner = t => t.replace(/-/g, '−').replace(/[A-Za-zα-ω]/g, lett);
+  return String(s).replace(/\^\{([^}]*)\}|\^(-?\d+)|_\{([^}]*)\}|_([\wα-ω])|([A-Za-zα-ω])/g,
+    (all, s1, s2, b1, b2, ch) => s1 != null ? `<sup>${inner(s1)}</sup>` : s2 != null ? `<sup>${inner(s2)}</sup>` : b1 != null ? `<sub>${inner(b1)}</sub>` : b2 != null ? `<sub>${inner(b2)}</sub>` : lett(ch));
+}
+const RB = c => `<span class="rb">${c}</span>`;
+function ruleBox(gens, rels, o = {}) {
+  const chain = rels.map(r => `<span class="${r.length > 24 ? 'rl' : 'rs'}">${rw(r)}</span>`).join(' = ');
+  return `<div class="rule">${RB('⟨')} ${rw(gens)} ${RB('|')} ${chain} = <i>e</i>${o.more ? `, <span class="rmore">+ more</span>` : ''} ${RB('⟩')}${o.where ? `<div class="rwhere">${o.where}</div>` : ''}</div>`;
+}
+function ruleLines(head, lines, tail) {
+  return `<div class="rule"><div>${RB('⟨')} ${head} ${RB('|')}</div>${lines.map(l => `<div class="rline">${l}</div>`).join('')}<div>${RB('⟩')}${tail ? ' ' + tail : ''}</div></div>`;
+}
+const ruleH = (t = 'The rule') => `<h3 class="p-h3">${t} <span class="h3sub">generators and relations</span></h3>`;
+const ruleKv = rows => `<dl class="kv rkv">${rows.filter(Boolean).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+
+const CHK = {
+  full: 'Checked here: the relations hold in the group itself, and coset enumeration gives exactly the right order.',
+  order: 'Checked here: coset enumeration shows these relations define a group of exactly the right order.',
+  rel: 'Checked here that every relation holds in the group itself. The group is too large to enumerate on this machine, so completeness rests on the ATLAS.',
+  none: 'Far too large to re-check here.',
+};
+const ATLAS = 'ATLAS of Group Representations (Wilson, Parker, Bray and others)';
+
+/* Sporadic groups with a complete presentation on two (J4: three) generators. */
+const M24R = ['x^2', 'y^3', '(xy)^23', '[x,y]^12', '[x,yxy]^5', '(xyxyxy^-1)^3(xyxy^-1xy^-1)^3', '(xy(xyxy^-1)^3)^4'];
+const SPOR_RULE = {
+  M11: { o: [2, 4, 11], chk: 'full', r: ['a^2', 'b^4', '(ab)^11', '(ab^2)^6', 'ababab^-1abab^2ab^-1abab^-1ab^-1'] },
+  M12: { o: [2, 3, 11], chk: 'full', r: ['a^2', 'b^3', '(ab)^11', '[a,b]^6', '(ababab^-1)^6'] },
+  M22: { o: [2, 4, 11], chk: 'full', r: ['a^2', 'b^4', '(ab)^11', '(ab^2)^5', '[a,bab]^3', '(ababab^-1)^5'] },
+  M23: { o: [2, 4, 23], chk: 'full', r: ['a^2', 'b^4', '(ab)^23', '(ab^2)^6', '[a,b]^6', '(abab^-1ab^2)^4', '(ab)^3ab^-1ab^2(abab^-1)^2(ab)^3(ab^-1)^3', '(abab^2)^3(ab^2ab^-1)^2abab^2abab^-1ab^2'] },
+  M24: { o: [2, 3, 23], chk: 'full', r: ['a^2', 'b^3', '(ab)^23', '[a,b]^12', '[a,bab]^5', '(ababab^-1)^3(abab^-1ab^-1)^3', '(ab(abab^-1)^3)^4'] },
+  J1: { o: [2, 3, 7], chk: 'full', r: ['a^2', 'b^3', '(ab)^7', '(ab(abab^-1)^3)^5', '(ab(abab^-1)^6abab(ab^-1)^2)^2'] },
+  J2: { o: [2, 3, 7], chk: 'full', r: ['a^2', 'b^3', '(ab)^7', '[a,b]^12', '(ababab^-1abab^-1)^6'] },
+  J3: { o: [2, 3, 19], chk: 'order', r: ['a^2', 'b^3', '(ab)^19', '[a,b]^9', '((ab)^6(ab^-1)^5)^2', '((ababab^-1)^2abab^-1ab^-1abab^-1)^2', 'abab(abab^-1)^3abab(abab^-1)^4ab^-1(abab^-1)^3', '(ababababab^-1abab^-1)^4'] },
+  HS: { o: [2, 5, 11], chk: 'full', r: ['a^2', 'b^5', '(ab)^11', '(ab^2)^10', '[a,b]^5', '[a,b^2]^6', '[a,bab]^3', 'ababab^2ab^-1ab^-2ab^-1ab^2abab(ab^-2)^4', 'ab(ab^2(ab^-2)^2)^2ab^2abab^2(ab^-1ab^2)^2', 'abab(ab^2)^2ab(ab^-1)^2ab(ab^2)^2ababab^-2ab^-1ab^-2'] },
+  McL: { o: [2, 5, 11], chk: 'rel', r: ['a^2', 'b^5', '(ab)^11', '(ab^2)^12', '[a,b]^5', '[a,b^2]^6', '(abab^-2)^7', '[a,b^-2ab^2ab^-1ab(ab^2)^2abab^-1]', '[a,b^2ab(ab^2)^2]^2', 'abab^2ab^-2abab^-1ab^2(ab^-2ab)^2(ab^2ab^-2ab^2)^2', '[a,b^2ab^2ab^-1ab^2]^2', '[a,b^2ab]^4'] },
+  He: { o: [2, 7, 17], chk: 'rel', r: ['a^2', 'b^7', '(ab)^17', '[a,b]^6', '[a,b^3]^5', '[a,babab^-1abab]', '(ab)^4ab^2ab^-3ababab^-1ab^3ab^-2ab^2'] },
+  Co2: { o: [2, 5, 28], chk: 'rel', r: ['a^2', 'b^5', '(ab^2)^9', '[a,b]^4', '[a,b^2]^4', '[a,bab]^3', '[a,bab^2ab]^2', '[a,bab^-2]^3', '[a,b^-2abab^-2]^2', '(abab^2ab^-1ab^-2)^7'] },
+  Fi22: { o: [2, 13, 11], chk: 'rel', r: ['a^2', 'b^13', '(ab)^11', '(ab^2)^21', '[a,b]^3', '[a,b^2]^3', '[a,b^3]^3', '[a,b^4]^2', '[a,b^5]^3', '[a,bab^2]^3', '[a,b^-1ab^-2]^2', '[a,bab^5]^2', '[a,b^2ab^5]^2'] },
+  Tits: { o: [2, 3, 13], chk: 'full', r: ['a^2', 'b^3', '(ab)^13', '[a,b]^5', '[a,bab]^4', '(ababababab^-1)^6'] },
+  J4: { g: 'x, y, t', chk: 'none', r: [...M24R, 't^2', '[t,x]', '[t,yxy(xy^-1)^2(xy)^3]', '(yt^{w})^3', '((yxyxyxy)^3tt^{v})^2'],
+    where: `with ${rw('t^{w}')} = ${rw('w^-1tw')}, ${rw('w')} = ${rw('yxy^-1xyxy^-1x')}, ${rw('v')} = ${rw('(xy)^3y(xy)^6y')}`,
+    gens: 'x (order 2) and y (order 3) generate a copy of M_{24}: the first seven relations are exactly the M_{24} rule. The third generator t is an involution that commutes with x. Two generators are also enough (orders 2 and 4, product of order 37), but the known relation list uses these three.' },
+};
+/* Sporadic groups for which the ATLAS defines standard generators but lists no complete presentation on them. */
+const SPOR_STD = {
+  Co1: { o: [2, 3, 40], cls: ['2B', '3C'], extra: 'abab^2 has order 6' },
+  Co3: { o: [3, 4, 14], cls: ['3A', '4A'] },
+  Suz: { o: [2, 3, 13], cls: ['2B', '3B'], extra: 'abab^2 has order 15' },
+  HN: { o: [2, 3, 22], cls: ['2A', '3B'], extra: 'abab^2 has order 5' },
+  Th: { o: [2, 3, 19], cls: [null, '3A'] },
+  Fi23: { o: [2, 3, 28], cls: ['2B', '3D'] },
+  Fi24: { o: [2, 3, 29], cls: ['2A', '3E'], extra: '(ab)^2ab^2 has order 33' },
+  B: { o: [2, 3, 55], cls: ['2C', '3A'], extra: '(ab)^3ab^2ab(ab^2)^2 has order 23' },
+  M: { o: [2, 3, 29], cls: ['2A', '3B'] },
+  ON: { o: [2, 4, 11], cls: [null, '4A'] },
+  Ly: { o: [2, 5, 14], cls: [null, '5A'], extra: '(ab)^2ab^2 has order 67' },
+  Ru: { o: [2, 4, 13], cls: ['2B', '4A'] },
+};
+/* Conway's Y-diagram presentations: Coxeter relations on a Y-shaped diagram plus one "spider" relation. */
+const SPOR_Y = {
+  Fi22: { arms: [3, 3, 2], gives: '2 × 2·Fi_{22}', how: 'Fi_{22} is this group divided by its centre, which has order 4.' },
+  Fi23: { arms: [4, 3, 2], gives: '2 × Fi_{23}', how: 'Fi_{23} is this group divided by its centre, which has order 2.' },
+  Fi24: { arms: [4, 4, 2], gives: '3·Fi_{24}', how: 'This group is built in three layers: a normal subgroup of order 3, then Fi_{24}′, then a top layer of order 2.' },
+  B: { arms: [4, 3, 3], gives: '2 × 2·B', how: 'B is this group divided by its centre, which has order 4.' },
+  M: { arms: [4, 4, 3], gives: '2 × M', how: 'M is this group divided by its centre, which has order 2.' },
+};
+function yDiagram(arms) {
+  const S = 26, R = 5, ang = [-90, 150, 30], lab = 'bcdef';
+  let nodes = [{ x: 0, y: 0, t: 'a', i: 0, dx: 9, dy: -7 }], edges = '';
+  arms.forEach((len, k) => {
+    const c = Math.cos(ang[k] * Math.PI / 180), s = Math.sin(ang[k] * Math.PI / 180);
+    edges += `<line x1="0" y1="0" x2="${(c * S * len).toFixed(1)}" y2="${(s * S * len).toFixed(1)}"/>`;
+    for (let j = 1; j <= len; j++) nodes.push({ x: c * S * j, y: s * S * j, t: lab[j - 1], i: k + 1, dx: k === 0 ? 10 : 0, dy: k === 0 ? 4 : 17 });
+  });
+  const xs = nodes.map(p => p.x), ys = nodes.map(p => p.y);
+  const x0 = Math.min(...xs) - 16, y0 = Math.min(...ys) - 12, w = Math.max(...xs) - x0 + 22, h = Math.max(...ys) - y0 + 24;
+  return `<svg class="ydiag" viewBox="${x0.toFixed(1)} ${y0.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" width="${Math.round(w * 1.15)}" height="${Math.round(h * 1.15)}" role="img" aria-label="Y-shaped diagram with arms of ${arms.join(', ')} nodes">
+  <g stroke="currentColor" stroke-width="1.4" fill="none">${edges}</g>
+  ${nodes.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${R}" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/><text x="${(p.x + p.dx).toFixed(1)}" y="${(p.y + p.dy).toFixed(1)}" text-anchor="${p.dx ? 'start' : 'middle'}" font-size="10.5" font-style="italic" fill="currentColor" font-family="var(--f-math)">${p.t}${p.i ? `<tspan font-size="7.5" dy="2.5" font-style="normal">${p.i}</tspan>` : ''}</text>`).join('')}</svg>`;
+}
+function yRule(id) {
+  const y = SPOR_Y[id], n = 1 + y.arms[0] + y.arms[1] + y.arms[2], name = `Y_{${y.arms.join('')}}`;
+  return `<h3 class="p-h3">Coxeter-style rule <span class="h3sub">the ${m(name)} diagram</span></h3>
+  <div class="dkbox">${yDiagram(y.arms)}<p class="cap">${n} generators, one for each node, every one of order 2.</p></div>
+  ${ruleLines(`${n} nodes ${rw('s, t, …')}`, [`${rw('s^2')} = <i>e</i> <span class="rnote">every node</span>`, `${rw('(st)^3')} = <i>e</i> <span class="rnote">joined nodes</span>`, `${rw('(st)^2')} = <i>e</i> <span class="rnote">unjoined nodes commute</span>`, `${rw('(ab_1c_1ab_2c_2ab_3c_3)^10')} = <i>e</i> <span class="rnote">the “spider”</span>`])}
+  ${ruleKv([['Gives', `${m(y.gives)}<span class="sub">${m(y.how)}</span>`], ['Idea', 'The first three lines alone define an infinite Coxeter group. One extra relation, on the centre and the first two nodes of each arm, collapses it to a finite group.'], ['Source', 'Conway’s Y-diagram presentations (Conway, Norton, Soicher); the Monster and Baby Monster cases were proved by Norton and Ivanov. With arms 4, 4, 4 the same rule gives the Bimonster: two copies of the Monster, swapped by one extra involution.']])}`;
+}
+function sporRule(id) {
+  const s = SPOR_BY[id], P = SPOR_RULE[id], S = SPOR_STD[id];
+  let h = ruleH();
+  if (P) {
+    const n = P.r.length, g = P.g || 'a, b';
+    h += ruleBox(g, P.r, { where: P.where });
+    h += ruleKv([
+      ['Generators', P.gens ? m(P.gens) : `Two elements: ${rw('a')} of order ${P.o[0]} and ${rw('b')} of order ${P.o[1]}, whose product ${rw('ab')} has order ${P.o[2]}.`],
+      ['Relations', `${n}. Together they force the group to have exactly ${fmtInt(s.order)} elements.`],
+      ['Notation', `${rw('[a,b]')} = ${rw('a^-1b^-1ab')}, the commutator.`],
+      ['Source', `${ATLAS}. ${CHK[P.chk]}`],
+    ]);
+  } else if (S) {
+    const [oa, ob, oab] = S.o, base = [`a^${oa}`, `b^${ob}`, `(ab)^${oab}`];
+    h += ruleBox('a, b', base, { more: true });
+    const cl = (x, o, c) => `${rw(x)} ${c ? `in class ${c}` : `of order ${o}`}`;
+    h += ruleKv([
+      ['Generators', `Two elements are enough: ${cl('a', oa, S.cls[0])} and ${cl('b', ob, S.cls[1])}, with ${rw('ab')} of order ${oab}${S.extra ? `, and ${rw(S.extra.replace(/ has order \d+$/, ''))} of order ${S.extra.match(/\d+$/)[0]}` : ''}. These conditions fix the pair inside the group, up to the group’s own symmetries.`],
+      ['Relations', `The three shown are true but not the whole rule: on their own they define a much larger group. More relations are needed, and the ATLAS lists no complete set on these generators.`],
+      ['Source', `Standard generators from the ${ATLAS}.`],
+    ]);
+  }
+  if (SPOR_Y[id]) h += yRule(id);
+  return h;
+}
+
+/* Small groups of Lie type: explicit two-generator presentations, found and verified here by coset enumeration.
+   Each relator is [exponents of b after each a, power]: [[-1,1],4] means (a b^-1 a b)^4 = [a,b]^4. */
+const LIE_PRES = {'2A:2:3': { m: 7, k: 6, r: [[[1],6],[[-1,1],3],[[-2,2],3],[[-3,-3,-1],3]] }, '2A:2:4': { m: 3, k: 13, r: [[[1],13],[[-1,1],5],[[-1,-1,-1,1,1,1],3]] }, '2A:2:5': { m: 4, k: 10, r: [[[1],10],[[2],6],[[-1,1],6],[[-1,-1,1,1],4],[[-1,-1,-1,-1,1,2],3],[[-1,-1,-1,-1,2,1],3],[[-1,-1,-1,1,1],4],[[-1,-1,1],7],[[-1,1,2],6]] }, '2A:3:2': { m: 4, k: 9, r: [[[1],9],[[2],6],[[-1,1,2,1,-1,2],2],[[-1,1,2],5]] }, '2A:3:3': { m: 5, k: 7, r: [[[1],7],[[-1,1],4],[[-2,2],3],[[-2,1],7],[[-2,-2,-1,1,-1],3],[[-2,1,-2,1,1],3],[[-2,-2,-1,-1,1],4]] }, '2B2:2:8': { m: 4, k: 5, r: [[[1],5],[[-1,1],7],[[-1,1,2],5],[[2],13]] }, 'A:1:11': { m: 3, k: 11, r: [[[1],11],[[-1,-1,-1,1,1,1],2]] }, 'A:1:13': { m: 3, k: 7, r: [[[1],7],[[-1,1],6]] }, 'A:1:16': { m: 3, k: 15, r: [[[1],15],[[-1,-1,-1,-1,-1,1,1,1],2]] }, 'A:1:17': { m: 3, k: 8, r: [[[1],8],[[-1,-1,-1,1,1],3]] }, 'A:1:19': { m: 3, k: 9, r: [[[1],9],[[-1,1],5],[[-1,-1,-1,1,1],5]] }, 'A:1:23': { m: 3, k: 11, r: [[[1],11],[[-1,1],4]] }, 'A:1:25': { m: 3, k: 12, r: [[[1],12],[[-1,-1,1,-1,1],3],[[-1,-1,-1,1,-1,1],4]] }, 'A:1:29': { m: 3, k: 7, r: [[[1],7],[[-1,-1,1,1],5]] }, 'A:1:31': { m: 3, k: 8, r: [[[1],8],[[-1,-1,-1,1,-1,1,1],3],[[-1,-1,-1,1,1,-1,1],3]] }, 'A:1:4': { m: 3, k: 5, r: [[[1],5]] }, 'A:1:5': { m: 3, k: 5, r: [[[1],5]] }, 'A:1:7': { m: 3, k: 7, r: [[[1],7],[[-1,1],4]] }, 'A:1:8': { m: 3, k: 7, r: [[[1],7],[[-1,-1,1,-1,-1,1,1],2]] }, 'A:1:9': { m: 4, k: 5, r: [[[1],5],[[2],5]] }, 'A:2:2': { m: 3, k: 7, r: [[[1],7],[[-1,1],4]] }, 'A:2:3': { m: 3, k: 13, r: [[[1],13],[[-1,1],4],[[-1,-1,-1,-1,1],4]] }, 'A:2:4': { m: 4, k: 7, r: [[[1],7],[[2],5],[[-1,-1,1],5],[[-1,-1,2,-1,1,2],3]] }, 'A:2:5': { m: 3, k: 24, r: [[[1],24],[[-1,1],6],[[-1,-1,-1,-1,-1,-1,1,1],3],[[-1,-1,-1,1,-1,1,1,1],3],[[-1,-1,-1,1,1,1,-1,1],3],[[-1,-1,-1,-1,-1,1,1,1],4],[[-1,-1,-1,-1,1,-1,1],5]] }, 'A:2:7': { m: 3, k: 19, r: [[[1],19],[[-1,1],6],[[-1,-1,-1,1,1,1],3],[[-1,-1,-1,-1,1,-1,1],3],[[-1,-1,-1,1,-1,-1,1],4]] }, 'A:3:2': { m: 4, k: 15, r: [[[1],15],[[2],4],[[-1,1],4],[[-1,-1,2],4],[[-1,-1,-1,1,2],7]] }, 'B:2:3': { m: 4, k: 9, r: [[[1],9],[[2],6],[[-1,1,2,1,-1,2],2],[[-1,1,2],5]] }, 'B:2:4': { m: 5, k: 15, r: [[[1],15],[[-2,2],2],[[-1,1],5],[[-2,1,1],4],[[-1,-1,-1,1],4]] }, 'B:3:2': { m: 3, k: 15, r: [[[1],15],[[-1,-1,1,-1,-1,1,-1,1,1],2],[[-1,1],12],[[-1,-1,-1,-1,1,1,1],4],[[-1,-1,-1,1,1,1,-1,-1,1,1],3],[[-1,-1,1,1,-1,1,-1,1],4],[[-1,-1,-1,-1,1,-1,1],5]] }};
+function presWord(e, p) {
+  if (e.length === 2 && e[0] === -1 && e[1] === 1) return `[a,b]^${p}`;
+  const syl = x => x === 1 ? 'ab' : `ab^${x}`;
+  const runs = []; for (const x of e) { const l = runs[runs.length - 1]; if (l && l[0] === x) l[1]++; else runs.push([x, 1]); }
+  if (runs.length === 1) return `(${syl(runs[0][0])})^${p * runs[0][1]}`;
+  const w = runs.map(([x, c]) => c > 1 ? `(${syl(x)})^${c}` : syl(x)).join('');
+  return p > 1 ? `(${w})^${p}` : w;
+}
+function liePresKey(fid, n, q) {
+  const k = `${fid}:${n}:${q}`; if (LIE_PRES[k]) return k;
+  if (fid === 'C' && q % 2n === 0n && LIE_PRES[`B:${n}:${q}`]) return `B:${n}:${q}`;
+  return null;
+}
+function memberRule(fid, n, q) {
+  const k = liePresKey(fid, n, q); if (!k) return '';
+  const P = LIE_PRES[k], rels = ['a^2', `b^${P.m}`, ...P.r.map(([e, p]) => presWord(e, p))];
+  return `<p class="card-sub">Rule for this member</p>${ruleBox('a, b', rels)}<p class="rcap">Two generators: ${rw('a')} of order 2, ${rw('b')} of order ${P.m}, with ${rw('ab')} of order ${P.k}. One of many possible rules for this group; this one was found and verified here by coset enumeration.</p>`;
+}
+
+const STEIN_LINES = [
+  `${rw('x_α(t) · x_α(u)')} = ${rw('x_α(t+u)')}`,
+  `${rw('[x_α(t), x_β(u)]')} = ∏ ${rw('x_{iα+jβ}(c_{ij}t^{i}u^{j})')} <span class="rnote">β ≠ ±α</span>`,
+  `${rw('h_α(t) · h_α(u)')} = ${rw('h_α(tu)')}`,
+];
+const TW_PARENT = { '2A': n => [`A_{${n}}(q^{2})`, 'q', 2], '2D': n => [`D_{${n}}(q^{2})`, 'q', 2], '2E6': () => ['E_{6}(q^{2})', 'q', 2], '3D4': () => ['D_{4}(q^{3})', 'q', 3] };
+const SR_PARENT = { '2B2': ['B_{2}(q)', 2], '2G2': ['G_{2}(q)', 3], '2F4': ['F_{4}(q)', 2] };
+const gT = (f, n) => { const t = f.gText(n); return t ? t.replace('gcd(n1', 'gcd(n+1') : t; };
+const centreText = (f, n) => gT(f, n) ? `Dividing by its centre, of order ${m(gT(f, n))}, leaves the simple group.` : 'Its centre is trivial, so this already is the simple group.';
+/* n == null renders the whole-family version. */
+function lieRule(fid, n) {
+  const f = FAM[fid], gen = n == null, nn = gen ? (f.rank || null) : n;
+  const roots = nn != null ? 2 * rankData(fid, nn).Npos : null;
+  let h = ruleH();
+  if (fid === 'A' && !gen && n === 1) {
+    h += ruleBox('x, y', ['x^{p}', 'y^2', '(xy)^3', '(x^2yx^{(p+1)/2}y)^3']);
+    h += ruleKv([
+      ['Generators', `${rw('x')}: ${rw('z')} ↦ ${rw('z')} + 1 and ${rw('y')}: ${rw('z')} ↦ −1/${rw('z')}, acting on the ${m('q')} + 1 points of the projective line (the field plus ∞).`],
+      ['Valid for', `${m('q = p')} a prime, ${m('p')} ≥ 5. For ${m('q = p^{k}')} the same two kinds of map generate the group, but the single shift becomes ${rw('k')} commuting shifts ${rw('z')} ↦ ${rw('z')} + ${rw('t')}.`],
+      ['Reads as', `Shifting ${m('p')} times returns to the start, inverting twice does too, and “shift then invert” has order 3. The fourth relation ties the half-shift to the double shift.`],
+      ['Source', 'Behr and Mennicke, 1968. Checked here by coset enumeration for every prime from 5 to 47.'],
+    ]);
+    return h;
+  }
+  if (fid === 'A') {
+    const d = gen ? 'n+1' : String(n + 1);
+    h += ruleLines(`${rw('e_{ij}(t)')}`, [
+      `${rw('e_{ij}(t) · e_{ij}(u)')} = ${rw('e_{ij}(t+u)')}`,
+      `${rw('[e_{ij}(t), e_{jk}(u)]')} = ${rw('e_{ik}(tu)')} <span class="rnote">${rw('i')} ≠ ${rw('k')}</span>`,
+      `${rw('[e_{ij}(t), e_{kl}(u)]')} = <i>e</i> <span class="rnote">${rw('j')} ≠ ${rw('k')}, ${rw('i')} ≠ ${rw('l')}</span>`,
+    ], '/ scalars');
+    h += ruleKv([
+      ['Generators', `${rw('e_{ij}(t)')} is the identity matrix with ${rw('t')} placed in row ${rw('i')}, column ${rw('j')}: one for every off-diagonal position of a ${m(d)} × ${m(d)} matrix${gen ? '' : ` (${n * (n + 1)} positions)`} and every ${rw('t')} in the field with ${m('q')} elements.${gen ? ` This is the rule for rank ${m('n')} ≥ 2; rank 1 has its own, shown on the ${m('A_{1}(q)')} tile.` : ''}`],
+      ['Reads as', `One position adds like the field. Two positions that chain, (${rw('i')}, ${rw('j')}) then (${rw('j')}, ${rw('k')}), combine into (${rw('i')}, ${rw('k')}). Positions that do not chain commute, except a position and its mirror image, (${rw('i')}, ${rw('j')}) and (${rw('j')}, ${rw('i')}), which no relation links directly.`],
+      ['Result', `These relations give ${m(`SL_{${d}}(q)`)}, all matrices of determinant 1 (Steinberg). Dividing by the scalar matrices, ${m(gT(f, gen ? 'n' : n))} of them, leaves the simple group.`],
+      ['Source', `Steinberg, 1962. Checked here by coset enumeration for ${m('SL_{3}(2), SL_{3}(3), SL_{3}(5)')} and ${m('SL_{4}(2)')}.`],
+    ]);
+    return h;
+  }
+  if (SR_PARENT[fid]) {
+    const [par, ch] = SR_PARENT[fid];
+    h += ruleLines(`${rw('g')} in ${m(par)}`, [`σ(${rw('g')}) = ${rw('g')}`, `σ = (long ↔ short roots) ∘ (${rw('t')} ↦ ${rw('t^{θ}')}) <span class="rnote">${ch}${rw('θ^2')} = ${m('q')}</span>`]);
+    h += ruleKv([
+      ['Start from', `${m(par)}, with its own rule on root elements ${rw('x_α(t)')} (see the ${m(par.replace('(q)', ''))} family).`],
+      ['The twist', `The diagram’s dashed arc swaps long and short roots. That swap is a symmetry of the group only in characteristic ${ch}, and it needs a field map whose square undoes it: ${rw('t')} ↦ ${rw('t^{θ}')} with ${ch}${rw('θ^2')} = ${m('q')}. So ${m('q')} must be an odd power of ${ch}.`],
+      ['Result', 'The group is the set of elements that σ leaves fixed. Its generators are the σ-fixed products of root elements; the parent’s relations, restricted to them, are its rule.'],
+      ['Source', fid === '2B2' ? 'Found by Suzuki, 1960; built this way by Ree, 1961.' : 'Ree, 1960–61.'],
+    ]);
+    return h;
+  }
+  if (TW_PARENT[fid]) {
+    const [par, , ord] = TW_PARENT[fid](gen ? 'n' : n), base = par.replace(/\(.*$/, '');
+    h += ruleLines(`${rw('g')} in the root groups of ${m(par)}`, [`σ(${rw('g')}) = ${rw('g')}`, `σ : ${rw('x_α(t)')} ↦ ${rw('x_{ρ(α)}(t^{q})')} <span class="rnote">up to signs</span>`], '/ centre');
+    h += ruleKv([
+      ['Start from', `${m(par)}, the untwisted group over the field with ${m(ord === 2 ? 'q^{2}' : 'q^{3}')} elements, with its rule on root elements ${rw('x_α(t)')}.`],
+      ['The twist', `ρ is the symmetry of the Dynkin diagram (${fid === '3D4' ? 'the dashed circle: an order-3 rotation' : 'the dashed arcs'}); it permutes the roots. The field map ${rw('t')} ↦ ${rw('t^{q}')} has the same order, ${ord}. σ applies both at once.`],
+      ['Generators', `The σ-fixed elements of the root groups, such as ${rw('x_α(t) · x_{ρ(α)}(t^{q})')} for a pair of roots swapped by ρ, or ${rw('x_α(t)')} with ${rw('t')} in the small field when ρ fixes α.`],
+      ['Result', `These elements generate the twisted group; dividing by its centre${gT(f, gen ? 'n' : n) ? `, of order ${m(gT(f, gen ? 'n' : n))},` : ' (trivial here)'} leaves the simple group. The relations are those of ${m(base)}, restricted to the fixed elements.`],
+      ['Source', fid === '2A' ? 'The unitary groups are classical; this description is Steinberg’s, 1959.' : fid === '2D' ? 'The minus-type orthogonal groups are classical; this description is Steinberg’s, 1959.' : 'Steinberg, 1959.'],
+    ]);
+    return h;
+  }
+  h += ruleLines(`${rw('x_α(t)')}`, STEIN_LINES, '/ centre');
+  h += ruleKv([
+    ['Generators', `One copy of the field with ${m('q')} elements for each root α: the root elements ${rw('x_α(t)')}, ${rw('t')} in the field.${roots ? ` There are ${roots} roots here, so ${roots} root groups.` : ''}`],
+    ['Reads as', `Line 1: inside one root, elements add like the field. Line 2: two roots commute unless α + β is again a root; then their commutator is made of the roots ${rw('i')}α + ${rw('j')}β between them, with fixed small integers ${rw('c_{ij}')}. Line 3: the elements ${rw('h_α(t)')}, built from ${rw('x_α')} and ${rw('x_{−α}')}, multiply like the nonzero field elements.`],
+    ['Diagram', 'The Dynkin diagram above is the compressed form of line 2: simple roots not joined by a line give commuting root groups, and the number of lines fixes how joined ones interact.'],
+    ['Result', `These relations give the universal group of this type (Steinberg’s theorem). ${centreText(f, gen ? 'n' : n)}`],
+    ['Source', 'Steinberg, 1962; see Carter, Simple Groups of Lie Type, chapter 12.'],
+  ]);
+  return h;
+}
+const CURTIS_TITS = 'Reading the diagram as a rule (Curtis–Tits theorem, rank ≥ 3): put one copy of SL_{2}(q) on each node. Two nodes with no line between them commute. Two nodes joined by a single line generate SL_{3}(q); by a double line, Sp_{4}(q); by a triple line, G_{2}(q). Nothing else is needed: the pairs determine the whole group, before dividing by its centre.';
+
+const ALT2 = {
+  5: { r: ['a^2', 'b^3', '(ab)^5'], note: 'On the icosahedron: a half-turn about an edge, then a third-turn about a face touching that edge, make a fifth-turn about a vertex. Three relations are the whole rule.' },
+  6: { r: ['a^2', 'b^4', '(ab)^5', '(ab^2)^5'], note: 'The same rule as A_{1}(9).' },
+  7: { r: ['a^3', 'b^5', '(ab)^7', '(ab^-1ab)^2', '(ab^-2ab^2)^2'], note: null },
+};
+function altRule(n) {
+  const gen = n == null, k = gen ? null : n - 2;
+  let h = ruleH();
+  h += ruleLines(gen ? rw('x_1, …, x_{n−2}') : rw(k <= 4 ? range(1, k).map(i => `x_${i}`).join(', ') : `x_1, …, x_${k > 9 ? `{${k}}` : k}`), [
+    `${rw('x_i^3')} = <i>e</i> <span class="rnote">every ${rw('i')}</span>`,
+    `${rw('(x_ix_j)^2')} = <i>e</i> <span class="rnote">every pair ${rw('i')} &lt; ${rw('j')}</span>`,
+  ]);
+  h += ruleKv([
+    ['Generators', gen ? `${rw('x_i')} = (1 2 ${rw('i')}+2): the ${m('n')} − 2 three-cycles through the points 1 and 2.` : `The ${k} three-cycles through the points 1 and 2: ${k <= 5 ? range(3, n).map(j => `(1 2 ${j})`).join(', ') : `(1 2 3), (1 2 4), …, (1 2 ${n})`}.`],
+    ['Relations', `${gen ? `${m('n')} − 2 cubes and one square for each pair` : `${k} + ${k * (k - 1) / 2} = ${k + k * (k - 1) / 2}`}. Each generator has order 3, and any two of them multiply to a double swap, which has order 2.`],
+    ['Source', 'Carmichael’s presentation. Checked here by coset enumeration for n = 5 to 12.'.replace('n =', '<i>n</i> =')],
+  ]);
+  if (!gen && ALT2[n]) {
+    h += `<h3 class="p-h3">With two generators</h3>${ruleBox('a, b', ALT2[n].r)}<p class="rcap">${ALT2[n].note ? m(ALT2[n].note) + ' ' : ''}Checked here by coset enumeration.</p>`;
+  }
+  return h;
+}
+function cycRule(p) {
+  const gen = p == null;
+  return `${ruleH()}${ruleBox('a', [gen ? 'a^{p}' : `a^{${p}}`])}${ruleKv([
+    ['Generators', `One: ${rw('a')}. Think of a rotation by 1/${gen ? m('p') : p} of a full turn, or of adding 1 modulo ${gen ? m('p') : p}.`],
+    ['Relations', `One: applying ${rw('a')} ${gen ? m('p') : p} times returns to the start. Every element is a power of ${rw('a')}, and because ${gen ? m('p') : p} is prime every element except ${rw('e')} generates the whole group.`],
+  ])}`;
+}
+const GEN_RULE = {
+  1: 'Each Mathieu group is generated by two elements, and five to eight relations pin it down completely. The frames on the five tiles were all checked here by coset enumeration.',
+  2: 'J_{2}, HS, McL and Co_{2} have complete two-generator rules on their tiles. For Co_{1}, Co_{3} and Suz the tiles show standard generators; the ATLAS lists no complete relation list on them.',
+  3: 'He and Fi_{22} have complete two-generator rules on their tiles; for HN and Th the tiles show standard generators only. The Fischer groups, the Baby Monster and the Monster also share one Coxeter-style rule: a Y-shaped diagram of involutions plus a single extra “spider” relation. Arms of 3, 3, 2 nodes lead to Fi_{22}; 4, 3, 2 to Fi_{23}; 4, 4, 2 to Fi_{24}; 4, 3, 3 to B; and 4, 4, 3 to M.',
+  0: 'J_{1}, J_{3} and J_{4} have complete rules on their tiles. For O′N, Ru and Ly the tiles show standard generators only.',
+  '-1': 'The Tits group has a complete two-generator rule with six relations, checked here by coset enumeration.',
+};
+const famRule = key => key === 'Z' ? cycRule(null) : key === 'Alt' ? altRule(null) : lieRule(key, null) + (/^[23]/.test(key) ? '' : `<p class="p-text">${m(CURTIS_TITS)}</p>`);
+
 /* ---------- panel ---------- */
 const panel = document.getElementById('panel'), pbody = document.getElementById('pbody');
 const narrow = window.matchMedia('(max-width: 1399.98px)');
@@ -1224,6 +1495,7 @@ function renderFam(key) {
   return `${eyebrow(block, 'whole family')}<h2 class="p-title">${m(head)}</h2><p class="p-alias">${m(I.title)} · ${m(I.alias)}</p>
   <div class="dkbox">${diag}<p class="cap">${m(I.diagram)}</p></div>
   <p class="p-desc">${m(I.what)}</p>
+  ${famRule(key)}
   <dl class="kv">${kv}</dl>
   ${I.history ? `<h3 class="p-h3">History</h3><p class="p-text">${m(I.history)}</p>` : ''}
   <h3 class="p-h3">Worth knowing</h3><ul class="plist">${I.notes.map(x => `<li>${m(x)}</li>`).join('')}</ul>
@@ -1235,6 +1507,7 @@ function renderGen(gen) {
   return `<p class="p-eyebrow"><span class="sw k-${block}"></span>${I.eyebrow}</p><h2 class="p-title">${m(I.title)}</h2><p class="p-alias">${list.length} group${list.length > 1 ? 's' : ''}</p>
   <p class="p-desc">${m(I.what)}</p>
   <h3 class="p-h3">Members</h3><div class="gchips">${list.map(s => chipFor(s.id)).join('')}</div>
+  <h3 class="p-h3">Rules</h3><p class="p-text">${m(GEN_RULE[gen])}</p>
   <h3 class="p-h3">Worth knowing</h3><ul class="plist">${I.notes.map(x => `<li>${m(x)}</li>`).join('')}</ul>`;
 }
 function eyebrow(block, extra) { return `<p class="p-eyebrow"><span class="sw k-${block}"></span>${BLOCKS[block].eyebrow}${extra ? ' · ' + extra : ''}</p>`; }
@@ -1244,13 +1517,13 @@ const ctBtn = (id, sym, k) => `<button type="button" class="ctbtn" data-ct="${id
 function renderCyc(p) {
   return `${eyebrow('cyc')}<h2 class="p-title">${m(`Z_{${p}}`)}</h2><p class="p-alias">integers modulo ${p}</p>${famBtn('Z')}
   <p class="p-desc">A group of prime order has no subgroups except itself and the trivial group, so it cannot be broken down further. These are the only abelian simple groups, and the only simple groups that are solvable.</p>
-  <dl class="kv">${orderRow(p)}<dt>Factors</dt><dd class="fact">${p}</dd><dt>Family</dt><dd>${m('One group for every prime p. There are infinitely many.')}</dd></dl>${ctBtn('Z' + p, `Z_{${p}}`, Number(p) <= CT_MAXP ? Number(p) : 0)}`;
+  <dl class="kv">${orderRow(p)}<dt>Factors</dt><dd class="fact">${p}</dd><dt>Family</dt><dd>${m('One group for every prime p. There are infinitely many.')}</dd></dl>${cycRule(p)}${ctBtn('Z' + p, `Z_{${p}}`, Number(p) <= CT_MAXP ? Number(p) : 0)}`;
 }
 function renderAlt(n) {
   const o = altOrder(n);
   return `${eyebrow('alt')}<h2 class="p-title">${m(`A_{${n}}`)}</h2><p class="p-alias">even permutations of ${n} objects</p>${famBtn('Alt')}
   <p class="p-desc">${m(ALT_NOTES[n] || `The even permutations of ${n} objects, half of the symmetric group S_{${n}}. Every A_{n} with n ≥ 5 is simple.`)}</p>
-  <dl class="kv"><dt>Formula</dt><dd class="formula">${m('n! / 2')}</dd>${orderRow(o)}<dt>Factors</dt><dd class="fact">${fmtFactor(altFactor(n))}</dd></dl>${CT_K['alt' + n] ? ctBtn('alt' + n, `A_{${n}}`, CT_K['alt' + n]) : ''}`;
+  <dl class="kv"><dt>Formula</dt><dd class="formula">${m('n! / 2')}</dd>${orderRow(o)}<dt>Factors</dt><dd class="fact">${fmtFactor(altFactor(n))}</dd></dl>${altRule(n)}${CT_K['alt' + n] ? ctBtn('alt' + n, `A_{${n}}`, CT_K['alt' + n]) : ''}`;
 }
 function renderSpo(id) {
   const s = SPOR_BY[id];
@@ -1261,7 +1534,7 @@ function renderSpo(id) {
   <p class="p-desc">${m(s.note)}</p>
   <dl class="kv">${orderRow(s.order)}<dt>Factors</dt><dd class="fact">${fmtFactor(map)}</dd>
   <dt>Found</dt><dd>${s.year}, by ${s.by}</dd>
-  <dt>Smallest rep.</dt><dd><span class="num">${fmtInt(B(s.rep))}</span><span class="digits">dimension of its smallest nontrivial complex representation</span></dd></dl>${ctBtn(id, s.sym, CT_K[id])}${id === 'M11' ? `<p class="iso"><a class="p-link" href="../m11/">Play with ${m('M_{11}')} acting on 11 points →</a></p>` : ''}`;
+  <dt>Smallest rep.</dt><dd><span class="num">${fmtInt(B(s.rep))}</span><span class="digits">dimension of its smallest nontrivial complex representation</span></dd></dl>${sporRule(id)}${ctBtn(id, s.sym, CT_K[id])}${id === 'M11' ? `<p class="iso"><a class="p-link" href="../m11/">Play with ${m('M_{11}')} acting on 11 points →</a></p>` : ''}`;
 }
 function renderLie(fid, n, selQ) {
   const f = FAM[fid];
@@ -1280,8 +1553,9 @@ function renderLie(fid, n, selQ) {
   <p class="p-desc">${m(f.desc(n))}</p>
   <dl class="kv"><dt>Order</dt><dd class="formula">${formulaHTML(f, n)}</dd><dt>Field size</dt><dd>${m(f.qText)}</dd>
   ${ex ? `<dt>Left out</dt><dd>${m(ex)}</dd>` : ''}${note ? `<dt>Note</dt><dd>${m(note)}</dd>` : ''}${rootRows(fid, n, rd)}</dl>
+  ${lieRule(fid, n)}
   <section class="card" aria-label="Selected member"><p class="card-h">${m(f.sym(n, qs))}${f.alias ? ` <span class="al">= ${m(f.alias(n, qs))}</span>` : ''}</p>
-  <dl class="kv">${orderRow(sel.order)}<dt>Factors</dt><dd class="fact">${fmtFactor(fac)}</dd></dl>${iso ? `<p class="iso">${m(iso)}</p>` : ''}${CT_K[CANON[`${fid}:${n}:${sel.q}`]] ? ctBtn(CANON[`${fid}:${n}:${sel.q}`], f.sym(n, qs), CT_K[CANON[`${fid}:${n}:${sel.q}`]]) : ''}</section>
+  <dl class="kv">${orderRow(sel.order)}<dt>Factors</dt><dd class="fact">${fmtFactor(fac)}</dd></dl>${iso ? `<p class="iso">${m(iso)}</p>` : ''}${memberRule(fid, n, sel.q)}${CT_K[CANON[`${fid}:${n}:${sel.q}`]] ? ctBtn(CANON[`${fid}:${n}:${sel.q}`], f.sym(n, qs), CT_K[CANON[`${fid}:${n}:${sel.q}`]]) : ''}</section>
   <h3 class="p-h3">Members by field size</h3>
   <ol class="mlist">${mem.map(row).join('')}${extra ? `<li class="gap-li">⋯</li>${row(extra)}` : ''}</ol>`;
 }
