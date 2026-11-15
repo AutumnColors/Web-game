@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-15T17:09:34.703220+00:00",
+  "generatedAt": "2026-11-15T17:13:12.019307+00:00",
   "apps": [
+    {
+      "path": "explore/fractal-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-16T00:13:05+07:00",
+      "update": "Remove retired Julia experiment launch buttons from Fractal Lab"
+    },
     {
       "path": "explore/music-from-symmetry/",
       "title": "Music to Picture",
@@ -21,48 +28,6 @@
       "category": "Explore",
       "date": "2026-11-15T22:17:38+07:00",
       "update": "Add basilica Böttcher Green-potential and external-angle coordinate laboratory"
-    },
-    {
-      "path": "explore/fractal-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
-      "date": "2026-11-15T18:57:27+07:00",
-      "update": "Expose Julia wave doubling experiment in Fractal Lab"
-    },
-    {
-      "path": "explore/fractal-lab/doubling-test.html",
-      "title": "Julia Doubling Test",
-      "category": "Fractal Lab",
-      "date": "2026-11-15T18:57:15+07:00",
-      "update": "Add Julia wave doubling invariance and numerical falsification test"
-    },
-    {
-      "path": "explore/fractal-lab/geometry-discovery.html",
-      "title": "Julia Geometry Discovery",
-      "category": "Fractal Lab",
-      "date": "2026-11-15T18:49:43+07:00",
-      "update": "Create Julia natural-coordinate geometry discovery lab"
-    },
-    {
-      "path": "explore/fractal-lab/surface.html",
-      "title": "Julia Sensitivity · 3D Surface",
-      "category": "Fractal Lab",
-      "date": "2026-11-15T18:38:02+07:00",
-      "update": "Link Julia wave-aligned experiment from existing fractal viewers"
-    },
-    {
-      "path": "explore/fractal-lab/wave-aligned.html",
-      "title": "Julia Wave-Aligned Reconstruction",
-      "category": "Fractal Lab",
-      "date": "2026-11-15T18:37:51+07:00",
-      "update": "Add Julia wave-aligned contour reconstruction experiment"
-    },
-    {
-      "path": "explore/polar-expedition/",
-      "title": "Julia Orbit Sensitivity — Polar Expedition",
-      "category": "Explore",
-      "date": "2026-11-15T16:52:10+07:00",
-      "update": "Add experimental polar Julia orbit sensitivity expedition viewer"
     },
     {
       "path": "explore/simple-groups/",
