@@ -46,7 +46,7 @@ const modeOf=v=>MODES.find(m=>m.v===v)||MODES[0];
 const SEEDS=[['Rabbit',-0.122561166876654,0.744861766619744],['Basilica',-1,0],['Dendrite',0,1],['Siegel disk',-0.390540870218399,-0.586787907346969],
   ['Cauliflower',0.25,0],['Airplane',-1.754877666246693,0],['Spiral',-0.8,0.156],['Galaxy',0.285,0.01],['Seahorse',-0.745,0.113],['Dust',0.3,0.5]];
 const DEFAULTS={fractal:'mandelbrot', power:3, seed:{re:SEEDS[0][1],im:SEEDS[0][2]}, mode:'escape', panels:['escape','sens','gradt','flat'],
-  depth:0, polar:false, logPolar:false, logOuter:Math.log(2), logSpan:Math.log(10000), palette:'classic', iter:0, radius:16, stopMode:'outward', clean:false, contours:true, contourLevels:8, contourOpacity:70, contourColor:'white'};
+  depth:0, polar:false, logPolar:false, logOuter:Math.log(2), logSpan:Math.log(10000), palette:'classic', iter:0, radius:2, stopMode:'outward', clean:false, contours:true, contourLevels:8, contourOpacity:70, contourColor:'white'};
 const clone=c=>({...c, seed:{...c.seed}, panels:[...c.panels]});
 let cfg=clone(DEFAULTS), started=false;
 const SUP={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
