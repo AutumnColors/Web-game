@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-15T17:57:52.093625+00:00",
+  "generatedAt": "2026-11-15T17:59:35.226853+00:00",
   "apps": [
     {
       "path": "explore/music-from-symmetry/",
       "title": "Music to Picture",
       "category": "Explore",
-      "date": "2026-11-16T00:57:46+07:00",
-      "update": "Add cross-instrument and synchronized multichannel recurrence pictures with ensemble playback"
+      "date": "2026-11-16T00:59:27+07:00",
+      "update": "Publish combined five-track Into the Mother of All recurrence view"
     },
     {
       "path": "explore/fractal-lab/",
