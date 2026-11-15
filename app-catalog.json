@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-15T17:35:22.374018+00:00",
+  "generatedAt": "2026-11-15T17:44:51.022229+00:00",
   "apps": [
     {
       "path": "explore/music-from-symmetry/",
       "title": "Music to Picture",
       "category": "Explore",
-      "date": "2026-11-16T00:35:15+07:00",
-      "update": "Hide unavailable music collections and explain missing note data"
+      "date": "2026-11-16T00:44:43+07:00",
+      "update": "Add Into the Mother of All lead-guitar MIDI as playable Music to Picture entry"
     },
     {
       "path": "explore/fractal-lab/",
