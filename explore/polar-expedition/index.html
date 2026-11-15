@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Julia Orbit Sensitivity — Polar Expedition</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080d20;color:#f5f5fc;font:14px system-ui}canvas{display:block;width:100vw;height:100dvh;touch-action:none}header{position:fixed;top:10px;left:10px;right:10px;pointer-events:none;background:#080d20d9;border:1px solid #7682a0;border-radius:12px;padding:10px;max-width:520px}header b{display:block}header small{color:#b9c4dc}aside{position:fixed;bottom:10px;left:10px;right:10px;max-width:520px;background:#080d20e8;border:1px solid #697695;border-radius:12px;padding:10px}label{display:inline-flex;flex-direction:column;margin:3px 5px 4px 0;font-size:11px;color:#c5d3ef}input,select,button{background:#1b2745;color:white;border:1px solid #536587;border-radius:7px;padding:7px;max-width:130px}button{cursor:pointer}#status{font-size:11px;color:#c5d3ef} .line{display:flex;flex-wrap:wrap;align-items:end;gap:4px}
+</style><canvas id="view"></canvas><header><b>Julia orbit sensitivity · polar expedition</b><small>Same Julia orbit derivative; radial/log-radial coordinates change only sampling positions</small></header>
+<aside><div class="line">
+<label>Coordinates<select id="coords"><option value="polar">Polar (r, θ)</option><option value="log">Log radius (log r, θ)</option><option value="cart">Cartesian reference</option></select></label>
+<label>Center Re<input id="cx" type="number" step="any" value="0"></label><label>Center Im<input id="cy" type="number" step="any" value="0"></label>
+<label>Max radius<input id="rmax" type="number" min=".000000000001" step="any" value="2"></label>
+<label>Inner radius<input id="rmin" type="number" min=".000000000000001" step="any" value=".0001"></label>
+<label>Iterations<input id="iters" type="number" min="10" max="10000" value="350"></label>
+</div><div class="line"><button id="draw">Render</button><button id="reset">Reset</button><button id="save">PNG</button><button id="center">Center on tap: off</button></div><div id="status">Horizontal axis: θ from −π to π. Vertical: radius increasing downward. Drag to shift angular/radial window; pinch to zoom.</div></aside>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),cv=$('view'),ctx=cv.getContext('2d',{alpha:false});
+const C={re:-0.122561166876654,im:0.744861766619744};
+let ang=0, radialShift=0, scale=1, selecting=false, dragging=false, pointer=new Map(),start=null,job=0;
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const pal=[[4,6,28],[25,16,92],[83,27,119],[181,37,100],[249,109,44],[255,214,130]];
+function color(t){const p=((t%1)+1)%1*(pal.length-1),i=Math.min(pal.length-2,p|0),f=p-i,a=pal[i],b=pal[i+1];return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f]}
+function sample(x,y,N){let zr=x,zi=y,dr=1,di=0,n=0,qr=zr,qi=zi,lim=8,cnt=0;
+while(zr*zr+zi*zi<=256&&n<N){
+ const d=2*(zr*dr-zi*di);di=2*(zr*di+zi*dr);dr=d;
+ const z=zr*zr-zi*zi+C.re;zi=2*zr*zi+C.im;zr=z;n++;
+ if(Math.abs(zr-qr)+Math.abs(zi-qi)<=1e-13)return null;
+ if(++cnt===lim){cnt=0;lim*=2;qr=zr;qi=zi;}
+}
+return n>=N?null:Math.log(1+Math.hypot(dr,di));
+}
+function params(){return {mode:$('coords').value,cx:+$('cx').value,cy:+$('cy').value,rmax:Math.max(1e-12,+$('rmax').value||2),rmin:Math.max(1e-15,+$('rmin').value||.0001),N:clamp(+$('iters').value||350,10,10000)}}
+function position(u,v,p){u=(u-.5)/scale+.5+ang;v=(v-.5)/scale+.5+radialShift;
+if(p.mode==='cart'){const span=2*p.rmax;return [p.cx+(u-.5)*span,p.cy+(v-.5)*span*cv.height/cv.width]}
+const theta=(u-.5)*Math.PI*2,r=p.mode==='log'?Math.exp(Math.log(p.rmin)+v*(Math.log(p.rmax)-Math.log(p.rmin))):v*p.rmax;
+return [p.cx+r*Math.cos(theta),p.cy+r*Math.sin(theta)];
+}
+async function render(){const id=++job,p=params();const w=cv.width=Math.max(2,Math.round(innerWidth*Math.min(devicePixelRatio||1,1.5))),h=cv.height=Math.max(2,Math.round(innerHeight*Math.min(devicePixelRatio||1,1.5)));const img=ctx.createImageData(w,h),d=img.data;let row=0;
+$('status').textContent='Rendering…';
+function chunk(){if(id!==job)return;const stop=Math.min(h,row+Math.max(1,Math.floor(24000/w)));for(;row<stop;row++)for(let x=0;x<w;x++){const [re,im]=position((x+.5)/w,(row+.5)/h,p),s=sample(re,im,p.N),k=(row*w+x)*4;if(s===null){d[k]=d[k+1]=d[k+2]=0}else{const c=color(s*.22);d[k]=c[0];d[k+1]=c[1];d[k+2]=c[2]}d[k+3]=255}
+ctx.putImageData(img,0,0);if(row<h)requestAnimationFrame(chunk);else $('status').textContent='Rendered · θ horizontal, radius vertical · color = cyclic palette of ln(1+|Dₙ|). Black = no escape detected.'}
+requestAnimationFrame(chunk)}
+$('draw').onclick=render;$('reset').onclick=()=>{ang=radialShift=0;scale=1;render()};$('save').onclick=()=>{const a=document.createElement('a');a.download='julia-polar-orbit-sensitivity.png';a.href=cv.toDataURL('image/png');a.click()};
+$('center').onclick=()=>{selecting=!selecting;$('center').textContent='Center on tap: '+(selecting?'on':'off')};
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);pointer.set(e.pointerId,[e.clientX,e.clientY]);start=[e.clientX,e.clientY];dragging=false});
+cv.addEventListener('pointermove',e=>{if(!pointer.has(e.pointerId))return;const old=pointer.get(e.pointerId);pointer.set(e.pointerId,[e.clientX,e.clientY]);if(Math.hypot(e.clientX-start[0],e.clientY-start[1])>4)dragging=true;if(pointer.size===1){ang-=(e.clientX-old[0])/innerWidth/scale;radialShift-=(e.clientY-old[1])/innerHeight/scale}else if(pointer.size===2){const a=[...pointer.values()];scale=clamp(scale*(1+((e.clientY-old[1])/innerHeight)*.3),.5,100)}});
+cv.addEventListener('pointerup',e=>{pointer.delete(e.pointerId);if(selecting&&!dragging){const p=params(),[x,y]=position(e.clientX/innerWidth,e.clientY/innerHeight,p);$('cx').value=x.toPrecision(15);$('cy').value=y.toPrecision(15);selecting=false;$('center').textContent='Center on tap: off'}if(!pointer.size)render()});
+cv.addEventListener('wheel',e=>{e.preventDefault();scale=clamp(scale*Math.exp(-e.deltaY*.001),.5,100);render()},{passive:false});
+window.addEventListener('resize',render);render();
+</script></html>
