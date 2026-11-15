@@ -240,7 +240,7 @@ function syncCfg(){ $('radiusCustom').value=draft.radius;
 const thumbIds=[];
 function thumbs(){ // each library card shows its own universe, computed by the same worker
   thumbIds.forEach(cancel); thumbIds.length=0;
-  FR.forEach(f=>{ const c={...draft,fractal:f.v,radius:16}, e=engineOf(c), w=e.span?e.span*4/3:3.5, v={cx:e.span?0:-0.65,cy:0,w,a:0};
+  FR.forEach(f=>{ const c={...draft,fractal:f.v,radius:2}, e=engineOf(c), w=e.span?e.span*4/3:3.5, v={cx:e.span?0:-0.65,cy:0,w,a:0};
     thumbIds.push(render('thumb',v,160,120,220,e,false,L=>{ const keep=cfg.palette; cfg.palette=draft.palette; const img=paint(L,'escape'); cfg.palette=keep; f.cv.getContext('2d').drawImage(img,0,0); })); });
 }
 function openCfg(){ draft=clone(cfg); $('cin').value=cText(draft.seed.re,draft.seed.im,15).replace(/−/g,'-'); $('cin').classList.remove('bad'); closePop(); closeSec(); setSecTool(false);
@@ -403,7 +403,7 @@ function fromMeta(m){
     if(MODES.some(x=>x.v===k.measurement)) c.mode=k.measurement; if(Array.isArray(k.panels)&&k.panels.length===4) c.panels=k.panels;
     if(k.contours){c.contours=!!k.contours.show;c.contourLevels=Math.max(1,Math.min(20,+k.contours.levels||8));c.contourOpacity=Math.max(0,Math.min(100,+k.contours.opacity));if(['white','black','colored'].includes(k.contours.color))c.contourColor=k.contours.color;}
     if(PALETTES[k.palette]) c.palette=k.palette; if(k.iterations&&k.iterations.mode==='fixed') c.iter=k.iterations.limit; if(['outward','inward','fixed'].includes(k.stopMode))c.stopMode=k.stopMode;
-    c.radius=Number.isFinite(+k.escapeRadius)&&+k.escapeRadius>=0.01?+k.escapeRadius:16; c.depth=k.maxDepth||0;
+    c.radius=Number.isFinite(+k.escapeRadius)&&+k.escapeRadius>=0.01?+k.escapeRadius:2; c.depth=k.maxDepth||0;
     return {c,cam:{cx:m.camera.centre.re, cy:m.camera.centre.im, w:m.camera.width, a:m.camera.cameraAngleDeg*Math.PI/180}};
   }
   if(m.seed){ c.fractal='julia'; c.seed={re:+m.seed.re,im:+m.seed.im}; }
