@@ -32,12 +32,14 @@ function clampView(){
   if(atLimit(view)) release();
 }
 function zoomAt(px,py,f){
+  if(cfg.polar){if(cfg.logPolar)cfg.logSpan=Math.max(.05,Math.min(36,cfg.logSpan/f));else view.w=Math.max(1e-12,Math.min(HOME.w*2.2,view.w/f));dirty=true;needDraw=true;return;}
   const [wx,wy]=toWorld(px,py), m=minW(); let w=view.w/f;
   if(w<m){ w=m; const now=performance.now(); if(f>1.0005 && now-limitT>2500){ limitT=now; toast('Zoom limit: depth '+cfg.depth); } }   // the limit stops zooming in only
   view.w=w; pinTo(px,py,wx,wy); clampView(); dirty=true; needDraw=true;
 }
-function rotateAt(px,py,dA){ const [wx,wy]=toWorld(px,py); view.a=wrap(view.a+dA); pinTo(px,py,wx,wy); clampView(); dirty=true; needDraw=true; }
+function rotateAt(px,py,dA){if(cfg.polar){view.a=wrap(view.a+dA);dirty=true;needDraw=true;return;} const [wx,wy]=toWorld(px,py); view.a=wrap(view.a+dA); pinTo(px,py,wx,wy); clampView(); dirty=true; needDraw=true; }
 function panBy(dx,dy){
+  if(cfg.polar){view.a=wrap(view.a-TAU*dx/Wd);if(cfg.logPolar)cfg.logOuter=Math.max(-32,Math.min(32,cfg.logOuter+dy/Hd*cfg.logSpan));else view.w=Math.max(1e-12,Math.min(HOME.w*2.2,view.w*(1+dy/Hd*2)));dirty=true;needDraw=true;return;}
   const s=view.w/Wd, c=Math.cos(view.a), n=Math.sin(view.a);
   view.cx-=s*(dx*c+dy*n); view.cy-=s*(dx*n-dy*c); clampView(); dirty=true; needDraw=true;
 }
@@ -96,11 +98,11 @@ function up(e){
   const now=performance.now();
   if(was===1){
     cv.classList.remove('drag');
-    if(twisting){ twisting=false; snapNorth(); }
+    if(twisting){ twisting=false; if(!cfg.polar)snapNorth(); }
     if(moved<12){
       const rx=e.clientX*DPR, ry=e.clientY*DPR, [x,y]=mapPt(rx,ry,gOrigin);
       if(!cfg.clean){
-        if(hitCompass(rx,ry)){ northUp(); tapT=0; return; }
+        if(hitCompass(rx,ry)){if(cfg.polar){view.a=0;dirty=true;needDraw=true;}else northUp();tapT=0;return;}
         if(hit(labelBox,rx,ry)){ copyPin(); tapT=0; return; }
         const tg=tagBoxes.find(b=>hit(b,rx,ry));
         if(tg){ const order=MODES.filter(m=>m.v!=='compare').map(m=>m.v); cfg.panels[tg.k]=order[(order.indexOf(cfg.panels[tg.k])+1)%order.length]; repaint(); writeHash(); tapT=0; return; }
@@ -108,7 +110,7 @@ function up(e){
       if(now-tapT<320 && Math.hypot(x-tapX,y-tapY)<40*DPR*(cmp()?2:1)){ clearTimeout(pinTimer); glide={px:tapX,py:tapY,f:2.5,t0:now,dur:280,done:1}; tapT=0; }
       else { tapT=now; tapX=x; tapY=y; clearTimeout(pinTimer);
         pinTimer=setTimeout(()=>{ if(back||cfg.clean) return; if(secTool) sectionTap(tapX,tapY); else placePin(tapX,tapY); },300); }
-    } else if(now-lastMove<60 && Math.hypot(vel.x,vel.y)>0.15){ glide={fling:true}; }
+    } else if(!cfg.polar && now-lastMove<60 && Math.hypot(vel.x,vel.y)>0.15){ glide={fling:true}; }
   } else if(was>=2){ vel.x=vel.y=0; }
 }
 cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
@@ -136,16 +138,17 @@ addEventListener('keydown',e=>{
 
 /* ---------- quick switches (same camera, same numbers) ---------- */
 function setMode(m){
-  if(cfg.polar && m!=='sens') { cfg.polar=false; $('qPolar').querySelector('b').textContent='Polar sampling: OFF'; dirty=true; }
+  if(cfg.polar && m!=='sens') {cfg.polar=false;cfg.logPolar=false;syncPolarButton();dirty=true;}
   const was=cmp(); cfg.mode=m; document.body.classList.toggle('cmp',cmp());
   if(cmp()!==was || (needD() && base && !base.S)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
   repaint(); updateChip(); syncQuick(); writeHash();
 }
-function togglePolar(){ cfg.polar=!cfg.polar; if(cfg.polar) setMode('sens'); $('qPolar').querySelector('b').textContent='Polar sampling: '+(cfg.polar?'ON':'OFF'); dirty=true; needDraw=true; closePop(); writeHash(); toast(cfg.polar?'Polar: θ across, radius downward. Center = camera center.':'Cartesian sampling',2400); }
+function syncPolarButton(){ $('qPolar').querySelector('b').textContent='Coordinates: '+(cfg.polar?(cfg.logPolar?'Log-polar (θ, log r)':'Polar (θ, r)'):'Cartesian');$('qPolar').classList.toggle('on',cfg.polar); }
+function togglePolar(){if(!cfg.polar){cfg.polar=true;cfg.logPolar=false;}else if(!cfg.logPolar){cfg.logPolar=true;cfg.logOuter=Math.log(Math.max(1e-12,view.w/2));cfg.logSpan=Math.log(10000);}else{cfg.polar=false;cfg.logPolar=false;}if(cfg.polar&&cfg.mode!=='sens')setMode('sens');syncPolarButton();dirty=true;needDraw=true;closePop();writeHash();toast(cfg.polar?(cfg.logPolar?'LOG-POLAR ACTIVE · θ / log r':'POLAR ACTIVE · θ / r'):'CARTESIAN ACTIVE',2500);}
 $('qPolar').onclick=togglePolar;
 function setPalette(p){ cfg.palette=p; repaint(); syncQuick(); writeHash(); }
 function setClean(on){ cfg.clean=on; document.body.classList.toggle('clean',on); closePop(); if(on){ closeSec(); setSecTool(false); toast('Clean view. Press and hold the map to bring the tools back.',3200); } needDraw=true; syncQuick(); writeHash(); }
-function updateChip(){ $('chipT').textContent=eng.name+' · '+eng.rule; $('chipS').textContent=modeOf(cfg.mode).t+(cfg.fractal==='julia'?' · c = '+cText(cfg.seed.re,cfg.seed.im,6):''); }
+function updateChip(){ $('chipT').textContent=eng.name+' · '+eng.rule; $('chipS').textContent=(cfg.polar?(cfg.logPolar?'LOG-POLAR · ':'POLAR · '):'')+modeOf(cfg.mode).t+(cfg.fractal==='julia'?' · c = '+cText(cfg.seed.re,cfg.seed.im,6):''); }
 function group(el,items,get,set){
   el.replaceChildren(); el._get=get;
   items.forEach(it=>{ const b=document.createElement('button'); b.type='button'; b.className='opt'; b._v=it.v;
@@ -157,7 +160,7 @@ function group(el,items,get,set){
 function syncGroups(root){ root.querySelectorAll('.grp').forEach(g=>[...g.children].forEach(b=>b.classList.toggle('on',b._v===g._get()))); }
 group($('qMode'),MODES,()=>cfg.mode,v=>setMode(v));
 group($('qPal'),Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t})),()=>cfg.palette,v=>setPalette(v));
-function syncQuick(){ syncGroups($('pop')); $('qClean').classList.toggle('on',cfg.clean); $('qContours').classList.toggle('on',cfg.contours); }
+function syncQuick(){ syncPolarButton(); syncGroups($('pop')); $('qClean').classList.toggle('on',cfg.clean); $('qContours').classList.toggle('on',cfg.contours); }
 const closePop=()=>{ $('pop').classList.remove('on'); $('bView').classList.remove('on'); };
 $('bView').onclick=()=>{ const on=!$('pop').classList.contains('on'); $('pop').classList.toggle('on',on); $('bView').classList.toggle('on',on); syncQuick(); };
 $('qClean').onclick=()=>setClean(!cfg.clean);
@@ -167,8 +170,8 @@ $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(
 
 /* ---------- applying a configuration ---------- */
 function applyConfig(next,cam){
-  if(next.polar && next.mode!=='sens') next.polar=false;
-  $('qPolar').querySelector('b').textContent='Polar sampling: '+(next.polar?'ON':'OFF');
+  if(next.polar && next.mode!=='sens'){next.polar=false;next.logPolar=false;}
+  $('qPolar').querySelector('b').textContent='Coordinates: '+(next.polar?(next.logPolar?'Log-polar (θ, log r)':'Polar (θ, r)'):'Cartesian');
   const world=!started || next.fractal!==cfg.fractal || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im));
   const numeric=next.radius!==cfg.radius || next.iter!==cfg.iter;
   cfg=clone(next); eng=engineOf(cfg); started=true; syncContourSettings(cfg);
@@ -291,7 +294,7 @@ let hashT=0;
 function writeHash(){
   if(!started) return; clearTimeout(hashT);
   hashT=setTimeout(()=>{
-    const q={f:cfg.fractal, m:cfg.mode, pal:cfg.palette, it:cfg.iter, R:cfg.radius, d:cfg.depth, x:view.cx, y:view.cy, w:view.w, r:+(view.a*180/Math.PI).toFixed(4), polar:+cfg.polar, co:+cfg.contours, cn:cfg.contourLevels, ca:cfg.contourOpacity, cc:cfg.contourColor};
+    const q={f:cfg.fractal, m:cfg.mode, pal:cfg.palette, it:cfg.iter, R:cfg.radius, d:cfg.depth, x:view.cx, y:view.cy, w:view.w, r:+(view.a*180/Math.PI).toFixed(4), polar:+cfg.polar, lp:+cfg.logPolar, lo:+cfg.logOuter.toFixed(9), ls:+cfg.logSpan.toFixed(9), co:+cfg.contours, cn:cfg.contourLevels, ca:cfg.contourOpacity, cc:cfg.contourColor};
     if(cfg.fractal==='multibrot') q.n=cfg.power; if(cfg.fractal==='julia') q.c=cfg.seed.re+','+cfg.seed.im;
     if(cmp()) q.ps=cfg.panels.join('.'); if(cfg.clean) q.clean=1;
     try{ history.replaceState(null,'','#'+Object.entries(q).map(([k,v])=>k+'='+v).join('&')); }catch(_){}
@@ -300,7 +303,7 @@ function writeHash(){
 function readHash(){
   const q={}; location.hash.replace(/^#/,'').split('&').forEach(p=>{ const i=p.indexOf('='); if(i>0) q[p.slice(0,i)]=decodeURIComponent(p.slice(i+1)); });
   if(!q.f || !FRACTALS.some(f=>f.v===q.f)) return null;
-  const c=clone(DEFAULTS); c.fractal=q.f; c.polar=q.polar==='1';
+  const c=clone(DEFAULTS); c.fractal=q.f; c.polar=q.polar==='1'; c.logPolar=c.polar&&q.lp==='1'; if(q.lo!==undefined&&Number.isFinite(+q.lo)&&+q.lo>=-32&&+q.lo<=32)c.logOuter=+q.lo; if(q.ls!==undefined&&Number.isFinite(+q.ls)&&+q.ls>=.05&&+q.ls<=36)c.logSpan=+q.ls;
   if(MODES.some(m=>m.v===q.m)) c.mode=q.m; if(PALETTES[q.pal]) c.palette=q.pal;
   if([0,400,1600,6400,25600].includes(+q.it)) c.iter=+q.it; if(+q.R===2||+q.R===16) c.radius=+q.R; if([0,3,10,25].includes(+q.d)) c.depth=+q.d;
   if(+q.n>=3 && +q.n<=8) c.power=Math.round(+q.n);
