@@ -46,7 +46,7 @@ const modeOf=v=>MODES.find(m=>m.v===v)||MODES[0];
 const SEEDS=[['Rabbit',-0.122561166876654,0.744861766619744],['Basilica',-1,0],['Dendrite',0,1],['Siegel disk',-0.390540870218399,-0.586787907346969],
   ['Cauliflower',0.25,0],['Airplane',-1.754877666246693,0],['Spiral',-0.8,0.156],['Galaxy',0.285,0.01],['Seahorse',-0.745,0.113],['Dust',0.3,0.5]];
 const DEFAULTS={fractal:'mandelbrot', power:3, seed:{re:SEEDS[0][1],im:SEEDS[0][2]}, mode:'escape', panels:['escape','sens','gradt','flat'],
-  depth:0, polar:false, palette:'classic', iter:0, radius:16, clean:false, contours:true, contourLevels:8, contourOpacity:70, contourColor:'white'};
+  depth:0, polar:false, logPolar:false, logOuter:Math.log(2), logSpan:Math.log(10000), palette:'classic', iter:0, radius:16, clean:false, contours:true, contourLevels:8, contourOpacity:70, contourColor:'white'};
 const clone=c=>({...c, seed:{...c.seed}, panels:[...c.panels]});
 let cfg=clone(DEFAULTS), started=false;
 const SUP={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
@@ -73,7 +73,7 @@ const cmp=()=>cfg.mode==='compare';
    T = first n with |zₙ| > R (65535: no escape detected), F = μ − T, S = ln(1 + |Dₙ|) with D = dz/dc (kind 0) or dz/dz₀ (kind 1). ---------- */
 const WORKER_SRC=`
 onmessage=e=>{
-  const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,needD,polar,polarCx,polarCy,polarRadius,polarH,polarAngle}=m;
+  const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,needD,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan}=m;
   const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float32Array(N):null;
   const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=1/Math.log(pw);
   let minN=1e9;
@@ -81,7 +81,7 @@ onmessage=e=>{
     const Rw=y0row+r, rr=or+Rw*eyr, ri=oi+Rw*eyi;
     for(let x=0;x<W;x++){
       let pr=rr+x*exr, pq=ri+x*exi; const i=r*W+x;
-      if(polar){ const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
+      if(polar){ const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
       let zr,zi,cr,ci,dr,di;
       if(julia){ zr=pr; zi=pq; cr=kr; ci=ki; dr=1; di=0; }
       else {
@@ -188,7 +188,7 @@ function newLayer(v,W,H,maxIt,withS){
 }
 function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
-  const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&cfg.polar)?{polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;
+  const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&cfg.polar)?{polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;
   for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,...engMsg(e),...extra});
   if(front) queue.unshift(...items); else queue.push(...items);
 }
