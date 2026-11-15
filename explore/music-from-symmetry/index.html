@@ -88,7 +88,7 @@ select{font:16px Inter;min-height:44px;padding:0 12px;border-radius:12px;border:
   <div style="display:flex;gap:8px;align-items:center"><span class="msg" style="margin:0;width:44px">Shapes</span><div class="seg" id="mh"><button data-v="1">Every note</button><button data-v="4">Every 4 notes</button></div></div>
   <div style="display:flex;gap:8px;align-items:center"><span class="msg" style="margin:0;width:44px">Steps</span><div class="seg" id="mp"><button data-v="letters">Letters</button><button data-v="semitones">Semitones</button></div></div></div>
   <div class="out">
-    <div><div class="plot" id="pl"><img id="img" alt="Recurrence picture of the melody"><canvas id="oc"></canvas><div id="busy">Developing…</div></div>
+    <div><div class="plot" id="pl"><img id="img" alt="Recurrence picture of the melody" style="visibility:hidden"><canvas id="oc"></canvas><div id="busy">Developing…</div></div>
       <div class="legend"><span><i style="background:#f0eee6;box-shadow:0 0 0 1px var(--line)"></i>same shape</span><span><i style="background:#5a78ff"></i>mirror: backwards, upside down, or both</span></div>
       <div class="strip"><canvas id="sc"></canvas></div><div class="msg" id="tapinfo">Long-press the picture to save it. Tap it to hear that moment.</div></div>
     <div><h3 id="ttl"></h3><p class="lead" id="sub"></p>
@@ -131,14 +131,18 @@ select{font:16px Inter;min-height:44px;padding:0 12px;border-radius:12px;border:
 const $=id=>document.getElementById(id);
 // ---------- library ----------
 let IX=[];const BUN={};
+// These are the note-data bundles actually deployed under lib/.
+// Catalog entries without their bundle must never be offered as playable.
+const INSTALLED=new Set(['ours','keyboard','haydn','joplin','mozart','lieder']);
+const MISSING_NOTE='Some collections are not installed yet (including O\'Neill, Ryan, Bach chorales, Beethoven and Chopin). Only playable pieces are listed.';
 const SRC={lieder:'OpenScore Lieder Corpus (CC0, public domain)',keyboard:'When in Rome corpus (licence of the original source varies)',chorales:'Bach chorales, from the music21 corpus',
  ryans:"Ryan's Mammoth Collection (1883), from the music21 corpus",oneills:"O'Neill's Music of Ireland, from the music21 corpus",ours:'Composed by Roman Kesler with Claude'};
 const grp=r=>r.g||r.c.toLowerCase();
-Promise.all([fetch('lib/index.json').then(r=>r.json()),fetch('lib/index2.json').then(r=>r.json()).catch(()=>[])]).then(([a,b])=>{IX=a.concat(b);search()}).catch(()=>{$('libmsg').textContent='The library could not load here.'});
+Promise.all([fetch('lib/index.json').then(r=>r.json()),fetch('lib/index2.json').then(r=>r.json()).catch(()=>[])]).then(([a,b])=>{IX=a.concat(b).filter(r=>INSTALLED.has(grp(r)));search();$('libmsg').textContent+=' '+MISSING_NOTE}).catch(()=>{$('libmsg').textContent='The library could not load here.'});
 const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9#]+/g,' ');
 const COLL=[['all','All collections'],['mozart','Mozart piano sonatas'],['beethoven','Beethoven piano sonatas'],['haydn','Haydn piano sonatas'],['chopin','Chopin preludes and mazurkas'],['joplin','Joplin rags'],
  ['keyboard','Bach keyboard and others'],['chorales','Bach chorales'],['lieder','Songs (Schubert, Schumann, Brahms…)'],['ryans',"Ryan's fiddle tunes"],['oneills',"O'Neill's Irish tunes"],['ours','Our music (Roman Kesler)']];
-$('coll').innerHTML=COLL.map(([v,t])=>`<option value="${v}">${t}</option>`).join('');$('coll').onchange=search;
+$('coll').innerHTML=COLL.filter(([v])=>v==='all'||INSTALLED.has(v)).map(([v,t])=>`<option value="${v}">${t}</option>`).join('');$('coll').onchange=search;
 let LIST=[],POS=-1;
 function search(){const q=norm($('q').value).trim().split(' ').filter(Boolean),cf=$('coll').value;
  let hits=IX.filter(r=>cf==='all'||grp(r)===cf).map(r=>{const hay=r._h||(r._h=' '+norm((r.k||'')+' '+r.c+' '+r.t+' '+r.id+' '+(r.cat||'')+' '+(r.al||''))+' ');let s=0;
@@ -153,8 +157,12 @@ $('first').onclick=()=>{if(LIST.length)open(0)};
 function open(i){if(!LIST.length)return;POS=(i+LIST.length)%LIST.length;const r=LIST[POS];
  $('browse').hidden=false;$('bpos').textContent=(POS+1)+' / '+LIST.length;
  const q=$('q').value.trim(),cn=COLL.find(c=>c[0]===$('coll').value)[1];$('bset').innerHTML='<b style="color:var(--ink)">'+r.c+' — '+r.t+'</b><br>in '+cn+(q?' matching "'+q.replace(/</g,'')+'"':'');
- busy(true);const c=grp(r);(BUN[c]||(BUN[c]=fetch('lib/'+c+'.json').then(x=>x.json()))).then(all=>{const j=all[r.id];let on=0;const notes=j.don.map((d,i)=>{on+=d;return {on:on/j.U,p:j.p[i],d:j.d[i]}});
-  show({title:r.c+' — '+r.t,sub:(r.cat?r.cat+' · ':'')+(SRC[r.g]||'Humdrum edition by Craig Stuart Sapp (CC BY-NC-SA)'),bpm:r.bpm||100,notes},true)}).catch(()=>{busy(false);$('libmsg').textContent='Could not load that piece.'})}
+ busy(true);const c=grp(r);
+ if(!INSTALLED.has(c)){busy(false);$('libmsg').textContent='The note data for this collection is not installed.';return}
+ (BUN[c]||(BUN[c]=fetch('lib/'+c+'.json').then(x=>{if(!x.ok)throw Error('HTTP '+x.status);return x.json()}))).then(all=>{
+  const j=all[r.id];if(!j||!Array.isArray(j.don)||!Array.isArray(j.p)||!Array.isArray(j.d)||!j.U)throw Error('Missing or invalid note sequence');
+  let on=0;const notes=j.don.map((d,i)=>{on+=d;return {on:on/j.U,p:j.p[i],d:j.d[i]}});
+  show({title:r.c+' — '+r.t,sub:(r.cat?r.cat+' · ':'')+(SRC[r.g]||'Humdrum edition by Craig Stuart Sapp (CC BY-NC-SA)'),bpm:r.bpm||100,notes},true)}).catch(err=>{delete BUN[c];busy(false);$('img').style.visibility='hidden';$('img').removeAttribute('src');$('img').alt='Picture unavailable — melody data could not load';$('tapinfo').textContent='Cannot generate picture: '+err.message+'. Choose another piece.';$('libmsg').textContent='Could not load '+r.t+': '+err.message;})}
 $('bprev').onclick=()=>open(POS-1);$('bnext').onclick=()=>open(POS+1);$('brnd').onclick=()=>open(Math.floor(Math.random()*LIST.length));
 document.addEventListener('keydown',e=>{if($('browse').hidden||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;if(e.key==='ArrowRight')open(POS+1);if(e.key==='ArrowLeft')open(POS-1)});
 // ---------- tabs ----------
@@ -288,7 +296,7 @@ function render(){const piece=CUR,n=piece.notes,steps=[];
   const cv=document.createElement('canvas');cv.width=R;cv.height=R;const g=cv.getContext('2d'),im=g.createImageData(R,R),px=im.data;
   for(let q=0;q<R*R;q++){const v=grid[q],c=v===1?[240,238,230]:v===2?[90,120,255]:[12,13,16];px[4*q]=c[0];px[4*q+1]=c[1];px[4*q+2]=c[2];px[4*q+3]=255}
   g.putImageData(im,0,0);const big=document.createElement('canvas'),Z=Math.max(1,Math.ceil(1400/R));big.width=big.height=R*Z;const bg=big.getContext('2d');bg.imageSmoothingEnabled=false;bg.drawImage(cv,0,0,R*Z,R*Z);
-  $('img').src=big.toDataURL('image/png');
+  $('img').src=big.toDataURL('image/png');$('img').style.visibility='visible';
   Object.assign(CUR,{N,R,steps,T,hop});
   $('ttl').textContent=piece.title;$('sub').textContent=piece.sub;
   const f=(v,d=2)=>v.toFixed(d),x=(a,b)=>b>0?' · '+(a/b).toFixed(a/b<10?1:0)+'× chance':'';
