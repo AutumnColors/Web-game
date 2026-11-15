@@ -98,7 +98,7 @@ select{font:16px Inter;min-height:44px;padding:0 12px;border-radius:12px;border:
 </section>
 <section class="band" id="ensemble" hidden>
 <h2>Instrument relationships</h2>
-<p class="lead">Into the Mother of All · compare the seven extracted melodic tracks. White = identical four-interval shape; blue = reversed or inverted shape. Dark = no match.</p>
+<p class="lead">Into the Mother of All · compare the five principal melodic tracks. White = identical four-interval shape; blue = reversed or inverted shape. Dark = no match.</p>
 <div class="row"><button id="ensembleCross" class="solid">Cross-instrument matrix</button><button id="ensembleFull">Full composition</button><button id="ensemblePlay">▶ Play all instruments</button><button id="ensembleSave">Save PNG</button></div>
 <p class="msg" id="ensembleStatus">Loading the instrument tracks…</p>
 <div class="card" style="max-width:840px"><canvas id="ensembleCanvas" style="display:block;width:100%;height:auto;background:#0c0d10;image-rendering:pixelated;border-radius:6px"></canvas><p class="msg" id="ensembleExplain"></p></div>
@@ -152,8 +152,9 @@ const motherTracks='eNrtW8uu2zYQ/RevteD7kf/oqugiTYAmKJoEudkUQf69c4ZDm6JFWbrX7n3A
 BUN.motherTracks=(async()=>{const bytes=Uint8Array.from(atob(motherTracks),c=>c.charCodeAt(0));const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));return JSON.parse(await new Response(stream).text())})();
 const extraTracks=[['rhythm','Rhythm Guitar',591],['bass','Bass',755],['pad','Synth Pad',132],['choir','Choir',58],['strings','Strings',36],['tick','Tick',334]];
 const motherTrackEntries=extraTracks.map(([key,label,n])=>({id:'into-the-mother-of-all-v1-'+key,c:'Roman Kesler',t:'Into the Mother of All (version 1) — '+label,cat:'Original composition · '+label+' · monophonic extraction',g:'motherTracks',track:key,n,bpm:132}));
+const motherEnsembleEntry={id:'into-the-mother-of-all-ensemble',c:'Roman Kesler',t:'Into the Mother of All (version 1) — Full Ensemble (5 tracks)',cat:'Original composition · synchronized recurrence · lead, rhythm, bass, pad, tick',g:'mother',n:1150,bpm:132,ensemble:true};
 const motherEntry={id:'into-the-mother-of-all-v1',c:'Roman Kesler',t:'Into the Mother of All (version 1) — Lead Guitar',cat:'Original composition · lead guitar',g:'mother',n:1150,bpm:132};
-Promise.all([fetch('lib/index.json').then(r=>r.json()),fetch('lib/index2.json').then(r=>r.json()).catch(()=>[])]).then(([a,b])=>{IX=a.concat(b).filter(r=>INSTALLED.has(grp(r))).concat([motherEntry],motherTrackEntries);search();$('libmsg').textContent+=' '+MISSING_NOTE}).catch(()=>{$('libmsg').textContent='The library could not load here.'});
+Promise.all([fetch('lib/index.json').then(r=>r.json()),fetch('lib/index2.json').then(r=>r.json()).catch(()=>[])]).then(([a,b])=>{IX=a.concat(b).filter(r=>INSTALLED.has(grp(r))).concat([motherEnsembleEntry,motherEntry],motherTrackEntries);search();$('libmsg').textContent+=' '+MISSING_NOTE}).catch(()=>{$('libmsg').textContent='The library could not load here.'});
 const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9#]+/g,' ');
 const COLL=[['all','All collections'],['mozart','Mozart piano sonatas'],['beethoven','Beethoven piano sonatas'],['haydn','Haydn piano sonatas'],['chopin','Chopin preludes and mazurkas'],['joplin','Joplin rags'],
  ['keyboard','Bach keyboard and others'],['chorales','Bach chorales'],['lieder','Songs (Schubert, Schumann, Brahms…)'],['ryans',"Ryan's fiddle tunes"],['oneills',"O'Neill's Irish tunes"],['ours','Our music (Roman Kesler)'],['mother','Into the Mother of All'],['motherTracks','Into the Mother of All — Instruments']];
@@ -175,9 +176,9 @@ function open(i){if(!LIST.length)return;POS=(i+LIST.length)%LIST.length;const r=
  busy(true);const c=grp(r);
  if(!INSTALLED.has(c)){busy(false);$('libmsg').textContent='The note data for this collection is not installed.';return}
  (BUN[c]||(BUN[c]=fetch('lib/'+c+'.json').then(x=>{if(!x.ok)throw Error('HTTP '+x.status);return x.json()}))).then(all=>{
-  const j=r.track?all[r.track]:all[r.id];if(!j||!Array.isArray(j.don)||!Array.isArray(j.p)||!Array.isArray(j.d)||!j.U)throw Error('Missing or invalid note sequence');
+  const j=r.ensemble?all['into-the-mother-of-all-v1']:(r.track?all[r.track]:all[r.id]);if(!j||!Array.isArray(j.don)||!Array.isArray(j.p)||!Array.isArray(j.d)||!j.U)throw Error('Missing or invalid note sequence');
   let on=0;const notes=j.don.map((d,i)=>{on+=d;return {on:on/j.U,p:j.p[i],d:j.d[i]}});
-  show({title:r.c+' — '+r.t,sub:(r.cat?r.cat+' · ':'')+(SRC[r.g]||'Humdrum edition by Craig Stuart Sapp (CC BY-NC-SA)'),bpm:r.bpm||100,notes},true)}).catch(err=>{delete BUN[c];busy(false);$('img').style.visibility='hidden';$('img').removeAttribute('src');$('img').alt='Picture unavailable — melody data could not load';$('tapinfo').textContent='Cannot generate picture: '+err.message+'. Choose another piece.';$('libmsg').textContent='Could not load '+r.t+': '+err.message;})}
+  show({ensemble:!!r.ensemble,title:r.c+' — '+r.t,sub:(r.cat?r.cat+' · ':'')+(SRC[r.g]||'Humdrum edition by Craig Stuart Sapp (CC BY-NC-SA)'),bpm:r.bpm||100,notes},true)}).catch(err=>{delete BUN[c];busy(false);$('img').style.visibility='hidden';$('img').removeAttribute('src');$('img').alt='Picture unavailable — melody data could not load';$('tapinfo').textContent='Cannot generate picture: '+err.message+'. Choose another piece.';$('libmsg').textContent='Could not load '+r.t+': '+err.message;})}
 $('bprev').onclick=()=>open(POS-1);$('bnext').onclick=()=>open(POS+1);$('brnd').onclick=()=>open(Math.floor(Math.random()*LIST.length));
 document.addEventListener('keydown',e=>{if($('browse').hidden||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;if(e.key==='ArrowRight')open(POS+1);if(e.key==='ArrowLeft')open(POS-1)});
 // ---------- tabs ----------
@@ -290,7 +291,7 @@ function counts(H,grid,R,hop=1){const N=H.c.length,k=N/R;let same=0,mir=0,best=0
 let CUR=null;
 function busy(b){$('busy').style.display=b?'grid':'none';if(b)$('outband').hidden=false}
 let MODE={t:'notes',p:'letters',h:1};try{const m=JSON.parse(localStorage.getItem('n2p-mode'));if(m&&m.t&&m.p)MODE=Object.assign(MODE,m)}catch(e){}
-function show(piece,fromLib){if(piece.title&&piece.title.includes('Into the Mother of All')){ensRender()}else{$('ensemble').hidden=true;ensStop()}stop();busy(true);if(!fromLib)$('browse').hidden=true;$('outband').hidden=false;if(!fromLib||$('outband').getBoundingClientRect().top>innerHeight*0.6)$('outband').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+function show(piece,fromLib){if(piece.title&&piece.title.includes('Into the Mother of All')){if(piece.ensemble)ensMode='full';ensRender()}else{$('ensemble').hidden=true;ensStop()}stop();busy(true);if(!fromLib)$('browse').hidden=true;$('outband').hidden=false;if(!fromLib||$('outband').getBoundingClientRect().top>innerHeight*0.6)$('outband').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
  CUR={...piece};setTimeout(render,30)}
 function modeUI(){document.querySelectorAll('#mh button').forEach(b=>b.classList.toggle('on',+b.dataset.v===MODE.h));document.querySelectorAll('#mt button').forEach(b=>b.classList.toggle('on',b.dataset.v===MODE.t));document.querySelectorAll('#mp button').forEach(b=>b.classList.toggle('on',b.dataset.v===MODE.p))}
 ['mt','mp','mh'].forEach(id=>$(id).onclick=e=>{const b=e.target.closest('button');if(!b)return;if(id==='mh')MODE.h=+b.dataset.v;else MODE[id==='mt'?'t':'p']=b.dataset.v;try{localStorage.setItem('n2p-mode',JSON.stringify(MODE))}catch(err){}modeUI();if(CUR){stop();busy(true);setTimeout(render,30)}});
@@ -336,9 +337,9 @@ new ResizeObserver(()=>{drawO();drawS()}).observe($('pl'));
 $('img').onclick=e=>{if(!CUR||!CUR.N)return;const r=e.target.getBoundingClientRect(),i=noteAt((e.clientY-r.top)/r.height),j=noteAt((e.clientX-r.left)/r.width);
  $('tapinfo').textContent=`Row: note ${i+1} at ${mmss(CUR.notes[i].on)}. Column: note ${j+1} at ${mmss(CUR.notes[j].on)}. Playing from the row.`;play(i)};
 // ---------- multi-instrument recurrence laboratory ----------
-const ensNames=['Lead guitar','Rhythm guitar','Bass','Synth pad','Choir','Strings','Tick'];
-const ensKeys=['lead','rhythm','bass','pad','choir','strings','tick'];
-let ensTracks=null,ensMode='cross',ensPlaying=false,ensAudio=null,ensVoices=[];
+const ensNames=['Lead guitar','Rhythm guitar','Bass','Synth pad','Tick'];
+const ensKeys=['lead','rhythm','bass','pad','tick'];
+let ensTracks=null,ensMode='full',ensPlaying=false,ensAudio=null,ensVoices=[];
 function fromBundle(j){
  if(!j||!j.don||!j.p||!j.d||!j.U)throw Error('Invalid MIDI notes');
  let on=0;return j.don.map((v,i)=>{on+=v;return {on:on/j.U,p:j.p[i],d:j.d[i]}});
@@ -346,7 +347,7 @@ function fromBundle(j){
 async function loadEnsemble(){
  if(ensTracks)return ensTracks;
  const [lead,other]=await Promise.all([BUN.mother,BUN.motherTracks]);
- ensTracks=[fromBundle(lead['into-the-mother-of-all-v1']),...['rhythm','bass','pad','choir','strings','tick'].map(k=>fromBundle(other[k]))];
+ ensTracks=[fromBundle(lead['into-the-mother-of-all-v1']),...['rhythm','bass','pad','tick'].map(k=>fromBundle(other[k]))];
  return ensTracks;
 }
 function ensShape(n){
@@ -408,7 +409,7 @@ async function ensRender(){
  $('ensemble').hidden=false;$('ensembleStatus').textContent='Calculating '+(ensMode==='cross'?'cross-instrument':'full-composition')+' picture…';
  await new Promise(resolve=>setTimeout(resolve,25));
  try{const tracks=await loadEnsemble();if(ensMode==='cross')ensCross(tracks);else ensFull(tracks);
-  $('ensembleStatus').textContent='Seven melodic tracks · '+(ensMode==='cross'?'7 × 7 comparison blocks':'one synchronized arrangement matrix');
+  $('ensembleStatus').textContent='Five principal melodic tracks · '+(ensMode==='cross'?'7 × 7 comparison blocks':'one synchronized arrangement matrix');
  }catch(e){$('ensembleStatus').textContent='Could not calculate: '+e.message}
 }
 $('ensembleCross').onclick=()=>{ensMode='cross';ensRender()};
