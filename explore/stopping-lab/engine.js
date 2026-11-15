@@ -116,7 +116,8 @@ const workerURL=URL.createObjectURL(new Blob([WORKER_SRC],{type:'text/javascript
 const idle=[]; let queue=[];
 for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.onmessage=onStrip; idle.push(w); }
 function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
-const engMsg=e=>({kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:e.R2,stopMode:cfg.stopMode});
+// Green potential always uses its own outward escape calculation, independent of the experimental stop mode.
+const engMsg=e=>({kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
 
 // the same orbit on the main thread, for single points (pin, cross-sections)
 function orbit(pr,pq,maxIt,e){
