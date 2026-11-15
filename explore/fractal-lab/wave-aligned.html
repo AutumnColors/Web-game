@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Julia Wave-Aligned Reconstruction</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#090d1d;color:#eef3ff;font:13px system-ui}canvas{display:block;width:100vw;height:100dvh;touch-action:none}header{position:fixed;top:8px;left:8px;right:8px;max-width:620px;background:#0c1630e9;border:1px solid #536a96;border-radius:12px;padding:10px;pointer-events:none}h1{font-size:16px;margin:0 0 5px}p{margin:4px 0;color:#c2cce1}.panel{position:fixed;bottom:8px;left:8px;right:8px;max-width:850px;display:flex;align-items:end;gap:8px;flex-wrap:wrap;background:#0b1630ef;border:1px solid #526b91;border-radius:12px;padding:10px}label{display:flex;flex-direction:column;gap:4px;font-size:11px}input,select,button,a{background:#20365b;color:white;border:1px solid #60789c;border-radius:6px;padding:7px;font:inherit;text-decoration:none}input[type=range]{width:105px}button{cursor:pointer}#status{width:100%;color:#9fe2ca;font-size:11px}#error{color:#ffadad}
+</style></head><body><canvas id="cv"></canvas>
+<header><h1>Julia · Wave-aligned surface reconstruction</h1><p>Contours of orbit sensitivity S = ln(1 + |dzₙ/dz₀|) at escape. Each closed contour is reparameterized by normalized arc length u. Compare direct height, wave spacing and curvature.</p><p>Drag to orbit · wheel/pinch to zoom · select <b>Unwrapped</b> to compare aligned waves. These are constructed surfaces, not unique physical reconstructions.</p></header>
+<div class="panel">
+<label>Display<select id="display"><option value="3d">3D ribbons</option><option value="unwrap">Unwrapped contours</option><option value="plan">Plan view</option></select></label>
+<label>Reconstruction<select id="model"><option value="direct">Direct S</option><option value="spacing">Wave spacing</option><option value="curvature">Spacing + curvature</option></select></label>
+<label>Contour count<input id="levels" type="range" min="4" max="20" value="10"><span id="levelsValue">10</span></label>
+<label>Height<input id="gain" type="range" min="0" max="3" step=".1" value="1.1"></label>
+<label>Reference contour<select id="reference"><option value="middle">Middle</option><option value="outer">Outer</option><option value="inner">Inner</option></select></label>
+<label>Resolution<select id="resolution"><option value="150">150²</option><option value="210" selected>210²</option><option value="270">270²</option></select></label>
+<button id="calculate">Recalculate</button><button id="reset">Reset view</button><a href="surface.html">3D scalar surface</a><a href="./">Fractal Lab</a>
+<div id="status">Preparing…</div></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),cv=$('cv'),ctx=cv.getContext('2d'),query=new URLSearchParams(location.search);
+const param=(k,d)=>query.has(k)&&Number.isFinite(+query.get(k))?+query.get(k):d;
+const c={re:param('cr',-0.122561166876654),im:param('ci',0.744861766619744)};
+const region={x:param('x',0),y:param('y',0),w:Math.max(.00001,Math.min(8,param('w',3.6)))};
+let N=210,field=null,contours=[],az=-.8,tilt=.95,zoom=1,drag=null,run=0;
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+function resize(){const d=Math.min(devicePixelRatio||1,2);cv.width=Math.round(innerWidth*d);cv.height=Math.round(innerHeight*d);draw();}
+addEventListener('resize',resize);
+function sample(x,y,limit){
+ let zr=x,zi=y,dr=1,di=0,n=0;
+ while(zr*zr+zi*zi<=256&&n<limit){
+  const tr=2*(zr*dr-zi*di),ti=2*(zr*di+zi*dr);
+  const nr=zr*zr-zi*zi+c.re,ni=2*zr*zi+c.im;
+  dr=tr;di=ti;zr=nr;zi=ni;n++;
+ }
+ return n===limit?NaN:Math.log1p(Math.hypot(dr,di));
+}
+async function compute(){
+ const ticket=++run;N=+$('resolution').value;field=new Float32Array(N*N);field.fill(NaN);
+ $('status').textContent='Calculating '+N+'² Julia samples…';
+ for(let y=0;y<N;y++){
+  for(let x=0;x<N;x++)field[y*N+x]=sample(region.x+region.w*(x/(N-1)-.5),region.y+region.w*(y/(N-1)-.5),400);
+  if(y%9===0){await new Promise(requestAnimationFrame);if(ticket!==run)return;}
+ }
+ extract();draw();
+}
+function extract(){
+ const vals=[];for(let i=0;i<field.length;i+=3)if(Number.isFinite(field[i]))vals.push(field[i]);
+ vals.sort((a,b)=>a-b);if(vals.length<10){contours=[];$('status').textContent='No escaping samples; widen region';return;}
+ const n=+$('levels').value,lo=vals[Math.floor(vals.length*.12)],hi=vals[Math.floor(vals.length*.85)];
+ const levels=Array.from({length:n},(_,i)=>lo+(hi-lo)*(i+1)/(n+1));
+ const found=[];
+ for(const level of levels){
+  const segments=[],idx=(x,y)=>y*N+x;
+  for(let y=0;y<N-1;y++)for(let x=0;x<N-1;x++){
+   const v=[field[idx(x,y)],field[idx(x+1,y)],field[idx(x+1,y+1)],field[idx(x,y+1)]];
+   if(v.some(a=>!Number.isFinite(a)))continue;
+   const pts=[[x,y],[x+1,y],[x+1,y+1],[x,y+1]],cuts=[];
+   for(let k=0;k<4;k++){const j=(k+1)%4;if((v[k]<level)!==(v[j]<level)){const t=(level-v[k])/(v[j]-v[k]);cuts.push([pts[k][0]+t*(pts[j][0]-pts[k][0]),pts[k][1]+t*(pts[j][1]-pts[k][1])]);}}
+   if(cuts.length===2)segments.push([cuts[0],cuts[1]]);
+   if(cuts.length===4){const mid=(v[0]+v[1]+v[2]+v[3])/4;const pairs=mid>=level?[[0,1],[2,3]]:[[0,3],[1,2]];for(const [a,b] of pairs)segments.push([cuts[a],cuts[b]]);}
+  }
+  const key=p=>p.map(v=>Math.round(v*10000)).join(','),adj=new Map();
+  segments.forEach((s,i)=>s.forEach((p,end)=>{const k=key(p);if(!adj.has(k))adj.set(k,[]);adj.get(k).push([i,end]);}));
+  const used=new Uint8Array(segments.length),loops=[];
+  for(let i=0;i<segments.length;i++){
+   if(used[i])continue;used[i]=1;const chain=[segments[i][0],segments[i][1]];let closed=false;
+   for(let k=0;k<segments.length;k++){
+    const candidates=adj.get(key(chain[chain.length-1]))||[];
+    const next=candidates.find(([j])=>!used[j]);if(!next){closed=dist(chain[0],chain[chain.length-1])<.0002;break;}
+    used[next[0]]=1;chain.push(segments[next[0]][1-next[1]]);
+    if(dist(chain[0],chain[chain.length-1])<.0002){closed=true;break;}
+   }
+   if(closed&&chain.length>16){
+    let area=0;for(let j=0;j<chain.length-1;j++)area+=chain[j][0]*chain[j+1][1]-chain[j+1][0]*chain[j][1];
+    if(Math.abs(area)>25)loops.push({points:chain,area:Math.abs(area)*.5,sign:Math.sign(area)});
+   }
+  }
+  loops.sort((a,b)=>b.area-a.area);
+  if(loops.length)found.push({level,...loops[0]});
+ }
+ // We select the dominant closed loop at each level. Topology changes are reported, not concealed.
+ contours=found.sort((a,b)=>b.area-a.area).map(loop=>({...loop,points:resample(loop.points,128,loop.sign)}));
+ const ref=contours[Math.floor(contours.length/2)];
+ if(ref)for(const loop of contours)align(loop.points,ref.points);
+ $('status').textContent=contours.length+' closed contours · '+N+'² samples · 400 iterations · largest closed loop per threshold. Check topology before interpreting.';
+}
+function resample(points,count,sign){
+ const p=points.slice(0,-1);if(sign<0)p.reverse();
+ let lengths=[0];for(let i=1;i<=p.length;i++)lengths.push(lengths[i-1]+dist(p[i-1],p[i%p.length]));
+ const total=lengths[lengths.length-1],out=[];
+ for(let j=0;j<count;j++){
+  const t=total*j/count;let i=0;while(i<lengths.length-2&&lengths[i+1]<t)i++;
+  const f=(t-lengths[i])/(lengths[i+1]-lengths[i]||1),a=p[i],b=p[(i+1)%p.length];
+  out.push([a[0]+f*(b[0]-a[0]),a[1]+f*(b[1]-a[1])]);
+ }
+ return out;
+}
+function align(points,ref){
+ let best=Infinity,shift=0;for(let k=0;k<points.length;k++){
+  let sum=0;for(let j=0;j<points.length;j+=4){const p=points[(j+k)%points.length],q=ref[j];sum+=(p[0]-q[0])**2+(p[1]-q[1])**2;}
+  if(sum<best){best=sum;shift=k;}
+ }points.push(...points.splice(0,shift));
+}
+function refIndex(){return $('reference').value==='outer'?0:$('reference').value==='inner'?contours.length-1:Math.floor(contours.length/2);}
+function height(i,j){
+ const p=contours[i].points[j],ref=contours[refIndex()],gain=+$('gain').value;
+ if($('model').value==='direct')return gain*contours[i].level/12;
+ const r=ref.points[j],spacing=dist(p,r)/(N-1)*2;
+ if($('model').value==='spacing')return gain*spacing*3;
+ const prev=contours[i].points[(j+127)%128],next=contours[i].points[(j+1)%128];
+ const v1=[p[0]-prev[0],p[1]-prev[1]],v2=[next[0]-p[0],next[1]-p[1]];
+ const cross=Math.abs(v1[0]*v2[1]-v1[1]*v2[0]),curvature=cross/(Math.hypot(...v1)*Math.hypot(...v2)+1e-8);
+ return gain*(spacing*3+Math.min(curvature,1)*.35);
+}
+function project(x,y,z){
+ const a=Math.cos(az),b=Math.sin(az),ct=Math.cos(tilt),st=Math.sin(tilt),X=x*a-y*b,Y=x*b+y*a;
+ const scale=Math.min(cv.width/3.2,cv.height/3.1)*zoom;
+ return [cv.width*.5+X*scale,cv.height*.51+(Y*ct-z*st)*scale,Y*st+z*ct];
+}
+function draw(){
+ if(!field)return;ctx.fillStyle='#090d1d';ctx.fillRect(0,0,cv.width,cv.height);
+ const display=$('display').value,points=contours.map((c,i)=>c.points.map((p,j)=>{
+  const x=(p[0]/(N-1)-.5)*2,y=(p[1]/(N-1)-.5)*2,z=height(i,j);
+  if(display==='unwrap')return [cv.width*(.08+.84*j/128),cv.height*(.7-.45*i/Math.max(1,contours.length-1)-.11*z),0];
+  if(display==='plan')return [cv.width*(.5+x*.39*zoom),cv.height*(.51+y*.39*zoom),0];
+  return project(x,y,z);
+ }));
+ if(display==='3d'){
+  const faces=[];
+  for(let i=0;i<points.length-1;i++)for(let j=0;j<128;j++){const k=(j+1)%128,a=points[i][j],b=points[i][k],c=points[i+1][k],d=points[i+1][j];faces.push({a,b,c,d,depth:(a[2]+b[2]+c[2]+d[2])/4,i});}
+  faces.sort((a,b)=>a.depth-b.depth);
+  for(const f of faces){ctx.beginPath();ctx.moveTo(...f.a.slice(0,2));for(const p of [f.b,f.c,f.d])ctx.lineTo(...p.slice(0,2));ctx.closePath();ctx.fillStyle='hsl('+(260-f.i/Math.max(1,points.length-1)*215)+' 78% 38%)';ctx.fill();}
+ }
+ for(let i=0;i<points.length;i++){ctx.beginPath();points[i].forEach((p,j)=>j?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));if(display!=='unwrap')ctx.closePath();ctx.strokeStyle=i===refIndex()?'#fff1b1':'hsl('+(265-i/Math.max(1,points.length-1)*220)+' 95% 70%)';ctx.lineWidth=(i===refIndex()?2.5:1.3)*Math.min(devicePixelRatio||1,2);ctx.stroke();}
+ if(!points.length){ctx.fillStyle='white';ctx.fillText('No closed sensitivity contours in this region. Try a wider Julia view.',30,cv.height*.55);}
+}
+let active=new Map();
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);active.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY];});
+cv.addEventListener('pointermove',e=>{if(!active.has(e.pointerId))return;const old=[...active.values()];active.set(e.pointerId,[e.clientX,e.clientY]);if(active.size===2){const now=[...active.values()],d0=dist(old[0],old[1]),d1=dist(now[0],now[1]);if(d0>4)zoom=clamp(zoom*d1/d0,.2,6);}else if(drag){az+=(e.clientX-drag[0])*.008;tilt=clamp(tilt+(e.clientY-drag[1])*.006,.12,1.5);drag=[e.clientX,e.clientY];}draw();});
+for(const ev of ['pointerup','pointercancel'])cv.addEventListener(ev,e=>{active.delete(e.pointerId);drag=null;});
+cv.addEventListener('wheel',e=>{e.preventDefault();zoom=clamp(zoom*Math.exp(-e.deltaY*.001),.2,6);draw();},{passive:false});
+$('calculate').onclick=compute;$('levels').oninput=()=>{$('levelsValue').textContent=$('levels').value;extract();draw();};
+for(const id of ['display','model','gain','reference'])$(id).oninput=draw;
+$('reset').onclick=()=>{az=-.8;tilt=.95;zoom=1;draw();};
+resize();compute();
+</script></body></html>
