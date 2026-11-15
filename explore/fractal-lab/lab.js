@@ -144,7 +144,7 @@ function setMode(m){
   repaint(); updateChip(); syncQuick(); writeHash();
 }
 function syncPolarButton(){ $('qPolar').querySelector('b').textContent='Coordinates: '+(cfg.polar?(cfg.logPolar?'Log-polar (θ, log r)':'Polar (θ, r)'):'Cartesian');$('qPolar').classList.toggle('on',cfg.polar); }
-function togglePolar(){if(!cfg.polar){cfg.polar=true;cfg.logPolar=false;}else if(!cfg.logPolar){cfg.logPolar=true;cfg.logOuter=Math.log(Math.max(1e-12,view.w/2));cfg.logSpan=Math.log(10000);}else{cfg.polar=false;cfg.logPolar=false;}if(cfg.polar&&cfg.mode!=='sens')setMode('sens');syncPolarButton();dirty=true;needDraw=true;closePop();writeHash();toast(cfg.polar?(cfg.logPolar?'LOG-POLAR ACTIVE · θ / log r':'POLAR ACTIVE · θ / r'):'CARTESIAN ACTIVE',2500);}
+function togglePolar(){if(!cfg.polar){cfg.polar=true;cfg.logPolar=false;}else if(!cfg.logPolar){cfg.logPolar=true;cfg.logOuter=Math.log(Math.max(1e-12,view.w/2));cfg.logSpan=Math.log(10000);}else{cfg.polar=false;cfg.logPolar=false;}if(cfg.polar&&cfg.mode!=='sens'){cfg.mode='sens';document.body.classList.remove('cmp');}syncPolarButton();updateChip();dirty=true;needDraw=true;closePop();writeHash();toast(cfg.polar?(cfg.logPolar?'LOG-POLAR ACTIVE · θ / log r':'POLAR ACTIVE · θ / r'):'CARTESIAN ACTIVE',2500);}
 $('qPolar').onclick=togglePolar;
 function setPalette(p){ cfg.palette=p; repaint(); syncQuick(); writeHash(); }
 function setClean(on){ cfg.clean=on; document.body.classList.toggle('clean',on); closePop(); if(on){ closeSec(); setSecTool(false); toast('Clean view. Press and hold the map to bring the tools back.',3200); } needDraw=true; syncQuick(); writeHash(); }
