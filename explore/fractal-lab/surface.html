@@ -10,13 +10,14 @@
 <label>Iterations<select id="iters"><option>150</option><option selected>400</option><option>800</option><option>1600</option></select></label>
 <label>Mesh resolution<select id="res"><option value="95">95 × 95</option><option value="145" selected>145 × 145</option><option value="205">205 × 205</option></select></label>
 <label><span>Contour lines</span><input id="contours" type="checkbox" checked></label>
-<button id="recalc">Recalculate</button><button id="reset">Reset view</button><a href="./">Back to fractal lab</a>
+<button id="recalc">Recalculate</button><button id="reset">Reset view</button><a id="waveLink" href="wave-aligned.html">Wave-aligned reconstruction</a><a href="./">Back to fractal lab</a>
 <div id="status">Preparing Julia field…</div>
 </div>
 <script>
 'use strict';
 const $=id=>document.getElementById(id),canvas=$('c'),ctx=canvas.getContext('2d',{alpha:false}),params=new URLSearchParams(location.search);
 const num=(k,d)=>{let v=Number(params.get(k));return Number.isFinite(v)&&params.has(k)?v:d};
+$('waveLink').href='wave-aligned.html'+location.search;
 const seed={re:num('cr',-0.122561166876654),im:num('ci',0.744861766619744)};
 const region={cx:num('x',0),cy:num('y',0),w:Math.min(8,Math.max(.000001,num('w',3.6)))};
 $('meta').textContent='c = '+seed.re.toFixed(8)+(seed.im>=0?' + ':' − ')+Math.abs(seed.im).toFixed(8)+'i · center ('+region.cx.toFixed(5)+', '+region.cy.toFixed(5)+') · width '+region.w.toPrecision(4);
