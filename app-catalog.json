@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-15T17:59:35.226853+00:00",
+  "generatedAt": "2026-11-15T18:14:04.305353+00:00",
   "apps": [
     {
       "path": "explore/music-from-symmetry/",
       "title": "Music to Picture",
       "category": "Explore",
-      "date": "2026-11-16T00:59:27+07:00",
-      "update": "Publish combined five-track Into the Mother of All recurrence view"
+      "date": "2026-11-16T01:13:57+07:00",
+      "update": "Import DragonForce MIDI: five instrument recurrence tracks and synchronized ensemble"
     },
     {
       "path": "explore/fractal-lab/",
