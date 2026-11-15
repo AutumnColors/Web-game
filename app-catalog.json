@@ -1,0 +1,327 @@
+{
+  "generatedAt": "2026-11-15T17:09:34.703220+00:00",
+  "apps": [
+    {
+      "path": "explore/music-from-symmetry/",
+      "title": "Music to Picture",
+      "category": "Explore",
+      "date": "2026-11-16T00:06:32+07:00",
+      "update": "Add Music from Symmetry library: index2.json"
+    },
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Stopping Lab",
+      "category": "Explore",
+      "date": "2026-11-15T22:49:23+07:00",
+      "update": "Mask nonconvergent parameter Böttcher inverse pixels"
+    },
+    {
+      "path": "explore/bottcher-lab/",
+      "title": "Basilica · Böttcher coordinates",
+      "category": "Explore",
+      "date": "2026-11-15T22:17:38+07:00",
+      "update": "Add basilica Böttcher Green-potential and external-angle coordinate laboratory"
+    },
+    {
+      "path": "explore/fractal-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-15T18:57:27+07:00",
+      "update": "Expose Julia wave doubling experiment in Fractal Lab"
+    },
+    {
+      "path": "explore/fractal-lab/doubling-test.html",
+      "title": "Julia Doubling Test",
+      "category": "Fractal Lab",
+      "date": "2026-11-15T18:57:15+07:00",
+      "update": "Add Julia wave doubling invariance and numerical falsification test"
+    },
+    {
+      "path": "explore/fractal-lab/geometry-discovery.html",
+      "title": "Julia Geometry Discovery",
+      "category": "Fractal Lab",
+      "date": "2026-11-15T18:49:43+07:00",
+      "update": "Create Julia natural-coordinate geometry discovery lab"
+    },
+    {
+      "path": "explore/fractal-lab/surface.html",
+      "title": "Julia Sensitivity · 3D Surface",
+      "category": "Fractal Lab",
+      "date": "2026-11-15T18:38:02+07:00",
+      "update": "Link Julia wave-aligned experiment from existing fractal viewers"
+    },
+    {
+      "path": "explore/fractal-lab/wave-aligned.html",
+      "title": "Julia Wave-Aligned Reconstruction",
+      "category": "Fractal Lab",
+      "date": "2026-11-15T18:37:51+07:00",
+      "update": "Add Julia wave-aligned contour reconstruction experiment"
+    },
+    {
+      "path": "explore/polar-expedition/",
+      "title": "Julia Orbit Sensitivity — Polar Expedition",
+      "category": "Explore",
+      "date": "2026-11-15T16:52:10+07:00",
+      "update": "Add experimental polar Julia orbit sensitivity expedition viewer"
+    },
+    {
+      "path": "explore/simple-groups/",
+      "title": "Periodic Table of Finite Simple Groups",
+      "category": "Explore",
+      "date": "2026-11-14T18:30:32+07:00",
+      "update": "Update periodic table of finite simple groups with presentations and rules"
+    },
+    {
+      "path": "explore/logistic-lab/",
+      "title": "Logistic Map Lab",
+      "category": "Explore",
+      "date": "2026-11-14T02:12:56+07:00",
+      "update": "Add Logistic Map Lab to Explore"
+    },
+    {
+      "path": "boundary-wave-lab.html",
+      "title": "Circular Boundary · Wave Release Lab",
+      "category": "Standalone",
+      "date": "2026-11-12T19:14:17+07:00",
+      "update": "Add Boundary Wave Lab standalone simulation"
+    },
+    {
+      "path": "explore/boundary-lab/",
+      "title": "Boundary Release Lab",
+      "category": "Explore",
+      "date": "2026-11-12T16:10:01+07:00",
+      "update": "Add session-only signed displacement toggle in setup and live viewer"
+    },
+    {
+      "path": "explore/calculus-lab/",
+      "title": "Vector Calculus in 2D",
+      "category": "Explore",
+      "date": "2026-11-10T21:04:56+07:00",
+      "update": "Restore complete Calculus Lab HTML viewer"
+    },
+    {
+      "path": "explore/riemann-explorer/",
+      "title": "Riemann Explorer",
+      "category": "Explore",
+      "date": "2026-11-10T19:49:20+07:00",
+      "update": "Add Riemann Explorer to Explore"
+    },
+    {
+      "path": "explore/snowflake/",
+      "title": "Snowflake Group Viewer",
+      "category": "Explore",
+      "date": "2026-11-10T17:50:53+07:00",
+      "update": "Add Snowflake Group viewer to Explore"
+    },
+    {
+      "path": "explore/zeta-map/",
+      "title": "Zeta Map",
+      "category": "Explore",
+      "date": "2026-11-10T13:54:30+07:00",
+      "update": "Add Zeta Map: the Riemann zeta function as a gestures-only phase map (#6)"
+    },
+    {
+      "path": "explore/julia-lab/",
+      "title": "Julia Lab",
+      "category": "Explore",
+      "date": "2026-11-09T23:23:04+07:00",
+      "update": "Add Julia Lab: pick the seed c on the Mandelbrot plane (live preview, typed value, presets), then explore its Julia set with the Survey Map tools"
+    },
+    {
+      "path": "explore/fractal-map-survey/",
+      "title": "Mandelbrot Survey Map",
+      "category": "Explore",
+      "date": "2026-11-09T22:13:02+07:00",
+      "update": "Survey Map pin: classify the orbit (escape / inside with cycle period and multiplier / undecided) instead of a zoom-dependent step cap"
+    },
+    {
+      "path": "research/six-routes/",
+      "title": "Six routes through the Mandelbrot set",
+      "category": "Research",
+      "date": "2026-11-09T20:14:37+07:00",
+      "update": "Add Research section: Six routes and Dive into the spiral seed"
+    },
+    {
+      "path": "research/spiral-dive/",
+      "title": "Dive into the spiral seed",
+      "category": "Research",
+      "date": "2026-11-09T20:14:37+07:00",
+      "update": "Add Research section: Six routes and Dive into the spiral seed"
+    },
+    {
+      "path": "explore/fractal-map/",
+      "title": "Mandelbrot Map",
+      "category": "Explore",
+      "date": "2026-11-09T14:47:05+07:00",
+      "update": "Explore: Mandelbrot Map (gestures only, drifts back at the precision limit)"
+    },
+    {
+      "path": "explore/seed-lab/",
+      "title": "Seed → Structure Lab",
+      "category": "Explore",
+      "date": "2026-11-09T13:21:11+07:00",
+      "update": "Add Seed → Structure Lab to Explore"
+    },
+    {
+      "path": "explore/m24/",
+      "title": "M₂₄ Viewer",
+      "category": "Explore",
+      "date": "2026-11-07T14:36:20+07:00",
+      "update": "Add M₂₄ viewer and an Explore › Groups section (#5)"
+    },
+    {
+      "path": "music/sound-of-a5/",
+      "title": "Sound of A₅",
+      "category": "Music",
+      "date": "2026-11-06T18:46:59+07:00",
+      "update": "Sound of A₅: best walk first, shapes view (#4)"
+    },
+    {
+      "path": "explore/constants-table/",
+      "title": "The table of physical constants",
+      "category": "Explore",
+      "date": "2026-11-06T16:30:44+07:00",
+      "update": "Add Table of Physical Constants to Explore (#3)"
+    },
+    {
+      "path": "music/sound-of-d4/",
+      "title": "Sound of D₄",
+      "category": "Music",
+      "date": "2026-11-06T11:45:51+07:00",
+      "update": "Add Sound of D₄ music page (#1)"
+    },
+    {
+      "path": "explore/nonsimple/",
+      "title": "Non-Simple Group Explorer",
+      "category": "Explore",
+      "date": "2026-11-06T02:12:16+07:00",
+      "update": "Non-simple groups: fold the Elements explanation into How it works"
+    },
+    {
+      "path": "explore/galois/",
+      "title": "Galois Workbench",
+      "category": "Explore",
+      "date": "2026-11-05T23:27:03+07:00",
+      "update": "Add Galois Workbench to Explore"
+    },
+    {
+      "path": "sketches/pineapple-umbrella/",
+      "title": "Pineapple Umbrella",
+      "category": "Sketches",
+      "date": "2026-11-04T16:16:41+07:00",
+      "update": "Pineapple Umbrella: fit the whole crown in frame, warmer wood"
+    },
+    {
+      "path": "sketches/corn-cob/",
+      "title": "Corn Cob",
+      "category": "Sketches",
+      "date": "2026-11-04T16:14:01+07:00",
+      "update": "Add Corn Cob sketch; reframe Pineapple Umbrella"
+    },
+    {
+      "path": "explore/an-lab/",
+      "title": "Aₙ(q) Lab",
+      "category": "Explore",
+      "date": "2026-11-04T12:58:11+07:00",
+      "update": "Add Aₙ(q) Lab to Explore"
+    },
+    {
+      "path": "explore/golay/",
+      "title": "Golay MOG Lab",
+      "category": "Explore",
+      "date": "2026-11-03T21:21:26+07:00",
+      "update": "Golay MOG Lab: rebuild Generate tab as three parts"
+    },
+    {
+      "path": "world/",
+      "title": "World Viewer",
+      "category": "Apps",
+      "date": "2026-11-01T18:19:34+07:00",
+      "update": "World: GDP share layer gets \"Per person vs world\" (GDP share / population share)"
+    },
+    {
+      "path": "explore/m11-tree/",
+      "title": "M11 Discovery Tree",
+      "category": "Explore",
+      "date": "2026-11-01T14:03:42+07:00",
+      "update": "Add M11 Discovery Tree to Explore"
+    },
+    {
+      "path": "explore/a5/",
+      "title": "A₅ Viewer",
+      "category": "Explore",
+      "date": "2026-11-01T00:59:36+07:00",
+      "update": "Add A5 viewer to Explore"
+    },
+    {
+      "path": "explore/j1/",
+      "title": "Livingstone Graph Explorer",
+      "category": "Explore",
+      "date": "2026-10-31T00:08:04+07:00",
+      "update": "Move J1 viewer into the Explore section"
+    },
+    {
+      "path": "levels/05-minesweeper/",
+      "title": "Minesweeper",
+      "category": "Levels",
+      "date": "2026-10-30T01:18:21+07:00",
+      "update": "Add Minesweeper as level 05 (Classic 16x16 and Circle)"
+    },
+    {
+      "path": "explore/rubiks-cube/",
+      "title": "Vector Cube",
+      "category": "Explore",
+      "date": "2026-10-29T14:48:08+07:00",
+      "update": "Add Vector Cube to Explore"
+    },
+    {
+      "path": "explore/constants/",
+      "title": "Scale of Constants",
+      "category": "Explore",
+      "date": "2026-10-26T19:09:27+07:00",
+      "update": "Add Scale of Constants explore page"
+    },
+    {
+      "path": "levels/04-counting-strokes/",
+      "title": "Counting Strokes",
+      "category": "Levels",
+      "date": "2026-10-25T22:40:49+07:00",
+      "update": "Counting Strokes: fixed-height header so the board stops resizing"
+    },
+    {
+      "path": "explore/rainbow/",
+      "title": "Rainbow Vectors",
+      "category": "Explore",
+      "date": "2026-10-25T12:39:03+07:00",
+      "update": "Explore: add Rainbow vectors page"
+    },
+    {
+      "path": "explore/m11/",
+      "title": "M11 symmetry",
+      "category": "Explore",
+      "date": "2026-10-23T00:51:22+07:00",
+      "update": "Add Explore section with M11 symmetry visualization"
+    },
+    {
+      "path": "levels/03-path-to-zero/",
+      "title": "Path to Zero",
+      "category": "Levels",
+      "date": "2026-10-21T22:59:25+07:00",
+      "update": "Add Path to Zero as level 3"
+    },
+    {
+      "path": "levels/02-vector-pairs/",
+      "title": "Vector Pairs",
+      "category": "Levels",
+      "date": "2026-10-21T22:55:21+07:00",
+      "update": "Games collection: landing page + 3 levels"
+    },
+    {
+      "path": "levels/01-smiley-paths/",
+      "title": "Smiley Paths",
+      "category": "Levels",
+      "date": "2026-10-21T22:55:21+07:00",
+      "update": "Games collection: landing page + 3 levels"
+    }
+  ]
+}
