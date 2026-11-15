@@ -109,6 +109,20 @@ let pin=null, labelBox=null;
 const PIN_LIMIT=200000, PIN_PMAX=1024;
 // escape, inside (an attracting cycle of period p, multiplier |λ| < 1) or undecided. Independent of the zoom and of the frame's limit.
 function classify(pr,pq,e){
+  if(cfg.stopMode==='fixed') return {kind:'fixed',n:itFor(view.w)};
+  if(cfg.stopMode==='inward'){
+    let zr=e.kind?pr:0, zi=e.kind?pq:0, cr=e.kind?e.kr:pr, ci=e.kind?e.ki:pq;
+    const max=itFor(view.w), threshold=cfg.radius*cfg.radius;
+    for(let n=0;n<=max;n++){
+      if(zr*zr+zi*zi<threshold)return {kind:'converged',n};
+      if(n===max)break;
+      const wr=zr,wi=zi; let ar=zr,ai=zi;
+      for(let k=2;k<e.pw;k++){const t=ar*wr-ai*wi;ai=ar*wi+ai*wr;ar=t;}
+      const nextR=ar*wr-ai*wi+cr,nextI=ar*wi+ai*wr+ci;zr=nextR;zi=nextI;
+      if(!Number.isFinite(zr*zi))break;
+    }
+    return {kind:'not-converged',n:max};
+  }
   let zr,zi,cr,ci,n=0; const pw=e.pw;
   if(e.kind){ zr=pr; zi=pq; cr=e.kr; ci=e.ki; } else { cr=pr; ci=pq; zr=0; zi=0; }
   let lr=1, li=0;
@@ -136,6 +150,9 @@ function placePin(px,py){
   pin={re,im,d:digitsFor(pix),r:classify(re,im,eng)}; needDraw=true;
 }
 function orbitText(r){
+  if(r.kind==='fixed')return 'fixed observation · '+num(r.n)+' steps';
+  if(r.kind==='converged')return 'reaches inner threshold after '+num(r.n)+' steps';
+  if(r.kind==='not-converged')return 'inner threshold not reached within limit';
   if(r.kind==='escape') return 'escapes after '+num(r.n)+' steps';
   if(r.kind==='inside') return 'inside · period-'+r.period+' cycle · |λ| '+(r.lam<0.995?r.lam.toFixed(2):r.lam.toFixed(4));
   return 'undecided after '+num(r.n)+' steps';
