@@ -186,8 +186,8 @@ td i{font-style:normal;color:#8d8d95;font-family:system-ui,sans-serif;font-size:
     <h2>5 · Numerics</h2>
     <div class="lbl">Iteration limit</div>
     <div class="seg grp" id="gIter"></div>
-    <div class="lbl">Threshold R</div><input id="radiusCustom" type="number" min="0.01" max="1000000" step="any" value="16" style="width:100%;padding:10px;background:#161616;color:white;border:1px solid #777;border-radius:10px;font-size:17px"><div class="seg grp" id="gRad"></div><div class="lbl">Stopping mode</div><div class="seg grp" id="gStop"></div>
-    <div class="note">Auto raises the limit with depth, as the Mandelbrot Map does. Outward: |z| > R. Inward: |z| < R. Fixed: exactly N iterations. Inward and fixed are experimental measurements, not escape-time Green potential.</div>
+    <details id="advancedStopping" style="margin-top:12px"><summary style="cursor:pointer;padding:10px 4px;color:#bbb;font-size:13px">Advanced · stopping threshold and mode (default R = 2)</summary><div class="lbl">Threshold R</div><input id="radiusCustom" type="number" min="0.01" max="1000000" step="any" value="2" style="width:100%;padding:10px;background:#161616;color:white;border:1px solid #777;border-radius:10px;font-size:17px"><div class="seg grp" id="gRad"></div><div class="lbl">Stopping mode</div><div class="seg grp" id="gStop"></div>
+    <div class="note">Auto raises the limit with depth, as the Mandelbrot Map does. Outward: |z| > R. Inward: |z| < R. Fixed: exactly N iterations. Inward and fixed are experimental measurements, not escape-time Green potential.</div></details>
 
     <h2>6 · Display</h2>
     <button class="opt" id="gClean" type="button"><b>Clean view</b><small>Show only the fractal: no buttons, labels or overlays.</small></button>
