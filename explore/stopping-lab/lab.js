@@ -145,16 +145,32 @@ function setMode(m){
   if(cmp()!==was || (needD() && base && !base.S)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
   repaint(); updateChip(); syncQuick(); writeHash();
 }
-function syncPolarButton(){ $('qPolar').querySelector('b').textContent='Coordinates: '+(cfg.bottcher?'Böttcher (G, θB)':cfg.polar?(cfg.logPolar?'Log-polar (θ, log r)':'Polar (θ, r)'):'Cartesian');$('qPolar').classList.toggle('on',cfg.polar||cfg.bottcher); }
-function togglePolar(){
-  if(cfg.bottcher){cfg.bottcher=false;cfg.polar=false;cfg.logPolar=false;}
-  else if(!cfg.polar){cfg.polar=true;cfg.logPolar=false;}
-  else if(!cfg.logPolar){cfg.logPolar=true;cfg.logOuter=Math.log(Math.max(1e-12,view.w/2));cfg.logSpan=Math.log(10000);}
-  else if(cfg.fractal==='julia'){cfg.polar=false;cfg.logPolar=false;cfg.bottcher=true;view.a=0;}
-  else{cfg.polar=false;cfg.logPolar=false;toast('Böttcher coordinates require a Julia set',2600);}
-  syncPolarButton();updateChip();dirty=true;needDraw=true;closePop();writeHash();
+const coordOf=c=>c.bottcher?'bottcher':c.polar?(c.logPolar?'logpolar':'polar'):'cartesian';
+function setCoord(c,type){
+  if(type==='bottcher'&&c.fractal!=='julia'){toast('Böttcher coordinates require a Julia set',2700);return false;}
+  c.bottcher=type==='bottcher';c.polar=type==='polar'||type==='logpolar';c.logPolar=type==='logpolar';
+  if(type==='logpolar'&&!(c.logSpan>0)){c.logOuter=Math.log(Math.max(1e-12,view.w/2));c.logSpan=Math.log(10000);}
+  return true;
 }
-$('qPolar').onclick=togglePolar;
+function syncCoordPickers(){
+  const options=['cartesian','polar','logpolar','bottcher'];
+  for(const id of ['coordPicker','coordPickerQuick']){
+    const el=$(id);if(!el)continue;
+    const c=id==='coordPicker'?draft:cfg;
+    el.value=coordOf(c);
+    el.querySelector('option[value="bottcher"]').disabled=c.fractal!=='julia';
+  }
+  $('coordHelp').textContent=draft.bottcher?'Exterior Julia only; the filled Julia interior is not represented.':draft.polar?'Angle runs horizontally; radius vertically.':'Original complex-plane view.';
+  $('coordHelpQuick').textContent=cfg.bottcher?'Exterior Julia only; drag to shift angle/potential.':cfg.polar?'Drag to change angle and radial range.':'Original complex-plane view.';
+}
+function syncPolarButton(){syncCoordPickers();}
+$('coordPicker').onchange=e=>{if(setCoord(draft,e.target.value))syncCfg();else syncCoordPickers();};
+$('coordPickerQuick').onchange=e=>{
+  if(!setCoord(cfg,e.target.value)){syncCoordPickers();return;}
+  if(cfg.bottcher)view.a=0;
+  syncCoordPickers();updateChip();dirty=true;needDraw=true;closePop();writeHash();
+};
+
 $('qDoubling').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='doubling-test.html?'+q.toString();};
 $('qGeometry').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='geometry-discovery.html?'+q.toString();};
 $('qWave').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='wave-aligned.html?'+q.toString();};
@@ -189,10 +205,10 @@ $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(
 /* ---------- applying a configuration ---------- */
 function applyConfig(next,cam){
   if(next.bottcher && next.fractal!=='julia')next.bottcher=false;
-  $('qPolar').querySelector('b').textContent='Coordinates: '+(next.bottcher?'Böttcher (G, θB)':next.polar?(next.logPolar?'Log-polar (θ, log r)':'Polar (θ, r)'):'Cartesian');
+  if(next.bottcher&&next.fractal!=='julia')next.bottcher=false;
   const world=!started || next.fractal!==cfg.fractal || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im));
   const numeric=next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode || next.bottcher!==cfg.bottcher || next.bottcherGMin!==cfg.bottcherGMin || next.bottcherGMax!==cfg.bottcherGMax || next.polar!==cfg.polar || next.logPolar!==cfg.logPolar;
-  cfg=clone(next); eng=engineOf(cfg); started=true; syncContourSettings(cfg);
+  cfg=clone(next); eng=engineOf(cfg); started=true; syncContourSettings(cfg); syncCoordPickers();
   document.body.classList.toggle('cmp',cmp()); document.body.classList.toggle('clean',cfg.clean);
   fitHome();
   if(world){ pin=null; sections=[]; secSel=-1; closeSec(); base=null; back=null; rotAnim=null; glide=null; lastMin=0; boost=1; stats=null; Object.assign(view,HOME); }
@@ -239,7 +255,7 @@ function parseC(s){ // "−0.8 + 0.156i", "-0.8, 0.156", "i", "-0.5i", "0.25"
   return null;
 }
 $('cin').addEventListener('input',()=>{ const c=parseC($('cin').value); $('cin').classList.toggle('bad',!c); if(c){ draft.seed=c; thumbs(); } });
-function syncCfg(){ $('radiusCustom').value=draft.radius;
+function syncCfg(){ $('radiusCustom').value=draft.radius; syncCoordPickers();
   syncGroups($('cfg')); $('gClean').classList.toggle('on',draft.clean);
   $('pJulia').classList.toggle('on',draft.fractal==='julia'); $('pMulti').classList.toggle('on',draft.fractal==='multibrot');
   const g=$('palPrev').getContext('2d'), lut=PALETTES[draft.palette].cyc, img=g.createImageData(600,1), o=new Uint32Array(img.data.buffer);
