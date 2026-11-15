@@ -145,6 +145,7 @@ function classify(pr,pq,e){
   return {kind:'open',n};
 }
 function placePin(px,py){
+  if(cfg.bottcher){toast('Point probes in Böttcher view need inverse screen projection; use Cartesian for probes.',3200);return;}
   if(pin){ const [sx,sy]=toScreen(pin.re,pin.im); if(Math.hypot(sx-px,sy-py)<26*DPR*(cmp()?2:1)){ pin=null; needDraw=true; return; } }
   const [re,im]=toWorld(px,py), pix=view.w/Wd*DPR*(cmp()?2:1);
   pin={re,im,d:digitsFor(pix),r:classify(re,im,eng)}; needDraw=true;
