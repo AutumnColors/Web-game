@@ -151,6 +151,7 @@ onmessage=e=>{
         const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5);
         [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki):pw===2?parameterInverse(u,theta):[NaN,NaN];
       } else if(polar){ const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
+      if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;continue;}
       let zr,zi,cr,ci,dr,di;
       if(julia){ zr=pr; zi=pq; cr=kr; ci=ki; dr=1; di=0; }
       else {
