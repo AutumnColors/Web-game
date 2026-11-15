@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Music to Picture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a lab instrument — name a piece, get its X-ray.
+   IDEA: a darkroom print: notes go in, a recurrence picture develops.
+   PICTURE: the pattern itself, large, saved as an image you can long-press.
+   COLOUR and TYPE: paper white / night, ink, cobalt for mirrors, bone white for same shapes; Space Grotesk + Inter.
+   LAYOUT: input card, then the picture and its numbers, then the algorithm as a table. */
+:root{color-scheme:light dark;--bg:light-dark(#fbfbf8,#111214);--ink:light-dark(#141414,#ecebe6);--mute:light-dark(#6b6a66,#9b9a94);
+--line:light-dark(#dddcd5,#2a2b2f);--card:light-dark(#ffffff,#1a1b1e);--sym:light-dark(#1f3fd1,#7d95ff);--hot:light-dark(#e0301e,#ff6a55);--night:#0c0d10}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:"Space Grotesk",Inter,sans-serif;font-weight:600;line-height:1.08;text-wrap:balance;margin:0}
+h1{font-size:clamp(32px,6vw,52px)}h2{font-size:24px;margin-bottom:6px}h3{font-size:20px}
+.band{padding:clamp(22px,4vw,44px) max(5vw,16px);max-width:1240px;margin:auto}
+.lead{color:var(--mute);max-width:62ch;margin:10px 0 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:16px}
+input[type=search],textarea{width:100%;font:16px Inter;min-height:48px;padding:10px 14px;border-radius:12px;border:1.5px solid var(--ink);background:var(--bg);color:var(--ink)}
+textarea{min-height:96px;font:15px/1.45 ui-monospace,Menlo,monospace;resize:vertical}
+button,.file{font:600 15px Inter,sans-serif;min-height:44px;padding:0 16px;border-radius:22px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+button.solid{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,.file:focus-within{outline:3px solid var(--sym);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs button.on{background:var(--ink);color:var(--bg)}
+.res{list-style:none;margin:8px 0 0;padding:0;max-height:330px;overflow:auto}
+.res li button{width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:10px 4px;min-height:52px;display:block;font-weight:500}
+.res small{display:block;color:var(--mute);font-weight:400;font-size:13px}
+.msg{font-size:14px;color:var(--mute);margin-top:8px}
+.out{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px;align-items:start}
+.plot{position:relative;width:100%;aspect-ratio:1;background:var(--night);border-radius:6px;overflow:hidden}
+.plot img,.plot canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
+.plot canvas{pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--mute);margin-top:8px}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+.strip{height:64px;margin-top:10px;position:relative}.strip canvas{position:absolute;inset:0;width:100%;height:100%}
+table{border-collapse:collapse;width:100%;font-size:15px;margin-top:10px}
+th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{font-weight:600;color:var(--mute);font-size:13px}
+td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+td.num{font:600 20px "Space Grotesk";color:var(--sym);width:40px}
+code{font:14px ui-monospace,Menlo,monospace;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 5px}
+#busy{display:none;position:absolute;inset:0;place-items:center;color:#cfcfcf;font-size:15px}
+.note{font-size:13px;color:var(--mute);margin-top:10px}
+.browse{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;position:sticky;top:0;z-index:2;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line)}
+#bpos{font:600 15px Inter;font-variant-numeric:tabular-nums;min-width:96px;text-align:center}.browse .msg{margin:0;flex-basis:100%}
+select{font:16px Inter;min-height:44px;padding:0 12px;border-radius:12px;border:1.5px solid var(--ink);background:var(--bg);color:var(--ink);flex:1}
+.ctl{display:grid;grid-template-columns:130px minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:12px}.ctl .lab{font-size:14px;color:var(--mute)}.ctl>.seg,.ctl>.seed{grid-column:2/4}
+.seg{display:flex;flex-wrap:wrap;gap:6px}.seg button{min-height:40px;padding:0 12px;font-size:14px}.seg button.on{background:var(--ink);color:var(--bg)}
+.seed{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.seed input{font:600 17px Inter;width:96px;min-height:44px;border-radius:10px;border:1.5px solid var(--ink);background:var(--bg);color:var(--ink);text-align:center}
+.sq{width:44px;padding:0;justify-content:center;font-size:20px}input[type=range]{width:100%;accent-color:var(--sym);min-height:32px}
+@media(max-width:520px){.ctl{grid-template-columns:1fr auto}.ctl .lab{grid-column:1/3}.ctl>.seg,.ctl>.seed{grid-column:1/3}}
+@media(max-width:780px){.out{grid-template-columns:1fr}}
+@media(max-width:600px){table{font-size:14px}}
+</style></head><body>
+<section class="band">
+  <h1>Music to Picture</h1>
+  <p class="lead">Name a piece. The app finds its notes, cuts the melody into 5-note shapes, compares every shape with every other, and develops the picture.</p>
+  <div class="card">
+    <div class="tabs" id="tabs"><button data-t="lib" class="on">Find a piece</button><button data-t="type">Type notes</button><button data-t="file">Open a file</button><button data-t="noise">Make noise</button></div>
+    <div id="p-lib"><div class="row"><input type="search" id="q" placeholder="Moonlight, Entertainer, Alla Turca, K.545, Chopin prelude 4…" aria-label="Search for a piece" autocomplete="off"></div>
+      <div class="row"><select id="coll" aria-label="Collection"></select><button class="solid" id="first">▶ Start browsing</button></div>
+      <ul class="res" id="res"></ul><div class="msg" id="libmsg"></div></div>
+    <div id="p-type" hidden><p class="msg">One note per word: letter, optional ♯ or ♭ (<code>#</code>, <code>b</code>), octave, then a length: <code>w</code> whole, <code>h</code> half, <code>q</code> quarter (default), <code>e</code> eighth, <code>s</code> sixteenth, a dot for dotted. <code>r</code> is a rest. Bar lines <code>|</code> are ignored.</p>
+      <div class="row" id="presets"></div>
+      <textarea id="tx" aria-label="Notes"></textarea>
+      <div class="row"><button class="solid" id="txgo">Make the picture</button><span class="msg" id="txmsg"></span></div></div>
+    <div id="p-noise" hidden>
+      <div class="row" id="npre"></div>
+      <div class="ctl"><span class="lab">Kind</span><div class="seg" id="nkind"><button data-v="pure">Pure noise</button><button data-v="walk">Random walk</button><button data-v="struct">Structured noise</button></div></div>
+      <div class="ctl" id="c-step"><span class="lab">Largest step</span><input type="range" id="nstep" min="1" max="7" value="3"><b id="nstepv"></b></div>
+      <div class="ctl" id="c-zero"><span class="lab">Repeated notes</span><div class="seg" id="nzero"><button data-v="0">Not allowed</button><button data-v="1">Allowed</button></div></div>
+      <div class="ctl" id="c-fix"><span class="lab">Fixed values</span><div class="seg" id="nfix"></div></div>
+      <div class="ctl" id="c-rate"><span class="lab">How often fixed</span><input type="range" id="nrate" min="0" max="100" step="5" value="50"><b id="nratev"></b></div>
+      <div class="ctl" id="c-ord"><span class="lab">Fixed values come</span><div class="seg" id="nord"><button data-v="rand">At random</button><button data-v="turn">In turn</button></div></div>
+      <div class="ctl"><span class="lab">Notes</span><input type="range" id="nlen" min="100" max="2000" step="50" value="600"><b id="nlenv"></b></div>
+      <div class="ctl"><span class="lab">Seed</span><div class="seed"><button class="sq" id="nminus" aria-label="previous seed">−</button><input id="nseed" type="number" inputmode="numeric" value="1" aria-label="seed"><button class="sq" id="nplus" aria-label="next seed">+</button><button id="nrnd">Random</button></div></div>
+      <p class="msg" id="ndesc"></p>
+      <div class="row"><button class="solid" id="ngo">Make the picture</button></div></div>
+    <div id="p-file" hidden><p class="msg">A MIDI file (.mid) or an uncompressed MusicXML file (.musicxml, .xml). The highest part is taken as the melody.</p>
+      <div class="row"><label class="file">Choose file<input type="file" id="fi" accept=".mid,.midi,.xml,.musicxml" hidden></label><span class="msg" id="fimsg"></span></div></div>
+  </div>
+</section>
+<section class="band" id="outband" hidden>
+  <div class="browse" id="browse" hidden><button class="sq" id="bprev" aria-label="previous piece">◀</button><span id="bpos"></span><button class="sq" id="bnext" aria-label="next piece">▶</button><button id="brnd">Random</button><span class="msg" id="bset"></span></div>
+  <div class="row" style="margin:0 0 14px;gap:14px"><div style="display:flex;gap:8px;align-items:center"><span class="msg" style="margin:0;width:44px">Axes</span><div class="seg" id="mt"><button data-v="notes">Notes</button><button data-v="seconds">Seconds</button></div></div>
+  <div style="display:flex;gap:8px;align-items:center"><span class="msg" style="margin:0;width:44px">Shapes</span><div class="seg" id="mh"><button data-v="1">Every note</button><button data-v="4">Every 4 notes</button></div></div>
+  <div style="display:flex;gap:8px;align-items:center"><span class="msg" style="margin:0;width:44px">Steps</span><div class="seg" id="mp"><button data-v="letters">Letters</button><button data-v="semitones">Semitones</button></div></div></div>
+  <div class="out">
+    <div><div class="plot" id="pl"><img id="img" alt="Recurrence picture of the melody"><canvas id="oc"></canvas><div id="busy">Developing…</div></div>
+      <div class="legend"><span><i style="background:#f0eee6;box-shadow:0 0 0 1px var(--line)"></i>same shape</span><span><i style="background:#5a78ff"></i>mirror: backwards, upside down, or both</span></div>
+      <div class="strip"><canvas id="sc"></canvas></div><div class="msg" id="tapinfo">Long-press the picture to save it. Tap it to hear that moment.</div></div>
+    <div><h3 id="ttl"></h3><p class="lead" id="sub"></p>
+      <div class="row"><button class="solid" id="play">▶ Play melody</button></div>
+      <table><tbody id="nums"></tbody></table></div>
+  </div>
+</section>
+<section class="band" id="how">
+  <h2>How it works</h2>
+  <p class="lead">Music to Picture turns a melody into one square image that shows where the music repeats itself, mirrors itself, or never comes back. Nothing about the composer, the title or the style goes in: only the notes.</p>
+  <h3 style="margin-top:28px">Using it</h3>
+  <table class="stack"><thead><tr><th>Part</th><th>What it does</th></tr></thead><tbody><tr><td data-l="Part">Find a piece</td><td data-l="What it does">Search about 4,000 pieces by name or nickname (Moonlight, Alla Turca, Entertainer, Ave Maria, Soldier's Joy, K.545).</td></tr><tr><td data-l="Part">Browse</td><td data-l="What it does">Pick a collection and tap Start browsing; ◀ ▶ step through every piece, Random jumps anywhere. Arrow keys work on a keyboard.</td></tr><tr><td data-l="Part">Type notes</td><td data-l="What it does">One note per word: letter, optional # or b, octave, length (w h q e s, a dot for dotted); r is a rest.</td></tr><tr><td data-l="Part">Open a file</td><td data-l="What it does">A MIDI file or an uncompressed MusicXML file. The highest part is taken as the melody.</td></tr><tr><td data-l="Part">Make noise</td><td data-l="What it does">Random melodies with a seed: pure noise, a random walk, or structured noise where some steps are fixed values. The control experiment.</td></tr><tr><td data-l="Part">Axes switch</td><td data-l="What it does">Notes: one row per 5-note shape. Seconds: one pixel per moment of time, so the picture lines up with what you hear.</td></tr><tr><td data-l="Part">Shapes switch</td><td data-l="What it does">Every note: a new shape starts at every note, overlapping. Every 4 notes: shapes are laid end to end, the way Music from Symmetry builds its motifs, so that song's own self-similarity picture comes out exactly.</td></tr><tr><td data-l="Part">Steps switch</td><td data-l="What it does">Letters: C D E F G A B count 1–7 and sharps keep their letter. Semitones: every key on the piano counts.</td></tr><tr><td data-l="Part">Tap and play</td><td data-l="What it does">Tap the picture to hear that moment. The orange cross is where the music is now; the line under the picture is the melody on the same axis.</td></tr></tbody></table>
+  <h3 style="margin-top:28px">How the picture is made</h3>
+  <table><tbody>
+  <tr><td class="num">1</td><td><b>Melody.</b> Take the highest part. At each moment keep the highest note that starts, unless a higher note is still sounding. Result: one line of notes in time order.</td></tr>
+  <tr><td class="num">2</td><td><b>Degrees.</b> Replace each note by its scale-letter number: C D E F G A B count 1 2 3 4 5 6 7, plus 7 per octave. Sharps and flats keep their letter. With <b>Steps: Semitones</b>, the number is the key on the piano instead, so C→C♯ is a step of 1 and E→F differs from C→D.</td></tr>
+  <tr><td class="num">3</td><td><b>Steps.</b> step = next degree − this degree: how many letters each note moves (+1 up one letter, −2 down two).</td></tr>
+  <tr><td class="num">4</td><td><b>Shapes.</b> At every note i, the shape is the next 4 steps, which covers 5 notes, e.g. (+1, +1, −2, +1). The pitch is forgotten: the same shape a fourth higher is the same shape. That is the translation.</td></tr>
+  <tr><td class="num">5</td><td><b>Mirrors.</b> Backwards R(S) = reverse the steps and flip their signs. Upside down I(S) = flip the signs. Both RI(S) = reverse the steps.</td></tr>
+  <tr><td class="num">6</td><td><b>Picture.</b> A square, time running down and across. With <b>Axes: Notes</b> each shape gets one row (a held note and a quick note take the same space). With <b>Axes: Seconds</b> each pixel is a moment in time and shows the shape sounding then, so long notes become wide bands and the picture lines up with the music you hear. Pixel (row i, column j) is white if shape j equals shape i, blue if shape j is R, I or RI of shape i, black otherwise. Long pieces: each pixel covers a k × k block of pairs and shows white if any pair in it is white, else blue if any is blue.</td></tr>
+  <tr><td class="num">7</td><td><b>Numbers.</b> Share of pairs that are white or blue; the longest white diagonal run (the longest passage repeated exactly, at any pitch); and the same counts after shuffling the melody's own steps (seed 1), which is what chance gives.</td></tr>
+  </tbody></table>
+  <h3 style="margin-top:28px">How to read it</h3>
+  <p class="lead">Both axes are the same piece, start top-left, end bottom-right. Pixel (row i, column j) answers one question: does the music at moment i have the same shape as the music at moment j?</p>
+  <table class="stack"><thead><tr><th>What you see</th><th>What it means</th></tr></thead><tbody><tr><td data-l="What you see">The diagonal</td><td data-l="What it means">Each moment against itself, always white. The playhead walks down it.</td></tr><tr><td data-l="What you see">Left of the diagonal on a row</td><td data-l="What it means">Earlier moments with the same shape: this happened before.</td></tr><tr><td data-l="What you see">Right of the diagonal on a row</td><td data-l="What it means">Later moments with the same shape: this comes back.</td></tr><tr><td data-l="What you see">Distance from the diagonal</td><td data-l="What it means">How far apart the two moments are.</td></tr><tr><td data-l="What you see">The two halves</td><td data-l="What it means">Mirror images of each other: (i, j) and (j, i) are the same comparison.</td></tr><tr><td data-l="What you see">White line parallel to the diagonal</td><td data-l="What it means">A passage repeated later, at any pitch. The longer the line, the longer the repeat.</td></tr><tr><td data-l="What you see">Blue line parallel to the diagonal</td><td data-l="What it means">A passage repeated upside down.</td></tr><tr><td data-l="What you see">Blue line across the diagonal</td><td data-l="What it means">A passage played backwards.</td></tr><tr><td data-l="What you see">Checkerboard</td><td data-l="What it means">A stretch built from one shape and its mirror, such as scales running up and down.</td></tr><tr><td data-l="What you see">Dotted row or column</td><td data-l="What it means">One shape that keeps returning all through the piece.</td></tr><tr><td data-l="What you see">Square block on the diagonal (Seconds)</td><td data-l="What it means">A long held note: the same shape sounding for a while.</td></tr></tbody></table>
+  <h3 style="margin-top:28px">The numbers</h3>
+  <table class="stack"><thead><tr><th>Number</th><th>Meaning</th></tr></thead><tbody><tr><td data-l="Number">Same-shape pairs</td><td data-l="Meaning">Share of all pairs of shapes that are white.</td></tr><tr><td data-l="Number">Mirror pairs</td><td data-l="Meaning">Share of all pairs that are blue.</td></tr><tr><td data-l="Number">× chance</td><td data-l="Meaning">The same count after shuffling the melody's own steps (seed 1). Same ingredients, random order. Above 1 means the order is doing something.</td></tr><tr><td data-l="Number">Longest exact repeat</td><td data-l="Meaning">The longest white diagonal line, in notes: the longest passage that comes back exactly, at any pitch.</td></tr><tr><td data-l="Number">Different shapes</td><td data-l="Meaning">How many different 5-note shapes the melody uses.</td></tr><tr><td data-l="Number">Shapes inside our 256-space</td><td data-l="Meaning">Shapes whose steps are all ±1 or ±2 letters: the space Music from Symmetry composes in.</td></tr></tbody></table>
+  <h3 style="margin-top:28px">What the picture keeps, and what it loses</h3>
+  <p class="lead">The picture is not one-to-one with the music. Many different melodies make the very same picture.</p>
+  <table class="stack"><thead><tr><th>Information</th><th>In the picture?</th></tr></thead><tbody><tr><td data-l="Information">Which steps equal which, and which are mirrors</td><td data-l="In the picture?">Kept</td></tr><tr><td data-l="Information">The exact pitches</td><td data-l="In the picture?">Lost: the same melody started on any note gives the same picture</td></tr><tr><td data-l="Information">The size of each step</td><td data-l="In the picture?">Lost: doubling every step, or swapping steps of 1 and 2, gives the same picture</td></tr><tr><td data-l="Information">Up and down</td><td data-l="In the picture?">Lost: the melody played upside down gives the same picture</td></tr><tr><td data-l="Information">The rhythm</td><td data-l="In the picture?">Lost in Notes mode; the timing is kept in Seconds mode, but not the note lengths inside a shape</td></tr><tr><td data-l="Information">Sharps and flats</td><td data-l="In the picture?">Lost in Letters mode, kept in Semitones mode</td></tr><tr><td data-l="Information">Everything below the melody</td><td data-l="In the picture?">Lost: only the top line is used</td></tr><tr><td data-l="Information">Backwards in time</td><td data-l="In the picture?">Kept: the melody played backwards gives the picture turned 180°</td></tr></tbody></table>
+  <p class="lead">Test: a decoder was given only the picture and rebuilt a melody from it. For 562 of 597 pieces (94%) the rebuilt melody makes a pixel-identical picture, yet only about 14% of its steps equal the real ones. For Mozart's K.545 the picture sorts all 584 steps into 49 groups; the exact notes need 49 more numbers (the size of each group's step), the first note, and the rhythm.</p>
+  <h3 style="margin-top:28px">What we found so far</h3>
+  <table class="stack"><thead><tr><th>Piece</th><th>Result</th></tr></thead><tbody><tr><td data-l="Piece">Mozart, K.545, first movement</td><td data-l="Result">Same-shape pairs 3.8%, about 20× chance; mirrors 4.0%, about 9× chance. The longest repeat is 75 notes: the opening returns at bar 42, a fourth higher, note for note. The scale runs make checkerboards.</td></tr><tr><td data-l="Piece">Noise</td><td data-l="Result">Pure noise, random walks and structured noise give scattered dots and no long lines. Their longest repeats are 4–11 notes, and they score about 1× chance.</td></tr><tr><td data-l="Piece">Music from Symmetry, draft 1</td><td data-l="Result">Our rule repeats shapes locally (every move is a symmetry or a one-step change), but the notes it chose never repeat more than 32 in a row; its long repeats exist only where the large form was written by hand. Mozart is the opposite: free from moment to moment, repeating whole passages far apart.</td></tr><tr><td data-l="Piece">Beethoven, Moonlight Sonata, III</td><td data-l="Result">Longest exact repeat 194 notes, against 8 for chance.</td></tr></tbody></table>
+  <h3 style="margin-top:28px">Sources and licences</h3>
+  <table class="stack"><thead><tr><th>Collection</th><th>Source and licence</th></tr></thead><tbody><tr><td data-l="Collection">Mozart, Beethoven and Haydn piano sonatas; Chopin preludes and mazurkas; Joplin rags (320 movements)</td><td data-l="Source and licence">Craig Stuart Sapp, Humdrum editions on GitHub. CC BY-NC-SA 4.0: free for non-commercial use with credit.</td></tr><tr><td data-l="Collection">Songs by Schubert, Schumann, Brahms, Fanny Hensel, Clara Schumann, Mahler and others (404)</td><td data-l="Source and licence">OpenScore Lieder Corpus, via the When in Rome corpus. CC0: public domain.</td></tr><tr><td data-l="Collection">Ryan's Mammoth Collection (1883) and O'Neill's Music of Ireland (3,067 tunes)</td><td data-l="Source and licence">Public domain tune books, as distributed with the music21 toolkit.</td></tr><tr><td data-l="Collection">Bach chorales (216)</td><td data-l="Source and licence">Distributed with the music21 toolkit.</td></tr><tr><td data-l="Collection">Bach Well-Tempered Clavier I, Chaconne, Chopin études, Purcell (31)</td><td data-l="Source and licence">When in Rome corpus; the licence follows each original source.</td></tr><tr><td data-l="Collection">Für Elise, Ode to Joy, Twinkle (typed examples)</td><td data-l="Source and licence">Written by Claude from memory.</td></tr></tbody></table>
+  <p class="note">Written form of each piece, without repeats. Melody = the highest part, highest sounding note at each moment. Idea and direction: Roman Kesler. Built with Claude.</p>
+</section>
+<script>
+{
+const $=id=>document.getElementById(id);
+// ---------- library ----------
+let IX=[];const BUN={};
+const SRC={lieder:'OpenScore Lieder Corpus (CC0, public domain)',keyboard:'When in Rome corpus (licence of the original source varies)',chorales:'Bach chorales, from the music21 corpus',
+ ryans:"Ryan's Mammoth Collection (1883), from the music21 corpus",oneills:"O'Neill's Music of Ireland, from the music21 corpus",ours:'Composed by Roman Kesler with Claude'};
+const grp=r=>r.g||r.c.toLowerCase();
+Promise.all([fetch('lib/index.json').then(r=>r.json()),fetch('lib/index2.json').then(r=>r.json()).catch(()=>[])]).then(([a,b])=>{IX=a.concat(b);search()}).catch(()=>{$('libmsg').textContent='The library could not load here.'});
+const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9#]+/g,' ');
+const COLL=[['all','All collections'],['mozart','Mozart piano sonatas'],['beethoven','Beethoven piano sonatas'],['haydn','Haydn piano sonatas'],['chopin','Chopin preludes and mazurkas'],['joplin','Joplin rags'],
+ ['keyboard','Bach keyboard and others'],['chorales','Bach chorales'],['lieder','Songs (Schubert, Schumann, Brahms…)'],['ryans',"Ryan's fiddle tunes"],['oneills',"O'Neill's Irish tunes"],['ours','Our music (Roman Kesler)']];
+$('coll').innerHTML=COLL.map(([v,t])=>`<option value="${v}">${t}</option>`).join('');$('coll').onchange=search;
+let LIST=[],POS=-1;
+function search(){const q=norm($('q').value).trim().split(' ').filter(Boolean),cf=$('coll').value;
+ let hits=IX.filter(r=>cf==='all'||grp(r)===cf).map(r=>{const hay=r._h||(r._h=' '+norm((r.k||'')+' '+r.c+' '+r.t+' '+r.id+' '+(r.cat||'')+' '+(r.al||''))+' ');let s=0;
+  for(const w of q){if(hay.includes(' '+w+' '))s+=3;else if(hay.includes(w))s+=1;else return null}return [s,r]}).filter(Boolean);
+ hits.sort((a,b)=>b[0]-a[0]||(a[1].c+' '+a[1].t).localeCompare(b[1].c+' '+b[1].t,undefined,{numeric:true}));LIST=hits.map(h=>h[1]);const total=hits.length;hits=hits.slice(0,40);
+ $('res').innerHTML=hits.map(([s,r])=>`<li><button data-id="${r.id}">${r.c} — ${r.t}<small>${r.cat?r.cat+' · ':''}${r.n} melody notes</small></button></li>`).join('');
+ if(q.length&&!hits.length)$('libmsg').textContent='Not in the library. Type the notes, or open a MIDI or MusicXML file of it.';
+ else if(IX.length)$('libmsg').textContent=total+(q.length?' found':' pieces')+(total>40?', the first 40 shown. Use ◀ ▶ above the picture to step through all of them.':'.')}
+$('q').oninput=search;
+$('res').onclick=e=>{const b=e.target.closest('button');if(!b)return;const i=LIST.findIndex(x=>x.id===b.dataset.id);open(i)};
+$('first').onclick=()=>{if(LIST.length)open(0)};
+function open(i){if(!LIST.length)return;POS=(i+LIST.length)%LIST.length;const r=LIST[POS];
+ $('browse').hidden=false;$('bpos').textContent=(POS+1)+' / '+LIST.length;
+ const q=$('q').value.trim(),cn=COLL.find(c=>c[0]===$('coll').value)[1];$('bset').innerHTML='<b style="color:var(--ink)">'+r.c+' — '+r.t+'</b><br>in '+cn+(q?' matching "'+q.replace(/</g,'')+'"':'');
+ busy(true);const c=grp(r);(BUN[c]||(BUN[c]=fetch('lib/'+c+'.json').then(x=>x.json()))).then(all=>{const j=all[r.id];let on=0;const notes=j.don.map((d,i)=>{on+=d;return {on:on/j.U,p:j.p[i],d:j.d[i]}});
+  show({title:r.c+' — '+r.t,sub:(r.cat?r.cat+' · ':'')+(SRC[r.g]||'Humdrum edition by Craig Stuart Sapp (CC BY-NC-SA)'),bpm:r.bpm||100,notes},true)}).catch(()=>{busy(false);$('libmsg').textContent='Could not load that piece.'})}
+$('bprev').onclick=()=>open(POS-1);$('bnext').onclick=()=>open(POS+1);$('brnd').onclick=()=>open(Math.floor(Math.random()*LIST.length));
+document.addEventListener('keydown',e=>{if($('browse').hidden||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;if(e.key==='ArrowRight')open(POS+1);if(e.key==='ArrowLeft')open(POS-1)});
+// ---------- tabs ----------
+$('tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+ ['lib','type','file','noise'].forEach(t=>$('p-'+t).hidden=t!==b.dataset.t)};
+// ---------- typed notes ----------
+const PRE={'Für Elise (opening)':'E5s D#5s | E5s D#5s E5s B4s D5s C5s | A4e rs C4s E4s A4s | B4e rs E4s G#4s B4s | C5e rs E4s E5s D#5s | E5s D#5s E5s B4s D5s C5s | A4e rs C4s E4s A4s | B4e rs E4s C5s B4s | A4q.',
+ 'Ode to Joy':'E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | E4q. D4e D4h | E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | D4q. C4e C4h | D4 D4 E4 C4 | D4 E4e F4e E4 C4 | D4 E4e F4e E4 D4 | C4 D4 G3h | E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | D4q. C4e C4h',
+ 'Twinkle, Twinkle':'C4 C4 G4 G4 | A4 A4 G4h | F4 F4 E4 E4 | D4 D4 C4h | G4 G4 F4 F4 | E4 E4 D4h | G4 G4 F4 F4 | E4 E4 D4h | C4 C4 G4 G4 | A4 A4 G4h | F4 F4 E4 E4 | D4 D4 C4h'};
+$('presets').innerHTML=Object.keys(PRE).map(k=>`<button data-k="${k}">${k}</button>`).join('');
+$('presets').onclick=e=>{const b=e.target.closest('button');if(b){$('tx').value=PRE[b.dataset.k];$('tx').dataset.name=b.dataset.k}};
+$('tx').oninput=()=>delete $('tx').dataset.name;
+const LET={c:0,d:1,e:2,f:3,g:4,a:5,b:6},PC=[0,2,4,5,7,9,11],DUR={w:4,h:2,q:1,e:.5,s:.25,t:.125};
+function parseTyped(s){const notes=[],bad=[];let t=0;
+ for(const tok of s.split(/[\s|,]+/).filter(Boolean)){const m=tok.match(/^([a-gA-GrR])([#b♯♭]*)(-?\d)?([whqest]?)(\.?)$/);
+  if(!m||(m[1].toLowerCase()!=='r'&&m[3]===undefined)){bad.push(tok);continue}
+  const len=(DUR[m[4]||'q'])*(m[5]?1.5:1);
+  if(m[1].toLowerCase()!=='r'){const L=LET[m[1].toLowerCase()],o=+m[3],acc=[...m[2]].reduce((a,c)=>a+('#♯'.includes(c)?1:-1),0);
+   notes.push({on:t,p:12*(o+1)+PC[L]+acc,d:7*o+L+1})}
+  t+=len}
+ return {notes,bad}}
+$('txgo').onclick=()=>{const {notes,bad}=parseTyped($('tx').value);
+ $('txmsg').textContent=bad.length?'Skipped: '+bad.slice(0,6).join(' ')+(bad.length>6?' …':''):'';
+ if(notes.length<6){$('txmsg').textContent='At least 6 notes are needed.';return}
+ show({title:$('tx').dataset.name||'Typed melody',sub:notes.length+' notes, typed',bpm:100,notes})};
+// ---------- noise ----------
+const NS={kind:'struct',step:3,zero:0,fix:[1],rate:50,ord:'rand',len:600,seed:1};
+const NPRE={'Pure noise':{kind:'pure'},'Random walk':{kind:'walk',fix:[]},'One fixed value':{kind:'struct',fix:[1],rate:50,ord:'rand'},'Two fixed values in turn':{kind:'struct',fix:[-1,2],rate:40,ord:'turn'}};
+$('npre').innerHTML='<span class="msg" style="width:100%;margin:0">Start from a preset, or set it below:</span>'+Object.keys(NPRE).map(k=>`<button data-k="${k}">${k}</button>`).join('');
+$('nfix').innerHTML=[-3,-2,-1,0,1,2,3].map(v=>`<button data-v="${v}">${v>0?'+'+v:v}</button>`).join('');
+const sgn=v=>v>0?'+'+v:''+v;
+function nui(){const set=(id,v)=>document.querySelectorAll('#'+id+' button').forEach(b=>b.classList.toggle('on',b.dataset.v==v));
+ set('nkind',NS.kind);set('nzero',NS.zero);set('nord',NS.ord);document.querySelectorAll('#nfix button').forEach(b=>b.classList.toggle('on',NS.fix.includes(+b.dataset.v)));
+ $('nstep').value=NS.step;$('nstepv').textContent='±'+NS.step;$('nrate').value=NS.rate;$('nratev').textContent=NS.rate+'%';$('nlen').value=NS.len;$('nlenv').textContent=NS.len;$('nseed').value=NS.seed;
+ $('c-step').hidden=$('c-zero').hidden=NS.kind==='pure';$('c-fix').hidden=$('c-rate').hidden=$('c-ord').hidden=NS.kind!=='struct';
+ $('ndesc').textContent=NS.kind==='pure'?'Every note is any note of the C major scale in a 3-octave range, at random. No note depends on the one before.'
+  :NS.kind==='walk'?`Every note moves from the one before by a random step up to ${NS.step} letters${NS.zero?' (or stays)':''}.`
+  :!NS.fix.length?'Choose at least one fixed value.'
+  :`Each note moves from the one before. ${NS.rate}% of the steps are fixed to ${NS.fix.map(sgn).join(' and ')}${NS.fix.length>1?(NS.ord==='turn'?', taken in turn':', picked at random'):''}; the rest are random steps up to ±${NS.step}.`}
+const pick=(id,key,num)=>$(id).onclick=e=>{const b=e.target.closest('button');if(!b)return;NS[key]=num?+b.dataset.v:b.dataset.v;nui()};
+pick('nkind','kind');pick('nzero','zero',1);pick('nord','ord');
+$('nfix').onclick=e=>{const b=e.target.closest('button');if(!b)return;const v=+b.dataset.v;NS.fix=NS.fix.includes(v)?NS.fix.filter(x=>x!==v):NS.fix.concat(v).sort((a,b)=>a-b);nui()};
+$('nstep').oninput=e=>{NS.step=+e.target.value;nui()};$('nrate').oninput=e=>{NS.rate=+e.target.value;nui()};$('nlen').oninput=e=>{NS.len=+e.target.value;nui()};
+const nseed=v=>{NS.seed=Math.max(0,Math.floor(v)||0);nui();makeNoise()};
+$('nminus').onclick=()=>nseed(NS.seed-1);$('nplus').onclick=()=>nseed(NS.seed+1);$('nrnd').onclick=()=>nseed(Math.floor(Math.random()*1e6));$('nseed').onchange=e=>nseed(+e.target.value);
+$('npre').onclick=e=>{const b=e.target.closest('button');if(!b)return;Object.assign(NS,NPRE[b.dataset.k]);nui();makeNoise()};
+$('ngo').onclick=()=>makeNoise();
+function makeNoise(){if(NS.kind==='struct'&&!NS.fix.length){$('ndesc').textContent='Choose at least one fixed value.';return}
+ const r=mulberry32(NS.seed),LO=22,HI=42,notes=[];let d=29,turn=0;
+ for(let i=0;i<NS.len;i++){
+  if(i>0){if(NS.kind==='pure')d=LO+Math.floor(r()*(HI-LO+1));
+   else{let st;if(NS.kind==='struct'&&r()<NS.rate/100)st=NS.ord==='turn'?NS.fix[turn++%NS.fix.length]:NS.fix[Math.floor(r()*NS.fix.length)];
+    else{do{st=-NS.step+Math.floor(r()*(2*NS.step+1))}while(!NS.zero&&st===0)}
+    let x=d+st;if(x<LO||x>HI)x=d-st;d=Math.max(LO,Math.min(HI,x))}}
+  const o=Math.floor((d-1)/7),k=(d-1)%7;notes.push({on:i*0.5,p:12*(o+1)+PC[k],d})}
+ const name=NS.kind==='pure'?'Pure noise':NS.kind==='walk'?'Random walk ±'+NS.step:'Structured noise · fixed '+NS.fix.map(sgn).join(' ')+' at '+NS.rate+'%'+(NS.fix.length>1&&NS.ord==='turn'?' in turn':'');
+ show({title:name+' · seed '+NS.seed,sub:NS.len+' notes, generated here. '+$('ndesc').textContent,bpm:120,notes})}
+nui();
+// ---------- files ----------
+const SPELL=[0,0,1,1,2,3,3,4,4,5,5,6];const dia=p=>7*(Math.floor(p/12)-1)+SPELL[p%12]+1;
+function skyline(ev){ev.sort((a,b)=>a.on-b.on||b.p-a.p);const out=[];let snd=[];
+ for(const e of ev){snd=snd.filter(x=>x.end>e.on+1e-6);const last=out[out.length-1];
+  if(last&&Math.abs(last.on-e.on)<1e-6){if(e.p>last.p){last.p=e.p;last.d=e.d}}
+  else if(snd.every(x=>e.p>=x.p))out.push({on:e.on,p:e.p,d:e.d});snd.push(e)}return out}
+function topGroup(groups){groups=groups.filter(g=>g.length>=6);if(!groups.length)return [];
+ return groups.map(g=>[g.reduce((a,e)=>a+e.p,0)/g.length,g]).sort((a,b)=>b[0]-a[0])[0][1]}
+function parseMidi(buf){const v=new DataView(buf);let o=0;const str=n=>{let s='';for(let i=0;i<n;i++)s+=String.fromCharCode(v.getUint8(o+i));o+=n;return s};
+ if(str(4)!=='MThd')throw 'not a MIDI file';o+=4;const ntr=v.getUint16(o+2),div=v.getUint16(o+4);o+=6;if(div&0x8000)throw 'SMPTE timing is not supported';
+ const groups={};let bpm=null;
+ for(let t=0;t<ntr&&o<v.byteLength;t++){if(str(4)!=='MTrk')break;const len=v.getUint32(o);o+=4;const end=o+len;let tick=0,run=0;const on={};
+  const vlq=()=>{let x=0,b;do{b=v.getUint8(o++);x=(x<<7)|(b&127)}while(b&128);return x};
+  while(o<end){tick+=vlq();let st=v.getUint8(o);if(st&128){o++;run=st}else st=run;const ty=st&0xf0,ch=st&15;
+   if(st===0xff){const mt=v.getUint8(o++),l=vlq();if(mt===0x51&&!bpm)bpm=Math.round(6e7/((v.getUint8(o)<<16)|(v.getUint8(o+1)<<8)|v.getUint8(o+2)));o+=l}
+   else if(st===0xf0||st===0xf7){o+=vlq()}
+   else if(ty===0x90||ty===0x80){const p=v.getUint8(o),vel=v.getUint8(o+1);o+=2;const key=ch+':'+p;
+    if(ty===0x90&&vel>0){(on[key]=on[key]||[]).push(tick)}else if(on[key]&&on[key].length){const s=on[key].shift();if(ch!==9){const g=(groups[t+':'+ch]=groups[t+':'+ch]||[]);g.push({on:s/div,end:tick/div,p,d:dia(p)})}}}
+   else if(ty===0xc0||ty===0xd0)o+=1;else o+=2}
+  o=end}
+ return {notes:skyline(topGroup(Object.values(groups))),bpm:bpm||100}}
+function parseXML(text){const x=new DOMParser().parseFromString(text,'application/xml');if(x.querySelector('parsererror'))throw 'not valid XML';
+ const groups=[];let bpm=null;const title=(x.querySelector('work-title')||x.querySelector('movement-title')||{}).textContent;
+ x.querySelectorAll('part').forEach(part=>{let t=0,div=1,last=0;const ev=[];
+  part.querySelectorAll('measure').forEach(ms=>{for(const el of ms.children){
+   if(el.tagName==='attributes'){const d=el.querySelector('divisions');if(d)div=+d.textContent}
+   else if(el.tagName==='sound'&&el.getAttribute('tempo')&&!bpm)bpm=Math.round(+el.getAttribute('tempo'));
+   else if(el.tagName==='direction'){const s=el.querySelector('sound[tempo]');if(s&&!bpm)bpm=Math.round(+s.getAttribute('tempo'))}
+   else if(el.tagName==='backup')t-=+el.querySelector('duration').textContent/div;
+   else if(el.tagName==='forward')t+=+el.querySelector('duration').textContent/div;
+   else if(el.tagName==='note'){if(el.querySelector('grace'))continue;const du=+(el.querySelector('duration')||{textContent:0}).textContent/div;const chord=!!el.querySelector('chord');const st=chord?last:t;
+    const pi=el.querySelector('pitch');if(pi){const L=LET[pi.querySelector('step').textContent.toLowerCase()],oc=+pi.querySelector('octave').textContent,al=+(pi.querySelector('alter')||{textContent:0}).textContent;
+     ev.push({on:st,end:st+du,p:12*(oc+1)+PC[L]+Math.round(al),d:7*oc+L+1})}
+    if(!chord){last=t;t+=du}}}});groups.push(ev)});
+ return {notes:skyline(topGroup(groups)),bpm:bpm||100,title}}
+$('fi').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();$('fimsg').textContent='Reading…';
+ const isMidi=/\.midi?$/i.test(f.name);
+ r.onload=()=>{try{const res=isMidi?parseMidi(r.result):parseXML(r.result);if(res.notes.length<6)throw 'no melody found';
+  $('fimsg').textContent=res.notes.length+' melody notes.';show({title:res.title||f.name.replace(/\.[^.]+$/,''),sub:f.name,bpm:res.bpm,notes:res.notes})}
+  catch(err){$('fimsg').textContent='Could not read it: '+err}};
+ isMidi?r.readAsArrayBuffer(f):r.readAsText(f)};
+// ---------- the algorithm ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const enc=s=>((s[0]+64)*128+(s[1]+64))*16384+(s[2]+64)*128+(s[3]+64);
+function shapes(steps,hop=1){const S=[];for(let i=0;i+3<steps.length;i+=hop)S.push(steps.slice(i,i+4));
+ return {c:S.map(enc),r:S.map(s=>enc([-s[3],-s[2],-s[1],-s[0]])),i:S.map(s=>enc([-s[0],-s[1],-s[2],-s[3]])),ri:S.map(s=>enc([s[3],s[2],s[1],s[0]]))}}
+function counts(H,grid,R,hop=1){const N=H.c.length,k=N/R;let same=0,mir=0,best=0;
+ for(let off=1;off<N;off++){let run=0;for(let i=0;i+off<N;i++){const j=i+off,b=H.c[j];let v=0;
+  if(H.c[i]===b){v=1;same++;run++;if(run>best)best=run}else{run=0;if(H.r[i]===b||H.i[i]===b||H.ri[i]===b){v=2;mir++}}
+  if(grid&&v){const a=Math.floor(i/k)*R+Math.floor(j/k),c=Math.floor(j/k)*R+Math.floor(i/k);if(v===1||grid[a]!==1){grid[a]=v;grid[c]=v}}}}
+ const tot=N*(N-1)/2;return {same:100*same/tot,mir:100*mir/tot,longest:best?(best-1)*hop+5:0}}
+let CUR=null;
+function busy(b){$('busy').style.display=b?'grid':'none';if(b)$('outband').hidden=false}
+let MODE={t:'notes',p:'letters',h:1};try{const m=JSON.parse(localStorage.getItem('n2p-mode'));if(m&&m.t&&m.p)MODE=Object.assign(MODE,m)}catch(e){}
+function show(piece,fromLib){stop();busy(true);if(!fromLib)$('browse').hidden=true;$('outband').hidden=false;if(!fromLib||$('outband').getBoundingClientRect().top>innerHeight*0.6)$('outband').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+ CUR={...piece};setTimeout(render,30)}
+function modeUI(){document.querySelectorAll('#mh button').forEach(b=>b.classList.toggle('on',+b.dataset.v===MODE.h));document.querySelectorAll('#mt button').forEach(b=>b.classList.toggle('on',b.dataset.v===MODE.t));document.querySelectorAll('#mp button').forEach(b=>b.classList.toggle('on',b.dataset.v===MODE.p))}
+['mt','mp','mh'].forEach(id=>$(id).onclick=e=>{const b=e.target.closest('button');if(!b)return;if(id==='mh')MODE.h=+b.dataset.v;else MODE[id==='mt'?'t':'p']=b.dataset.v;try{localStorage.setItem('n2p-mode',JSON.stringify(MODE))}catch(err){}modeUI();if(CUR){stop();busy(true);setTimeout(render,30)}});
+modeUI();
+const mmss=b=>fmt(b*60/(CUR.bpm||100));const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+function render(){const piece=CUR,n=piece.notes,steps=[];
+  for(let i=1;i<n.length;i++)steps.push(MODE.p==='semitones'?n[i].p-n[i-1].p:n[i].d-n[i-1].d);
+  const hop=MODE.h||1,H=shapes(steps,hop),N=H.c.length;if(N<2){busy(false);return}
+  const T=n[n.length-1].on+Math.max(0.5,n.length>1?n[n.length-1].on-n[n.length-2].on:1);
+  let R,grid;
+  if(MODE.t==='notes'){R=Math.min(N,1400);grid=new Uint8Array(R*R);for(let i=0;i<R;i++)grid[i*R+i]=1;var real=counts(H,grid,R,hop)}
+  else{var real=counts(H,null,N,hop);R=Math.min(1400,Math.max(500,N));grid=new Uint8Array(R*R);const w=new Int32Array(R);let k=0;
+   for(let p=0;p<R;p++){const t=(p+0.5)/R*T;while(k+1<n.length&&n[k+1].on<=t)k++;w[p]=Math.floor(k/hop)<N?Math.floor(k/hop):-1}
+   for(let p=0;p<R;p++){const a=w[p];if(a<0)continue;for(let q=p;q<R;q++){const b=w[q];if(b<0)continue;const cb=H.c[b];
+    const v=H.c[a]===cb?1:(H.r[a]===cb||H.i[a]===cb||H.ri[a]===cb)?2:0;if(v){grid[p*R+q]=v;grid[q*R+p]=v}}}}
+  const sh=steps.slice(),rnd=mulberry32(1);for(let i=sh.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[sh[i],sh[j]]=[sh[j],sh[i]]}
+  const ch=counts(shapes(sh,hop),null,N,hop);
+  const cv=document.createElement('canvas');cv.width=R;cv.height=R;const g=cv.getContext('2d'),im=g.createImageData(R,R),px=im.data;
+  for(let q=0;q<R*R;q++){const v=grid[q],c=v===1?[240,238,230]:v===2?[90,120,255]:[12,13,16];px[4*q]=c[0];px[4*q+1]=c[1];px[4*q+2]=c[2];px[4*q+3]=255}
+  g.putImageData(im,0,0);const big=document.createElement('canvas'),Z=Math.max(1,Math.ceil(1400/R));big.width=big.height=R*Z;const bg=big.getContext('2d');bg.imageSmoothingEnabled=false;bg.drawImage(cv,0,0,R*Z,R*Z);
+  $('img').src=big.toDataURL('image/png');
+  Object.assign(CUR,{N,R,steps,T,hop});
+  $('ttl').textContent=piece.title;$('sub').textContent=piece.sub;
+  const f=(v,d=2)=>v.toFixed(d),x=(a,b)=>b>0?' · '+(a/b).toFixed(a/b<10?1:0)+'× chance':'';
+  const ST=[-2,-1,1,2];const inside=MODE.p==='letters'&&steps.length>3?f(H.c.filter((_,i)=>[0,1,2,3].every(k=>ST.includes(steps[i*hop+k]))).length/N*100,0)+'%':'— (letters only)';
+  const axis=MODE.t==='notes'?`notes: ${N} rows, one per shape`+(hop>1?` (a shape every ${hop} notes)`:'')+(R<N?` (one pixel = ${(N/R).toFixed(1)} shapes)`:''):`seconds: 0:00 → ${mmss(T)} at ${piece.bpm||100} beats per minute, ${R} pixels`;
+  $('nums').innerHTML=[['Melody notes',n.length],['Picture axes',axis],['Steps counted in',MODE.p==='letters'?'letters (C♯ = C)':'semitones (C♯ ≠ C)'],
+   ['Same-shape pairs',f(real.same)+'%'+x(real.same,ch.same)],['Mirror pairs',f(real.mir)+'%'+x(real.mir,ch.mir)],
+   ['Longest exact repeat',(real.longest?real.longest+' notes':'none')+' (chance: '+(ch.longest||'none')+')'],['Different shapes',new Set(H.c).size],['Shapes inside our 256-space',inside]]
+   .map(r=>`<tr><td>${r[0]}</td><td class="n">${r[1]}</td></tr>`).join('');
+  drawO();drawS();busy(false)}
+// overlay, strip, tap — every position goes through pos(): note index → 0..1 along the axis
+const oc=$('oc'),sc=$('sc');let ph=-1;
+const pos=k=>MODE.t==='notes'?(Math.min(Math.floor(k/CUR.hop),CUR.N-1)+0.5)/CUR.N:CUR.notes[k].on/CUR.T;
+function noteAt(fr){if(MODE.t==='notes')return Math.min(CUR.N-1,Math.floor(fr*CUR.N))*CUR.hop;const t=fr*CUR.T,n=CUR.notes;let k=0;while(k+1<n.length&&n[k+1].on<=t)k++;return k}
+function drawO(){const r=oc.getBoundingClientRect(),dp=devicePixelRatio||1;oc.width=r.width*dp;oc.height=r.height*dp;const g=oc.getContext('2d');
+ if(CUR&&CUR.N&&ph>=0){const p=pos(ph)*oc.width;g.strokeStyle='rgba(255,106,85,.9)';g.lineWidth=dp;g.beginPath();g.moveTo(0,p);g.lineTo(oc.width,p);g.moveTo(p,0);g.lineTo(p,oc.height);g.stroke()}}
+function drawS(){if(!CUR||!CUR.N)return;const r=sc.getBoundingClientRect(),dp=devicePixelRatio||1;sc.width=r.width*dp;sc.height=r.height*dp;const g=sc.getContext('2d');g.scale(dp,dp);
+ const n=CUR.notes,key=MODE.p==='semitones'?'p':'d',lo=Math.min(...n.map(x=>x[key])),hi=Math.max(...n.map(x=>x[key]))+1e-9;g.strokeStyle=getComputedStyle(document.body).color;g.lineWidth=1;g.beginPath();
+ n.forEach((x,i)=>{const X=pos(i)*r.width,Y=r.height-4-(x[key]-lo)/(hi-lo)*(r.height-8);if(!i){g.moveTo(X,Y)}else{if(MODE.t==='seconds')g.lineTo(X,r.height-4-(n[i-1][key]-lo)/(hi-lo)*(r.height-8));g.lineTo(X,Y)}});g.stroke();
+ if(ph>=0){g.fillStyle='#ff6a55';g.fillRect(pos(ph)*r.width-1,0,2,r.height)}}
+new ResizeObserver(()=>{drawO();drawS()}).observe($('pl'));
+$('img').onclick=e=>{if(!CUR||!CUR.N)return;const r=e.target.getBoundingClientRect(),i=noteAt((e.clientY-r.top)/r.height),j=noteAt((e.clientX-r.left)/r.width);
+ $('tapinfo').textContent=`Row: note ${i+1} at ${mmss(CUR.notes[i].on)}. Column: note ${j+1} at ${mmss(CUR.notes[j].on)}. Playing from the row.`;play(i)};
+// ---------- sound: lookahead scheduler ----------
+let ac=null,timer=0,raf=0,startT=0,startQ=0,idx=0;
+const hz=p=>440*2**((p-69)/12),sec=()=>60/(CUR.bpm||100);
+function stop(){clearInterval(timer);cancelAnimationFrame(raf);timer=0;ph=-1;$('play').textContent='▶ Play melody';drawO();drawS()}
+function voice(p,t,len){const o=ac.createOscillator(),o2=ac.createOscillator(),g=ac.createGain(),g2=ac.createGain();o.type='triangle';o2.type='sine';o.frequency.value=hz(p);o2.frequency.value=2*hz(p);g2.gain.value=.25;
+ o2.connect(g2).connect(g);o.connect(g).connect(ac.destination);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.22,t+.006);g.gain.exponentialRampToValueAtTime(.03,t+len*.9+.05);g.gain.linearRampToValueAtTime(0,t+len+.08);
+ o.start(t);o2.start(t);o.stop(t+len+.1);o2.stop(t+len+.1)}
+function play(from=0){if(!CUR)return;stop();try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){return}
+ const n=CUR.notes;idx=from;startQ=n[from].on;startT=ac.currentTime+.1;$('play').textContent='■ Stop';
+ const at=q=>startT+(q-startQ)*sec();
+ timer=setInterval(()=>{const lim=ac.currentTime+.5;while(idx<n.length&&at(n[idx].on)<lim){const len=Math.min(1.2,((n[idx+1]?.on??n[idx].on+1)-n[idx].on)*sec());voice(n[idx].p,at(n[idx].on),Math.max(.06,len));idx++}
+  if(idx>=n.length&&ac.currentTime>at(n[n.length-1].on)+1.5)stop()},100);
+ const loop=()=>{const q=startQ+(ac.currentTime-startT)/sec();let k=from;while(k+1<n.length&&n[k+1].on<=q)k++;ph=k;drawO();drawS();if(timer)raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
+$('play').onclick=()=>timer?stop():play(0);
+}
+</script>
+</body></html>
