@@ -23,7 +23,9 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
 .info{min-width:0;flex:1}
 .title{font-weight:750;font-size:1.1rem}
 .meta{flex:none;text-align:right;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
-.meta .ok{color:var(--done);font-weight:700}\n.detail{color:var(--muted);font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:440px;margin-top:3px}
+.meta .ok{color:var(--done);font-weight:700}
+.pinned-label{display:inline-block;color:var(--accent);font-weight:700;font-size:.75rem;margin-bottom:4px}
+.detail{color:var(--muted);font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:440px;margin-top:3px}
 .foot{margin-top:28px;text-align:center}
 .reset{background:none;border:0;color:var(--muted);font:inherit;font-size:.85rem;cursor:pointer;text-decoration:underline}
 @media(max-width:480px){main{padding:22px 12px 40px}.level{gap:12px;padding:14px}.num{width:40px;height:40px;font-size:1rem}.num.badge{font-size:.75rem}}
@@ -45,6 +47,10 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
 <script>
 'use strict';
 const catalogUrl='app-catalog.json';
+// Keep pinned apps here; the generated catalog remains fully automatic.
+const pinnedPaths=['explore/fractal-lab/'];
+// Hide retired experiments even if an older cached catalog is served.
+const removedPaths=new Set(['explore/fractal-lab/doubling-test.html','explore/fractal-lab/geometry-discovery.html','explore/fractal-lab/surface.html','explore/fractal-lab/wave-aligned.html','explore/polar-expedition/']);
 function fallbackItems(){
   const p=GameKit.get(),out=[];
   function add(arr,category){(arr||[]).forEach((x,i)=>out.push({path:x.path,title:x.title,badge:x.badge||String(i+1),category,done:category==='Games'&&!!p[x.id]?.completed}));}
@@ -60,12 +66,13 @@ function draw(arr){
   arr.forEach(e=>{
     const li=document.createElement('li'),a=document.createElement('a');
     a.href=e.path;a.className='level'+(e.done?' done':'');
-    const num=document.createElement('span');num.className='num badge';num.textContent=e.badge||'↗';
+    const num=document.createElement('span');num.className='num badge';num.textContent=e.pinned?'★':(e.badge||'↗');
     const info=document.createElement('span');info.className='info';
     const title=document.createElement('div');title.className='title';title.textContent=e.title;
     const category=document.createElement('small');category.textContent=e.category||'App';
     const detail=document.createElement('div');detail.className='detail';
     if(e.update){detail.textContent=e.update;detail.title=e.update;}
+    if(e.pinned){const pinned=document.createElement('small');pinned.className='pinned-label';pinned.textContent='★ Pinned';info.append(pinned);}
     info.append(title,category,detail);
     const meta=document.createElement('span');meta.className='meta';
     const stamp=e.date?new Date(e.date):null;
@@ -90,7 +97,9 @@ async function render(){
     arr=fallbackItems();
     status.textContent='Showing the existing app list until the automatic catalog is generated.';
   }
-  arr.sort((a,b)=>(Date.parse(b.date)||0)-(Date.parse(a.date)||0)||a.title.localeCompare(b.title));
+  arr=arr.filter(e=>!removedPaths.has(e.path));
+  arr.forEach(e=>e.pinned=pinnedPaths.includes(e.path));
+  arr.sort((a,b)=>Number(b.pinned)-Number(a.pinned)||(Date.parse(b.date)||0)-(Date.parse(a.date)||0)||a.title.localeCompare(b.title));
   draw(arr);
 }
 document.getElementById('reset').addEventListener('click',()=>{if(!confirm('Reset all progress?'))return;try{localStorage.removeItem(GameKit.key)}catch{}render()});
