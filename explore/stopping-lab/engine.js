@@ -88,6 +88,54 @@ function bottcherInverse(u,theta,cr,ci){
   return [zr,zi];
 }
 
+// Numerical parameter-plane uniformization for z -> z²+c.
+// Phi_M(c) = c * product_{k>=1}(1+c/z_k²)^(1/2^k), z_1=c.
+// Principal logarithms are continued locally with a damped Newton solve.
+// Return NaN on nonconvergence; do not silently display incorrect coordinates.
+function parameterLogPhi(cr,ci){
+ let zr=cr,zi=ci,dr=1,di=0,lr=0,li=0,ar=0,ai=0,weight=.5;
+ const cm=cr*cr+ci*ci;if(cm<1e-24)return null;
+ const cmag=Math.sqrt(cm);lr=Math.log(cmag);li=Math.atan2(ci,cr);
+ ar=cr/cm;ai=-ci/cm;
+ for(let k=1;k<=34;k++){
+   const qr=zr*zr-zi*zi,qi=2*zr*zi,den=qr*qr+qi*qi;
+   if(!(den>1e-290))return null;
+   const vr=(cr*qr+ci*qi)/den,vi=(ci*qr-cr*qi)/den;
+   const tr=1+vr,ti=vi,tm=Math.hypot(tr,ti);
+   if(!(tm>1e-280))return null;
+   lr+=weight*Math.log(tm);li+=weight*Math.atan2(ti,tr);
+   // derivative of c/z² = 1/z² - 2c z'/z³
+   const invr=qr/den,invi=-qi/den;
+   const d1r=dr*invr-di*invi,d1i=dr*invi+di*invr;
+   const pr=cr*d1r-ci*d1i,pi=cr*d1i+ci*d1r;
+   const vrp=invr-2*(pr*invr-pi*invi),vip=invi-2*(pr*invi+pi*invr);
+   const tden=tr*tr+ti*ti;
+   ar+=weight*(vrp*tr+vip*ti)/tden;
+   ai+=weight*(vip*tr-vrp*ti)/tden;
+   const nr=qr+cr,ni=qi+ci;
+   const ndr=2*(zr*dr-zi*di)+1,ndi=2*(zr*di+zi*dr);
+   zr=nr;zi=ni;dr=ndr;di=ndi;
+   weight*=.5;
+   if(!Number.isFinite(zr)||!Number.isFinite(dr)||weight<1e-11)break;
+ }
+ return [lr,li,ar,ai];
+}
+function parameterInverse(u,theta){
+ const wr=Math.exp(u)*Math.cos(theta),wi=Math.exp(u)*Math.sin(theta);
+ let cr=wr-.5,ci=wi;
+ for(let n=0;n<28;n++){
+   const a=parameterLogPhi(cr,ci);if(!a)return [NaN,NaN];
+   const er=a[0]-u,ei=Math.atan2(Math.sin(a[1]-theta),Math.cos(a[1]-theta));
+   if(Math.hypot(er,ei)<2e-6)return [cr,ci];
+   const den=a[2]*a[2]+a[3]*a[3];if(!(den>1e-22))break;
+   let sr=(er*a[2]+ei*a[3])/den,si=(ei*a[2]-er*a[3])/den;
+   const maxStep=Math.max(.025,Math.hypot(cr,ci)*.35),m=Math.hypot(sr,si);
+   if(m>maxStep){sr*=maxStep/m;si*=maxStep/m;}
+   cr-=sr;ci-=si;
+ }
+ return [NaN,NaN];
+}
+
 onmessage=e=>{
   const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
   const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float32Array(N):null;
@@ -101,7 +149,7 @@ onmessage=e=>{
         const t=(Rw+0.5)/polarH;
         const u=Math.exp(Math.log(bottcherGMax)*(1-t)+Math.log(bottcherGMin)*t);
         const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5);
-        [pr,pq]=bottcherInverse(u,theta,kr,ki);
+        [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki):pw===2?parameterInverse(u,theta):[NaN,NaN];
       } else if(polar){ const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
       let zr,zi,cr,ci,dr,di;
       if(julia){ zr=pr; zi=pq; cr=kr; ci=ki; dr=1; di=0; }
@@ -176,6 +224,54 @@ function bottcherInverse(u,theta,cr,ci){
   return [zr,zi];
 }
 
+// Numerical parameter-plane uniformization for z -> z²+c.
+// Phi_M(c) = c * product_{k>=1}(1+c/z_k²)^(1/2^k), z_1=c.
+// Principal logarithms are continued locally with a damped Newton solve.
+// Return NaN on nonconvergence; do not silently display incorrect coordinates.
+function parameterLogPhi(cr,ci){
+ let zr=cr,zi=ci,dr=1,di=0,lr=0,li=0,ar=0,ai=0,weight=.5;
+ const cm=cr*cr+ci*ci;if(cm<1e-24)return null;
+ const cmag=Math.sqrt(cm);lr=Math.log(cmag);li=Math.atan2(ci,cr);
+ ar=cr/cm;ai=-ci/cm;
+ for(let k=1;k<=34;k++){
+   const qr=zr*zr-zi*zi,qi=2*zr*zi,den=qr*qr+qi*qi;
+   if(!(den>1e-290))return null;
+   const vr=(cr*qr+ci*qi)/den,vi=(ci*qr-cr*qi)/den;
+   const tr=1+vr,ti=vi,tm=Math.hypot(tr,ti);
+   if(!(tm>1e-280))return null;
+   lr+=weight*Math.log(tm);li+=weight*Math.atan2(ti,tr);
+   // derivative of c/z² = 1/z² - 2c z'/z³
+   const invr=qr/den,invi=-qi/den;
+   const d1r=dr*invr-di*invi,d1i=dr*invi+di*invr;
+   const pr=cr*d1r-ci*d1i,pi=cr*d1i+ci*d1r;
+   const vrp=invr-2*(pr*invr-pi*invi),vip=invi-2*(pr*invi+pi*invr);
+   const tden=tr*tr+ti*ti;
+   ar+=weight*(vrp*tr+vip*ti)/tden;
+   ai+=weight*(vip*tr-vrp*ti)/tden;
+   const nr=qr+cr,ni=qi+ci;
+   const ndr=2*(zr*dr-zi*di)+1,ndi=2*(zr*di+zi*dr);
+   zr=nr;zi=ni;dr=ndr;di=ndi;
+   weight*=.5;
+   if(!Number.isFinite(zr)||!Number.isFinite(dr)||weight<1e-11)break;
+ }
+ return [lr,li,ar,ai];
+}
+function parameterInverse(u,theta){
+ const wr=Math.exp(u)*Math.cos(theta),wi=Math.exp(u)*Math.sin(theta);
+ let cr=wr-.5,ci=wi;
+ for(let n=0;n<28;n++){
+   const a=parameterLogPhi(cr,ci);if(!a)return [NaN,NaN];
+   const er=a[0]-u,ei=Math.atan2(Math.sin(a[1]-theta),Math.cos(a[1]-theta));
+   if(Math.hypot(er,ei)<2e-6)return [cr,ci];
+   const den=a[2]*a[2]+a[3]*a[3];if(!(den>1e-22))break;
+   let sr=(er*a[2]+ei*a[3])/den,si=(ei*a[2]-er*a[3])/den;
+   const maxStep=Math.max(.025,Math.hypot(cr,ci)*.35),m=Math.hypot(sr,si);
+   if(m>maxStep){sr*=maxStep/m;si*=maxStep/m;}
+   cr-=sr;ci-=si;
+ }
+ return [NaN,NaN];
+}
+
 const wrap=a=>{ a=(a+Math.PI)%TAU; if(a<0) a+=TAU; return a-Math.PI; };
 const HOME={cx:-0.75,cy:0,w:3.2,a:0}, view={...HOME};
 const cv=$('c'), ctx=cv.getContext('2d');
@@ -204,7 +300,7 @@ function itFor(w){
 const depthOf=w=>Math.log2(HOME.w/w);
 function atLimit(v){ return v.w/Wd < 2.5e-15*Math.max(1,Math.abs(v.cx),Math.abs(v.cy)); }
 function toWorld(px,py,v=view){
-  if(cfg.bottcher && eng.kind===1){const u=Math.exp(Math.log(cfg.bottcherGMax)*(1-py/Hd)+Math.log(cfg.bottcherGMin)*py/Hd);return bottcherInverse(u,v.a+TAU*(px/Wd-.5),eng.kr,eng.ki);}
+  if(cfg.bottcher && (eng.kind===1 || eng.pw===2)){const u=Math.exp(Math.log(cfg.bottcherGMax)*(1-py/Hd)+Math.log(cfg.bottcherGMin)*py/Hd);return eng.kind===1?bottcherInverse(u,v.a+TAU*(px/Wd-.5),eng.kr,eng.ki):parameterInverse(u,v.a+TAU*(px/Wd-.5));}
   const s=v.w/Wd, ux=(px-Wd/2)*s, uy=-(py-Hd/2)*s, c=Math.cos(v.a), n=Math.sin(v.a);
   return [v.cx+ux*c-uy*n, v.cy+ux*n+uy*c];
 }
