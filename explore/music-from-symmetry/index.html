@@ -98,7 +98,7 @@ select{font:16px Inter;min-height:44px;padding:0 12px;border-radius:12px;border:
 </section>
 <section class="band" id="ensemble" hidden>
 <h2>Instrument relationships</h2>
-<p class="lead">Into the Mother of All · compare the five principal melodic tracks. White = identical four-interval shape; blue = reversed or inverted shape. Dark = no match.</p>
+<p class="lead">Select a piece to compare five principal melodic tracks. White = identical four-interval shape; blue = reversed or inverted shape. Dark = no match.</p>
 <div class="row"><button id="ensembleCross" class="solid">Cross-instrument matrix</button><button id="ensembleFull">Full composition</button><button id="ensemblePlay">▶ Play all instruments</button><button id="ensembleSave">Save PNG</button></div>
 <p class="msg" id="ensembleStatus">Loading the instrument tracks…</p>
 <div class="card" style="max-width:840px"><canvas id="ensembleCanvas" style="display:block;width:100%;height:auto;background:#0c0d10;image-rendering:pixelated;border-radius:6px"></canvas><p class="msg" id="ensembleExplain"></p></div>
@@ -140,7 +140,7 @@ const $=id=>document.getElementById(id);
 let IX=[];const BUN={};
 // These are the note-data bundles actually deployed under lib/.
 // Catalog entries without their bundle must never be offered as playable.
-const INSTALLED=new Set(['ours','keyboard','haydn','joplin','mozart','lieder','mother','motherTracks']);
+const INSTALLED=new Set(['ours','keyboard','haydn','joplin','mozart','lieder','mother','motherTracks','dragonforce']);
 const MISSING_NOTE='Some collections are not installed yet (including O\'Neill, Ryan, Bach chorales, Beethoven and Chopin). Only playable pieces are listed.';
 const SRC={lieder:'OpenScore Lieder Corpus (CC0, public domain)',keyboard:'When in Rome corpus (licence of the original source varies)',chorales:'Bach chorales, from the music21 corpus',
  ryans:"Ryan's Mammoth Collection (1883), from the music21 corpus",oneills:"O'Neill's Music of Ireland, from the music21 corpus",ours:'Composed by Roman Kesler with Claude',mother:'Roman Kesler · uploaded MIDI · lead guitar'};
@@ -152,12 +152,16 @@ const motherTracks='eNrtW8uu2zYQ/RevteD7kf/oqugiTYAmKJoEudkUQf69c4ZDm6JFWbrX7n3A
 BUN.motherTracks=(async()=>{const bytes=Uint8Array.from(atob(motherTracks),c=>c.charCodeAt(0));const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));return JSON.parse(await new Response(stream).text())})();
 const extraTracks=[['rhythm','Rhythm Guitar',591],['bass','Bass',755],['pad','Synth Pad',132],['choir','Choir',58],['strings','Strings',36],['tick','Tick',334]];
 const motherTrackEntries=extraTracks.map(([key,label,n])=>({id:'into-the-mother-of-all-v1-'+key,c:'Roman Kesler',t:'Into the Mother of All (version 1) — '+label,cat:'Original composition · '+label+' · monophonic extraction',g:'motherTracks',track:key,n,bpm:132}));
+const dragonData='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';
+BUN.dragonforce=(async()=>{const bytes=Uint8Array.from(atob(dragonData),c=>c.charCodeAt(0));const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));return JSON.parse(await new Response(stream).text())})();
+const dragonParts=[['guitar','Acoustic Guitar',3418],['bass','Bass Guitar',2855],['triangle','8-bit Triangle',304],['sine','8-bit Sine',112],['sawtooth','8-bit Sawtooth',42]];
+const dragonEntries=[{id:'dragonforce-ensemble',c:'DragonForce',t:'Through the Fire and Flames — Full Ensemble (5 tracks)',cat:'MIDI transcription · synchronized five-channel recurrence',g:'dragonforce',track:'guitar',ensemble:true,n:3418,bpm:200},...dragonParts.map(([key,label,n])=>({id:'dragonforce-'+key,c:'DragonForce',t:'Through the Fire and Flames — '+label,cat:'MIDI transcription · '+label+' · one pitch per onset',g:'dragonforce',track:key,n,bpm:200}))];
 const motherEnsembleEntry={id:'into-the-mother-of-all-ensemble',c:'Roman Kesler',t:'Into the Mother of All (version 1) — Full Ensemble (5 tracks)',cat:'Original composition · synchronized recurrence · lead, rhythm, bass, pad, tick',g:'mother',n:1150,bpm:132,ensemble:true};
 const motherEntry={id:'into-the-mother-of-all-v1',c:'Roman Kesler',t:'Into the Mother of All (version 1) — Lead Guitar',cat:'Original composition · lead guitar',g:'mother',n:1150,bpm:132};
-Promise.all([fetch('lib/index.json').then(r=>r.json()),fetch('lib/index2.json').then(r=>r.json()).catch(()=>[])]).then(([a,b])=>{IX=a.concat(b).filter(r=>INSTALLED.has(grp(r))).concat([motherEnsembleEntry,motherEntry],motherTrackEntries);search();$('libmsg').textContent+=' '+MISSING_NOTE}).catch(()=>{$('libmsg').textContent='The library could not load here.'});
+Promise.all([fetch('lib/index.json').then(r=>r.json()),fetch('lib/index2.json').then(r=>r.json()).catch(()=>[])]).then(([a,b])=>{IX=a.concat(b).filter(r=>INSTALLED.has(grp(r))).concat(dragonEntries,[motherEnsembleEntry,motherEntry],motherTrackEntries);search();$('libmsg').textContent+=' '+MISSING_NOTE}).catch(()=>{$('libmsg').textContent='The library could not load here.'});
 const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9#]+/g,' ');
 const COLL=[['all','All collections'],['mozart','Mozart piano sonatas'],['beethoven','Beethoven piano sonatas'],['haydn','Haydn piano sonatas'],['chopin','Chopin preludes and mazurkas'],['joplin','Joplin rags'],
- ['keyboard','Bach keyboard and others'],['chorales','Bach chorales'],['lieder','Songs (Schubert, Schumann, Brahms…)'],['ryans',"Ryan's fiddle tunes"],['oneills',"O'Neill's Irish tunes"],['ours','Our music (Roman Kesler)'],['mother','Into the Mother of All'],['motherTracks','Into the Mother of All — Instruments']];
+ ['keyboard','Bach keyboard and others'],['chorales','Bach chorales'],['lieder','Songs (Schubert, Schumann, Brahms…)'],['ryans',"Ryan's fiddle tunes"],['oneills',"O'Neill's Irish tunes"],['ours','Our music (Roman Kesler)'],['mother','Into the Mother of All'],['motherTracks','Into the Mother of All — Instruments'],['dragonforce','DragonForce — Through the Fire and Flames']];
 $('coll').innerHTML=COLL.filter(([v])=>v==='all'||INSTALLED.has(v)).map(([v,t])=>`<option value="${v}">${t}</option>`).join('');$('coll').onchange=search;
 let LIST=[],POS=-1;
 function search(){const q=norm($('q').value).trim().split(' ').filter(Boolean),cf=$('coll').value;
@@ -176,9 +180,9 @@ function open(i){if(!LIST.length)return;POS=(i+LIST.length)%LIST.length;const r=
  busy(true);const c=grp(r);
  if(!INSTALLED.has(c)){busy(false);$('libmsg').textContent='The note data for this collection is not installed.';return}
  (BUN[c]||(BUN[c]=fetch('lib/'+c+'.json').then(x=>{if(!x.ok)throw Error('HTTP '+x.status);return x.json()}))).then(all=>{
-  const j=r.ensemble?all['into-the-mother-of-all-v1']:(r.track?all[r.track]:all[r.id]);if(!j||!Array.isArray(j.don)||!Array.isArray(j.p)||!Array.isArray(j.d)||!j.U)throw Error('Missing or invalid note sequence');
+  const j=r.g==='dragonforce'?all[r.track]:(r.ensemble?all['into-the-mother-of-all-v1']:(r.track?all[r.track]:all[r.id]));if(!j||!Array.isArray(j.don)||!Array.isArray(j.p)||!Array.isArray(j.d)||!j.U)throw Error('Missing or invalid note sequence');
   let on=0;const notes=j.don.map((d,i)=>{on+=d;return {on:on/j.U,p:j.p[i],d:j.d[i]}});
-  show({ensemble:!!r.ensemble,title:r.c+' — '+r.t,sub:(r.cat?r.cat+' · ':'')+(SRC[r.g]||'Humdrum edition by Craig Stuart Sapp (CC BY-NC-SA)'),bpm:r.bpm||100,notes},true)}).catch(err=>{delete BUN[c];busy(false);$('img').style.visibility='hidden';$('img').removeAttribute('src');$('img').alt='Picture unavailable — melody data could not load';$('tapinfo').textContent='Cannot generate picture: '+err.message+'. Choose another piece.';$('libmsg').textContent='Could not load '+r.t+': '+err.message;})}
+  show({ensemble:!!r.ensemble,ensembleGroup:r.g,title:r.c+' — '+r.t,sub:(r.cat?r.cat+' · ':'')+(SRC[r.g]||'Humdrum edition by Craig Stuart Sapp (CC BY-NC-SA)'),bpm:r.bpm||100,notes},true)}).catch(err=>{delete BUN[c];busy(false);$('img').style.visibility='hidden';$('img').removeAttribute('src');$('img').alt='Picture unavailable — melody data could not load';$('tapinfo').textContent='Cannot generate picture: '+err.message+'. Choose another piece.';$('libmsg').textContent='Could not load '+r.t+': '+err.message;})}
 $('bprev').onclick=()=>open(POS-1);$('bnext').onclick=()=>open(POS+1);$('brnd').onclick=()=>open(Math.floor(Math.random()*LIST.length));
 document.addEventListener('keydown',e=>{if($('browse').hidden||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;if(e.key==='ArrowRight')open(POS+1);if(e.key==='ArrowLeft')open(POS-1)});
 // ---------- tabs ----------
@@ -291,10 +295,10 @@ function counts(H,grid,R,hop=1){const N=H.c.length,k=N/R;let same=0,mir=0,best=0
 let CUR=null;
 function busy(b){$('busy').style.display=b?'grid':'none';if(b)$('outband').hidden=false}
 let MODE={t:'notes',p:'letters',h:1};try{const m=JSON.parse(localStorage.getItem('n2p-mode'));if(m&&m.t&&m.p)MODE=Object.assign(MODE,m)}catch(e){}
-function show(piece,fromLib){if(piece.title&&piece.title.includes('Into the Mother of All')){if(piece.ensemble)ensMode='full';ensRender()}else{$('ensemble').hidden=true;ensStop()}stop();busy(true);if(!fromLib)$('browse').hidden=true;$('outband').hidden=false;if(!fromLib||$('outband').getBoundingClientRect().top>innerHeight*0.6)$('outband').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+function show(piece,fromLib){if(piece.ensembleGroup==='dragonforce'||(piece.title&&piece.title.includes('Into the Mother of All'))){ensGroup=piece.ensembleGroup==='dragonforce'?'dragonforce':'mother';ensTracks=null;if(piece.ensemble)ensMode='full';ensRender()}else{$('ensemble').hidden=true;ensStop()}stop();busy(true);if(!fromLib)$('browse').hidden=true;$('outband').hidden=false;if(!fromLib||$('outband').getBoundingClientRect().top>innerHeight*0.6)$('outband').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
  CUR={...piece};setTimeout(render,30)}
 function modeUI(){document.querySelectorAll('#mh button').forEach(b=>b.classList.toggle('on',+b.dataset.v===MODE.h));document.querySelectorAll('#mt button').forEach(b=>b.classList.toggle('on',b.dataset.v===MODE.t));document.querySelectorAll('#mp button').forEach(b=>b.classList.toggle('on',b.dataset.v===MODE.p))}
-['mt','mp','mh'].forEach(id=>$(id).onclick=e=>{const b=e.target.closest('button');if(!b)return;if(id==='mh')MODE.h=+b.dataset.v;else MODE[id==='mt'?'t':'p']=b.dataset.v;try{localStorage.setItem('n2p-mode',JSON.stringify(MODE))}catch(err){}modeUI();if(CUR){stop();busy(true);setTimeout(render,30)}});
+['mt','mp','mh'].forEach(id=>$(id).onclick=e=>{const b=e.target.closest('button');if(!b)return;if(id==='mh')MODE.h=+b.dataset.v;else MODE[id==='mt'?'t':'p']=b.dataset.v;try{localStorage.setItem('n2p-mode',JSON.stringify(MODE))}catch(err){}modeUI();if(CUR){stop();busy(true);setTimeout(render,30);if(!$('ensemble').hidden)ensRender()}});
 modeUI();
 const mmss=b=>fmt(b*60/(CUR.bpm||100));const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 function render(){const piece=CUR,n=piece.notes,steps=[];
@@ -337,17 +341,18 @@ new ResizeObserver(()=>{drawO();drawS()}).observe($('pl'));
 $('img').onclick=e=>{if(!CUR||!CUR.N)return;const r=e.target.getBoundingClientRect(),i=noteAt((e.clientY-r.top)/r.height),j=noteAt((e.clientX-r.left)/r.width);
  $('tapinfo').textContent=`Row: note ${i+1} at ${mmss(CUR.notes[i].on)}. Column: note ${j+1} at ${mmss(CUR.notes[j].on)}. Playing from the row.`;play(i)};
 // ---------- multi-instrument recurrence laboratory ----------
-const ensNames=['Lead guitar','Rhythm guitar','Bass','Synth pad','Tick'];
+const ensNamesMother=['Lead guitar','Rhythm guitar','Bass','Synth pad','Tick'];
+const ensNamesDragon=['Acoustic guitar','Bass guitar','8-bit triangle','8-bit sine','8-bit sawtooth'];
 const ensKeys=['lead','rhythm','bass','pad','tick'];
-let ensTracks=null,ensMode='full',ensPlaying=false,ensAudio=null,ensVoices=[];
+let ensTracks=null,ensGroup='mother',ensMode='full',ensPlaying=false,ensAudio=null,ensVoices=[];
 function fromBundle(j){
  if(!j||!j.don||!j.p||!j.d||!j.U)throw Error('Invalid MIDI notes');
  let on=0;return j.don.map((v,i)=>{on+=v;return {on:on/j.U,p:j.p[i],d:j.d[i]}});
 }
 async function loadEnsemble(){
  if(ensTracks)return ensTracks;
- const [lead,other]=await Promise.all([BUN.mother,BUN.motherTracks]);
- ensTracks=[fromBundle(lead['into-the-mother-of-all-v1']),...['rhythm','bass','pad','tick'].map(k=>fromBundle(other[k]))];
+ if(ensGroup==='dragonforce'){const data=await BUN.dragonforce;ensTracks=['guitar','bass','triangle','sine','sawtooth'].map(k=>fromBundle(data[k]));}
+ else{const [lead,other]=await Promise.all([BUN.mother,BUN.motherTracks]);ensTracks=[fromBundle(lead['into-the-mother-of-all-v1']),...['rhythm','bass','pad','tick'].map(k=>fromBundle(other[k]))];}
  return ensTracks;
 }
 function ensShape(n){
@@ -376,7 +381,7 @@ function ensCross(tracks){
  const cv=$('ensembleCanvas'),ctx=ensPaint(cv,grid,W,W);
  ctx.strokeStyle='#5b6374';ctx.lineWidth=1;
  for(let k=0;k<=K;k++){const p=k*tile+.5;ctx.beginPath();ctx.moveTo(p,0);ctx.lineTo(p,W);ctx.moveTo(0,p);ctx.lineTo(W,p);ctx.stroke()}
- $('ensembleExplain').textContent='Rows and columns, in order: '+ensNames.join(' · ')+'. Diagonal tiles compare each instrument with itself; off-diagonal tiles compare different instruments. Each tile normalizes the two note sequences independently, so off-diagonal position is relative melodic progress, not synchronized time.';
+ $('ensembleExplain').textContent='Rows and columns, in order: '+(ensGroup==='dragonforce'?ensNamesDragon:ensNamesMother).join(' · ')+'. Diagonal tiles compare each instrument with itself; off-diagonal tiles compare different instruments. Each tile normalizes the two note sequences independently, so off-diagonal position is relative melodic progress, not synchronized time.';
 }
 function ensFull(tracks){
  const R=480,grid=new Uint8Array(R*R),sig=tracks.map(ensShape);
@@ -406,7 +411,7 @@ function ensFull(tracks){
  $('ensembleExplain').textContent='Both axes show the same synchronized song timeline (0–'+T.toFixed(1)+' beats). White: at least half the active instruments repeat an exact shape. Blue: at least half repeat or mirror their shapes. At least two active channels are required. This is a strict multichannel recurrence test, not a merge of simultaneous pitches.';
 }
 async function ensRender(){
- $('ensemble').hidden=false;$('ensembleStatus').textContent='Calculating '+(ensMode==='cross'?'cross-instrument':'full-composition')+' picture…';
+ $('ensemble').hidden=false;$('ensemble').querySelector('h2').textContent=ensGroup==='dragonforce'?'DragonForce — instrument relationships':'Into the Mother of All — instrument relationships';$('ensembleStatus').textContent='Calculating '+(ensMode==='cross'?'cross-instrument':'full-composition')+' picture…';
  await new Promise(resolve=>setTimeout(resolve,25));
  try{const tracks=await loadEnsemble();if(ensMode==='cross')ensCross(tracks);else ensFull(tracks);
   $('ensembleStatus').textContent='Five principal melodic tracks · '+(ensMode==='cross'?'7 × 7 comparison blocks':'one synchronized arrangement matrix');
@@ -421,7 +426,7 @@ $('ensemblePlay').onclick=async()=>{
  try{
   const tracks=await loadEnsemble();ensAudio=new (window.AudioContext||window.webkitAudioContext)();await ensAudio.resume();ensPlaying=true;$('ensemblePlay').textContent='■ Stop all';
   // Schedule only a short rolling horizon to avoid creating thousands of oscillators at once.
-  const bpm=132,secondsPerBeat=60/bpm,start=ensAudio.currentTime+.12;
+  const bpm=ensGroup==='dragonforce'?200:132,secondsPerBeat=60/bpm,start=ensAudio.currentTime+.12;
   const cursors=tracks.map(()=>0),end=Math.max(...tracks.map(n=>n[n.length-1].on));
   const master=ensAudio.createGain();master.gain.value=.11;master.connect(ensAudio.destination);
   const schedule=()=>{
