@@ -147,7 +147,7 @@ function setMode(m){
 }
 const coordOf=c=>c.bottcher?'bottcher':c.polar?(c.logPolar?'logpolar':'polar'):'cartesian';
 function setCoord(c,type){
-  if(type==='bottcher'&&c.fractal!=='julia'){toast('Böttcher coordinates require a Julia set',2700);return false;}
+  if(type==='bottcher'&&c.fractal!=='julia'&&c.fractal!=='mandelbrot'){toast('Böttcher coordinates require a quadratic Julia or Mandelbrot set',2700);return false;}
   c.bottcher=type==='bottcher';c.polar=type==='polar'||type==='logpolar';c.logPolar=type==='logpolar';
   if(type==='logpolar'&&!(c.logSpan>0)){c.logOuter=Math.log(Math.max(1e-12,view.w/2));c.logSpan=Math.log(10000);}
   return true;
@@ -158,10 +158,10 @@ function syncCoordPickers(){
     const el=$(id);if(!el)continue;
     const c=id==='coordPicker'?draft:cfg;
     el.value=coordOf(c);
-    el.querySelector('option[value="bottcher"]').disabled=c.fractal!=='julia';
+    el.querySelector('option[value="bottcher"]').disabled=c.fractal!=='julia'&&c.fractal!=='mandelbrot';
   }
-  $('coordHelp').textContent=draft.bottcher?'Exterior Julia only; the filled Julia interior is not represented.':draft.polar?'Angle runs horizontally; radius vertically.':'Original complex-plane view.';
-  $('coordHelpQuick').textContent=cfg.bottcher?'Exterior Julia only; drag to shift angle/potential.':cfg.polar?'Drag to change angle and radial range.':'Original complex-plane view.';
+  $('coordHelp').textContent=draft.bottcher?'Exterior only: Julia dynamical plane or Mandelbrot parameter plane. The interior is not represented.':draft.polar?'Angle runs horizontally; radius vertically.':'Original complex-plane view.';
+  $('coordHelpQuick').textContent=cfg.bottcher?'Exterior only; drag to shift angle/potential.':cfg.polar?'Drag to change angle and radial range.':'Original complex-plane view.';
 }
 function syncPolarButton(){syncCoordPickers();}
 $('coordPicker').onchange=e=>{if(setCoord(draft,e.target.value))syncCfg();else syncCoordPickers();};
@@ -204,8 +204,8 @@ $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(
 
 /* ---------- applying a configuration ---------- */
 function applyConfig(next,cam){
-  if(next.bottcher && next.fractal!=='julia')next.bottcher=false;
-  if(next.bottcher&&next.fractal!=='julia')next.bottcher=false;
+  if(next.bottcher && next.fractal!=='julia' && next.fractal!=='mandelbrot')next.bottcher=false;
+  if(next.bottcher&&next.fractal!=='julia'&&next.fractal!=='mandelbrot')next.bottcher=false;
   const world=!started || next.fractal!==cfg.fractal || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im));
   const numeric=next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode || next.bottcher!==cfg.bottcher || next.bottcherGMin!==cfg.bottcherGMin || next.bottcherGMax!==cfg.bottcherGMax || next.polar!==cfg.polar || next.logPolar!==cfg.logPolar;
   cfg=clone(next); eng=engineOf(cfg); started=true; syncContourSettings(cfg); syncCoordPickers();
@@ -339,7 +339,7 @@ function writeHash(){
 function readHash(){
   const q={}; location.hash.replace(/^#/,'').split('&').forEach(p=>{ const i=p.indexOf('='); if(i>0) q[p.slice(0,i)]=decodeURIComponent(p.slice(i+1)); });
   if(!q.f || !FRACTALS.some(f=>f.v===q.f)) return null;
-  const c=clone(DEFAULTS); c.fractal=q.f; c.polar=q.polar==='1'; c.bottcher=q.bt==='1'&&c.fractal==='julia'; if(+q.bg0>=1e-5&&+q.bg0<8)c.bottcherGMin=+q.bg0; if(+q.bg1>c.bottcherGMin&&+q.bg1<=8)c.bottcherGMax=+q.bg1; c.logPolar=c.polar&&q.lp==='1'; if(q.lo!==undefined&&Number.isFinite(+q.lo)&&+q.lo>=-32&&+q.lo<=32)c.logOuter=+q.lo; if(q.ls!==undefined&&Number.isFinite(+q.ls)&&+q.ls>=.05&&+q.ls<=36)c.logSpan=+q.ls;
+  const c=clone(DEFAULTS); c.fractal=q.f; c.polar=q.polar==='1'; c.bottcher=q.bt==='1'&&(c.fractal==='julia'||c.fractal==='mandelbrot'); if(+q.bg0>=1e-5&&+q.bg0<8)c.bottcherGMin=+q.bg0; if(+q.bg1>c.bottcherGMin&&+q.bg1<=8)c.bottcherGMax=+q.bg1; c.logPolar=c.polar&&q.lp==='1'; if(q.lo!==undefined&&Number.isFinite(+q.lo)&&+q.lo>=-32&&+q.lo<=32)c.logOuter=+q.lo; if(q.ls!==undefined&&Number.isFinite(+q.ls)&&+q.ls>=.05&&+q.ls<=36)c.logSpan=+q.ls;
   if(MODES.some(m=>m.v===q.m)) c.mode=q.m; if(PALETTES[q.pal]) c.palette=q.pal;
   if([0,400,1600,6400,25600].includes(+q.it)) c.iter=+q.it; if(Number.isFinite(+q.R)&&+q.R>=0.01&&+q.R<=1000000)c.radius=+q.R; if(['outward','inward','fixed'].includes(q.sm))c.stopMode=q.sm; if([0,3,10,25].includes(+q.d)) c.depth=+q.d;
   if(+q.n>=3 && +q.n<=8) c.power=Math.round(+q.n);
