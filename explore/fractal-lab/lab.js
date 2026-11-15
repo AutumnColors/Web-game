@@ -136,10 +136,13 @@ addEventListener('keydown',e=>{
 
 /* ---------- quick switches (same camera, same numbers) ---------- */
 function setMode(m){
+  if(cfg.polar && m!=='sens') { cfg.polar=false; $('qPolar').querySelector('b').textContent='Polar sampling: OFF'; dirty=true; }
   const was=cmp(); cfg.mode=m; document.body.classList.toggle('cmp',cmp());
   if(cmp()!==was || (needD() && base && !base.S)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
   repaint(); updateChip(); syncQuick(); writeHash();
 }
+function togglePolar(){ cfg.polar=!cfg.polar; if(cfg.polar) setMode('sens'); $('qPolar').querySelector('b').textContent='Polar sampling: '+(cfg.polar?'ON':'OFF'); dirty=true; needDraw=true; closePop(); writeHash(); toast(cfg.polar?'Polar: θ across, radius downward. Center = camera center.':'Cartesian sampling',2400); }
+$('qPolar').onclick=togglePolar;
 function setPalette(p){ cfg.palette=p; repaint(); syncQuick(); writeHash(); }
 function setClean(on){ cfg.clean=on; document.body.classList.toggle('clean',on); closePop(); if(on){ closeSec(); setSecTool(false); toast('Clean view. Press and hold the map to bring the tools back.',3200); } needDraw=true; syncQuick(); writeHash(); }
 function updateChip(){ $('chipT').textContent=eng.name+' · '+eng.rule; $('chipS').textContent=modeOf(cfg.mode).t+(cfg.fractal==='julia'?' · c = '+cText(cfg.seed.re,cfg.seed.im,6):''); }
@@ -164,6 +167,8 @@ $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(
 
 /* ---------- applying a configuration ---------- */
 function applyConfig(next,cam){
+  if(next.polar && next.mode!=='sens') next.polar=false;
+  $('qPolar').querySelector('b').textContent='Polar sampling: '+(next.polar?'ON':'OFF');
   const world=!started || next.fractal!==cfg.fractal || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im));
   const numeric=next.radius!==cfg.radius || next.iter!==cfg.iter;
   cfg=clone(next); eng=engineOf(cfg); started=true; syncContourSettings(cfg);
@@ -286,7 +291,7 @@ let hashT=0;
 function writeHash(){
   if(!started) return; clearTimeout(hashT);
   hashT=setTimeout(()=>{
-    const q={f:cfg.fractal, m:cfg.mode, pal:cfg.palette, it:cfg.iter, R:cfg.radius, d:cfg.depth, x:view.cx, y:view.cy, w:view.w, r:+(view.a*180/Math.PI).toFixed(4), co:+cfg.contours, cn:cfg.contourLevels, ca:cfg.contourOpacity, cc:cfg.contourColor};
+    const q={f:cfg.fractal, m:cfg.mode, pal:cfg.palette, it:cfg.iter, R:cfg.radius, d:cfg.depth, x:view.cx, y:view.cy, w:view.w, r:+(view.a*180/Math.PI).toFixed(4), polar:+cfg.polar, co:+cfg.contours, cn:cfg.contourLevels, ca:cfg.contourOpacity, cc:cfg.contourColor};
     if(cfg.fractal==='multibrot') q.n=cfg.power; if(cfg.fractal==='julia') q.c=cfg.seed.re+','+cfg.seed.im;
     if(cmp()) q.ps=cfg.panels.join('.'); if(cfg.clean) q.clean=1;
     try{ history.replaceState(null,'','#'+Object.entries(q).map(([k,v])=>k+'='+v).join('&')); }catch(_){}
@@ -295,7 +300,7 @@ function writeHash(){
 function readHash(){
   const q={}; location.hash.replace(/^#/,'').split('&').forEach(p=>{ const i=p.indexOf('='); if(i>0) q[p.slice(0,i)]=decodeURIComponent(p.slice(i+1)); });
   if(!q.f || !FRACTALS.some(f=>f.v===q.f)) return null;
-  const c=clone(DEFAULTS); c.fractal=q.f;
+  const c=clone(DEFAULTS); c.fractal=q.f; c.polar=q.polar==='1';
   if(MODES.some(m=>m.v===q.m)) c.mode=q.m; if(PALETTES[q.pal]) c.palette=q.pal;
   if([0,400,1600,6400,25600].includes(+q.it)) c.iter=+q.it; if(+q.R===2||+q.R===16) c.radius=+q.R; if([0,3,10,25].includes(+q.d)) c.depth=+q.d;
   if(+q.n>=3 && +q.n<=8) c.power=Math.round(+q.n);
