@@ -32,13 +32,15 @@ function clampView(){
   if(atLimit(view)) release();
 }
 function zoomAt(px,py,f){
+  if(cfg.bottcher){const mid=Math.sqrt(cfg.bottcherGMin*cfg.bottcherGMax),half=Math.log(cfg.bottcherGMax/cfg.bottcherGMin)/(2*f);cfg.bottcherGMin=Math.max(1e-5,mid*Math.exp(-half));cfg.bottcherGMax=Math.min(8,mid*Math.exp(half));dirty=true;needDraw=true;return;}
   if(cfg.polar){if(cfg.logPolar)cfg.logSpan=Math.max(.05,Math.min(36,cfg.logSpan/f));else view.w=Math.max(1e-12,Math.min(HOME.w*2.2,view.w/f));dirty=true;needDraw=true;return;}
   const [wx,wy]=toWorld(px,py), m=minW(); let w=view.w/f;
   if(w<m){ w=m; const now=performance.now(); if(f>1.0005 && now-limitT>2500){ limitT=now; toast('Zoom limit: depth '+cfg.depth); } }   // the limit stops zooming in only
   view.w=w; pinTo(px,py,wx,wy); clampView(); dirty=true; needDraw=true;
 }
-function rotateAt(px,py,dA){if(cfg.polar){view.a=wrap(view.a+dA);dirty=true;needDraw=true;return;} const [wx,wy]=toWorld(px,py); view.a=wrap(view.a+dA); pinTo(px,py,wx,wy); clampView(); dirty=true; needDraw=true; }
+function rotateAt(px,py,dA){if(cfg.bottcher){view.a=wrap(view.a+dA);dirty=true;needDraw=true;return;}if(cfg.polar){view.a=wrap(view.a+dA);dirty=true;needDraw=true;return;} const [wx,wy]=toWorld(px,py); view.a=wrap(view.a+dA); pinTo(px,py,wx,wy); clampView(); dirty=true; needDraw=true; }
 function panBy(dx,dy){
+  if(cfg.bottcher){view.a=wrap(view.a-TAU*dx/Wd);const factor=Math.exp(dy/Hd*Math.log(cfg.bottcherGMax/cfg.bottcherGMin));cfg.bottcherGMin=Math.max(1e-5,Math.min(8,cfg.bottcherGMin*factor));cfg.bottcherGMax=Math.max(cfg.bottcherGMin*1.01,Math.min(8,cfg.bottcherGMax*factor));dirty=true;needDraw=true;return;}
   if(cfg.polar){view.a=wrap(view.a-TAU*dx/Wd);if(cfg.logPolar)cfg.logOuter=Math.max(-32,Math.min(32,cfg.logOuter+dy/Hd*cfg.logSpan));else view.w=Math.max(1e-12,Math.min(HOME.w*2.2,view.w*(1+dy/Hd*2)));dirty=true;needDraw=true;return;}
   const s=view.w/Wd, c=Math.cos(view.a), n=Math.sin(view.a);
   view.cx-=s*(dx*c+dy*n); view.cy-=s*(dx*n-dy*c); clampView(); dirty=true; needDraw=true;
@@ -138,13 +140,20 @@ addEventListener('keydown',e=>{
 
 /* ---------- quick switches (same camera, same numbers) ---------- */
 function setMode(m){
-  if(cfg.polar && m!=='sens') {cfg.polar=false;cfg.logPolar=false;syncPolarButton();dirty=true;}
+  // Coordinate choice remains independent of measurement.
   const was=cmp(); cfg.mode=m; document.body.classList.toggle('cmp',cmp());
   if(cmp()!==was || (needD() && base && !base.S)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
   repaint(); updateChip(); syncQuick(); writeHash();
 }
-function syncPolarButton(){ $('qPolar').querySelector('b').textContent='Coordinates: '+(cfg.polar?(cfg.logPolar?'Log-polar (θ, log r)':'Polar (θ, r)'):'Cartesian');$('qPolar').classList.toggle('on',cfg.polar); }
-function togglePolar(){if(!cfg.polar){cfg.polar=true;cfg.logPolar=false;}else if(!cfg.logPolar){cfg.logPolar=true;cfg.logOuter=Math.log(Math.max(1e-12,view.w/2));cfg.logSpan=Math.log(10000);}else{cfg.polar=false;cfg.logPolar=false;}if(cfg.polar&&cfg.mode!=='sens'){cfg.mode='sens';document.body.classList.remove('cmp');}syncPolarButton();updateChip();dirty=true;needDraw=true;closePop();writeHash();toast(cfg.polar?(cfg.logPolar?'LOG-POLAR ACTIVE · θ / log r':'POLAR ACTIVE · θ / r'):'CARTESIAN ACTIVE',2500);}
+function syncPolarButton(){ $('qPolar').querySelector('b').textContent='Coordinates: '+(cfg.bottcher?'Böttcher (G, θB)':cfg.polar?(cfg.logPolar?'Log-polar (θ, log r)':'Polar (θ, r)'):'Cartesian');$('qPolar').classList.toggle('on',cfg.polar||cfg.bottcher); }
+function togglePolar(){
+  if(cfg.bottcher){cfg.bottcher=false;cfg.polar=false;cfg.logPolar=false;}
+  else if(!cfg.polar){cfg.polar=true;cfg.logPolar=false;}
+  else if(!cfg.logPolar){cfg.logPolar=true;cfg.logOuter=Math.log(Math.max(1e-12,view.w/2));cfg.logSpan=Math.log(10000);}
+  else if(cfg.fractal==='julia'){cfg.polar=false;cfg.logPolar=false;cfg.bottcher=true;view.a=0;}
+  else{cfg.polar=false;cfg.logPolar=false;toast('Böttcher coordinates require a Julia set',2600);}
+  syncPolarButton();updateChip();dirty=true;needDraw=true;closePop();writeHash();
+}
 $('qPolar').onclick=togglePolar;
 $('qDoubling').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='doubling-test.html?'+q.toString();};
 $('qGeometry').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='geometry-discovery.html?'+q.toString();};
@@ -157,7 +166,7 @@ $('qSurface').onclick=()=>{
 
 function setPalette(p){ cfg.palette=p; repaint(); syncQuick(); writeHash(); }
 function setClean(on){ cfg.clean=on; document.body.classList.toggle('clean',on); closePop(); if(on){ closeSec(); setSecTool(false); toast('Clean view. Press and hold the map to bring the tools back.',3200); } needDraw=true; syncQuick(); writeHash(); }
-function updateChip(){ $('chipT').textContent=eng.name+' · '+eng.rule; $('chipS').textContent=(cfg.polar?(cfg.logPolar?'LOG-POLAR · ':'POLAR · '):'')+modeOf(cfg.mode).t+(cfg.fractal==='julia'?' · c = '+cText(cfg.seed.re,cfg.seed.im,6):''); }
+function updateChip(){ $('chipT').textContent=eng.name+' · '+eng.rule; $('chipS').textContent=(cfg.bottcher?'BÖTTCHER · ':cfg.polar?(cfg.logPolar?'LOG-POLAR · ':'POLAR · '):'')+modeOf(cfg.mode).t+(cfg.fractal==='julia'?' · c = '+cText(cfg.seed.re,cfg.seed.im,6):''); }
 function group(el,items,get,set){
   el.replaceChildren(); el._get=get;
   items.forEach(it=>{ const b=document.createElement('button'); b.type='button'; b.className='opt'; b._v=it.v;
@@ -179,10 +188,10 @@ $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(
 
 /* ---------- applying a configuration ---------- */
 function applyConfig(next,cam){
-  if(next.polar && next.mode!=='sens'){next.polar=false;next.logPolar=false;}
-  $('qPolar').querySelector('b').textContent='Coordinates: '+(next.polar?(next.logPolar?'Log-polar (θ, log r)':'Polar (θ, r)'):'Cartesian');
+  if(next.bottcher && next.fractal!=='julia')next.bottcher=false;
+  $('qPolar').querySelector('b').textContent='Coordinates: '+(next.bottcher?'Böttcher (G, θB)':next.polar?(next.logPolar?'Log-polar (θ, log r)':'Polar (θ, r)'):'Cartesian');
   const world=!started || next.fractal!==cfg.fractal || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im));
-  const numeric=next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode;
+  const numeric=next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode || next.bottcher!==cfg.bottcher || next.bottcherGMin!==cfg.bottcherGMin || next.bottcherGMax!==cfg.bottcherGMax || next.polar!==cfg.polar || next.logPolar!==cfg.logPolar;
   cfg=clone(next); eng=engineOf(cfg); started=true; syncContourSettings(cfg);
   document.body.classList.toggle('cmp',cmp()); document.body.classList.toggle('clean',cfg.clean);
   fitHome();
@@ -305,7 +314,7 @@ let hashT=0;
 function writeHash(){
   if(!started) return; clearTimeout(hashT);
   hashT=setTimeout(()=>{
-    const q={f:cfg.fractal, m:cfg.mode, pal:cfg.palette, it:cfg.iter, R:cfg.radius, sm:cfg.stopMode, d:cfg.depth, x:view.cx, y:view.cy, w:view.w, r:+(view.a*180/Math.PI).toFixed(4), polar:+cfg.polar, lp:+cfg.logPolar, lo:+cfg.logOuter.toFixed(9), ls:+cfg.logSpan.toFixed(9), co:+cfg.contours, cn:cfg.contourLevels, ca:cfg.contourOpacity, cc:cfg.contourColor};
+    const q={f:cfg.fractal, m:cfg.mode, pal:cfg.palette, it:cfg.iter, R:cfg.radius, sm:cfg.stopMode, d:cfg.depth, x:view.cx, y:view.cy, w:view.w, r:+(view.a*180/Math.PI).toFixed(4), polar:+cfg.polar, bt:+cfg.bottcher, bg0:cfg.bottcherGMin, bg1:cfg.bottcherGMax, lp:+cfg.logPolar, lo:+cfg.logOuter.toFixed(9), ls:+cfg.logSpan.toFixed(9), co:+cfg.contours, cn:cfg.contourLevels, ca:cfg.contourOpacity, cc:cfg.contourColor};
     if(cfg.fractal==='multibrot') q.n=cfg.power; if(cfg.fractal==='julia') q.c=cfg.seed.re+','+cfg.seed.im;
     if(cmp()) q.ps=cfg.panels.join('.'); if(cfg.clean) q.clean=1;
     try{ history.replaceState(null,'','#'+Object.entries(q).map(([k,v])=>k+'='+v).join('&')); }catch(_){}
@@ -314,7 +323,7 @@ function writeHash(){
 function readHash(){
   const q={}; location.hash.replace(/^#/,'').split('&').forEach(p=>{ const i=p.indexOf('='); if(i>0) q[p.slice(0,i)]=decodeURIComponent(p.slice(i+1)); });
   if(!q.f || !FRACTALS.some(f=>f.v===q.f)) return null;
-  const c=clone(DEFAULTS); c.fractal=q.f; c.polar=q.polar==='1'; c.logPolar=c.polar&&q.lp==='1'; if(q.lo!==undefined&&Number.isFinite(+q.lo)&&+q.lo>=-32&&+q.lo<=32)c.logOuter=+q.lo; if(q.ls!==undefined&&Number.isFinite(+q.ls)&&+q.ls>=.05&&+q.ls<=36)c.logSpan=+q.ls;
+  const c=clone(DEFAULTS); c.fractal=q.f; c.polar=q.polar==='1'; c.bottcher=q.bt==='1'&&c.fractal==='julia'; if(+q.bg0>=1e-5&&+q.bg0<8)c.bottcherGMin=+q.bg0; if(+q.bg1>c.bottcherGMin&&+q.bg1<=8)c.bottcherGMax=+q.bg1; c.logPolar=c.polar&&q.lp==='1'; if(q.lo!==undefined&&Number.isFinite(+q.lo)&&+q.lo>=-32&&+q.lo<=32)c.logOuter=+q.lo; if(q.ls!==undefined&&Number.isFinite(+q.ls)&&+q.ls>=.05&&+q.ls<=36)c.logSpan=+q.ls;
   if(MODES.some(m=>m.v===q.m)) c.mode=q.m; if(PALETTES[q.pal]) c.palette=q.pal;
   if([0,400,1600,6400,25600].includes(+q.it)) c.iter=+q.it; if(Number.isFinite(+q.R)&&+q.R>=0.01&&+q.R<=1000000)c.radius=+q.R; if(['outward','inward','fixed'].includes(q.sm))c.stopMode=q.sm; if([0,3,10,25].includes(+q.d)) c.depth=+q.d;
   if(+q.n>=3 && +q.n<=8) c.power=Math.round(+q.n);
