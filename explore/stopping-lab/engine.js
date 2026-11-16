@@ -368,9 +368,12 @@ function startJob(){
   job++; queue=queue.filter(q=>q.tag!=='main'); dirty=false; lastStart=performance.now();
   const v= back ? backView(performance.now()+Math.min(500,Math.max(50,roughMs*1.15))) : {...view}, maxIt=itFor(v.w), div=cmp()?2:1, d=needD();
   cur={id:job,v,maxIt,passes:[]};
+  const overscan=1.3;
   (back?[6]:PASSES).forEach((ds,p)=>{
-    const L=newLayer(v,Math.ceil(Wd/(ds*div)),Math.ceil(Hd/(ds*div)),maxIt,d); L.ds=ds; cur.passes.push(L);
-    strips(L,v,'main',{job,pass:p},eng,false);
+    const tw=Math.ceil(Wd*overscan/(ds*div)), th=Math.ceil(Hd*overscan/(ds*div));
+    const tileView={...v,w:v.w*tw*ds*div/Wd};
+    const L=newLayer(tileView,tw,th,maxIt,d); L.ds=ds; cur.passes.push(L);
+    strips(L,tileView,'main',{job,pass:p},eng,false);
   });
   pump();
 }
