@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-16T13:22:20.334621+00:00",
+  "generatedAt": "2026-11-16T13:25:05.679737+00:00",
   "apps": [
     {
       "path": "explore/mandelbulb-3d/",
       "title": "Mandelbulb 3D",
       "category": "Explore",
-      "date": "2026-11-16T20:22:13+07:00",
-      "update": "Add configurable 50-frame MP4 export using viewer WebGL shader and WebCodecs"
+      "date": "2026-11-16T20:24:55+07:00",
+      "update": "Fix Android MP4 export by constructing VideoFrame from explicit RGBA pixel buffer"
     },
     {
       "path": "explore/mandelbulb-slice/",
