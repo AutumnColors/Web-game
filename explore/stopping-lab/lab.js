@@ -147,7 +147,7 @@ function setMode(m){
 }
 const coordOf=c=>c.bottcher?'bottcher':c.polar?(c.logPolar?'logpolar':'polar'):'cartesian';
 function setCoord(c,type){
-  if(type==='bottcher'&&c.fractal!=='julia'&&c.fractal!=='mandelbrot'){toast('Böttcher coordinates require a quadratic Julia or Mandelbrot set',2700);return false;}
+  if(type==='bottcher'&&((c.fractal!=='julia'&&c.fractal!=='mandelbrot')||(c.fractal==='julia'&&c.juliaPower!==2))){toast('Böttcher coordinates require a quadratic Julia or Mandelbrot set',2700);return false;}
   c.bottcher=type==='bottcher';c.polar=type==='polar'||type==='logpolar';c.logPolar=type==='logpolar';
   if(type==='logpolar'&&!(c.logSpan>0)){c.logOuter=Math.log(Math.max(1e-12,view.w/2));c.logSpan=Math.log(10000);}
   return true;
@@ -196,6 +196,7 @@ $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(
 /* ---------- applying a configuration ---------- */
 function applyConfig(next,cam){
   if(next.bottcher && next.fractal!=='julia' && next.fractal!=='mandelbrot')next.bottcher=false;
+  if(next.bottcher && next.fractal==='julia' && next.juliaPower!==2)next.bottcher=false;
   if(next.bottcher&&next.fractal!=='julia'&&next.fractal!=='mandelbrot')next.bottcher=false;
   const world=!started || next.fractal!==cfg.fractal || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im || next.juliaPower!==cfg.juliaPower));
   const numeric=next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode || next.bottcher!==cfg.bottcher || next.bottcherGMin!==cfg.bottcherGMin || next.bottcherGMax!==cfg.bottcherGMax || next.polar!==cfg.polar || next.logPolar!==cfg.logPolar;
@@ -339,6 +340,7 @@ function readHash(){
   if(+q.n>=3 && +q.n<=8) c.power=Math.round(+q.n);
   if(q.c){ const s=parseC(q.c); if(s) c.seed=s; }
   if(q.jp!==undefined && JULIA_EXPONENTS.includes(+q.jp))c.juliaPower=+q.jp;
+  if(c.fractal==='julia'&&c.juliaPower!==2)c.bottcher=false;
   if(q.ps){ const ps=q.ps.split('.'); if(ps.length===4 && ps.every(p=>MODES.some(m=>m.v===p&&p!=='compare'))) c.panels=ps; }
   if(q.co!==undefined)c.contours=q.co==='1';
   if(+q.cn>=1&&+q.cn<=20)c.contourLevels=+q.cn;
