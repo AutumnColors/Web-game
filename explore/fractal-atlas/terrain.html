@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fractal Geography · Atlas</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;background:#090f19;color:#e8f0fc}header{padding:13px 18px;background:#111c2d;border-bottom:1px solid #33465b;display:flex;justify-content:space-between;align-items:center}header small{color:#91a8c2}main{display:grid;grid-template-columns:290px 1fr;height:calc(100dvh - 60px)}aside{padding:17px;overflow:auto;background:#101b2b;border-right:1px solid #33465b}h2{font-size:14px;color:#acc7e7;margin:20px 0 9px}label{display:block;font-size:12px;color:#a8bbd1;margin:11px 0 5px}select,input,button{width:100%;background:#1d3047;color:#f2f7ff;border:1px solid #42607e;border-radius:7px;padding:9px;font:inherit}input[type=range]{padding:2px}button{cursor:pointer;margin-top:12px;background:#315e80}#view{position:relative;min-width:0}canvas{display:block}#info{position:absolute;bottom:15px;left:15px;background:#0b1425d9;padding:10px 12px;border-radius:8px;font-size:12px;pointer-events:none}#status{font-size:12px;color:#a8c7dc;margin-top:12px}p{font-size:12px;color:#9bb0c7;line-height:1.5}@media(max-width:700px){main{grid-template-columns:1fr;grid-template-rows:auto minmax(330px,1fr);height:auto}aside{display:block;padding:12px}aside label{margin:8px 0 4px}aside select,aside input{width:100%}aside button{width:100%}aside h2,aside p,aside #status{grid-column:1/-1}#view{height:65dvh;min-height:380px}}
+#shapePanel{display:block;position:absolute;top:88px;right:12px;width:min(270px,calc(100vw - 24px));background:#101b2be8;border:1px solid #42607e;border-radius:14px;padding:12px;z-index:5;box-shadow:0 5px 24px #0008}#shapePanel[hidden]{display:none}#shapePanel label{margin:8px 0 3px}#shapePanel input{padding:0}#shapeToggle{position:absolute;top:16px;left:12px;z-index:6;width:auto;margin:0;border-radius:24px;padding:10px 16px}body>header,aside{display:none!important}main{display:block!important;height:100dvh!important}#view{height:100dvh!important;width:100vw!important}#info{z-index:2}</style></head><body><header><div><b>FRACTAL GEOGRAPHY</b> <small> / Atlas 001</small></div><small>Mathematical terrain engine</small></header>
+<main><aside><h2>World</h2><label>Fractal</label><select id="world"><option value="mandelbrot">Mandelbrot set</option><option value="julia">Julia set</option></select><label>Julia preset</label><select id="preset"><option value="-1,0">Basilica · c = −1</option><option value="0,0">Circle · c = 0</option><option value="-0.123,0.745">Douady rabbit</option><option value="-0.74543,0.11301">Seahorse region</option><option value="custom">Custom parameter</option></select><label>c real</label><input id="cr" type="number" step="0.001" value="-1"><label>c imaginary</label><input id="ci" type="number" step="0.001" value="0"><h2>Geography</h2><label>Elevation source</label><select id="field"><option value="combined">Combined ridges + mass</option><option value="boundary">Boundary Mass</option><option value="waters">Fractal Waters</option><option value="escape">Escape time</option><option value="sensitivity">Orbit sensitivity</option><option value="green">Green potential</option></select><label>Elevation amplitude <span id="ampVal">1.6</span></label><input id="amp" type="range" min="0" max="4" step=".1" value="1.6"><label>Terrain resolution</label><select id="res"><option value="120">120 × 120</option><option value="200" selected>200 × 200</option><option value="300">300 × 300</option></select><label>Color palette</label><select id="palette"><option value="atlas">Atlas / ocean</option><option value="height">Topographic</option><option value="mono">Monochrome</option></select><button id="build">Generate terrain from this view</button><button id="back" style="display:none">← Return to 2D map</button><button id="reset">Reset camera</button><p>Drag to orbit · Scroll/pinch to zoom · Right-drag to pan. Elevation is a chosen mapping of a mathematical scalar field, not an intrinsic third dimension.</p><div id="status">Waiting for 2D browser…</div></aside><section id="view"><button id="shapeToggle" type="button">⚙ Terrain shaping</button><div id="shapePanel" hidden><strong>Terrain shaping</strong><label>Smoothing <span id="smoothVal">45%</span></label><input id="smooth" type="range" min="0" max="100" value="45"><label>Peak compression <span id="compressVal">65%</span></label><input id="compress" type="range" min="0" max="100" value="65"><label>Fine fractal detail <span id="detailVal">35%</span></label><input id="detail" type="range" min="0" max="100" value="35"><label>Water level <span id="waterLevelVal">60%</span></label><input id="waterLevel" type="range" min="5" max="95" value="60"><label>Shoreline width <span id="shoreVal">3 px</span></label><input id="shore" type="range" min="1" max="12" value="3"><label>Boundary mass strength <span id="boundaryStrengthVal">75%</span></label><input id="boundaryStrength" type="range" min="0" max="100" value="75"><label>Boundary reach <span id="boundaryReachVal">12 px</span></label><input id="boundaryReach" type="range" min="2" max="40" value="12"><p>Fractal Waters preserves Boundary Mass mountains and replaces only the non-escaping plateaus with water. Adjustments reuse sampled data.</p></div><canvas id="map2d" style="width:100%;height:100%;touch-action:none"></canvas><div id="info">Julia · Basilica<br>Height = A / (1 + 2G)<br>Coordinates: complex plane</div></section></main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}</script><script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=id=>document.getElementById(id), host=$('view');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x09131f);
+const camera=new THREE.PerspectiveCamera(48,1,.01,200);camera.position.set(0,-7,5.4);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));host.prepend(renderer.domElement);renderer.domElement.style.display='none';
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.target.set(0,0,.2);controls.minDistance=.3;controls.maxDistance=30;
+scene.add(new THREE.HemisphereLight(0xd4e9ff,0x1c263a,2.1));const sun=new THREE.DirectionalLight(0xfff2d7,2.2);sun.position.set(-3,-4,8);scene.add(sun);
+let terrain;let in3D=false,center2D={x:0,y:0},span2D=4.2,renderToken=0;const map=$('map2d'),ctx=map.getContext('2d');
+function sample(x,y,cx,cy,mode){
+ let zx=mode==='mandelbrot'?0:x,zy=mode==='mandelbrot'?0:y, a=mode==='mandelbrot'?x:cx,b=mode==='mandelbrot'?y:cy;
+ let dx=mode==='mandelbrot'?0:1,dy=0,escape=0,sens=0;
+ for(let n=0;n<180;n++){
+  const dnx=2*(zx*dx-zy*dy)+(mode==='mandelbrot'?1:0),dny=2*(zx*dy+zy*dx);
+  const nx=zx*zx-zy*zy+a,ny=2*zx*zy+b;zx=nx;zy=ny;dx=dnx;dy=dny;
+  const r2=zx*zx+zy*zy;
+  if(r2>65536){escape=n+1;const r=Math.sqrt(r2);let g=Math.max(0,Math.log(r)/Math.pow(2,n+1));if(mode==='mandelbrot')g*=.5; // Mandelbrot Green normalization
+   sens=Math.log1p(Math.hypot(dx,dy));return {g,escape,sens};
+  }
+  if(!Number.isFinite(r2)||!Number.isFinite(dx))break;
+ }
+ return {g:0,escape:0,sens:0};
+}
+function color(t,g,inside,palette){
+ const col=new THREE.Color();
+ if(palette==='mono'){col.setHSL(0,0,.12+.78*t);return col}
+ if(palette==='height'){col.setHSL(.61-.49*t,.5,.2+.57*t);return col}
+ if(inside){col.setRGB(.21,.38,.27);return col}
+ col.setHSL(.58-.46*t,.62,.19+.43*t);return col;
+}
+let cached=null,buildSerial=0,waterMesh=null,waterTexture=null;
+function blur(src,n,radius){
+ if(radius<=0)return src.slice();
+ const sigma=Math.max(.5,radius/2),rad=Math.ceil(radius*2),weights=[];
+ let sum=0;for(let d=-rad;d<=rad;d++){const w=Math.exp(-d*d/(2*sigma*sigma));weights.push(w);sum+=w}
+ const tmp=new Float32Array(src.length),out=new Float32Array(src.length);
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){let a=0;for(let d=-rad;d<=rad;d++)a+=src[y*n+Math.max(0,Math.min(n-1,x+d))]*weights[d+rad];tmp[y*n+x]=a/sum}
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){let a=0;for(let d=-rad;d<=rad;d++)a+=tmp[Math.max(0,Math.min(n-1,y+d))*n+x]*weights[d+rad];out[y*n+x]=a/sum}
+ return out;
+}
+// Two-pass chamfer distance transform, approximately Euclidean (pixel units).
+// A region boundary is defined by a change in the finite non-escaping mask.
+function boundaryDistances(mask,n){
+ const d=new Float32Array(n*n),INF=1e6,diag=Math.SQRT2;
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+  const k=y*n+x,v=mask[k];let edge=x===0||y===0||x===n-1||y===n-1;
+  if(x>0&&mask[k-1]!==v||x<n-1&&mask[k+1]!==v||y>0&&mask[k-n]!==v||y<n-1&&mask[k+n]!==v)edge=true;
+  d[k]=edge?0:INF;
+ }
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+  const k=y*n+x;let a=d[k];
+  if(x)a=Math.min(a,d[k-1]+1);
+  if(y){a=Math.min(a,d[k-n]+1);if(x)a=Math.min(a,d[k-n-1]+diag);if(x<n-1)a=Math.min(a,d[k-n+1]+diag)}
+  d[k]=a;
+ }
+ for(let y=n-1;y>=0;y--)for(let x=n-1;x>=0;x--){
+  const k=y*n+x;let a=d[k];
+  if(x<n-1)a=Math.min(a,d[k+1]+1);
+  if(y<n-1){a=Math.min(a,d[k+n]+1);if(x)a=Math.min(a,d[k+n-1]+diag);if(x<n-1)a=Math.min(a,d[k+n+1]+diag)}
+  d[k]=a;
+ }
+ return d;
+}
+function boundaryHeight(mask,dist,reach){
+ const out=new Float32Array(mask.length);
+ for(let k=0;k<out.length;k++){
+  const d=dist[k]/reach;
+  // Interior plateaus grow inward; exterior slopes decay away from the boundary.
+  out[k]=mask[k]?(1-Math.exp(-1.7*d)):(.38*Math.exp(-1.1*d));
+ }
+ return out;
+}
+function updateWater(){
+ if(waterMesh){scene.remove(waterMesh);waterMesh.geometry.dispose();waterMesh.material.dispose();waterMesh=null}
+ if(waterTexture){waterTexture.dispose();waterTexture=null}
+ if(!cached||cached.field!=='waters')return;
+ const {n,insides}=cached;
+ // Texture coordinates match PlaneGeometry's top-to-bottom UV mapping.
+ const width=+$('shore').value,soft=blur(insides,n,Math.max(.6,width));
+ const pixels=new Uint8Array(n*n*4);
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+  const k=y*n+x,t=(n-1-y)*n+x,alpha=Math.max(0,Math.min(1,(soft[k]-.36)/.28));
+  pixels[4*t]=35;pixels[4*t+1]=154;pixels[4*t+2]=205;pixels[4*t+3]=Math.round(255*alpha);
+ }
+ waterTexture=new THREE.DataTexture(pixels,n,n,THREE.RGBAFormat);
+ waterTexture.magFilter=THREE.LinearFilter;waterTexture.minFilter=THREE.LinearFilter;waterTexture.needsUpdate=true;
+ const material=new THREE.MeshBasicMaterial({map:waterTexture,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide,alphaTest:.12});
+ waterMesh=new THREE.Mesh(new THREE.PlaneGeometry(5,5),material);
+ waterMesh.position.z=(+$('amp').value)*(+$('waterLevel').value/100)+.012;
+ waterMesh.renderOrder=2;scene.add(waterMesh);
+}
+function updateTerrain(){
+ if(!cached||!terrain)return;
+ const {n,values,greens,insides,distances}=cached;
+ const smooth=+$('smooth').value/100,compression=+$('compress').value/100,detail=+$('detail').value/100,amp=+$('amp').value,palette=$('palette').value;
+ const broad=blur(values,n,3+smooth*7),medium=blur(values,n,.7+smooth*2.5);const boundary=boundaryHeight(insides,distances,+$('boundaryReach').value);const boundarySoft=blur(boundary,n,1+smooth*2);const boundaryStrength=+$('boundaryStrength').value/100;
+ const pos=terrain.geometry.attributes.position,colors=terrain.geometry.attributes.color;const waters=cached.field==='waters',waterLevel=+$("waterLevel").value/100;
+ let lo=Infinity,hi=-Infinity;
+ for(let k=0;k<values.length;k++){
+  const base=broad[k],ridge=medium[k]-broad[k],fine=values[k]-medium[k];
+  const conventional=Math.max(0,base+ridge*(1-.35*smooth)+fine*detail*(1-.65*smooth));const raw=(cached.field==='boundary'||waters)?boundaryStrength*boundarySoft[k]+(1-boundaryStrength)*conventional:conventional;
+  const h=(1-compression)*raw+compression*(1-Math.exp(-2.8*raw))/(1-Math.exp(-2.8));
+  let v=Math.max(0,Math.min(1,h));if(waters&&insides[k]){v=Math.min(v,Math.max(0,waterLevel-.035));}pos.setZ(k,amp*v);
+  const c=waters?(insides[k]?new THREE.Color(0x16384b):color(v,greens[k],false,palette)):color(v,greens[k],insides[k],palette);colors.setXYZ(k,c.r,c.g,c.b);
+  lo=Math.min(lo,v);hi=Math.max(hi,v);
+ }
+ pos.needsUpdate=true;colors.needsUpdate=true;terrain.geometry.computeVertexNormals();updateWater();
+ $('info').textContent=(cached.mode==='julia'?'Julia':'Mandelbrot')+' · '+cached.field+' terrain · '+n+'² samples';
+ $('status').textContent='Ready · '+(n*n).toLocaleString()+' cached samples · height '+lo.toFixed(3)+'–'+hi.toFixed(3);
+}
+async function build(){
+ const serial=++buildSerial;
+ $('status').textContent='Computing terrain…';await new Promise(resolve=>setTimeout(resolve,20));
+ const n=+$('res').value,mode=$('world').value,cx=+$('cr').value||0,cy=+$('ci').value||0,field=$('field').value;
+ const range=span2D/2,centerX=center2D.x,centerY=center2D.y;
+ const values=new Float32Array(n*n),greens=new Float32Array(n*n),insides=new Uint8Array(n*n);
+ for(let j=0;j<n;j++){
+  for(let i=0;i<n;i++){
+   const k=j*n+i,x=centerX-range+2*range*i/(n-1),y=centerY-range+2*range*j/(n-1),v=sample(x,y,cx,cy,mode);
+   greens[k]=v.g;insides[k]=v.escape===0?1:0;
+   const mass=v.escape?Math.min(1,v.escape/110):1,ridge=v.escape?Math.min(1,Math.log1p(v.sens)/5):0;
+   values[k]=field==='combined'||field==='boundary'||field==='waters'?.62*mass+.38*ridge:field==='green'?1/(1+2*v.g):field==='escape'?mass:ridge;
+  }
+  if(j%8===0){$('status').textContent='Generating terrain '+Math.round(100*(j+1)/n)+'%';await new Promise(resolve=>setTimeout(resolve,0));if(serial!==buildSerial)return}
+ }
+ cached={n,mode,field,values,greens,insides,distances:boundaryDistances(insides,n)};
+ const geom=new THREE.PlaneGeometry(5,5,n-1,n-1);
+ geom.setAttribute('color',new THREE.BufferAttribute(new Float32Array(n*n*3),3));
+ if(terrain){scene.remove(terrain);terrain.geometry.dispose();terrain.material.dispose()}
+ terrain=new THREE.Mesh(geom,new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:.86,metalness:.02}));
+ scene.add(terrain);updateTerrain();
+}
+$('shapeToggle').onclick=()=>{$('shapePanel').hidden=!$('shapePanel').hidden};
+for(const id of ['smooth','compress','detail','boundaryStrength','boundaryReach','waterLevel','shore'])$(id).addEventListener('input',()=>{$(id+'Val').textContent=$(id).value+(['boundaryReach','shore'].includes(id)?' px':'%');updateTerrain()});
+function show2D(){in3D=false;renderer.domElement.style.display='none';map.style.display='block';$('back').style.display='none';$('build').style.display='block';draw2D()}
+function draw2D(){const token=++renderToken;const w=Math.max(1,Math.round(host.clientWidth)),h=Math.max(1,Math.round(host.clientHeight));map.width=w;map.height=h;const scale=Math.min(1,260/Math.max(w,h)),sw=Math.max(1,Math.round(w*scale)),sh=Math.max(1,Math.round(h*scale));const off=document.createElement('canvas');off.width=sw;off.height=sh;const c=off.getContext('2d'),img=c.createImageData(sw,sh);const mode=$('world').value,cx=+$('cr').value||0,cy=+$('ci').value||0;
+let row=0;$('status').textContent='Rendering 2D map…';
+function chunk(){if(token!==renderToken)return;const stop=Math.min(sh,row+12);for(;row<stop;row++)for(let i=0;i<sw;i++){const x=center2D.x+(i/(sw-1)-.5)*span2D*w/Math.min(w,h),y=center2D.y+(.5-row/(sh-1))*span2D*h/Math.min(w,h);const v=sample(x,y,cx,cy,mode);const k=(row*sw+i)*4;const q=v.escape?Math.min(255,60+32*Math.log1p(v.escape)+30*Math.sin(Math.log1p(v.g)*12)):5;img.data[k]=v.escape?q*.35:8;img.data[k+1]=v.escape?q*.7:14;img.data[k+2]=v.escape?q:24;img.data[k+3]=255}
+if(row<sh){setTimeout(chunk,0)}else{c.putImageData(img,0,0);ctx.imageSmoothingEnabled=true;ctx.drawImage(off,0,0,w,h);$('status').textContent='2D map ready · select a region, then generate terrain';$('info').textContent='2D fractal browser · drag to pan · scroll/pinch to zoom'}}
+chunk()}
+$('preset').onchange=()=>{if($('preset').value!=='custom'){const [r,i]=$('preset').value.split(',');$('cr').value=r;$('ci').value=i}show2D()};
+$('cr').onchange=$('ci').onchange=()=>{$('preset').value='custom';show2D()};
+$('world').onchange=()=>{center2D={x:$('world').value==='mandelbrot'?-.55:0,y:0};span2D=4.2;show2D()};$('field').onchange=()=>{if(in3D&&cached){cached.field=$('field').value;updateTerrain()}};$('res').onchange=()=>{if(in3D)build()};$('palette').onchange=()=>{if(in3D)updateTerrain()};
+$('amp').oninput=()=>{$('ampVal').textContent=$('amp').value};$('amp').onchange=()=>{if(in3D)updateTerrain()};
+$('build').onclick=()=>{++renderToken;in3D=true;map.style.display='none';renderer.domElement.style.display='block';$('back').style.display='block';$('build').style.display='none';build()};$('back').onclick=show2D;$('reset').onclick=()=>{camera.position.set(0,-7,5.4);controls.target.set(0,0,.2);controls.update()};
+function resize(){const w=host.clientWidth,h=host.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h)}
+new ResizeObserver(resize).observe(host);resize();const q=new URLSearchParams(location.search);$('world').value=q.get('world')||'mandelbrot';$('cr').value=q.get('cr')||'-1';$('ci').value=q.get('ci')||'0';center2D={x:Number(q.get('cx'))||0,y:Number(q.get('cy'))||0};span2D=Math.max(0.0000001,Number(q.get('span'))||4.2);$('res').value=q.get('res')||'120';in3D=true;map.style.display='none';renderer.domElement.style.display='block';$('field').value='waters';setTimeout(build,40);
+function animate(){requestAnimationFrame(animate);if(in3D){controls.update();renderer.render(scene,camera)}}animate();
+let dragging=false,lastX=0,lastY=0;map.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;map.setPointerCapture(e.pointerId)});map.addEventListener('pointerup',()=>{dragging=false;draw2D()});map.addEventListener('pointermove',e=>{if(!dragging)return;const unit=span2D/Math.min(host.clientWidth,host.clientHeight);center2D.x-=(e.clientX-lastX)*unit;center2D.y+=(e.clientY-lastY)*unit;lastX=e.clientX;lastY=e.clientY});map.addEventListener('wheel',e=>{e.preventDefault();span2D*=Math.exp(e.deltaY*.001);span2D=Math.max(1e-7,Math.min(20,span2D));draw2D()},{passive:false});
+</script></body></html>
