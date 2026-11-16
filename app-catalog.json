@@ -1,6 +1,34 @@
 {
-  "generatedAt": "2026-11-16T13:26:53.964006+00:00",
+  "generatedAt": "2026-11-16T13:44:25.494062+00:00",
   "apps": [
+    {
+      "path": "legacy/dual-reconstruction-lab/",
+      "title": "Fractal Universe Lab ∥ Dual Reconstruction",
+      "category": "Legacy",
+      "date": "2026-11-16T20:44:16+07:00",
+      "update": "Archive three superseded fractal experiments under legacy"
+    },
+    {
+      "path": "legacy/fractal-atlas-terrain/",
+      "title": "Fractal Geography · Atlas",
+      "category": "Legacy",
+      "date": "2026-11-16T20:44:16+07:00",
+      "update": "Archive three superseded fractal experiments under legacy"
+    },
+    {
+      "path": "legacy/fractal-geography/",
+      "title": "Fractal Geography · Atlas",
+      "category": "Legacy",
+      "date": "2026-11-16T20:44:16+07:00",
+      "update": "Archive three superseded fractal experiments under legacy"
+    },
+    {
+      "path": "explore/fractal-atlas/",
+      "title": "Fractal Atlas · Universal Lab",
+      "category": "Explore",
+      "date": "2026-11-16T20:44:16+07:00",
+      "update": "Archive three superseded fractal experiments under legacy"
+    },
     {
       "path": "explore/mandelbulb-3d/",
       "title": "Mandelbulb 3D",
@@ -14,34 +42,6 @@
       "category": "Explore",
       "date": "2026-11-16T19:40:48+07:00",
       "update": "Add standalone interactive Mandelbulb slice lab"
-    },
-    {
-      "path": "explore/fractal-atlas/terrain.html",
-      "title": "Fractal Geography · Atlas",
-      "category": "Fractal Atlas",
-      "date": "2026-11-16T18:25:40+07:00",
-      "update": "Restore Boundary Mass mountain geometry in Fractal Waters; replace only interior plateaus with water"
-    },
-    {
-      "path": "explore/fractal-atlas/",
-      "title": "Fractal Atlas · Universal Lab",
-      "category": "Explore",
-      "date": "2026-11-16T18:25:40+07:00",
-      "update": "Restore Boundary Mass mountain geometry in Fractal Waters; replace only interior plateaus with water"
-    },
-    {
-      "path": "explore/fractal-geography/",
-      "title": "Fractal Geography · Atlas",
-      "category": "Explore",
-      "date": "2026-11-16T17:49:00+07:00",
-      "update": "Fix Three.js module resolution and mobile geography layout"
-    },
-    {
-      "path": "explore/dual-reconstruction-lab/",
-      "title": "Fractal Universe Lab ∥ Dual Reconstruction",
-      "category": "Explore",
-      "date": "2026-11-16T15:48:23+07:00",
-      "update": "Optimize batch metrics with summed-area neighborhood masks"
     },
     {
       "path": "explore/stopping-lab/",
