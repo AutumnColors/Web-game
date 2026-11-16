@@ -65,7 +65,7 @@ function engineOf(c){
 }
 let eng=engineOf(cfg);
 const asciiRule=()=>'z -> z^'+eng.pw+' + c';
-const needD=()=>cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare';
+const needD=()=>cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
 const cmp=()=>cfg.mode==='compare';
 
 /* ---------- worker: one strip of rows on a rotated grid. kind 0: the pixel is c and z₀ = 0 (parameter plane);
