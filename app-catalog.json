@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-16T08:48:14.403335+00:00",
+  "generatedAt": "2026-11-16T08:48:30.013133+00:00",
   "apps": [
     {
       "path": "explore/dual-reconstruction-lab/",
       "title": "Fractal Universe Lab ∥ Dual Reconstruction",
       "category": "Explore",
-      "date": "2026-11-16T15:48:05+07:00",
-      "update": "Add copy-current and batch-copy-all convergence reports for ChatGPT"
+      "date": "2026-11-16T15:48:23+07:00",
+      "update": "Optimize batch metrics with summed-area neighborhood masks"
     },
     {
       "path": "explore/stopping-lab/",
