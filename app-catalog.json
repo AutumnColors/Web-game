@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-16T14:19:31.277377+00:00",
+  "generatedAt": "2026-11-16T14:20:16.800664+00:00",
   "apps": [
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-16T21:19:23+07:00",
-      "update": "Retain last completed viewport beneath reprojected fractal tiles"
+      "date": "2026-11-16T21:20:09+07:00",
+      "update": "Prevent exposed cached tile edges during deep fractal navigation"
     },
     {
       "path": "explore/fractal-atlas/",
