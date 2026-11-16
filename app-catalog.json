@@ -1,6 +1,62 @@
 {
-  "generatedAt": "2026-11-16T16:36:01.916632+00:00",
+  "generatedAt": "2026-11-16T16:36:19.007880+00:00",
   "apps": [
+    {
+      "path": "explore/zeta-map/",
+      "title": "Zeta Map",
+      "category": "Explore",
+      "date": "2026-11-16T23:36:09+07:00",
+      "update": "Add shared minimal navigation to fractal and game pages"
+    },
+    {
+      "path": "levels/02-vector-pairs/",
+      "title": "Vector Pairs",
+      "category": "Levels",
+      "date": "2026-11-16T23:36:09+07:00",
+      "update": "Add shared minimal navigation to fractal and game pages"
+    },
+    {
+      "path": "explore/snowflake/",
+      "title": "Snowflake Group Viewer",
+      "category": "Explore",
+      "date": "2026-11-16T23:36:09+07:00",
+      "update": "Add shared minimal navigation to fractal and game pages"
+    },
+    {
+      "path": "levels/01-smiley-paths/",
+      "title": "Smiley Paths",
+      "category": "Levels",
+      "date": "2026-11-16T23:36:09+07:00",
+      "update": "Add shared minimal navigation to fractal and game pages"
+    },
+    {
+      "path": "explore/simple-groups/",
+      "title": "Periodic Table of Finite Simple Groups",
+      "category": "Explore",
+      "date": "2026-11-16T23:36:09+07:00",
+      "update": "Add shared minimal navigation to fractal and game pages"
+    },
+    {
+      "path": "levels/03-path-to-zero/",
+      "title": "Path to Zero",
+      "category": "Levels",
+      "date": "2026-11-16T23:36:09+07:00",
+      "update": "Add shared minimal navigation to fractal and game pages"
+    },
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-16T23:36:09+07:00",
+      "update": "Add shared minimal navigation to fractal and game pages"
+    },
+    {
+      "path": "levels/04-counting-strokes/",
+      "title": "Counting Strokes",
+      "category": "Levels",
+      "date": "2026-11-16T23:36:09+07:00",
+      "update": "Add shared minimal navigation to fractal and game pages"
+    },
     {
       "path": "explore/rubiks-cube/",
       "title": "Vector Cube",
@@ -205,34 +261,6 @@
       "update": "Apply shared navigation to site and first lab pages"
     },
     {
-      "path": "explore/stopping-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
-      "date": "2026-11-16T21:20:09+07:00",
-      "update": "Prevent exposed cached tile edges during deep fractal navigation"
-    },
-    {
-      "path": "explore/simple-groups/",
-      "title": "Periodic Table of Finite Simple Groups",
-      "category": "Explore",
-      "date": "2026-11-14T18:30:32+07:00",
-      "update": "Update periodic table of finite simple groups with presentations and rules"
-    },
-    {
-      "path": "explore/snowflake/",
-      "title": "Snowflake Group Viewer",
-      "category": "Explore",
-      "date": "2026-11-10T17:50:53+07:00",
-      "update": "Add Snowflake Group viewer to Explore"
-    },
-    {
-      "path": "explore/zeta-map/",
-      "title": "Zeta Map",
-      "category": "Explore",
-      "date": "2026-11-10T13:54:30+07:00",
-      "update": "Add Zeta Map: the Riemann zeta function as a gestures-only phase map (#6)"
-    },
-    {
       "path": "research/six-routes/",
       "title": "Six routes through the Mandelbrot set",
       "category": "Research",
@@ -287,34 +315,6 @@
       "category": "Levels",
       "date": "2026-10-30T01:18:21+07:00",
       "update": "Add Minesweeper as level 05 (Classic 16x16 and Circle)"
-    },
-    {
-      "path": "levels/04-counting-strokes/",
-      "title": "Counting Strokes",
-      "category": "Levels",
-      "date": "2026-10-25T22:40:49+07:00",
-      "update": "Counting Strokes: fixed-height header so the board stops resizing"
-    },
-    {
-      "path": "levels/03-path-to-zero/",
-      "title": "Path to Zero",
-      "category": "Levels",
-      "date": "2026-10-21T22:59:25+07:00",
-      "update": "Add Path to Zero as level 3"
-    },
-    {
-      "path": "levels/02-vector-pairs/",
-      "title": "Vector Pairs",
-      "category": "Levels",
-      "date": "2026-10-21T22:55:21+07:00",
-      "update": "Games collection: landing page + 3 levels"
-    },
-    {
-      "path": "levels/01-smiley-paths/",
-      "title": "Smiley Paths",
-      "category": "Levels",
-      "date": "2026-10-21T22:55:21+07:00",
-      "update": "Games collection: landing page + 3 levels"
     }
   ]
 }
