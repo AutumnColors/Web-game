@@ -1,5 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mandelbulb 3D</title><style>
-*{box-sizing:border-box}body{margin:0;background:#080d18;color:#eef3ff;font:14px system-ui,sans-serif}header{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #26344b}h1{font-size:18px;margin:0}a{color:#9dc9ff}main{height:calc(100dvh - 56px);display:grid;grid-template-columns:minmax(0,1fr) 245px}#scene{position:relative;min-height:300px;touch-action:none;overflow:hidden}canvas{width:100%;height:100%;display:block;touch-action:none}#info{position:absolute;bottom:12px;left:12px;background:#0a1222c9;padding:8px 11px;border-radius:8px;pointer-events:none;font-size:12px}aside{background:#111b2d;padding:16px;overflow:auto;border-left:1px solid #26344b}label{display:flex;justify-content:space-between;margin:16px 0 6px}input{width:100%}button{padding:9px 12px;background:#273e5f;color:white;border:1px solid #4b6587;border-radius:8px;cursor:pointer}p{color:#acbad2;font-size:12px;line-height:1.6}@media(max-width:720px){main{grid-template-columns:1fr;grid-template-rows:minmax(250px,1fr) auto}aside{max-height:220px;border-left:0;border-top:1px solid #26344b;padding:10px 16px}label{margin:8px 0 3px}}</style></head><body><header><h1>Mandelbulb · 3D Viewer</h1><a href="../mandelbulb-slice/">2D slices</a></header><main><div id="scene"><canvas id="gl"></canvas><div id="info">Drag to rotate · wheel / pinch to zoom</div></div><aside><label>Power <output id="pout">8</output></label><input id="power" type="range" min="2" max="12" step="1" value="8"><label>Detail <output id="iout">12</output></label><input id="iterations" type="range" min="6" max="20" step="1" value="12"><label>Quality <output id="qout">0.8</output></label><input id="quality" type="range" min=".4" max="1.2" step=".1" value=".8"><label>Color <output id="cout">Copper</output></label><input id="palette" type="range" min="0" max="2" step="1" value="0"><p><button id="reset">Reset camera</button> <button id="spin">Auto rotate: off</button></p><p>Real-time GPU ray marching of a three-dimensional Mandelbulb distance estimator. No quaternion algebra or 2D extrusion.</p></aside></main>
+*{box-sizing:border-box}body{margin:0;background:#080d18;color:#eef3ff;font:14px system-ui,sans-serif}header{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #26344b}h1{font-size:18px;margin:0}a{color:#9dc9ff}main{height:calc(100dvh - 56px);display:grid;grid-template-columns:minmax(0,1fr) 245px}#scene{position:relative;min-height:300px;touch-action:none;overflow:hidden}canvas{width:100%;height:100%;display:block;touch-action:none}#info{position:absolute;bottom:12px;left:12px;background:#0a1222c9;padding:8px 11px;border-radius:8px;pointer-events:none;font-size:12px}aside{background:#111b2d;padding:16px;overflow:auto;border-left:1px solid #26344b}label{display:flex;justify-content:space-between;margin:16px 0 6px}input{width:100%}button{padding:9px 12px;background:#273e5f;color:white;border:1px solid #4b6587;border-radius:8px;cursor:pointer}p{color:#acbad2;font-size:12px;line-height:1.6}@media(max-width:720px){main{grid-template-columns:1fr;grid-template-rows:minmax(250px,1fr) auto}aside{max-height:220px;border-left:0;border-top:1px solid #26344b;padding:10px 16px}label{margin:8px 0 3px}}</style></head><body><header><h1>Mandelbulb · 3D Viewer</h1><a href="../mandelbulb-slice/">2D slices</a></header><main><div id="scene"><canvas id="gl"></canvas><div id="info">Drag to rotate · wheel / pinch to zoom</div></div><aside><label>Power <output id="pout">8</output></label><input id="power" type="range" min="2" max="12" step="1" value="8"><label>Shape mode</label><select id="mode" style="width:100%;padding:9px;background:#243752;color:white;border-radius:8px"><option value="0">Mandelbulb</option><option value="1">Julia bulb</option><option value="2">Custom twist</option></select>
+<div id="shapeParams"><label>C x <output id="cxout">0.00</output></label><input id="cx" type="range" min="-1.5" max="1.5" step=".01" value="0"><label>C y <output id="cyout">0.00</output></label><input id="cy" type="range" min="-1.5" max="1.5" step=".01" value="0"><label>C z <output id="czout">0.00</output></label><input id="cz" type="range" min="-1.5" max="1.5" step=".01" value="0"><label>Twist <output id="twistout">1.00</output></label><input id="twist" type="range" min=".5" max="1.5" step=".05" value="1"></div>
+<label>Detail <output id="iout">12</output></label><input id="iterations" type="range" min="6" max="20" step="1" value="12"><label>Quality <output id="qout">0.8</output></label><input id="quality" type="range" min=".4" max="1.2" step=".1" value=".8"><label>Color <output id="cout">Copper</output></label><input id="palette" type="range" min="0" max="2" step="1" value="0"><p><button id="reset">Reset camera</button> <button id="spin">Auto rotate: off</button></p><p>GPU ray-marched 3D shapes. Julia mode uses fixed c and varying starting points. Custom twist modifies the azimuthal power; its distance estimator is approximate.</p></aside></main>
 <script>
 const canvas=document.getElementById('gl'),box=document.getElementById('scene'),info=document.getElementById('info');
 const gl=canvas.getContext('webgl2',{antialias:false,alpha:false,powerPreference:'high-performance'});
@@ -12,9 +14,9 @@ precision highp float;
 out vec4 fragColor;
 uniform vec2 resolution;
 uniform float power,azimuth,elevation,distanceCam;
-uniform int iterations,palette;
+uniform int iterations,palette,mode; uniform vec3 fixedC; uniform float twist;
 float bulb(vec3 c){
- vec3 z=c;float dr=1.;float r=0.;
+ vec3 z=mode==0?vec3(0.):c;vec3 parameter=mode==0?c:fixedC;float dr=1.;float r=0.;
  for(int i=0;i<20;i++){
   if(i>=iterations)break;
   r=length(z);if(r>4.)break;
@@ -23,8 +25,8 @@ float bulb(vec3 c){
   float rp=pow(r,power-1.);
   dr=power*rp*dr+1.;
   float zr=rp*r;
-  theta*=power;phi*=power;
-  z=zr*vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))+c;
+  theta*=power;phi*=power*(mode==2?twist:1.);
+  z=zr*vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))+parameter;
  }
  return 0.5*log(max(r,1.000001))*r/max(dr,0.000001);
 }
@@ -39,7 +41,7 @@ void main(){
   pos=eye+ray*t;
   float d=bulb(pos);
   if(d<.0007*max(1.,t*.35)){hit=true;break;}
-  t+=max(d*.78,.00025);
+  t+=max(d*(mode==2?.38:.72),.00015);
   if(t>distanceCam+3.)break;
  }
  vec3 bg=mix(vec3(.012,.025,.055),vec3(.06,.09,.15),clamp(uv.y+.5,0.,1.));
@@ -61,13 +63,13 @@ void main(){
 function shader(type,source){const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s}
 const prog=gl.createProgram();gl.attachShader(prog,shader(gl.VERTEX_SHADER,vs));gl.attachShader(prog,shader(gl.FRAGMENT_SHADER,fs));gl.linkProgram(prog);if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){info.textContent='Shader failed: '+gl.getProgramInfoLog(prog);throw Error(gl.getProgramInfoLog(prog))}
 gl.useProgram(prog);gl.bindVertexArray(gl.createVertexArray());
-const loc={};for(const name of ['resolution','power','azimuth','elevation','distanceCam','iterations','palette'])loc[name]=gl.getUniformLocation(prog,name);
+const loc={};for(const name of ['resolution','power','azimuth','elevation','distanceCam','iterations','palette','mode','fixedC','twist'])loc[name]=gl.getUniformLocation(prog,name);
 let az=.65,el=.35,dist=3.8,spin=false,raf=0,last=0;
-const power=document.getElementById('power'),iter=document.getElementById('iterations'),quality=document.getElementById('quality'),palette=document.getElementById('palette');
+const mode=document.getElementById('mode'),cx=document.getElementById('cx'),cy=document.getElementById('cy'),cz=document.getElementById('cz'),twist=document.getElementById('twist');const power=document.getElementById('power'),iter=document.getElementById('iterations'),quality=document.getElementById('quality'),palette=document.getElementById('palette');
 function render(){const r=box.getBoundingClientRect(),scale=Math.min(devicePixelRatio||1,1.5)*Number(quality.value);const w=Math.max(1,Math.floor(r.width*scale)),h=Math.max(1,Math.floor(r.height*scale));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h)}
- gl.uniform2f(loc.resolution,w,h);gl.uniform1f(loc.power,+power.value);gl.uniform1f(loc.azimuth,az);gl.uniform1f(loc.elevation,el);gl.uniform1f(loc.distanceCam,dist);gl.uniform1i(loc.iterations,+iter.value);gl.uniform1i(loc.palette,+palette.value);gl.drawArrays(gl.TRIANGLES,0,3)}
+ gl.uniform2f(loc.resolution,w,h);gl.uniform1f(loc.power,+power.value);gl.uniform1f(loc.azimuth,az);gl.uniform1f(loc.elevation,el);gl.uniform1f(loc.distanceCam,dist);gl.uniform1i(loc.iterations,+iter.value);gl.uniform1i(loc.palette,+palette.value);gl.uniform1i(loc.mode,+mode.value);gl.uniform3f(loc.fixedC,+cx.value,+cy.value,+cz.value);gl.uniform1f(loc.twist,+twist.value);gl.drawArrays(gl.TRIANGLES,0,3)}
 function request(){if(!raf)raf=requestAnimationFrame(t=>{raf=0;if(spin){az+=(t-last||16)*.00025;last=t}render();if(spin)request()})}
-[power,iter,quality,palette].forEach(e=>e.addEventListener('input',()=>{document.getElementById(e.id==='power'?'pout':e.id==='iterations'?'iout':e.id==='quality'?'qout':'cout').textContent=e===palette?['Copper','Ocean','Violet'][+e.value]:e.value;request()}));
+[mode,cx,cy,cz,twist].forEach(e=>e.addEventListener('input',()=>{for(const id of ['cx','cy','cz','twist'])document.getElementById(id+'out').textContent=(+document.getElementById(id).value).toFixed(2);document.getElementById('shapeParams').style.display=mode.value==='0'?'none':'block';twist.parentElement.querySelector('#twist').style.display=mode.value==='2'?'block':'none';request()}));document.getElementById('shapeParams').style.display='none';[power,iter,quality,palette].forEach(e=>e.addEventListener('input',()=>{document.getElementById(e.id==='power'?'pout':e.id==='iterations'?'iout':e.id==='quality'?'qout':'cout').textContent=e===palette?['Copper','Ocean','Violet'][+e.value]:e.value;request()}));
 const points=new Map();let prevPinch=0;
 canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);points.set(e.pointerId,[e.clientX,e.clientY])});
 canvas.addEventListener('pointermove',e=>{if(!points.has(e.pointerId))return;const old=points.get(e.pointerId);points.set(e.pointerId,[e.clientX,e.clientY]);if(points.size===1){az+=(e.clientX-old[0])*.009;el=Math.max(-1.48,Math.min(1.48,el+(e.clientY-old[1])*.009));request()}else if(points.size===2){const a=[...points.values()],d=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);if(prevPinch)dist=Math.max(1.7,Math.min(12,dist*prevPinch/d));prevPinch=d;request()}});
