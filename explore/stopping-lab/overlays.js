@@ -22,6 +22,7 @@ function draw(overlays=!cfg.clean){
     ctx.restore();
   }
   if(four){ ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(Wd/2-DPR/2,0,DPR,Hd); ctx.fillRect(0,Hd/2-DPR/2,Wd,DPR); }
+  if(!four && typeof vectorOverlay!=='undefined' && vectorOverlay.enabled) vectorOverlay.draw();
   tagBoxes=[]; labelBox=null;
   if(!overlays) return;
   ctx.save(); ctx.scale(DPR,DPR);
