@@ -6,7 +6,9 @@
 let needDraw=true;
 const frameFallback=document.createElement('canvas');
 const frameFallbackCtx=frameFallback.getContext('2d');
-let fallbackJob=-1, fallbackPass=-1, hasFallback=false;
+let hasFallback=false;
+// Keep a full-viewport raster of the last composited map, excluding UI overlays.
+// During expensive re-renders this fills areas outside reprojected tile bounds.
 function blit(L,k){
   const img=L.imgs[k]; if(!img) return;
   const [sx,sy]=toScreen(L.cx,L.cy), s=L.sx/(view.w/Wd);
@@ -18,7 +20,10 @@ function draw(overlays=!cfg.clean){
   if(hasFallback && frameFallback.width===Wd && frameFallback.height===Hd)
     ctx.drawImage(frameFallback,0,0);
   ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
-  const four=cmp(), n=four?4:1, under=home && (!base || view.w>base.w*0.6);
+  const four=cmp(), n=four?4:1;
+  // Never draw a finite, unrelated home tile on top of the cached viewport:
+  // its rectangular edges were visible as orange strips during deep zooms.
+  const under=home && !hasFallback && !base;
   for(let k=0;k<n;k++){
     ctx.save();
     if(four){ const ox=(k&1)*Wd/2, oy=(k>>1)*Hd/2; ctx.beginPath(); ctx.rect(ox,oy,Wd/2,Hd/2); ctx.clip(); ctx.translate(ox,oy); ctx.scale(.5,.5); }
@@ -26,14 +31,13 @@ function draw(overlays=!cfg.clean){
     if(base) blit(base,k);
     ctx.restore();
   }
-  if(base && (base.job!==fallbackJob || base.pass!==fallbackPass)){
-    if(frameFallback.width!==Wd || frameFallback.height!==Hd){
-      frameFallback.width=Wd;frameFallback.height=Hd;
-    }
-    frameFallbackCtx.clearRect(0,0,Wd,Hd);
-    frameFallbackCtx.drawImage(cv,0,0);
-    fallbackJob=base.job;fallbackPass=base.pass;hasFallback=true;
+  // Capture the complete composited map every draw (not only on pass changes).
+  // Do this before annotations so old compass/labels never ghost during motion.
+  if(frameFallback.width!==Wd || frameFallback.height!==Hd){
+    frameFallback.width=Wd; frameFallback.height=Hd; hasFallback=false;
   }
+  frameFallbackCtx.drawImage(cv,0,0);
+  hasFallback=true;
   if(four){ ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(Wd/2-DPR/2,0,DPR,Hd); ctx.fillRect(0,Hd/2-DPR/2,Wd,DPR); }
   if(!four && typeof vectorOverlay!=='undefined' && vectorOverlay.enabled) vectorOverlay.draw();
   tagBoxes=[]; labelBox=null;
