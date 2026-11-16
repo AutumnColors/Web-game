@@ -1,10 +1,10 @@
-/* Shared lightweight site chrome. Safe for standalone canvases and fullscreen labs. */
+/* Shared page footer in normal document flow, with clean-view support. */
 (()=>{'use strict';
 if(document.getElementById('site-common-chrome'))return;
 const root=document.createElement('div');root.id='site-common-chrome';
 const style=document.createElement('style');style.textContent=`
-#site-common-chrome{position:fixed;inset:0;pointer-events:none;z-index:2147483000;font:12px system-ui,-apple-system,sans-serif;color:#e8f1ff}
-#site-common-chrome .site-bottom{position:absolute;bottom:calc(8px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:9px;padding:3px 7px 3px 3px;border:1px solid #ffffff24;border-radius:999px;background:#101927b8;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);white-space:nowrap;max-width:calc(100vw - 140px)}\n#site-common-chrome a{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid #ffffff36;border-radius:999px;background:#101927b8;color:#edf5ff;text-decoration:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 2px 9px #0003}
+#site-common-chrome{position:relative;display:block;clear:both;width:100%;box-sizing:border-box;pointer-events:auto;z-index:1;font:12px system-ui,-apple-system,sans-serif;color:#e8f1ff}
+#site-common-chrome .site-bottom{position:relative;display:flex;justify-content:center;align-items:center;gap:9px;margin:0 auto;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid #ffffff24;background:#101927;box-sizing:border-box;min-width:0;flex-wrap:wrap}\n#site-common-chrome a{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid #ffffff36;border-radius:999px;background:#101927b8;color:#edf5ff;text-decoration:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 2px 9px #0003}
 #site-common-chrome .site-home{display:inline-flex;position:static}
 #site-common-chrome .site-credit{position:static;padding:0;background:none;color:#dce6f4;font-size:11px;letter-spacing:.02em;white-space:nowrap}
 body.clean #site-common-chrome,html.clean #site-common-chrome,body.clean-view #site-common-chrome,html.clean-view #site-common-chrome,body.presentation #site-common-chrome,body.hide-ui #site-common-chrome,body.no-ui #site-common-chrome,body:fullscreen #site-common-chrome,html:fullscreen #site-common-chrome{display:none!important}
