@@ -10,17 +10,17 @@
     },
     {
       "path": "explore/fractal-lab/",
-      "title": "Fractal Universe Lab",
+      "title": "Fractal Universe Lab (Legacy)",
       "category": "Explore",
       "date": "2026-11-16T00:13:05+07:00",
-      "update": "Remove retired Julia experiment launch buttons from Fractal Lab"
+      "update": "Original viewer retained for comparison; retired Julia shortcuts disabled"
     },
     {
       "path": "explore/stopping-lab/",
-      "title": "Fractal Stopping Lab",
+      "title": "Fractal Universe Lab",
       "category": "Explore",
       "date": "2026-11-15T22:49:23+07:00",
-      "update": "Mask nonconvergent parameter Böttcher inverse pixels"
+      "update": "Promoted fork: stopping modes, coordinate systems and Böttcher mapping"
     },
     {
       "path": "explore/bottcher-lab/",
