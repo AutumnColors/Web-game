@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-16T05:11:52.861319+00:00",
+  "generatedAt": "2026-11-16T05:18:04.496532+00:00",
   "apps": [
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-16T12:11:46+07:00",
-      "update": "Disable quadratic-only Böttcher coordinates for generalized Julia exponents"
+      "date": "2026-11-16T12:17:58+07:00",
+      "update": "Add intuitive Julia c seed picker with named presets, real and imaginary selectors, and powers of i"
     },
     {
       "path": "explore/fractal-lab/",
