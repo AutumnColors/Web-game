@@ -108,13 +108,11 @@ ex('exportMp4').onclick=async()=>{
   if(!support.supported)throw Error('H.264 encoding is unavailable on this device');
   const target=new ArrayBufferTarget();
   const muxer=new Muxer({target,video:{codec:'avc',width:size,height:size,frameRate:10},fastStart:'in-memory'});
-  encoder=new VideoEncoder({output:(chunk,meta)=>muxer.addVideoChunk(chunk,meta),error:e=>{throw e}});
+  encoder=new VideoEncoder({output:(chunk,meta)=>muxer.addVideoChunk(chunk,meta||{}),error:e=>{throw e}});
   encoder.configure(config);
   mode.value='1';
   const buffer=new Uint8Array(size*size*4);
-  const frameCanvas=document.createElement('canvas');frameCanvas.width=frameCanvas.height=size;
-  const frameCtx=frameCanvas.getContext('2d',{willReadFrequently:true});
-  const img=frameCtx.createImageData(size,size);
+  const img={data:new Uint8ClampedArray(size*size*4)};
   for(let i=0;i<count;i++){
    if(cancelRequested)throw Error('Export cancelled');
    const v=start.slice();v[{x:0,y:1,z:2}[axis]]=start[{x:0,y:1,z:2}[axis]]+(end-start[{x:0,y:1,z:2}[axis]])*i/(count-1);
@@ -124,8 +122,7 @@ ex('exportMp4').onclick=async()=>{
    gl.readPixels(0,0,size,size,gl.RGBA,gl.UNSIGNED_BYTE,buffer);
    // WebGL pixels are bottom-up; flip rows without scaling.
    for(let y=0;y<size;y++)img.data.set(buffer.subarray((size-1-y)*size*4,(size-y)*size*4),y*size*4);
-   frameCtx.putImageData(img,0,0);
-   const frame=new VideoFrame(frameCanvas,{timestamp:i*100000});
+   const frame=new VideoFrame(new Uint8Array(img.data),{format:'RGBA',codedWidth:size,codedHeight:size,timestamp:i*100000,colorSpace:{primaries:'bt709',transfer:'iec61966-2-1',matrix:'rgb',fullRange:true}});
    encoder.encode(frame,{keyFrame:i%20===0});frame.close();
    if(encoder.encodeQueueSize>3)await encoder.flush();
    ex('exportStatus').textContent='Rendering frame '+(i+1)+' / '+count+' · '+axis.toUpperCase()+' '+v[{x:0,y:1,z:2}[axis]].toFixed(3);
@@ -136,7 +133,7 @@ ex('exportMp4').onclick=async()=>{
   a.href=url;a.download='mandelbulb-'+axis+'-sweep-'+count+'frames.mp4';document.body.append(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),60000);
   ex('exportStatus').textContent='MP4 ready · '+count+' frames · '+size+' × '+size+' · '+(blob.size/1048576).toFixed(1)+' MB';
- }catch(e){ex('exportStatus').textContent='Export failed: '+(e.message||e)}
+ }catch(e){ex('exportStatus').textContent='Export failed: '+(e.stack||e.message||e)}
  finally{
   if(encoder){try{encoder.close()}catch(e){}}
   mode.value=saved.mode;cx.value=saved.x;cy.value=saved.y;cz.value=saved.z;spin=saved.spin;
