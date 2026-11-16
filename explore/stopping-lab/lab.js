@@ -238,7 +238,34 @@ $('contourLevels').oninput=()=>{draft.contourLevels=+$('contourLevels').value;sy
 $('contourOpacity').oninput=()=>{draft.contourOpacity=+$('contourOpacity').value;syncContourSettings(draft);};
 $('contourColor').onchange=()=>{draft.contourColor=$('contourColor').value;syncContourSettings(draft);};
 syncContourSettings(draft);
-SEEDS.forEach(([name,re,im])=>{ const b=document.createElement('button'); b.type='button'; b.textContent=name; b.onclick=()=>{ draft.seed={re,im}; $('cin').value=cText(re,im,15).replace(/−/g,'-'); $('cin').classList.remove('bad'); thumbs(); }; $('seeds').append(b); });
+const SEED_VALUES=[-2,-1.5,-1,-0.75,-0.5,-0.25,0,0.25,0.5,0.75,1,1.5,2,Math.PI,Math.E];
+const SEED_QUICK=[['0',0,0],['1',1,0],['−1',-1,0],['i',0,1],['−i',0,-1],['i²',-1,0],['i³',0,-1],['1+i',1,1],['1−i',1,-1],['−1+i',-1,1],['−1−i',-1,-1],['½i',0,.5],['−½i',0,-.5],['π',Math.PI,0],['e',Math.E,0]];
+let seedTab='known';
+function setSeedTab(tab){
+  seedTab=tab; $('seedKnownPanel').hidden=tab!=='known';$('seedNumbersPanel').hidden=tab!=='numbers';
+  $('seedKnown').classList.toggle('on',tab==='known');$('seedNumbers').classList.toggle('on',tab==='numbers');
+}
+$('seedKnown').onclick=()=>setSeedTab('known');
+$('seedNumbers').onclick=()=>setSeedTab('numbers');
+function syncSeedPicker(){
+  const c=draft.seed;
+  $('seedCurrent').textContent='c = '+cText(c.re,c.im,10)+' · fixed parameter; each pixel is an initial z₀';
+  for(const [id,value] of [['seedReal',c.re],['seedImag',c.im]]){
+    const el=$(id),key=String(value);
+    if(![...el.options].some(o=>o.value===key)){const o=document.createElement('option');o.value=key;o.textContent=key+' (custom)';el.append(o);}
+    el.value=key;
+  }
+}
+function chooseSeed(re,im){
+  draft.seed={re,im};$('cin').value=cText(re,im,15).replace(/−/g,'-');
+  $('cin').classList.remove('bad');syncSeedPicker();thumbs();
+}
+for(const id of ['seedReal','seedImag']){
+  const sel=$(id);for(const v of SEED_VALUES){const o=document.createElement('option');o.value=String(v);o.textContent=v===Math.PI?'π':v===Math.E?'e':String(v);sel.append(o);}
+  sel.onchange=()=>chooseSeed(+$('seedReal').value,+$('seedImag').value);
+}
+SEED_QUICK.forEach(([name,re,im])=>{const b=document.createElement('button');b.type='button';b.textContent=name;b.onclick=()=>chooseSeed(re,im);$('seedQuick').append(b);});
+SEEDS.forEach(([name,re,im])=>{ const b=document.createElement('button'); b.type='button'; b.textContent=name; b.onclick=()=>{ chooseSeed(re,im); }; $('seeds').append(b); });
 function parseC(s){ // "−0.8 + 0.156i", "-0.8, 0.156", "i", "-0.5i", "0.25"
   s=String(s).trim().replace(/[−–—]/g,'-').replace(/^c\s*=\s*/i,'').replace(/\*/g,'').replace(/j/gi,'i');
   const n='(?:\\d+\\.?\\d*|\\.\\d+)(?:e[+-]?\\d+)?', ok=(a,b)=>isFinite(a)&&isFinite(b)&&Math.hypot(a,b)<=10?{re:a,im:b}:null;
@@ -249,8 +276,8 @@ function parseC(s){ // "−0.8 + 0.156i", "-0.8, 0.156", "i", "-0.5i", "0.25"
   m=s.match(new RegExp('^([+-]?)('+n+')?i$','i')); if(m) return ok(0,(m[1]==='-'?-1:1)*(m[2]===undefined?1:+m[2]));
   return null;
 }
-$('cin').addEventListener('input',()=>{ const c=parseC($('cin').value); $('cin').classList.toggle('bad',!c); if(c){ draft.seed=c; thumbs(); } });
-function syncCfg(){ $('radiusCustom').value=draft.radius; syncCoordPickers();
+$('cin').addEventListener('input',()=>{ const c=parseC($('cin').value); $('cin').classList.toggle('bad',!c); if(c){ draft.seed=c; syncSeedPicker(); thumbs(); } });
+function syncCfg(){ syncSeedPicker(); $('radiusCustom').value=draft.radius; syncCoordPickers();
   syncGroups($('cfg')); $('gClean').classList.toggle('on',draft.clean);
   $('pJulia').classList.toggle('on',draft.fractal==='julia'); $('juliaPowerNote').textContent=Number.isInteger(draft.juliaPower)&&draft.juliaPower>=2?'Polynomial Julia set (degree '+draft.juliaPower+').':Number.isInteger(draft.juliaPower)&&draft.juliaPower<0?'Rational map with a pole at zero. First-threshold stopping is an experiment, not a reliable Julia membership test.':'Principal-branch complex power; cut on the negative real axis. First-threshold stopping is a finite-orbit diagnostic, not a classical polynomial Julia set.'; $('pMulti').classList.toggle('on',draft.fractal==='multibrot');
   const g=$('palPrev').getContext('2d'), lut=PALETTES[draft.palette].cyc, img=g.createImageData(600,1), o=new Uint32Array(img.data.buffer);
