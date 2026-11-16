@@ -1,27 +1,6 @@
 {
-  "generatedAt": "2026-11-16T13:44:25.494062+00:00",
+  "generatedAt": "2026-11-16T13:44:35.379710+00:00",
   "apps": [
-    {
-      "path": "legacy/dual-reconstruction-lab/",
-      "title": "Fractal Universe Lab ∥ Dual Reconstruction",
-      "category": "Legacy",
-      "date": "2026-11-16T20:44:16+07:00",
-      "update": "Archive three superseded fractal experiments under legacy"
-    },
-    {
-      "path": "legacy/fractal-atlas-terrain/",
-      "title": "Fractal Geography · Atlas",
-      "category": "Legacy",
-      "date": "2026-11-16T20:44:16+07:00",
-      "update": "Archive three superseded fractal experiments under legacy"
-    },
-    {
-      "path": "legacy/fractal-geography/",
-      "title": "Fractal Geography · Atlas",
-      "category": "Legacy",
-      "date": "2026-11-16T20:44:16+07:00",
-      "update": "Archive three superseded fractal experiments under legacy"
-    },
     {
       "path": "explore/fractal-atlas/",
       "title": "Fractal Atlas · Universal Lab",
