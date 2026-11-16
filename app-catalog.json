@@ -1,19 +1,26 @@
 {
-  "generatedAt": "2026-11-16T14:20:16.800664+00:00",
+  "generatedAt": "2026-11-16T14:23:18.045956+00:00",
   "apps": [
+    {
+      "path": "explore/fractal-atlas/terrain.html",
+      "title": "Fractal Geography · Atlas",
+      "category": "Fractal Atlas",
+      "date": "2026-11-16T21:23:09+07:00",
+      "update": "Restore active Fractal Atlas 3D terrain renderer removed during legacy archive"
+    },
+    {
+      "path": "explore/fractal-atlas/",
+      "title": "Fractal Atlas · Universal Lab",
+      "category": "Explore",
+      "date": "2026-11-16T21:23:09+07:00",
+      "update": "Restore active Fractal Atlas 3D terrain renderer removed during legacy archive"
+    },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
       "date": "2026-11-16T21:20:09+07:00",
       "update": "Prevent exposed cached tile edges during deep fractal navigation"
-    },
-    {
-      "path": "explore/fractal-atlas/",
-      "title": "Fractal Atlas · Universal Lab",
-      "category": "Explore",
-      "date": "2026-11-16T20:44:16+07:00",
-      "update": "Archive three superseded fractal experiments under legacy"
     },
     {
       "path": "explore/mandelbulb-3d/",
