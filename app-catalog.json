@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-16T10:44:10.241496+00:00",
+  "generatedAt": "2026-11-16T10:49:08.566032+00:00",
   "apps": [
     {
       "path": "explore/fractal-geography/",
       "title": "Fractal Geography · Atlas",
       "category": "Explore",
-      "date": "2026-11-16T17:44:03+07:00",
-      "update": "Use lazy 2D fractal browser and generate terrain on demand"
+      "date": "2026-11-16T17:49:00+07:00",
+      "update": "Fix Three.js module resolution and mobile geography layout"
     },
     {
       "path": "explore/dual-reconstruction-lab/",
