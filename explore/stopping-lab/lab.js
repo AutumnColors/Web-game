@@ -171,15 +171,6 @@ $('coordPickerQuick').onchange=e=>{
   syncCoordPickers();updateChip();dirty=true;needDraw=true;closePop();writeHash();
 };
 
-$('qDoubling').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='doubling-test.html?'+q.toString();};
-$('qGeometry').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='geometry-discovery.html?'+q.toString();};
-$('qWave').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='wave-aligned.html?'+q.toString();};
-$('qSurface').onclick=()=>{
-  if(cfg.fractal!=='julia'){toast('Select a Julia set first to open the 3D surface.',2800);return;}
-  const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});
-  location.href='surface.html?'+q.toString();
-};
-
 function setPalette(p){ cfg.palette=p; repaint(); syncQuick(); writeHash(); }
 function setClean(on){ cfg.clean=on; document.body.classList.toggle('clean',on); closePop(); if(on){ closeSec(); setSecTool(false); toast('Clean view. Press and hold the map to bring the tools back.',3200); } needDraw=true; syncQuick(); writeHash(); }
 function updateChip(){ $('chipT').textContent=eng.name+' · '+eng.rule; $('chipS').textContent=(cfg.bottcher?'BÖTTCHER · ':cfg.polar?(cfg.logPolar?'LOG-POLAR · ':'POLAR · '):'')+modeOf(cfg.mode).t+(cfg.fractal==='julia'?' · c = '+cText(cfg.seed.re,cfg.seed.im,6):''); }
