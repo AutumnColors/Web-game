@@ -21,7 +21,7 @@ jobs:
           python3 - <<'PY'
           import json, re, subprocess, pathlib, datetime, html
           root=pathlib.Path('.')
-          skip={'.git','.github','node_modules','vendor','dist','build','coverage','__pycache__','.next'}
+          skip={'.git','.github','node_modules','vendor','dist','build','coverage','__pycache__','.next','legacy'}
           def allowed(p):
               return not any(part in skip or part.startswith('.') for part in p.parts)
           def git(*args):
