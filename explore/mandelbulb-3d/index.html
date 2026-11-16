@@ -1,7 +1,16 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mandelbulb 3D</title><style>
 *{box-sizing:border-box}body{margin:0;background:#080d18;color:#eef3ff;font:14px system-ui,sans-serif}header{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #26344b}h1{font-size:18px;margin:0}a{color:#9dc9ff}main{height:calc(100dvh - 56px);display:grid;grid-template-columns:minmax(0,1fr) 245px}#scene{position:relative;min-height:300px;touch-action:none;overflow:hidden}canvas{width:100%;height:100%;display:block;touch-action:none}#info{position:absolute;bottom:12px;left:12px;background:#0a1222c9;padding:8px 11px;border-radius:8px;pointer-events:none;font-size:12px}aside{background:#111b2d;padding:16px;overflow:auto;border-left:1px solid #26344b}label{display:flex;justify-content:space-between;margin:16px 0 6px}input{width:100%}button{padding:9px 12px;background:#273e5f;color:white;border:1px solid #4b6587;border-radius:8px;cursor:pointer}p{color:#acbad2;font-size:12px;line-height:1.6}@media(max-width:720px){main{grid-template-columns:1fr;grid-template-rows:minmax(250px,1fr) auto}aside{max-height:220px;border-left:0;border-top:1px solid #26344b;padding:10px 16px}label{margin:8px 0 3px}}</style></head><body><header><h1>Mandelbulb · 3D Viewer</h1><a href="../mandelbulb-slice/">2D slices</a></header><main><div id="scene"><canvas id="gl"></canvas><div id="info">Drag to rotate · wheel / pinch to zoom</div></div><aside><label>Power <output id="pout">8</output></label><input id="power" type="range" min="2" max="12" step="1" value="8"><label>Shape mode</label><select id="mode" style="width:100%;padding:9px;background:#243752;color:white;border-radius:8px"><option value="0">Mandelbulb</option><option value="1">Julia bulb</option><option value="2">Custom twist</option></select>
 <div id="shapeParams"><label>C x <output id="cxout">0.00</output></label><input id="cx" type="range" min="-1.5" max="1.5" step=".01" value="0"><label>C y <output id="cyout">0.00</output></label><input id="cy" type="range" min="-1.5" max="1.5" step=".01" value="0"><label>C z <output id="czout">0.00</output></label><input id="cz" type="range" min="-1.5" max="1.5" step=".01" value="0"><label>Twist <output id="twistout">1.00</output></label><input id="twist" type="range" min=".5" max="1.5" step=".05" value="1"></div>
-<label>Detail <output id="iout">12</output></label><input id="iterations" type="range" min="6" max="20" step="1" value="12"><label>Quality <output id="qout">0.8</output></label><input id="quality" type="range" min=".4" max="1.2" step=".1" value=".8"><label>Color <output id="cout">Copper</output></label><input id="palette" type="range" min="0" max="2" step="1" value="0"><p><button id="reset">Reset camera</button> <button id="spin">Auto rotate: off</button></p><p>GPU ray-marched 3D shapes. Julia mode uses fixed c and varying starting points. Custom twist modifies the azimuthal power; its distance estimator is approximate.</p></aside></main>
+<label>Detail <output id="iout">12</output></label><input id="iterations" type="range" min="6" max="20" step="1" value="12"><label>Quality <output id="qout">0.8</output></label><input id="quality" type="range" min=".4" max="1.2" step=".1" value=".8"><label>Color <output id="cout">Copper</output></label><input id="palette" type="range" min="0" max="2" step="1" value="0"><p><button id="reset">Reset camera</button> <button id="spin">Auto rotate: off</button></p><p>GPU ray-marched 3D shapes. Julia mode uses fixed c and varying starting points. Custom twist modifies the azimuthal power; its distance estimator is approximate.</p><hr style="border:0;border-top:1px solid #33445e;margin:18px 0"><h3 style="margin:8px 0">Export animation · MP4</h3><p>Uses this exact viewer shader and current camera. One still image per step, then MP4 encoding.</p>
+<label>Start X <input id="startX" type="number" step=".01" value="-.03" style="width:90px"></label>
+<label>Start Y <input id="startY" type="number" step=".01" value="0" style="width:90px"></label>
+<label>Start Z <input id="startZ" type="number" step=".01" value="-.98" style="width:90px"></label>
+<label>Animate axis <select id="axis"><option value="z">Z</option><option value="x">X</option><option value="y">Y</option></select></label>
+<label>End axis value <input id="endValue" type="number" step=".01" value=".73" style="width:90px"></label>
+<label>Frames <input id="frameCount" type="number" min="2" max="300" step="1" value="50" style="width:90px"></label>
+<label>Square resolution <select id="exportSize"><option value="512">512 × 512</option><option value="768" selected>768 × 768</option><option value="1024">1024 × 1024</option></select></label>
+<p><button id="exportMp4">Render & export MP4</button> <button id="cancelExport" disabled>Cancel</button></p>
+<p id="exportStatus" role="status">Ready · 50 frames · Z −0.98 → +0.73</p></aside></main>
 <script>
 const canvas=document.getElementById('gl'),box=document.getElementById('scene'),info=document.getElementById('info');
 const gl=canvas.getContext('webgl2',{antialias:false,alpha:false,powerPreference:'high-performance'});
@@ -66,7 +75,7 @@ gl.useProgram(prog);gl.bindVertexArray(gl.createVertexArray());
 const loc={};for(const name of ['resolution','power','azimuth','elevation','distanceCam','iterations','palette','mode','fixedC','twist'])loc[name]=gl.getUniformLocation(prog,name);
 let az=.65,el=.35,dist=3.8,spin=false,raf=0,last=0;
 const mode=document.getElementById('mode'),cx=document.getElementById('cx'),cy=document.getElementById('cy'),cz=document.getElementById('cz'),twist=document.getElementById('twist');const power=document.getElementById('power'),iter=document.getElementById('iterations'),quality=document.getElementById('quality'),palette=document.getElementById('palette');
-function render(){const r=box.getBoundingClientRect(),scale=Math.min(devicePixelRatio||1,1.5)*Number(quality.value);const w=Math.max(1,Math.floor(r.width*scale)),h=Math.max(1,Math.floor(r.height*scale));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h)}
+function render(forcedSize=0){const r=box.getBoundingClientRect(),scale=Math.min(devicePixelRatio||1,1.5)*Number(quality.value);const w=forcedSize||Math.max(1,Math.floor(r.width*scale)),h=forcedSize||Math.max(1,Math.floor(r.height*scale));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h)}
  gl.uniform2f(loc.resolution,w,h);gl.uniform1f(loc.power,+power.value);gl.uniform1f(loc.azimuth,az);gl.uniform1f(loc.elevation,el);gl.uniform1f(loc.distanceCam,dist);gl.uniform1i(loc.iterations,+iter.value);gl.uniform1i(loc.palette,+palette.value);gl.uniform1i(loc.mode,+mode.value);gl.uniform3f(loc.fixedC,+cx.value,+cy.value,+cz.value);gl.uniform1f(loc.twist,+twist.value);gl.drawArrays(gl.TRIANGLES,0,3)}
 function request(){if(!raf)raf=requestAnimationFrame(t=>{raf=0;if(spin){az+=(t-last||16)*.00025;last=t}render();if(spin)request()})}
 [mode,cx,cy,cz,twist].forEach(e=>e.addEventListener('input',()=>{for(const id of ['cx','cy','cz','twist'])document.getElementById(id+'out').textContent=(+document.getElementById(id).value).toFixed(2);document.getElementById('shapeParams').style.display=mode.value==='0'?'none':'block';twist.parentElement.querySelector('#twist').style.display=mode.value==='2'?'block':'none';request()}));document.getElementById('shapeParams').style.display='none';[power,iter,quality,palette].forEach(e=>e.addEventListener('input',()=>{document.getElementById(e.id==='power'?'pout':e.id==='iterations'?'iout':e.id==='quality'?'qout':'cout').textContent=e===palette?['Copper','Ocean','Violet'][+e.value]:e.value;request()}));
@@ -78,4 +87,61 @@ canvas.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(1.7,Math.mi
 document.getElementById('reset').onclick=()=>{az=.65;el=.35;dist=3.8;request()};
 document.getElementById('spin').onclick=e=>{spin=!spin;e.target.textContent='Auto rotate: '+(spin?'on':'off');last=0;request()};
 new ResizeObserver(request).observe(box);request();
+let exporting=false,cancelRequested=false;
+const ex=id=>document.getElementById(id);
+ex('cancelExport').onclick=()=>{cancelRequested=true;ex('exportStatus').textContent='Cancelling after current frame…'};
+ex('exportMp4').onclick=async()=>{
+ if(exporting)return;
+ if(!('VideoEncoder' in window)||!('VideoFrame' in window)){ex('exportStatus').textContent='MP4 export requires a browser with WebCodecs (recent Chrome/Edge).';return}
+ const count=Math.min(300,Math.max(2,Math.floor(+ex('frameCount').value||50))),size=+ex('exportSize').value,axis=ex('axis').value,end=+ex('endValue').value;
+ const start=[+ex('startX').value,+ex('startY').value,+ex('startZ').value];
+ if(!start.every(Number.isFinite)||!Number.isFinite(end)){ex('exportStatus').textContent='Enter valid finite coordinates.';return}
+ exporting=true;cancelRequested=false;ex('exportMp4').disabled=true;ex('cancelExport').disabled=false;
+ const saved={mode:mode.value,x:cx.value,y:cy.value,z:cz.value,spin};
+ spin=false;
+ let encoder;
+ try{
+  const {Muxer,ArrayBufferTarget}=await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/+esm');
+  const codec='avc1.42001f';
+  const config={codec,width:size,height:size,bitrate:4000000,framerate:10,latencyMode:'quality',avc:{format:'avc'}};
+  const support=await VideoEncoder.isConfigSupported(config);
+  if(!support.supported)throw Error('H.264 encoding is unavailable on this device');
+  const target=new ArrayBufferTarget();
+  const muxer=new Muxer({target,video:{codec:'avc',width:size,height:size,frameRate:10},fastStart:'in-memory'});
+  encoder=new VideoEncoder({output:(chunk,meta)=>muxer.addVideoChunk(chunk,meta),error:e=>{throw e}});
+  encoder.configure(config);
+  mode.value='1';
+  const buffer=new Uint8Array(size*size*4);
+  const frameCanvas=document.createElement('canvas');frameCanvas.width=frameCanvas.height=size;
+  const frameCtx=frameCanvas.getContext('2d',{willReadFrequently:true});
+  const img=frameCtx.createImageData(size,size);
+  for(let i=0;i<count;i++){
+   if(cancelRequested)throw Error('Export cancelled');
+   const v=start.slice();v[{x:0,y:1,z:2}[axis]]=start[{x:0,y:1,z:2}[axis]]+(end-start[{x:0,y:1,z:2}[axis]])*i/(count-1);
+   [cx.value,cy.value,cz.value]=v.map(String);
+   // Use the same WebGL program and ray-marching shader as the interactive viewer.
+   render(size);gl.finish();
+   gl.readPixels(0,0,size,size,gl.RGBA,gl.UNSIGNED_BYTE,buffer);
+   // WebGL pixels are bottom-up; flip rows without scaling.
+   for(let y=0;y<size;y++)img.data.set(buffer.subarray((size-1-y)*size*4,(size-y)*size*4),y*size*4);
+   frameCtx.putImageData(img,0,0);
+   const frame=new VideoFrame(frameCanvas,{timestamp:i*100000});
+   encoder.encode(frame,{keyFrame:i%20===0});frame.close();
+   if(encoder.encodeQueueSize>3)await encoder.flush();
+   ex('exportStatus').textContent='Rendering frame '+(i+1)+' / '+count+' · '+axis.toUpperCase()+' '+v[{x:0,y:1,z:2}[axis]].toFixed(3);
+   await new Promise(resolve=>setTimeout(resolve,0));
+  }
+  await encoder.flush();encoder.close();encoder=null;muxer.finalize();
+  const blob=new Blob([target.buffer],{type:'video/mp4'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='mandelbulb-'+axis+'-sweep-'+count+'frames.mp4';document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  ex('exportStatus').textContent='MP4 ready · '+count+' frames · '+size+' × '+size+' · '+(blob.size/1048576).toFixed(1)+' MB';
+ }catch(e){ex('exportStatus').textContent='Export failed: '+(e.message||e)}
+ finally{
+  if(encoder){try{encoder.close()}catch(e){}}
+  mode.value=saved.mode;cx.value=saved.x;cy.value=saved.y;cz.value=saved.z;spin=saved.spin;
+  for(const id of ['cx','cy','cz'])ex(id+'out').textContent=(+ex(id).value).toFixed(2);
+  exporting=false;ex('exportMp4').disabled=false;ex('cancelExport').disabled=true;request();
+ }
+};
 </script></body></html>
