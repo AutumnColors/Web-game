@@ -4,6 +4,9 @@
 
 /* ---------- drawing ---------- */
 let needDraw=true;
+const frameFallback=document.createElement('canvas');
+const frameFallbackCtx=frameFallback.getContext('2d');
+let fallbackJob=-1, fallbackPass=-1, hasFallback=false;
 function blit(L,k){
   const img=L.imgs[k]; if(!img) return;
   const [sx,sy]=toScreen(L.cx,L.cy), s=L.sx/(view.w/Wd);
@@ -12,6 +15,8 @@ function blit(L,k){
 function draw(overlays=!cfg.clean){
   needDraw=false;
   ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#000'; ctx.fillRect(0,0,Wd,Hd);
+  if(hasFallback && frameFallback.width===Wd && frameFallback.height===Hd)
+    ctx.drawImage(frameFallback,0,0);
   ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
   const four=cmp(), n=four?4:1, under=home && (!base || view.w>base.w*0.6);
   for(let k=0;k<n;k++){
@@ -20,6 +25,14 @@ function draw(overlays=!cfg.clean){
     if(under) blit(home,k);
     if(base) blit(base,k);
     ctx.restore();
+  }
+  if(base && (base.job!==fallbackJob || base.pass!==fallbackPass)){
+    if(frameFallback.width!==Wd || frameFallback.height!==Hd){
+      frameFallback.width=Wd;frameFallback.height=Hd;
+    }
+    frameFallbackCtx.clearRect(0,0,Wd,Hd);
+    frameFallbackCtx.drawImage(cv,0,0);
+    fallbackJob=base.job;fallbackPass=base.pass;hasFallback=true;
   }
   if(four){ ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(Wd/2-DPR/2,0,DPR,Hd); ctx.fillRect(0,Hd/2-DPR/2,Wd,DPR); }
   if(!four && typeof vectorOverlay!=='undefined' && vectorOverlay.enabled) vectorOverlay.draw();
