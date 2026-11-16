@@ -105,5 +105,5 @@ async function render(){
 document.getElementById('reset').addEventListener('click',()=>{if(!confirm('Reset all progress?'))return;try{localStorage.removeItem(GameKit.key)}catch{}render()});
 window.addEventListener('pageshow',render);render();
 </script>
-<footer style="text-align:center;padding:22px"><a href="legacy/" style="color:#91baff">Legacy experiments archive</a></footer></body>
+<footer style="text-align:center;padding:22px"><a href="legacy/" style="color:#91baff">Legacy experiments archive</a></footer><script src="site-chrome.js" defer></script></body>
 </html>
