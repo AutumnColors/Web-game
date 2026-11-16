@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-16T06:42:40.956004+00:00",
+  "generatedAt": "2026-11-16T06:45:06.699353+00:00",
   "apps": [
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-16T13:42:34+07:00",
-      "update": "Wire opt-in vector overlay into viewer"
+      "date": "2026-11-16T13:45:00+07:00",
+      "update": "Compute orbit sensitivity derivatives when vector overlay needs them"
     },
     {
       "path": "explore/fractal-lab/",
