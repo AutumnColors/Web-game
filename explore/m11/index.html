@@ -115,4 +115,4 @@ document.getElementById('bm').onclick=()=>{if(busy)return;const a=[...Array(11).
 document.getElementById('bs').onclick=()=>{if(busy)return;const p=[...Array(11).keys()];for(let i=10;i>0;i--){const j=Math.floor(Math.random()*(i+1));[p[i],p[j]]=[p[j],p[i]];}tgt=[];run(p,'s');};
 document.getElementById('br').onclick=()=>{if(busy)return;pos=[...Array(11).keys()];xy=pos.map(s=>XY(s));clearSel();mt.textContent='66 / 66';setStatus('Tap any 4 dots.');draw();};
 draw();
-</script></body></html>
+</script><script src="../../site-chrome.js" defer></script></body></html>
