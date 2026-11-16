@@ -1,6 +1,48 @@
 {
-  "generatedAt": "2026-11-16T16:33:33.111326+00:00",
+  "generatedAt": "2026-11-16T16:34:04.111217+00:00",
   "apps": [
+    {
+      "path": "explore/fractal-map-survey/",
+      "title": "Mandelbrot Survey Map",
+      "category": "Explore",
+      "date": "2026-11-16T23:33:49+07:00",
+      "update": "Add common navigation to map and Julia labs"
+    },
+    {
+      "path": "explore/fractal-map/",
+      "title": "Mandelbrot Map",
+      "category": "Explore",
+      "date": "2026-11-16T23:33:49+07:00",
+      "update": "Add common navigation to map and Julia labs"
+    },
+    {
+      "path": "explore/j1/",
+      "title": "Livingstone Graph Explorer",
+      "category": "Explore",
+      "date": "2026-11-16T23:33:49+07:00",
+      "update": "Add common navigation to map and Julia labs"
+    },
+    {
+      "path": "explore/julia-lab/",
+      "title": "Julia Lab",
+      "category": "Explore",
+      "date": "2026-11-16T23:33:49+07:00",
+      "update": "Add common navigation to map and Julia labs"
+    },
+    {
+      "path": "explore/golay/",
+      "title": "Golay MOG Lab",
+      "category": "Explore",
+      "date": "2026-11-16T23:33:49+07:00",
+      "update": "Add common navigation to map and Julia labs"
+    },
+    {
+      "path": "explore/galois/",
+      "title": "Galois Workbench",
+      "category": "Explore",
+      "date": "2026-11-16T23:33:49+07:00",
+      "update": "Add common navigation to map and Julia labs"
+    },
     {
       "path": "explore/calculus-lab/",
       "title": "Vector Calculus in 2D",
@@ -142,20 +184,6 @@
       "update": "Add Zeta Map: the Riemann zeta function as a gestures-only phase map (#6)"
     },
     {
-      "path": "explore/julia-lab/",
-      "title": "Julia Lab",
-      "category": "Explore",
-      "date": "2026-11-09T23:23:04+07:00",
-      "update": "Add Julia Lab: pick the seed c on the Mandelbrot plane (live preview, typed value, presets), then explore its Julia set with the Survey Map tools"
-    },
-    {
-      "path": "explore/fractal-map-survey/",
-      "title": "Mandelbrot Survey Map",
-      "category": "Explore",
-      "date": "2026-11-09T22:13:02+07:00",
-      "update": "Survey Map pin: classify the orbit (escape / inside with cycle period and multiplier / undecided) instead of a zoom-dependent step cap"
-    },
-    {
       "path": "research/six-routes/",
       "title": "Six routes through the Mandelbrot set",
       "category": "Research",
@@ -168,13 +196,6 @@
       "category": "Research",
       "date": "2026-11-09T20:14:37+07:00",
       "update": "Add Research section: Six routes and Dive into the spiral seed"
-    },
-    {
-      "path": "explore/fractal-map/",
-      "title": "Mandelbrot Map",
-      "category": "Explore",
-      "date": "2026-11-09T14:47:05+07:00",
-      "update": "Explore: Mandelbrot Map (gestures only, drifts back at the precision limit)"
     },
     {
       "path": "explore/seed-lab/",
@@ -212,13 +233,6 @@
       "update": "Non-simple groups: fold the Elements explanation into How it works"
     },
     {
-      "path": "explore/galois/",
-      "title": "Galois Workbench",
-      "category": "Explore",
-      "date": "2026-11-05T23:27:03+07:00",
-      "update": "Add Galois Workbench to Explore"
-    },
-    {
       "path": "sketches/pineapple-umbrella/",
       "title": "Pineapple Umbrella",
       "category": "Sketches",
@@ -233,13 +247,6 @@
       "update": "Add Corn Cob sketch; reframe Pineapple Umbrella"
     },
     {
-      "path": "explore/golay/",
-      "title": "Golay MOG Lab",
-      "category": "Explore",
-      "date": "2026-11-03T21:21:26+07:00",
-      "update": "Golay MOG Lab: rebuild Generate tab as three parts"
-    },
-    {
       "path": "world/",
       "title": "World Viewer",
       "category": "Apps",
@@ -252,13 +259,6 @@
       "category": "Explore",
       "date": "2026-11-01T14:03:42+07:00",
       "update": "Add M11 Discovery Tree to Explore"
-    },
-    {
-      "path": "explore/j1/",
-      "title": "Livingstone Graph Explorer",
-      "category": "Explore",
-      "date": "2026-10-31T00:08:04+07:00",
-      "update": "Move J1 viewer into the Explore section"
     },
     {
       "path": "levels/05-minesweeper/",
