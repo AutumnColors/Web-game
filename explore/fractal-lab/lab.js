@@ -146,10 +146,10 @@ function setMode(m){
 function syncPolarButton(){ $('qPolar').querySelector('b').textContent='Coordinates: '+(cfg.polar?(cfg.logPolar?'Log-polar (θ, log r)':'Polar (θ, r)'):'Cartesian');$('qPolar').classList.toggle('on',cfg.polar); }
 function togglePolar(){if(!cfg.polar){cfg.polar=true;cfg.logPolar=false;}else if(!cfg.logPolar){cfg.logPolar=true;cfg.logOuter=Math.log(Math.max(1e-12,view.w/2));cfg.logSpan=Math.log(10000);}else{cfg.polar=false;cfg.logPolar=false;}if(cfg.polar&&cfg.mode!=='sens'){cfg.mode='sens';document.body.classList.remove('cmp');}syncPolarButton();updateChip();dirty=true;needDraw=true;closePop();writeHash();toast(cfg.polar?(cfg.logPolar?'LOG-POLAR ACTIVE · θ / log r':'POLAR ACTIVE · θ / r'):'CARTESIAN ACTIVE',2500);}
 $('qPolar').onclick=togglePolar;
-$('qDoubling').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='doubling-test.html?'+q.toString();};
-$('qGeometry').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='geometry-discovery.html?'+q.toString();};
-$('qWave').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='wave-aligned.html?'+q.toString();};
-$('qSurface').onclick=()=>{
+$('qDoubling') && ($('qDoubling').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='doubling-test.html?'+q.toString();};
+$('qGeometry') && ($('qGeometry').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='geometry-discovery.html?'+q.toString();};
+$('qWave') && ($('qWave').onclick=()=>{if(cfg.fractal!=='julia'){toast('Select Julia first',2200);return;}const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});location.href='wave-aligned.html?'+q.toString();};
+$('qSurface') && ($('qSurface').onclick=()=>{
   if(cfg.fractal!=='julia'){toast('Select a Julia set first to open the 3D surface.',2800);return;}
   const q=new URLSearchParams({cr:String(cfg.seed.re),ci:String(cfg.seed.im),x:String(view.cx),y:String(view.cy),w:String(view.w)});
   location.href='surface.html?'+q.toString();
