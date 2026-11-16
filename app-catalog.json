@@ -1,6 +1,62 @@
 {
-  "generatedAt": "2026-11-16T16:36:19.007880+00:00",
+  "generatedAt": "2026-11-16T16:36:39.525571+00:00",
   "apps": [
+    {
+      "path": "world/",
+      "title": "World Viewer",
+      "category": "Apps",
+      "date": "2026-11-16T23:36:29+07:00",
+      "update": "Finish shared site chrome across games, music and research"
+    },
+    {
+      "path": "music/sound-of-d4/",
+      "title": "Sound of D₄",
+      "category": "Music",
+      "date": "2026-11-16T23:36:29+07:00",
+      "update": "Finish shared site chrome across games, music and research"
+    },
+    {
+      "path": "music/sound-of-a5/",
+      "title": "Sound of A₅",
+      "category": "Music",
+      "date": "2026-11-16T23:36:29+07:00",
+      "update": "Finish shared site chrome across games, music and research"
+    },
+    {
+      "path": "research/six-routes/",
+      "title": "Six routes through the Mandelbrot set",
+      "category": "Research",
+      "date": "2026-11-16T23:36:29+07:00",
+      "update": "Finish shared site chrome across games, music and research"
+    },
+    {
+      "path": "sketches/pineapple-umbrella/",
+      "title": "Pineapple Umbrella",
+      "category": "Sketches",
+      "date": "2026-11-16T23:36:29+07:00",
+      "update": "Finish shared site chrome across games, music and research"
+    },
+    {
+      "path": "levels/05-minesweeper/",
+      "title": "Minesweeper",
+      "category": "Levels",
+      "date": "2026-11-16T23:36:29+07:00",
+      "update": "Finish shared site chrome across games, music and research"
+    },
+    {
+      "path": "research/spiral-dive/",
+      "title": "Dive into the spiral seed",
+      "category": "Research",
+      "date": "2026-11-16T23:36:29+07:00",
+      "update": "Finish shared site chrome across games, music and research"
+    },
+    {
+      "path": "sketches/corn-cob/",
+      "title": "Corn Cob",
+      "category": "Sketches",
+      "date": "2026-11-16T23:36:29+07:00",
+      "update": "Finish shared site chrome across games, music and research"
+    },
     {
       "path": "explore/zeta-map/",
       "title": "Zeta Map",
@@ -259,62 +315,6 @@
       "category": "Explore",
       "date": "2026-11-16T23:32:53+07:00",
       "update": "Apply shared navigation to site and first lab pages"
-    },
-    {
-      "path": "research/six-routes/",
-      "title": "Six routes through the Mandelbrot set",
-      "category": "Research",
-      "date": "2026-11-09T20:14:37+07:00",
-      "update": "Add Research section: Six routes and Dive into the spiral seed"
-    },
-    {
-      "path": "research/spiral-dive/",
-      "title": "Dive into the spiral seed",
-      "category": "Research",
-      "date": "2026-11-09T20:14:37+07:00",
-      "update": "Add Research section: Six routes and Dive into the spiral seed"
-    },
-    {
-      "path": "music/sound-of-a5/",
-      "title": "Sound of A₅",
-      "category": "Music",
-      "date": "2026-11-06T18:46:59+07:00",
-      "update": "Sound of A₅: best walk first, shapes view (#4)"
-    },
-    {
-      "path": "music/sound-of-d4/",
-      "title": "Sound of D₄",
-      "category": "Music",
-      "date": "2026-11-06T11:45:51+07:00",
-      "update": "Add Sound of D₄ music page (#1)"
-    },
-    {
-      "path": "sketches/pineapple-umbrella/",
-      "title": "Pineapple Umbrella",
-      "category": "Sketches",
-      "date": "2026-11-04T16:16:41+07:00",
-      "update": "Pineapple Umbrella: fit the whole crown in frame, warmer wood"
-    },
-    {
-      "path": "sketches/corn-cob/",
-      "title": "Corn Cob",
-      "category": "Sketches",
-      "date": "2026-11-04T16:14:01+07:00",
-      "update": "Add Corn Cob sketch; reframe Pineapple Umbrella"
-    },
-    {
-      "path": "world/",
-      "title": "World Viewer",
-      "category": "Apps",
-      "date": "2026-11-01T18:19:34+07:00",
-      "update": "World: GDP share layer gets \"Per person vs world\" (GDP share / population share)"
-    },
-    {
-      "path": "levels/05-minesweeper/",
-      "title": "Minesweeper",
-      "category": "Levels",
-      "date": "2026-10-30T01:18:21+07:00",
-      "update": "Add Minesweeper as level 05 (Classic 16x16 and Circle)"
     }
   ]
 }
