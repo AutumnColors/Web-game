@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-16T11:30:36.803027+00:00",
+  "generatedAt": "2026-11-16T12:40:56.541139+00:00",
   "apps": [
+    {
+      "path": "explore/mandelbulb-slice/",
+      "title": "Mandelbulb Slice Lab",
+      "category": "Explore",
+      "date": "2026-11-16T19:40:48+07:00",
+      "update": "Add standalone interactive Mandelbulb slice lab"
+    },
     {
       "path": "explore/fractal-atlas/terrain.html",
       "title": "Fractal Geography · Atlas",
