@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-16T06:42:25.184395+00:00",
+  "generatedAt": "2026-11-16T06:42:40.956004+00:00",
   "apps": [
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-16T13:42:18+07:00",
-      "update": "Add opt-in scalar gradient vector overlay"
+      "date": "2026-11-16T13:42:34+07:00",
+      "update": "Wire opt-in vector overlay into viewer"
     },
     {
       "path": "explore/fractal-lab/",
