@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-16T13:44:44.676227+00:00",
+  "generatedAt": "2026-11-16T14:19:31.277377+00:00",
   "apps": [
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-16T21:19:23+07:00",
+      "update": "Retain last completed viewport beneath reprojected fractal tiles"
+    },
     {
       "path": "explore/fractal-atlas/",
       "title": "Fractal Atlas · Universal Lab",
@@ -21,13 +28,6 @@
       "category": "Explore",
       "date": "2026-11-16T19:40:48+07:00",
       "update": "Add standalone interactive Mandelbulb slice lab"
-    },
-    {
-      "path": "explore/stopping-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
-      "date": "2026-11-16T13:45:00+07:00",
-      "update": "Compute orbit sensitivity derivatives when vector overlay needs them"
     },
     {
       "path": "explore/fractal-lab/",
