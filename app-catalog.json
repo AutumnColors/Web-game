@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-16T08:33:02.651472+00:00",
+  "generatedAt": "2026-11-16T08:34:04.353573+00:00",
   "apps": [
     {
       "path": "explore/dual-reconstruction-lab/",
       "title": "Fractal Universe Lab ∥ Dual Reconstruction",
       "category": "Explore",
-      "date": "2026-11-16T15:32:56+07:00",
-      "update": "Create independent Dual Reconstruction Lab copy: index.html"
+      "date": "2026-11-16T15:33:58+07:00",
+      "update": "Add dual reconstruction experiment with independent fields and CSV JSON PNG exports"
     },
     {
       "path": "explore/stopping-lab/",
