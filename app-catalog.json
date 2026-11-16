@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-16T16:41:30.792109+00:00",
+  "generatedAt": "2026-11-16T16:44:15.944458+00:00",
   "apps": [
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-16T23:44:08+07:00",
+      "update": "Hide unused gradient and comparison measurement choices"
+    },
     {
       "path": "world/",
       "title": "World Viewer",
@@ -96,13 +103,6 @@
       "path": "levels/03-path-to-zero/",
       "title": "Path to Zero",
       "category": "Levels",
-      "date": "2026-11-16T23:36:09+07:00",
-      "update": "Add shared minimal navigation to fractal and game pages"
-    },
-    {
-      "path": "explore/stopping-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
       "date": "2026-11-16T23:36:09+07:00",
       "update": "Add shared minimal navigation to fractal and game pages"
     },
