@@ -1,6 +1,34 @@
 {
-  "generatedAt": "2026-11-16T16:34:04.111217+00:00",
+  "generatedAt": "2026-11-16T16:34:33.628837+00:00",
   "apps": [
+    {
+      "path": "explore/m24/",
+      "title": "M₂₄ Viewer",
+      "category": "Explore",
+      "date": "2026-11-16T23:34:22+07:00",
+      "update": "Add shared navigation to logistic and group viewers"
+    },
+    {
+      "path": "explore/m11/",
+      "title": "M11 symmetry",
+      "category": "Explore",
+      "date": "2026-11-16T23:34:22+07:00",
+      "update": "Add shared navigation to logistic and group viewers"
+    },
+    {
+      "path": "explore/m11-tree/",
+      "title": "M11 Discovery Tree",
+      "category": "Explore",
+      "date": "2026-11-16T23:34:22+07:00",
+      "update": "Add shared navigation to logistic and group viewers"
+    },
+    {
+      "path": "explore/logistic-lab/",
+      "title": "Logistic Map Lab",
+      "category": "Explore",
+      "date": "2026-11-16T23:34:22+07:00",
+      "update": "Add shared navigation to logistic and group viewers"
+    },
     {
       "path": "explore/fractal-map-survey/",
       "title": "Mandelbrot Survey Map",
@@ -156,13 +184,6 @@
       "update": "Update periodic table of finite simple groups with presentations and rules"
     },
     {
-      "path": "explore/logistic-lab/",
-      "title": "Logistic Map Lab",
-      "category": "Explore",
-      "date": "2026-11-14T02:12:56+07:00",
-      "update": "Add Logistic Map Lab to Explore"
-    },
-    {
       "path": "explore/riemann-explorer/",
       "title": "Riemann Explorer",
       "category": "Explore",
@@ -203,13 +224,6 @@
       "category": "Explore",
       "date": "2026-11-09T13:21:11+07:00",
       "update": "Add Seed → Structure Lab to Explore"
-    },
-    {
-      "path": "explore/m24/",
-      "title": "M₂₄ Viewer",
-      "category": "Explore",
-      "date": "2026-11-07T14:36:20+07:00",
-      "update": "Add M₂₄ viewer and an Explore › Groups section (#5)"
     },
     {
       "path": "music/sound-of-a5/",
@@ -254,13 +268,6 @@
       "update": "World: GDP share layer gets \"Per person vs world\" (GDP share / population share)"
     },
     {
-      "path": "explore/m11-tree/",
-      "title": "M11 Discovery Tree",
-      "category": "Explore",
-      "date": "2026-11-01T14:03:42+07:00",
-      "update": "Add M11 Discovery Tree to Explore"
-    },
-    {
       "path": "levels/05-minesweeper/",
       "title": "Minesweeper",
       "category": "Levels",
@@ -287,13 +294,6 @@
       "category": "Explore",
       "date": "2026-10-25T12:39:03+07:00",
       "update": "Explore: add Rainbow vectors page"
-    },
-    {
-      "path": "explore/m11/",
-      "title": "M11 symmetry",
-      "category": "Explore",
-      "date": "2026-10-23T00:51:22+07:00",
-      "update": "Add Explore section with M11 symmetry visualization"
     },
     {
       "path": "levels/03-path-to-zero/",
