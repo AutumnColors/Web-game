@@ -188,8 +188,8 @@ group($('qPal'),Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t})),()=>cfg.pale
 function syncQuick(){ $('qVector').querySelector('b').textContent='Vector arrows: '+(vectorOverlay.enabled?'on':'off'); $('qVector').classList.toggle('on',vectorOverlay.enabled); $('vectorOptions').style.display=vectorOverlay.enabled?'block':'none'; syncPolarButton(); syncGroups($('pop')); $('qClean').classList.toggle('on',cfg.clean); $('qContours').classList.toggle('on',cfg.contours); }
 const closePop=()=>{ $('pop').classList.remove('on'); $('bView').classList.remove('on'); };
 $('bView').onclick=()=>{ const on=!$('pop').classList.contains('on'); $('pop').classList.toggle('on',on); $('bView').classList.toggle('on',on); syncQuick(); };
-$('qVector').onclick=()=>{vectorOverlay.enabled=!vectorOverlay.enabled;needDraw=true;syncQuick();};
-$('vectorSource').onchange=e=>{vectorOverlay.source=e.target.value;needDraw=true;};
+$('qVector').onclick=()=>{vectorOverlay.enabled=!vectorOverlay.enabled;if(vectorOverlay.enabled&&vectorOverlay.source==='sens'&&base&&!base.S)dirty=true;needDraw=true;syncQuick();};
+$('vectorSource').onchange=e=>{vectorOverlay.source=e.target.value;if(vectorOverlay.enabled&&vectorOverlay.source==='sens'&&base&&!base.S)dirty=true;needDraw=true;};
 $('vectorSign').onclick=()=>{vectorOverlay.sign*=-1;$('vectorSign').textContent='Direction: '+(vectorOverlay.sign<0?'−∇':'+∇');needDraw=true;};
 $('vectorDensity').onclick=()=>{vectorOverlay.density=vectorOverlay.density===12?20:vectorOverlay.density===20?8:12;$('vectorDensity').textContent='Density: '+vectorOverlay.density;needDraw=true;};
 $('qClean').onclick=()=>setClean(!cfg.clean);
