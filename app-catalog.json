@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-11-16T11:05:01.312148+00:00",
+  "generatedAt": "2026-11-16T11:11:44.058733+00:00",
   "apps": [
     {
       "path": "explore/fractal-atlas/terrain.html",
       "title": "Fractal Geography · Atlas",
       "category": "Fractal Atlas",
-      "date": "2026-11-16T18:04:55+07:00",
-      "update": "Add cached multiscale terrain smoothing, peak compression and detail sliders to Atlas only"
+      "date": "2026-11-16T18:11:36+07:00",
+      "update": "Add boundary-distance mass elevation mode and cached adjustable region shaping"
     },
     {
       "path": "explore/fractal-atlas/",
       "title": "Fractal Atlas · Universal Lab",
       "category": "Explore",
-      "date": "2026-11-16T18:04:55+07:00",
-      "update": "Add cached multiscale terrain smoothing, peak compression and detail sliders to Atlas only"
+      "date": "2026-11-16T18:11:36+07:00",
+      "update": "Add boundary-distance mass elevation mode and cached adjustable region shaping"
     },
     {
       "path": "explore/fractal-geography/",
