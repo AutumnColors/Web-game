@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fractal Geography · Atlas</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;background:#090f19;color:#e8f0fc}header{padding:13px 18px;background:#111c2d;border-bottom:1px solid #33465b;display:flex;justify-content:space-between;align-items:center}header small{color:#91a8c2}main{display:grid;grid-template-columns:290px 1fr;height:calc(100dvh - 60px)}aside{padding:17px;overflow:auto;background:#101b2b;border-right:1px solid #33465b}h2{font-size:14px;color:#acc7e7;margin:20px 0 9px}label{display:block;font-size:12px;color:#a8bbd1;margin:11px 0 5px}select,input,button{width:100%;background:#1d3047;color:#f2f7ff;border:1px solid #42607e;border-radius:7px;padding:9px;font:inherit}input[type=range]{padding:2px}button{cursor:pointer;margin-top:12px;background:#315e80}#view{position:relative;min-width:0}canvas{display:block}#info{position:absolute;bottom:15px;left:15px;background:#0b1425d9;padding:10px 12px;border-radius:8px;font-size:12px;pointer-events:none}#status{font-size:12px;color:#a8c7dc;margin-top:12px}p{font-size:12px;color:#9bb0c7;line-height:1.5}@media(max-width:700px){main{grid-template-columns:1fr;grid-template-rows:auto minmax(330px,1fr);height:auto}aside{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;padding:10px}aside h2,aside p,aside #status{grid-column:1/-1}#view{height:65dvh;min-height:380px}}
+</style></head><body><header><div><b>FRACTAL GEOGRAPHY</b> <small> / Atlas 001</small></div><small>Mathematical terrain engine</small></header>
+<main><aside><h2>World</h2><label>Fractal</label><select id="world"><option value="julia">Julia set</option><option value="mandelbrot">Mandelbrot set</option></select><label>Julia preset</label><select id="preset"><option value="-1,0">Basilica · c = −1</option><option value="0,0">Circle · c = 0</option><option value="-0.123,0.745">Douady rabbit</option><option value="-0.74543,0.11301">Seahorse region</option><option value="custom">Custom parameter</option></select><label>c real</label><input id="cr" type="number" step="0.001" value="-1"><label>c imaginary</label><input id="ci" type="number" step="0.001" value="0"><h2>Geography</h2><label>Elevation source</label><select id="field"><option value="green">Green potential</option><option value="escape">Escape time (exploratory)</option><option value="sensitivity">Orbit sensitivity (exploratory proxy)</option></select><label>Elevation amplitude <span id="ampVal">1.6</span></label><input id="amp" type="range" min="0" max="4" step=".1" value="1.6"><label>Terrain resolution</label><select id="res"><option value="120">120 × 120</option><option value="200" selected>200 × 200</option><option value="300">300 × 300</option></select><label>Color palette</label><select id="palette"><option value="atlas">Atlas / ocean</option><option value="height">Topographic</option><option value="mono">Monochrome</option></select><button id="build">Generate landscape</button><button id="reset">Reset camera</button><p>Drag to orbit · Scroll/pinch to zoom · Right-drag to pan. Elevation is a chosen mapping of a mathematical scalar field, not an intrinsic third dimension.</p><div id="status">Preparing terrain…</div></aside><section id="view"><div id="info">Julia · Basilica<br>Height = A / (1 + 2G)<br>Coordinates: complex plane</div></section></main>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js';
+import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/controls/OrbitControls.js';
+const $=id=>document.getElementById(id), host=$('view');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x09131f);
+const camera=new THREE.PerspectiveCamera(48,1,.01,200);camera.position.set(0,-7,5.4);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));host.prepend(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.target.set(0,0,.2);controls.minDistance=.3;controls.maxDistance=30;
+scene.add(new THREE.HemisphereLight(0xd4e9ff,0x1c263a,2.1));const sun=new THREE.DirectionalLight(0xfff2d7,2.2);sun.position.set(-3,-4,8);scene.add(sun);
+let terrain;
+function sample(x,y,cx,cy,mode){
+ let zx=mode==='mandelbrot'?0:x,zy=mode==='mandelbrot'?0:y, a=mode==='mandelbrot'?x:cx,b=mode==='mandelbrot'?y:cy;
+ let dx=mode==='mandelbrot'?0:1,dy=0,escape=0,sens=0;
+ for(let n=0;n<180;n++){
+  const dnx=2*(zx*dx-zy*dy)+(mode==='mandelbrot'?1:0),dny=2*(zx*dy+zy*dx);
+  const nx=zx*zx-zy*zy+a,ny=2*zx*zy+b;zx=nx;zy=ny;dx=dnx;dy=dny;
+  const r2=zx*zx+zy*zy;
+  if(r2>65536){escape=n+1;const r=Math.sqrt(r2);let g=Math.max(0,Math.log(r)/Math.pow(2,n+1));if(mode==='mandelbrot')g*=.5; // Mandelbrot Green normalization
+   sens=Math.log1p(Math.hypot(dx,dy));return {g,escape,sens};
+  }
+  if(!Number.isFinite(r2)||!Number.isFinite(dx))break;
+ }
+ return {g:0,escape:0,sens:0};
+}
+function color(t,g,inside,palette){
+ const col=new THREE.Color();
+ if(palette==='mono'){col.setHSL(0,0,.12+.78*t);return col}
+ if(palette==='height'){col.setHSL(.61-.49*t,.5,.2+.57*t);return col}
+ if(inside){col.setRGB(.21,.38,.27);return col}
+ col.setHSL(.58-.46*t,.62,.19+.43*t);return col;
+}
+function build(){
+ $('status').textContent='Computing terrain…';
+ const n=+$('res').value,mode=$('world').value,cx=+$('cr').value||0,cy=+$('ci').value||0,field=$('field').value,amp=+$('amp').value,palette=$('palette').value;
+ const range=mode==='mandelbrot'?2.25:2.1, centerX=mode==='mandelbrot'?-.55:0;
+ const geom=new THREE.PlaneGeometry(range*2,range*2,n-1,n-1), pos=geom.attributes.position;
+ const colors=new Float32Array(n*n*3);let min=Infinity,max=-Infinity;
+ const values=new Float64Array(n*n),insides=new Uint8Array(n*n),greens=new Float64Array(n*n);
+ for(let j=0;j<n;j++)for(let i=0;i<n;i++){
+  const k=j*n+i,x=centerX-range+2*range*i/(n-1),y=-range+2*range*j/(n-1),s=sample(x,y,cx,cy,mode);
+  greens[k]=s.g;insides[k]=s.escape===0?1:0;
+  const v=field==='green'?1/(1+2*s.g):field==='escape'?(s.escape?Math.min(1,s.escape/100):1):Math.min(1,s.sens/35);
+  values[k]=v;min=Math.min(min,v);max=Math.max(max,v);
+  pos.setZ(k,amp*v);
+ }
+ for(let k=0;k<n*n;k++){const t=values[k],c=color(t,greens[k],insides[k],palette);colors[k*3]=c.r;colors[k*3+1]=c.g;colors[k*3+2]=c.b}
+ geom.setAttribute('color',new THREE.BufferAttribute(colors,3));geom.computeVertexNormals();
+ if(terrain){scene.remove(terrain);terrain.geometry.dispose();terrain.material.dispose()}
+ terrain=new THREE.Mesh(geom,new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:.86,metalness:.02}));terrain.position.x=-centerX;scene.add(terrain);
+ $('info').textContent=(mode==='julia'?'Julia':'Mandelbrot')+' · '+field+' terrain · '+n+'² samples';
+ $('status').textContent='Ready · '+(n*n).toLocaleString()+' vertices · range '+min.toFixed(3)+'–'+max.toFixed(3);
+}
+$('preset').onchange=()=>{if($('preset').value!=='custom'){const [r,i]=$('preset').value.split(',');$('cr').value=r;$('ci').value=i}build()};
+$('cr').onchange=$('ci').onchange=()=>{$('preset').value='custom';build()};
+$('world').onchange=$('field').onchange=$('res').onchange=$('palette').onchange=build;
+$('amp').oninput=()=>{$('ampVal').textContent=$('amp').value};$('amp').onchange=build;
+$('build').onclick=build;$('reset').onclick=()=>{camera.position.set(0,-7,5.4);controls.target.set(0,0,.2);controls.update()};
+function resize(){const w=host.clientWidth,h=host.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h)}
+new ResizeObserver(resize).observe(host);resize();build();
+function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();
+</script></body></html>
