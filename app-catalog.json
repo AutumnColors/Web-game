@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-11-16T10:51:43.281163+00:00",
+  "generatedAt": "2026-11-16T10:52:07.666623+00:00",
   "apps": [
-    {
-      "path": "explore/fractal-atlas/",
-      "title": "Fractal Atlas · Universal Lab",
-      "category": "Explore",
-      "date": "2026-11-16T17:51:34+07:00",
-      "update": "Create standalone atlas as exact universal lab copy with terrain controls"
-    },
     {
       "path": "explore/fractal-atlas/terrain.html",
       "title": "Fractal Geography · Atlas",
       "category": "Fractal Atlas",
-      "date": "2026-11-16T17:51:24+07:00",
-      "update": "Add isolated terrain viewer for atlas overlay"
+      "date": "2026-11-16T17:51:54+07:00",
+      "update": "Pass selected atlas terrain resolution into isolated viewer"
+    },
+    {
+      "path": "explore/fractal-atlas/",
+      "title": "Fractal Atlas · Universal Lab",
+      "category": "Explore",
+      "date": "2026-11-16T17:51:54+07:00",
+      "update": "Pass selected atlas terrain resolution into isolated viewer"
     },
     {
       "path": "explore/fractal-geography/",
