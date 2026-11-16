@@ -150,8 +150,23 @@ td i{font-style:normal;color:#8d8d95;font-family:system-ui,sans-serif;font-size:
     <div class="grid3 grp" id="gFractal"></div>
     <div class="params" id="pJulia">
       <div class="lbl">Julia exponent p (default 2)</div><div class="seg grp" id="gJuliaPower"></div><div class="note" id="juliaPowerNote">Polynomial Julia set (degree 2).</div>
+      <div class="lbl" style="margin-top:12px">Choose the Julia parameter c</div>
+      <div class="seg" id="seedTabs" style="display:flex;gap:6px;margin:8px 0">
+        <button class="opt on" id="seedKnown" type="button">Named Julia sets</button>
+        <button class="opt" id="seedNumbers" type="button">Numbers &amp; i</button>
+      </div>
+      <div id="seedKnownPanel"><div class="chips" id="seeds"></div></div>
+      <div id="seedNumbersPanel" hidden>
+        <div class="note">Pick real and imaginary parts independently: c = a + bi. Powers of i repeat: i⁰ = 1, i¹ = i, i² = −1, i³ = −i.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:9px 0">
+          <label>Real part a<select id="seedReal" style="display:block;width:100%;padding:10px;background:#161c2d;color:#fff;border:1px solid #66738c;border-radius:8px"></select></label>
+          <label>Imaginary coefficient b<select id="seedImag" style="display:block;width:100%;padding:10px;background:#161c2d;color:#fff;border:1px solid #66738c;border-radius:8px"></select></label>
+        </div>
+        <div class="chips" id="seedQuick"></div>
+      </div>
+      <div class="lbl" style="margin-top:9px">Selected c (editable)</div>
       <input id="cin" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="-0.8 + 0.156i" aria-label="Seed c">
-      <div class="chips" id="seeds"></div>
+      <div class="note" id="seedCurrent">Select a preset or enter any complex number.</div>
       <div class="note">The seed c is fixed; every pixel is a starting point z₀. In a Mandelbrot simulation you can also pin a point and open its Julia set from ⓘ.</div>
     </div>
     <div class="params" id="pMulti">
