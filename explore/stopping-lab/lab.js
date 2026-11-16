@@ -197,7 +197,7 @@ $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(
 function applyConfig(next,cam){
   if(next.bottcher && next.fractal!=='julia' && next.fractal!=='mandelbrot')next.bottcher=false;
   if(next.bottcher&&next.fractal!=='julia'&&next.fractal!=='mandelbrot')next.bottcher=false;
-  const world=!started || next.fractal!==cfg.fractal || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im));
+  const world=!started || next.fractal!==cfg.fractal || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im || next.juliaPower!==cfg.juliaPower));
   const numeric=next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode || next.bottcher!==cfg.bottcher || next.bottcherGMin!==cfg.bottcherGMin || next.bottcherGMax!==cfg.bottcherGMax || next.polar!==cfg.polar || next.logPolar!==cfg.logPolar;
   cfg=clone(next); eng=engineOf(cfg); started=true; syncContourSettings(cfg); syncCoordPickers();
   document.body.classList.toggle('cmp',cmp()); document.body.classList.toggle('clean',cfg.clean);
@@ -212,6 +212,9 @@ function applyConfig(next,cam){
 let draft=clone(cfg);
 const FR=FRACTALS.map(f=>({...f,thumb:true}));
 group($('gFractal'),FR,()=>draft.fractal,v=>{ draft.fractal=v; syncCfg(); });
+const JULIA_EXPONENTS=[2,3,4,5,6,7,8,9,10,-1,-2,-3,-4,-5,-6,-7,-8,0.5,0.75,0.9,1,1.001,1.01,1.1,1.25,1.5,Math.E,Math.PI];
+const juliaPowerLabel=p=>p===Math.PI?'π':p===Math.E?'e':String(p);
+group($('gJuliaPower'),JULIA_EXPONENTS.map(v=>({v,t:juliaPowerLabel(v)})),()=>draft.juliaPower,v=>{draft.juliaPower=v;syncCfg();thumbs();});
 group($('gPower'),[3,4,5,6,7,8].map(v=>({v,t:'n = '+v})),()=>draft.power,v=>{ draft.power=v; syncCfg(); thumbs(); });
 group($('gMode'),MODES,()=>draft.mode,v=>{ draft.mode=v; syncCfg(); });
 group($('gDepth'),[{v:0,t:'Unlimited'},{v:3,t:'3 levels',s:'× 8'},{v:10,t:'10 levels',s:'× 1,024'},{v:25,t:'25 levels',s:'× 33 million'}],()=>draft.depth,v=>{ draft.depth=v; syncCfg(); });
@@ -248,7 +251,7 @@ function parseC(s){ // "−0.8 + 0.156i", "-0.8, 0.156", "i", "-0.5i", "0.25"
 $('cin').addEventListener('input',()=>{ const c=parseC($('cin').value); $('cin').classList.toggle('bad',!c); if(c){ draft.seed=c; thumbs(); } });
 function syncCfg(){ $('radiusCustom').value=draft.radius; syncCoordPickers();
   syncGroups($('cfg')); $('gClean').classList.toggle('on',draft.clean);
-  $('pJulia').classList.toggle('on',draft.fractal==='julia'); $('pMulti').classList.toggle('on',draft.fractal==='multibrot');
+  $('pJulia').classList.toggle('on',draft.fractal==='julia'); $('juliaPowerNote').textContent=Number.isInteger(draft.juliaPower)&&draft.juliaPower>=2?'Polynomial Julia set (degree '+draft.juliaPower+').':Number.isInteger(draft.juliaPower)&&draft.juliaPower<0?'Rational map with a pole at zero. First-threshold stopping is an experiment, not a reliable Julia membership test.':'Principal-branch complex power; cut on the negative real axis. First-threshold stopping is a finite-orbit diagnostic, not a classical polynomial Julia set.'; $('pMulti').classList.toggle('on',draft.fractal==='multibrot');
   const g=$('palPrev').getContext('2d'), lut=PALETTES[draft.palette].cyc, img=g.createImageData(600,1), o=new Uint32Array(img.data.buffer);
   for(let x=0;x<600;x++) o[x]=lut[(x*1024/300|0)&1023];
   for(let y=0;y<18;y++) g.putImageData(img,0,y);
@@ -322,7 +325,7 @@ function writeHash(){
   if(!started) return; clearTimeout(hashT);
   hashT=setTimeout(()=>{
     const q={f:cfg.fractal, m:cfg.mode, pal:cfg.palette, it:cfg.iter, R:cfg.radius, sm:cfg.stopMode, d:cfg.depth, x:view.cx, y:view.cy, w:view.w, r:+(view.a*180/Math.PI).toFixed(4), polar:+cfg.polar, bt:+cfg.bottcher, bg0:cfg.bottcherGMin, bg1:cfg.bottcherGMax, lp:+cfg.logPolar, lo:+cfg.logOuter.toFixed(9), ls:+cfg.logSpan.toFixed(9), co:+cfg.contours, cn:cfg.contourLevels, ca:cfg.contourOpacity, cc:cfg.contourColor};
-    if(cfg.fractal==='multibrot') q.n=cfg.power; if(cfg.fractal==='julia') q.c=cfg.seed.re+','+cfg.seed.im;
+    if(cfg.fractal==='multibrot') q.n=cfg.power; if(cfg.fractal==='julia'){q.c=cfg.seed.re+','+cfg.seed.im;q.jp=cfg.juliaPower;}
     if(cmp()) q.ps=cfg.panels.join('.'); if(cfg.clean) q.clean=1;
     try{ history.replaceState(null,'','#'+Object.entries(q).map(([k,v])=>k+'='+v).join('&')); }catch(_){}
   },250);
@@ -335,6 +338,7 @@ function readHash(){
   if([0,400,1600,6400,25600].includes(+q.it)) c.iter=+q.it; if(Number.isFinite(+q.R)&&+q.R>=0.01&&+q.R<=1000000)c.radius=+q.R; if(['outward','inward','fixed'].includes(q.sm))c.stopMode=q.sm; if([0,3,10,25].includes(+q.d)) c.depth=+q.d;
   if(+q.n>=3 && +q.n<=8) c.power=Math.round(+q.n);
   if(q.c){ const s=parseC(q.c); if(s) c.seed=s; }
+  if(q.jp!==undefined && JULIA_EXPONENTS.includes(+q.jp))c.juliaPower=+q.jp;
   if(q.ps){ const ps=q.ps.split('.'); if(ps.length===4 && ps.every(p=>MODES.some(m=>m.v===p&&p!=='compare'))) c.panels=ps; }
   if(q.co!==undefined)c.contours=q.co==='1';
   if(+q.cn>=1&&+q.cn<=20)c.contourLevels=+q.cn;
@@ -415,7 +419,7 @@ function fromMeta(m){
   const c=clone(DEFAULTS);
   if(m.viewer==='Fractal Universe Lab'){
     const k=m.config||{}; if(FRACTALS.some(f=>f.v===k.fractal)) c.fractal=k.fractal;
-    if(k.fractal==='multibrot' && k.power>=3 && k.power<=8) c.power=k.power; if(k.seed) c.seed={re:+k.seed.re,im:+k.seed.im};
+    if(k.fractal==='multibrot' && k.power>=3 && k.power<=8) c.power=k.power; if(k.fractal==='julia' && JULIA_EXPONENTS.includes(+k.power))c.juliaPower=+k.power; if(k.seed) c.seed={re:+k.seed.re,im:+k.seed.im};
     if(MODES.some(x=>x.v===k.measurement)) c.mode=k.measurement; if(Array.isArray(k.panels)&&k.panels.length===4) c.panels=k.panels;
     if(k.contours){c.contours=!!k.contours.show;c.contourLevels=Math.max(1,Math.min(20,+k.contours.levels||8));c.contourOpacity=Math.max(0,Math.min(100,+k.contours.opacity));if(['white','black','colored'].includes(k.contours.color))c.contourColor=k.contours.color;}
     if(PALETTES[k.palette]) c.palette=k.palette; if(k.iterations&&k.iterations.mode==='fixed') c.iter=k.iterations.limit; if(['outward','inward','fixed'].includes(k.stopMode))c.stopMode=k.stopMode;
