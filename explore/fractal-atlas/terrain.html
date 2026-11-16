@@ -3,8 +3,8 @@
 <title>Fractal Geography · Atlas</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;background:#090f19;color:#e8f0fc}header{padding:13px 18px;background:#111c2d;border-bottom:1px solid #33465b;display:flex;justify-content:space-between;align-items:center}header small{color:#91a8c2}main{display:grid;grid-template-columns:290px 1fr;height:calc(100dvh - 60px)}aside{padding:17px;overflow:auto;background:#101b2b;border-right:1px solid #33465b}h2{font-size:14px;color:#acc7e7;margin:20px 0 9px}label{display:block;font-size:12px;color:#a8bbd1;margin:11px 0 5px}select,input,button{width:100%;background:#1d3047;color:#f2f7ff;border:1px solid #42607e;border-radius:7px;padding:9px;font:inherit}input[type=range]{padding:2px}button{cursor:pointer;margin-top:12px;background:#315e80}#view{position:relative;min-width:0}canvas{display:block}#info{position:absolute;bottom:15px;left:15px;background:#0b1425d9;padding:10px 12px;border-radius:8px;font-size:12px;pointer-events:none}#status{font-size:12px;color:#a8c7dc;margin-top:12px}p{font-size:12px;color:#9bb0c7;line-height:1.5}@media(max-width:700px){main{grid-template-columns:1fr;grid-template-rows:auto minmax(330px,1fr);height:auto}aside{display:block;padding:12px}aside label{margin:8px 0 4px}aside select,aside input{width:100%}aside button{width:100%}aside h2,aside p,aside #status{grid-column:1/-1}#view{height:65dvh;min-height:380px}}
-body>header,aside{display:none!important}main{display:block!important;height:100dvh!important}#view{height:100dvh!important;width:100vw!important}#info{z-index:2}</style></head><body><header><div><b>FRACTAL GEOGRAPHY</b> <small> / Atlas 001</small></div><small>Mathematical terrain engine</small></header>
-<main><aside><h2>World</h2><label>Fractal</label><select id="world"><option value="mandelbrot">Mandelbrot set</option><option value="julia">Julia set</option></select><label>Julia preset</label><select id="preset"><option value="-1,0">Basilica · c = −1</option><option value="0,0">Circle · c = 0</option><option value="-0.123,0.745">Douady rabbit</option><option value="-0.74543,0.11301">Seahorse region</option><option value="custom">Custom parameter</option></select><label>c real</label><input id="cr" type="number" step="0.001" value="-1"><label>c imaginary</label><input id="ci" type="number" step="0.001" value="0"><h2>Geography</h2><label>Elevation source</label><select id="field"><option value="combined">Combined ridges + mass</option><option value="escape">Escape time</option><option value="sensitivity">Orbit sensitivity</option><option value="green">Green potential</option></select><label>Elevation amplitude <span id="ampVal">1.6</span></label><input id="amp" type="range" min="0" max="4" step=".1" value="1.6"><label>Terrain resolution</label><select id="res"><option value="120">120 × 120</option><option value="200" selected>200 × 200</option><option value="300">300 × 300</option></select><label>Color palette</label><select id="palette"><option value="atlas">Atlas / ocean</option><option value="height">Topographic</option><option value="mono">Monochrome</option></select><button id="build">Generate terrain from this view</button><button id="back" style="display:none">← Return to 2D map</button><button id="reset">Reset camera</button><p>Drag to orbit · Scroll/pinch to zoom · Right-drag to pan. Elevation is a chosen mapping of a mathematical scalar field, not an intrinsic third dimension.</p><div id="status">Waiting for 2D browser…</div></aside><section id="view"><canvas id="map2d" style="width:100%;height:100%;touch-action:none"></canvas><div id="info">Julia · Basilica<br>Height = A / (1 + 2G)<br>Coordinates: complex plane</div></section></main>
+#shapePanel{display:block;position:absolute;top:88px;right:12px;width:min(270px,calc(100vw - 24px));background:#101b2be8;border:1px solid #42607e;border-radius:14px;padding:12px;z-index:5;box-shadow:0 5px 24px #0008}#shapePanel[hidden]{display:none}#shapePanel label{margin:8px 0 3px}#shapePanel input{padding:0}#shapeToggle{position:absolute;top:16px;left:12px;z-index:6;width:auto;margin:0;border-radius:24px;padding:10px 16px}body>header,aside{display:none!important}main{display:block!important;height:100dvh!important}#view{height:100dvh!important;width:100vw!important}#info{z-index:2}</style></head><body><header><div><b>FRACTAL GEOGRAPHY</b> <small> / Atlas 001</small></div><small>Mathematical terrain engine</small></header>
+<main><aside><h2>World</h2><label>Fractal</label><select id="world"><option value="mandelbrot">Mandelbrot set</option><option value="julia">Julia set</option></select><label>Julia preset</label><select id="preset"><option value="-1,0">Basilica · c = −1</option><option value="0,0">Circle · c = 0</option><option value="-0.123,0.745">Douady rabbit</option><option value="-0.74543,0.11301">Seahorse region</option><option value="custom">Custom parameter</option></select><label>c real</label><input id="cr" type="number" step="0.001" value="-1"><label>c imaginary</label><input id="ci" type="number" step="0.001" value="0"><h2>Geography</h2><label>Elevation source</label><select id="field"><option value="combined">Combined ridges + mass</option><option value="escape">Escape time</option><option value="sensitivity">Orbit sensitivity</option><option value="green">Green potential</option></select><label>Elevation amplitude <span id="ampVal">1.6</span></label><input id="amp" type="range" min="0" max="4" step=".1" value="1.6"><label>Terrain resolution</label><select id="res"><option value="120">120 × 120</option><option value="200" selected>200 × 200</option><option value="300">300 × 300</option></select><label>Color palette</label><select id="palette"><option value="atlas">Atlas / ocean</option><option value="height">Topographic</option><option value="mono">Monochrome</option></select><button id="build">Generate terrain from this view</button><button id="back" style="display:none">← Return to 2D map</button><button id="reset">Reset camera</button><p>Drag to orbit · Scroll/pinch to zoom · Right-drag to pan. Elevation is a chosen mapping of a mathematical scalar field, not an intrinsic third dimension.</p><div id="status">Waiting for 2D browser…</div></aside><section id="view"><button id="shapeToggle" type="button">⚙ Terrain shaping</button><div id="shapePanel" hidden><strong>Terrain shaping</strong><label>Smoothing <span id="smoothVal">45%</span></label><input id="smooth" type="range" min="0" max="100" value="45"><label>Peak compression <span id="compressVal">65%</span></label><input id="compress" type="range" min="0" max="100" value="65"><label>Fine fractal detail <span id="detailVal">35%</span></label><input id="detail" type="range" min="0" max="100" value="35"><p>Changes reuse the sampled fractal data.</p></div><canvas id="map2d" style="width:100%;height:100%;touch-action:none"></canvas><div id="info">Julia · Basilica<br>Height = A / (1 + 2G)<br>Coordinates: complex plane</div></section></main>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}</script><script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
@@ -36,29 +36,59 @@ function color(t,g,inside,palette){
  if(inside){col.setRGB(.21,.38,.27);return col}
  col.setHSL(.58-.46*t,.62,.19+.43*t);return col;
 }
-async function build(){
- $('status').textContent='Computing terrain…';
- await new Promise(resolve=>setTimeout(resolve,20));
- const n=+$('res').value,mode=$('world').value,cx=+$('cr').value||0,cy=+$('ci').value||0,field=$('field').value,amp=+$('amp').value,palette=$('palette').value;
- const range=span2D/2, centerX=center2D.x,centerY=center2D.y;
- const geom=new THREE.PlaneGeometry(5,5,n-1,n-1), pos=geom.attributes.position;
- const colors=new Float32Array(n*n*3);let min=Infinity,max=-Infinity;
- const values=new Float64Array(n*n),insides=new Uint8Array(n*n),greens=new Float64Array(n*n);
- for(let j=0;j<n;j++){for(let i=0;i<n;i++){
-  const k=j*n+i,x=centerX-range+2*range*i/(n-1),y=centerY-range+2*range*j/(n-1),s=sample(x,y,cx,cy,mode);
-  greens[k]=s.g;insides[k]=s.escape===0?1:0;
-  const mass=s.escape?Math.min(1,s.escape/110):1;const ridge=s.escape?Math.min(1,Math.log1p(s.sens)/5):0;const v=field==='combined'?.62*mass+.38*ridge:field==='green'?1/(1+2*s.g):field==='escape'?mass:ridge;
-  values[k]=v;min=Math.min(min,v);max=Math.max(max,v);
-  pos.setZ(k,amp*v);
- } if(j%8===0){$('status').textContent='Generating terrain '+Math.round(100*(j+1)/n)+'%';await new Promise(resolve=>setTimeout(resolve,0));}
- }
- for(let k=0;k<n*n;k++){const t=values[k],c=color(t,greens[k],insides[k],palette);colors[k*3]=c.r;colors[k*3+1]=c.g;colors[k*3+2]=c.b}
- geom.setAttribute('color',new THREE.BufferAttribute(colors,3));geom.computeVertexNormals();
- if(terrain){scene.remove(terrain);terrain.geometry.dispose();terrain.material.dispose()}
- terrain=new THREE.Mesh(geom,new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:.86,metalness:.02}));terrain.position.x=0;scene.add(terrain);
- $('info').textContent=(mode==='julia'?'Julia':'Mandelbrot')+' · '+field+' terrain · '+n+'² samples';
- $('status').textContent='Ready · '+(n*n).toLocaleString()+' vertices · range '+min.toFixed(3)+'–'+max.toFixed(3);
+let cached=null,buildSerial=0;
+function blur(src,n,radius){
+ if(radius<=0)return src.slice();
+ const sigma=Math.max(.5,radius/2),rad=Math.ceil(radius*2),weights=[];
+ let sum=0;for(let d=-rad;d<=rad;d++){const w=Math.exp(-d*d/(2*sigma*sigma));weights.push(w);sum+=w}
+ const tmp=new Float32Array(src.length),out=new Float32Array(src.length);
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){let a=0;for(let d=-rad;d<=rad;d++)a+=src[y*n+Math.max(0,Math.min(n-1,x+d))]*weights[d+rad];tmp[y*n+x]=a/sum}
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){let a=0;for(let d=-rad;d<=rad;d++)a+=tmp[Math.max(0,Math.min(n-1,y+d))*n+x]*weights[d+rad];out[y*n+x]=a/sum}
+ return out;
 }
+function updateTerrain(){
+ if(!cached||!terrain)return;
+ const {n,values,greens,insides}=cached;
+ const smooth=+$('smooth').value/100,compression=+$('compress').value/100,detail=+$('detail').value/100,amp=+$('amp').value,palette=$('palette').value;
+ const broad=blur(values,n,3+smooth*7),medium=blur(values,n,.7+smooth*2.5);
+ const pos=terrain.geometry.attributes.position,colors=terrain.geometry.attributes.color;
+ let lo=Infinity,hi=-Infinity;
+ for(let k=0;k<values.length;k++){
+  const base=broad[k],ridge=medium[k]-broad[k],fine=values[k]-medium[k];
+  const raw=Math.max(0,base+ridge*(1-.35*smooth)+fine*detail*(1-.65*smooth));
+  const h=(1-compression)*raw+compression*(1-Math.exp(-2.8*raw))/(1-Math.exp(-2.8));
+  const v=Math.max(0,Math.min(1,h));pos.setZ(k,amp*v);
+  const c=color(v,greens[k],insides[k],palette);colors.setXYZ(k,c.r,c.g,c.b);
+  lo=Math.min(lo,v);hi=Math.max(hi,v);
+ }
+ pos.needsUpdate=true;colors.needsUpdate=true;terrain.geometry.computeVertexNormals();
+ $('info').textContent=(cached.mode==='julia'?'Julia':'Mandelbrot')+' · '+cached.field+' terrain · '+n+'² samples';
+ $('status').textContent='Ready · '+(n*n).toLocaleString()+' cached samples · height '+lo.toFixed(3)+'–'+hi.toFixed(3);
+}
+async function build(){
+ const serial=++buildSerial;
+ $('status').textContent='Computing terrain…';await new Promise(resolve=>setTimeout(resolve,20));
+ const n=+$('res').value,mode=$('world').value,cx=+$('cr').value||0,cy=+$('ci').value||0,field=$('field').value;
+ const range=span2D/2,centerX=center2D.x,centerY=center2D.y;
+ const values=new Float32Array(n*n),greens=new Float32Array(n*n),insides=new Uint8Array(n*n);
+ for(let j=0;j<n;j++){
+  for(let i=0;i<n;i++){
+   const k=j*n+i,x=centerX-range+2*range*i/(n-1),y=centerY-range+2*range*j/(n-1),v=sample(x,y,cx,cy,mode);
+   greens[k]=v.g;insides[k]=v.escape===0?1:0;
+   const mass=v.escape?Math.min(1,v.escape/110):1,ridge=v.escape?Math.min(1,Math.log1p(v.sens)/5):0;
+   values[k]=field==='combined'?.62*mass+.38*ridge:field==='green'?1/(1+2*v.g):field==='escape'?mass:ridge;
+  }
+  if(j%8===0){$('status').textContent='Generating terrain '+Math.round(100*(j+1)/n)+'%';await new Promise(resolve=>setTimeout(resolve,0));if(serial!==buildSerial)return}
+ }
+ cached={n,mode,field,values,greens,insides};
+ const geom=new THREE.PlaneGeometry(5,5,n-1,n-1);
+ geom.setAttribute('color',new THREE.BufferAttribute(new Float32Array(n*n*3),3));
+ if(terrain){scene.remove(terrain);terrain.geometry.dispose();terrain.material.dispose()}
+ terrain=new THREE.Mesh(geom,new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:.86,metalness:.02}));
+ scene.add(terrain);updateTerrain();
+}
+$('shapeToggle').onclick=()=>{$('shapePanel').hidden=!$('shapePanel').hidden};
+for(const id of ['smooth','compress','detail'])$(id).addEventListener('input',()=>{$(id+'Val').textContent=$(id).value+'%';updateTerrain()});
 function show2D(){in3D=false;renderer.domElement.style.display='none';map.style.display='block';$('back').style.display='none';$('build').style.display='block';draw2D()}
 function draw2D(){const token=++renderToken;const w=Math.max(1,Math.round(host.clientWidth)),h=Math.max(1,Math.round(host.clientHeight));map.width=w;map.height=h;const scale=Math.min(1,260/Math.max(w,h)),sw=Math.max(1,Math.round(w*scale)),sh=Math.max(1,Math.round(h*scale));const off=document.createElement('canvas');off.width=sw;off.height=sh;const c=off.getContext('2d'),img=c.createImageData(sw,sh);const mode=$('world').value,cx=+$('cr').value||0,cy=+$('ci').value||0;
 let row=0;$('status').textContent='Rendering 2D map…';
@@ -67,8 +97,8 @@ if(row<sh){setTimeout(chunk,0)}else{c.putImageData(img,0,0);ctx.imageSmoothingEn
 chunk()}
 $('preset').onchange=()=>{if($('preset').value!=='custom'){const [r,i]=$('preset').value.split(',');$('cr').value=r;$('ci').value=i}show2D()};
 $('cr').onchange=$('ci').onchange=()=>{$('preset').value='custom';show2D()};
-$('world').onchange=()=>{center2D={x:$('world').value==='mandelbrot'?-.55:0,y:0};span2D=4.2;show2D()};$('field').onchange=$('res').onchange=$('palette').onchange=()=>{if(in3D)build()};
-$('amp').oninput=()=>{$('ampVal').textContent=$('amp').value};$('amp').onchange=()=>{if(in3D)build()};
+$('world').onchange=()=>{center2D={x:$('world').value==='mandelbrot'?-.55:0,y:0};span2D=4.2;show2D()};$('field').onchange=$('res').onchange=()=>{if(in3D)build()};$('palette').onchange=()=>{if(in3D)updateTerrain()};
+$('amp').oninput=()=>{$('ampVal').textContent=$('amp').value};$('amp').onchange=()=>{if(in3D)updateTerrain()};
 $('build').onclick=()=>{++renderToken;in3D=true;map.style.display='none';renderer.domElement.style.display='block';$('back').style.display='block';$('build').style.display='none';build()};$('back').onclick=show2D;$('reset').onclick=()=>{camera.position.set(0,-7,5.4);controls.target.set(0,0,.2);controls.update()};
 function resize(){const w=host.clientWidth,h=host.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h)}
 new ResizeObserver(resize).observe(host);resize();const q=new URLSearchParams(location.search);$('world').value=q.get('world')||'mandelbrot';$('cr').value=q.get('cr')||'-1';$('ci').value=q.get('ci')||'0';center2D={x:Number(q.get('cx'))||0,y:Number(q.get('cy'))||0};span2D=Math.max(0.0000001,Number(q.get('span'))||4.2);$('res').value=q.get('res')||'120';in3D=true;map.style.display='none';renderer.domElement.style.display='block';setTimeout(build,40);
