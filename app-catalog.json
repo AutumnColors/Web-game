@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-16T10:51:22.529100+00:00",
+  "generatedAt": "2026-11-16T10:51:31.824987+00:00",
   "apps": [
+    {
+      "path": "explore/fractal-atlas/terrain.html",
+      "title": "Fractal Geography · Atlas",
+      "category": "Fractal Atlas",
+      "date": "2026-11-16T17:51:24+07:00",
+      "update": "Add isolated terrain viewer for atlas overlay"
+    },
     {
       "path": "explore/fractal-geography/",
       "title": "Fractal Geography · Atlas",
