@@ -1,6 +1,62 @@
 {
-  "generatedAt": "2026-11-16T16:34:33.628837+00:00",
+  "generatedAt": "2026-11-16T16:36:01.916632+00:00",
   "apps": [
+    {
+      "path": "explore/rubiks-cube/",
+      "title": "Vector Cube",
+      "category": "Explore",
+      "date": "2026-11-16T23:35:52+07:00",
+      "update": "Apply shared minimal navigation and author credit to additional apps"
+    },
+    {
+      "path": "explore/seed-lab/",
+      "title": "Seed → Structure Lab",
+      "category": "Explore",
+      "date": "2026-11-16T23:35:52+07:00",
+      "update": "Apply shared minimal navigation and author credit to additional apps"
+    },
+    {
+      "path": "explore/riemann-explorer/",
+      "title": "Riemann Explorer",
+      "category": "Explore",
+      "date": "2026-11-16T23:35:52+07:00",
+      "update": "Apply shared minimal navigation and author credit to additional apps"
+    },
+    {
+      "path": "explore/rainbow/",
+      "title": "Rainbow Vectors",
+      "category": "Explore",
+      "date": "2026-11-16T23:35:52+07:00",
+      "update": "Apply shared minimal navigation and author credit to additional apps"
+    },
+    {
+      "path": "explore/nonsimple/",
+      "title": "Non-Simple Group Explorer",
+      "category": "Explore",
+      "date": "2026-11-16T23:35:52+07:00",
+      "update": "Apply shared minimal navigation and author credit to additional apps"
+    },
+    {
+      "path": "explore/music-from-symmetry/",
+      "title": "Music to Picture",
+      "category": "Explore",
+      "date": "2026-11-16T23:35:52+07:00",
+      "update": "Apply shared minimal navigation and author credit to additional apps"
+    },
+    {
+      "path": "explore/mandelbulb-slice/",
+      "title": "Mandelbulb Slice Lab",
+      "category": "Explore",
+      "date": "2026-11-16T23:35:52+07:00",
+      "update": "Apply shared minimal navigation and author credit to additional apps"
+    },
+    {
+      "path": "explore/mandelbulb-3d/",
+      "title": "Mandelbulb 3D",
+      "category": "Explore",
+      "date": "2026-11-16T23:35:52+07:00",
+      "update": "Apply shared minimal navigation and author credit to additional apps"
+    },
     {
       "path": "explore/m24/",
       "title": "M₂₄ Viewer",
@@ -156,39 +212,11 @@
       "update": "Prevent exposed cached tile edges during deep fractal navigation"
     },
     {
-      "path": "explore/mandelbulb-3d/",
-      "title": "Mandelbulb 3D",
-      "category": "Explore",
-      "date": "2026-11-16T20:26:46+07:00",
-      "update": "Fix MP4 muxing: explicit frame duration, handle null chunk duration and surface encoder errors"
-    },
-    {
-      "path": "explore/mandelbulb-slice/",
-      "title": "Mandelbulb Slice Lab",
-      "category": "Explore",
-      "date": "2026-11-16T19:40:48+07:00",
-      "update": "Add standalone interactive Mandelbulb slice lab"
-    },
-    {
-      "path": "explore/music-from-symmetry/",
-      "title": "Music to Picture",
-      "category": "Explore",
-      "date": "2026-11-16T01:13:57+07:00",
-      "update": "Import DragonForce MIDI: five instrument recurrence tracks and synchronized ensemble"
-    },
-    {
       "path": "explore/simple-groups/",
       "title": "Periodic Table of Finite Simple Groups",
       "category": "Explore",
       "date": "2026-11-14T18:30:32+07:00",
       "update": "Update periodic table of finite simple groups with presentations and rules"
-    },
-    {
-      "path": "explore/riemann-explorer/",
-      "title": "Riemann Explorer",
-      "category": "Explore",
-      "date": "2026-11-10T19:49:20+07:00",
-      "update": "Add Riemann Explorer to Explore"
     },
     {
       "path": "explore/snowflake/",
@@ -219,13 +247,6 @@
       "update": "Add Research section: Six routes and Dive into the spiral seed"
     },
     {
-      "path": "explore/seed-lab/",
-      "title": "Seed → Structure Lab",
-      "category": "Explore",
-      "date": "2026-11-09T13:21:11+07:00",
-      "update": "Add Seed → Structure Lab to Explore"
-    },
-    {
       "path": "music/sound-of-a5/",
       "title": "Sound of A₅",
       "category": "Music",
@@ -238,13 +259,6 @@
       "category": "Music",
       "date": "2026-11-06T11:45:51+07:00",
       "update": "Add Sound of D₄ music page (#1)"
-    },
-    {
-      "path": "explore/nonsimple/",
-      "title": "Non-Simple Group Explorer",
-      "category": "Explore",
-      "date": "2026-11-06T02:12:16+07:00",
-      "update": "Non-simple groups: fold the Elements explanation into How it works"
     },
     {
       "path": "sketches/pineapple-umbrella/",
@@ -275,25 +289,11 @@
       "update": "Add Minesweeper as level 05 (Classic 16x16 and Circle)"
     },
     {
-      "path": "explore/rubiks-cube/",
-      "title": "Vector Cube",
-      "category": "Explore",
-      "date": "2026-10-29T14:48:08+07:00",
-      "update": "Add Vector Cube to Explore"
-    },
-    {
       "path": "levels/04-counting-strokes/",
       "title": "Counting Strokes",
       "category": "Levels",
       "date": "2026-10-25T22:40:49+07:00",
       "update": "Counting Strokes: fixed-height header so the board stops resizing"
-    },
-    {
-      "path": "explore/rainbow/",
-      "title": "Rainbow Vectors",
-      "category": "Explore",
-      "date": "2026-10-25T12:39:03+07:00",
-      "update": "Explore: add Rainbow vectors page"
     },
     {
       "path": "levels/03-path-to-zero/",
