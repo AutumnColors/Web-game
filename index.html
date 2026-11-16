@@ -50,7 +50,7 @@ const catalogUrl='app-catalog.json';
 // Keep pinned apps here; the generated catalog remains fully automatic.
 const pinnedPaths=['explore/stopping-lab/'];
 // Hide retired experiments even if an older cached catalog is served.
-const removedPaths=new Set(['explore/fractal-lab/doubling-test.html','explore/fractal-lab/geometry-discovery.html','explore/fractal-lab/surface.html','explore/fractal-lab/wave-aligned.html','explore/polar-expedition/']);
+const removedPaths=new Set(['explore/fractal-atlas/terrain.html','explore/fractal-geography/','explore/dual-reconstruction-lab/','explore/fractal-lab/doubling-test.html','explore/fractal-lab/geometry-discovery.html','explore/fractal-lab/surface.html','explore/fractal-lab/wave-aligned.html','explore/polar-expedition/']);
 function fallbackItems(){
   const p=GameKit.get(),out=[];
   function add(arr,category){(arr||[]).forEach((x,i)=>out.push({path:x.path,title:x.title,badge:x.badge||String(i+1),category,done:category==='Games'&&!!p[x.id]?.completed}));}
@@ -97,7 +97,7 @@ async function render(){
     arr=fallbackItems();
     status.textContent='Showing the existing app list until the automatic catalog is generated.';
   }
-  arr=arr.filter(e=>!removedPaths.has(e.path));
+  arr=arr.filter(e=>!removedPaths.has(e.path)&&!e.path.startsWith('legacy/'));
   arr.forEach(e=>e.pinned=pinnedPaths.includes(e.path));
   arr.sort((a,b)=>Number(b.pinned)-Number(a.pinned)||(Date.parse(b.date)||0)-(Date.parse(a.date)||0)||a.title.localeCompare(b.title));
   draw(arr);
@@ -105,5 +105,5 @@ async function render(){
 document.getElementById('reset').addEventListener('click',()=>{if(!confirm('Reset all progress?'))return;try{localStorage.removeItem(GameKit.key)}catch{}render()});
 window.addEventListener('pageshow',render);render();
 </script>
-</body>
+<footer style="text-align:center;padding:22px"><a href="legacy/" style="color:#91baff">Legacy experiments archive</a></footer></body>
 </html>
