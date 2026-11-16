@@ -1,26 +1,26 @@
 {
-  "generatedAt": "2026-11-15T18:14:04.305353+00:00",
+  "generatedAt": "2026-11-16T05:04:30.105649+00:00",
   "apps": [
+    {
+      "path": "explore/fractal-lab/",
+      "title": "Fractal Universe Lab (Legacy)",
+      "category": "Explore",
+      "date": "2026-11-16T12:04:24+07:00",
+      "update": "Remove obsolete legacy shortcut handlers to restore configuration initialization"
+    },
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-16T12:04:12+07:00",
+      "update": "Remove handlers for missing retired Julia experiments"
+    },
     {
       "path": "explore/music-from-symmetry/",
       "title": "Music to Picture",
       "category": "Explore",
       "date": "2026-11-16T01:13:57+07:00",
       "update": "Import DragonForce MIDI: five instrument recurrence tracks and synchronized ensemble"
-    },
-    {
-      "path": "explore/fractal-lab/",
-      "title": "Fractal Universe Lab (Legacy)",
-      "category": "Explore",
-      "date": "2026-11-16T00:13:05+07:00",
-      "update": "Original viewer retained for comparison; retired Julia shortcuts disabled"
-    },
-    {
-      "path": "explore/stopping-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
-      "date": "2026-11-15T22:49:23+07:00",
-      "update": "Promoted fork: stopping modes, coordinate systems and Böttcher mapping"
     },
     {
       "path": "explore/bottcher-lab/",
