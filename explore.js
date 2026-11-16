@@ -73,9 +73,16 @@ window.EXPLORE = [
   {
     id: 'fractal-lab',
     badge: 'f(z)',
-    title: 'Fractal Universe Lab',
+    title: 'Fractal Universe Lab (Legacy)',
     path: 'explore/fractal-lab/',
     desc: 'Choose the universe first: Mandelbrot, Julia or Multibrot, how it is measured (escape time, black and white, orbit sensitivity, gradients, four synced panels), a zoom depth limit and a colour scheme. Then one camera for all of them, cross-sections with CSV export, and captures that carry their full configuration.'
+  },
+  {
+    id: 'stopping-lab',
+    badge: 'f(z)',
+    title: 'Fractal Universe Lab',
+    path: 'explore/stopping-lab/',
+    desc: 'Extended fractal viewer with Mandelbrot, Julia and Multibrot, stopping experiments, Cartesian, polar, log-polar and Böttcher coordinates.'
   },
   {
     id: 'zeta-map',
