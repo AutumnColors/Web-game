@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-16T13:25:05.679737+00:00",
+  "generatedAt": "2026-11-16T13:26:53.964006+00:00",
   "apps": [
     {
       "path": "explore/mandelbulb-3d/",
       "title": "Mandelbulb 3D",
       "category": "Explore",
-      "date": "2026-11-16T20:24:55+07:00",
-      "update": "Fix Android MP4 export by constructing VideoFrame from explicit RGBA pixel buffer"
+      "date": "2026-11-16T20:26:46+07:00",
+      "update": "Fix MP4 muxing: explicit frame duration, handle null chunk duration and surface encoder errors"
     },
     {
       "path": "explore/mandelbulb-slice/",
