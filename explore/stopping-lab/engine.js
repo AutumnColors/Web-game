@@ -38,9 +38,6 @@ const MODES=[
   {v:'sens',   t:'Orbit sensitivity', s:'S = ln(1 + |dzₙ/dc|) at escape',            tag:'Sensitivity S'},
   {v:'potential', t:"Green's potential", s:'Exterior potential G ≈ log|zₙ| / pⁿ; colors show log G (finite-escape estimate)', tag:'Green potential (estimated)'},
   {v:'flat',   t:'Sensitivity, bands removed', s:'ln(|D| / (|z| ln|z|)): exact |∇μ| by the chain rule', tag:'S, bands removed'},
-  {v:'gradt',  t:'Gradient of T',     s:'|∇T| of the whole-step count: band edges',   tag:'|∇T| whole steps'},
-  {v:'gradmu', t:'Gradient of μ',     s:'|∇μ| of the smooth escape time',             tag:'|∇μ| smooth'},
-  {v:'compare',t:'Comparison',        s:'four synced panels, one camera',             tag:'Comparison'}
 ];
 const modeOf=v=>MODES.find(m=>m.v===v)||MODES[0];
 const SEEDS=[['Rabbit',-0.122561166876654,0.744861766619744],['Basilica',-1,0],['Dendrite',0,1],['Siegel disk',-0.390540870218399,-0.586787907346969],
