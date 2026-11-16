@@ -45,7 +45,7 @@ const MODES=[
 const modeOf=v=>MODES.find(m=>m.v===v)||MODES[0];
 const SEEDS=[['Rabbit',-0.122561166876654,0.744861766619744],['Basilica',-1,0],['Dendrite',0,1],['Siegel disk',-0.390540870218399,-0.586787907346969],
   ['Cauliflower',0.25,0],['Airplane',-1.754877666246693,0],['Spiral',-0.8,0.156],['Galaxy',0.285,0.01],['Seahorse',-0.745,0.113],['Dust',0.3,0.5]];
-const DEFAULTS={fractal:'mandelbrot', power:3, seed:{re:SEEDS[0][1],im:SEEDS[0][2]}, mode:'escape', panels:['escape','sens','gradt','flat'],
+const DEFAULTS={fractal:'mandelbrot', power:3, juliaPower:2, seed:{re:SEEDS[0][1],im:SEEDS[0][2]}, mode:'escape', panels:['escape','sens','gradt','flat'],
   depth:0, polar:false, bottcher:false, bottcherGMin:0.02, bottcherGMax:0.6, logPolar:false, logOuter:Math.log(2), logSpan:Math.log(10000), palette:'classic', iter:0, radius:2, stopMode:'outward', clean:false, contours:true, contourLevels:8, contourOpacity:70, contourColor:'white'};
 const clone=c=>({...c, seed:{...c.seed}, panels:[...c.panels]});
 let cfg=clone(DEFAULTS), started=false;
@@ -57,7 +57,7 @@ function engineOf(c){
   const R=c.radius;
   if(c.fractal==='julia'){
     const m=Math.hypot(c.seed.re,c.seed.im), rad=(1+Math.sqrt(1+4*m))/2;   // the filled Julia set lies within this radius
-    return {kind:1,pw:2,kr:c.seed.re,ki:c.seed.im,R2:R*R,name:'Julia set',rule:'z → z² + c',hx:0,hy:0,span:2*rad*1.04,bx:rad+0.8,by:rad+0.8};
+    return {kind:1,pw:c.juliaPower,kr:c.seed.re,ki:c.seed.im,R2:R*R,name:'Julia set',rule:'z → z^'+Number(c.juliaPower.toPrecision(7))+' + c',hx:0,hy:0,span:2*rad*1.04,bx:rad+0.8,by:rad+0.8};
   }
   if(c.fractal==='multibrot')
     return {kind:0,pw:c.power,kr:0,ki:0,R2:R*R,name:'Multibrot '+c.power,rule:'z → z'+sup(c.power)+' + c',hx:0,hy:0,span:3,bx:2,by:2};
@@ -72,6 +72,15 @@ const cmp=()=>cfg.mode==='compare';
    kind 1: the pixel is z₀ and c is fixed (dynamical plane). Returns numbers, not colours:
    T = first n with |zₙ| > R (65535: no escape detected), F = μ − T, S = ln(1 + |Dₙ|) with D = dz/dc (kind 0) or dz/dz₀ (kind 1). ---------- */
 const WORKER_SRC=`
+// Principal branch: z^p = exp(p (ln|z| + i Arg(z))), Arg in (-pi,pi].
+// For noninteger p this map is discontinuous across the negative real axis.
+function principalPower(zr,zi,p){
+  const m=Math.hypot(zr,zi);
+  if(m===0) return p>0?[0,0]:[NaN,NaN];
+  const a=p*Math.atan2(zi,zr), r=Math.pow(m,p);
+  return [r*Math.cos(a),r*Math.sin(a)];
+}
+
 function bottcherInverse(u,theta,cr,ci){
   // Pull back the asymptotic inverse from a large equipotential.
   // Only valid in the basin of infinity; never map the filled Julia interior.
@@ -139,7 +148,7 @@ function parameterInverse(u,theta){
 onmessage=e=>{
   const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
   const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float32Array(N):null;
-  const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=1/Math.log(pw);
+  const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=pw>1?1/Math.log(pw):0;
   let minN=1e9;
   for(let r=0;r<rows;r++){
     const Rw=y0row+r, rr=or+Rw*eyr, ri=oi+Rw*eyi;
@@ -164,23 +173,36 @@ onmessage=e=>{
         if(pw===2){
           if(needD){ const t=2*(zr*dr-zi*di)+add; di=2*(zr*di+zi*dr); dr=t; }
           zi=2*zr*zi+ci; zr=zr2-zi2+cr;
+        } else if(!Number.isInteger(pw) || pw<2){
+          const [wr,wi]=principalPower(zr,zi,pw);
+          if(needD){ const [ar,ai]=principalPower(zr,zi,pw-1); const t=pw*(ar*dr-ai*di)+add; di=pw*(ar*di+ai*dr); dr=t; }
+          zr=wr+cr; zi=wi+ci;
         } else {
           let wr=zr, wi=zi; for(let k=2;k<pw;k++){ const t=wr*zr-wi*zi; wi=wr*zi+wi*zr; wr=t; }
           if(needD){ const t=pw*(wr*dr-wi*di)+add; di=pw*(wr*di+wi*dr); dr=t; }
           const t=wr*zr-wi*zi+cr; zi=wr*zi+wi*zr+ci; zr=t;
         }
         zr2=zr*zr; zi2=zi*zi; n++;
+        if(!Number.isFinite(zr2+zi2)){ if(Number.isNaN(zr2+zi2)){inside=true;} break; }
         if(stopMode==='outward' && Math.abs(zr-qr)+Math.abs(zi-qi)<=eps){ inside=true; break; }
         if(++cnt===lim){ cnt=0; lim<<=1; qr=zr; qi=zi; }
       }
       if(inside){ T[i]=65535; continue; }
       if(n<minN) minN=n;
-      T[i]=n; F[i]=stopMode==='outward' ? 1-Math.log(Math.max(1e-300,Math.log2(Math.max(1.000001,zr2+zi2))*0.5))*ilp : 0;
+      T[i]=n; F[i]=stopMode==='outward' && pw>1 ? 1-Math.log(Math.max(1e-300,Math.log2(Math.max(1.000001,zr2+zi2))*0.5))*ilp : 0;
       if(needD) S[i]=Math.log(1+Math.sqrt(dr*dr+di*di));
     }
   }
   postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,minN},S?[T.buffer,F.buffer,S.buffer]:[T.buffer,F.buffer]);
 };`;
+// Principal branch: z^p = exp(p (ln|z| + i Arg(z))), Arg in (-pi,pi].
+// For noninteger p this map is discontinuous across the negative real axis.
+function principalPower(zr,zi,p){
+  const m=Math.hypot(zr,zi);
+  if(m===0) return p>0?[0,0]:[NaN,NaN];
+  const a=p*Math.atan2(zi,zr), r=Math.pow(m,p);
+  return [r*Math.cos(a),r*Math.sin(a)];
+}
 const NW=Math.max(2,Math.min(8,(navigator.hardwareConcurrency||4)));
 const workerURL=URL.createObjectURL(new Blob([WORKER_SRC],{type:'text/javascript'}));
 const idle=[]; let queue=[];
@@ -197,13 +219,16 @@ function orbit(pr,pq,maxIt,e){
   while(zr*zr+zi*zi<=e.R2){
     if(n>=maxIt) return {esc:false,n};
     if(pw===2){ const t=2*(zr*dr-zi*di)+add; di=2*(zr*di+zi*dr); dr=t; const u=zr*zr-zi*zi+cr; zi=2*zr*zi+ci; zr=u; }
+    else if(!Number.isInteger(pw)||pw<2){const [wr,wi]=principalPower(zr,zi,pw);const [ar,ai]=principalPower(zr,zi,pw-1);const t=pw*(ar*dr-ai*di)+add;di=pw*(ar*di+ai*dr);dr=t;zr=wr+cr;zi=wi+ci;}
     else { let wr=zr, wi=zi; for(let k=2;k<pw;k++){ const t=wr*zr-wi*zi; wi=wr*zi+wi*zr; wr=t; }
       const t=pw*(wr*dr-wi*di)+add; di=pw*(wr*di+wi*dr); dr=t; const u=wr*zr-wi*zi+cr; zi=wr*zi+wi*zr+ci; zr=u; }
     n++;
+    if(!Number.isFinite(zr)||!Number.isFinite(zi))return {esc:!Number.isNaN(zr+zi),n};
     if(Math.abs(zr-qr)+Math.abs(zi-qi)<=eps) return {esc:false,n,cycle:true};
     if(++cnt===lim){ cnt=0; lim<<=1; qr=zr; qi=zi; }
   }
   const m=Math.hypot(zr,zi), ad=Math.hypot(dr,di), lp=Math.log(pw);
+  if(pw<=1)return {esc:true,n,mu:n,absD:ad,S:Math.log1p(ad),an:NaN};
   // an = |∇μ| from the chain rule: μ = const − log_p G, G ≈ p⁻ⁿ ln|zₙ|  ⇒  |∇μ| = |D| / (|z| ln|z| ln p)
   return {esc:true,n,mu:n+1-Math.log(Math.log2(m))/lp,absD:ad,S:Math.log(1+ad),an:ad/(m*Math.log(m)*lp)};
 }
