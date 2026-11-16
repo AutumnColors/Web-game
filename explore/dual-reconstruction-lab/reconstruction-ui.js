@@ -25,23 +25,25 @@
   return {green,layers,gth,r,threshold,mode};
  }
  function counts(mask){let n=0;for(const v of mask)n+=v;return n;}
+
+ function dilate3(mask,N){
+  const stride=N+1,prefix=new Uint32Array(stride*stride),out=new Uint8Array(N*N);
+  for(let y=0;y<N;y++){let row=0;for(let x=0;x<N;x++){row+=mask[y*N+x];prefix[(y+1)*stride+x+1]=prefix[y*stride+x+1]+row;}}
+  for(let y=0;y<N;y++){const top=Math.max(0,y-3),bottom=Math.min(N,y+4);for(let x=0;x<N;x++){const left=Math.max(0,x-3),right=Math.min(N,x+4);out[y*N+x]=+(prefix[bottom*stride+right]-prefix[top*stride+right]-prefix[bottom*stride+left]+prefix[top*stride+left]>0);}}
+  return out;
+ }
  function evaluate(mask,green,d){
-  const N=d.N,step=d.width/N;let hit=0,fp=0,candidates=0,reference=0,radialSum=0,radial95=[];
-  // Distances from candidates to nearest Green boundary: approximate within 8 pixels.
-  let cover=0;
-  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
-   const i=y*N+x;if(green[i])reference++;
-   if(!mask[i])continue;candidates++;
-   if(d.c===0){const xx=(x+.5-N/2)*step,yy=(N/2-y-.5)*step;radial95.push(Math.abs(Math.hypot(xx,yy)-1));radialSum+=radial95[radial95.length-1];}
-   let near=false;for(let dy=-3;dy<=3&&!near;dy++)for(let dx=-3;dx<=3;dx++){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0&&xx<N&&yy<N&&green[yy*N+xx]){near=true;break;}}
-   if(near)hit++;else fp++;
+  const N=d.N,step=d.width/N,nearGreen=dilate3(green,N),nearMask=dilate3(mask,N);
+  let hit=0,candidates=0,reference=0,cover=0,radialSum=0;
+  const errors=[];
+  for(let i=0;i<N*N;i++){
+   if(green[i]){reference++;if(nearMask[i])cover++;}
+   if(!mask[i])continue;
+   candidates++;if(nearGreen[i])hit++;
+   if(d.c===0){const x=i%N,y=Math.floor(i/N),xx=(x+.5-N/2)*step,yy=(N/2-y-.5)*step,err=Math.abs(Math.hypot(xx,yy)-1);errors.push(err);radialSum+=err;}
   }
-  for(let y=0;y<N;y++)for(let x=0;x<N;x++)if(green[y*N+x]){
-   let near=false;for(let dy=-3;dy<=3&&!near;dy++)for(let dx=-3;dx<=3;dx++){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0&&xx<N&&yy<N&&mask[yy*N+xx]){near=true;break;}}
-   if(near)cover++;
-  }
-  radial95.sort((a,b)=>a-b);
-  return {candidates,reference,coverage:cover/Math.max(1,reference),precision:hit/Math.max(1,candidates),falsePositive:fp/Math.max(1,candidates),meanCircleError:d.c===0?radialSum/Math.max(1,candidates):null,p95CircleError:d.c===0&&radial95.length?radial95[Math.floor(.95*(radial95.length-1))]:null};
+  errors.sort((a,b)=>a-b);
+  return {candidates,reference,coverage:cover/Math.max(1,reference),precision:hit/Math.max(1,candidates),falsePositive:(candidates-hit)/Math.max(1,candidates),meanCircleError:d.c===0?radialSum/Math.max(1,candidates):null,p95CircleError:d.c===0&&errors.length?errors[Math.floor(.95*(errors.length-1))]:null};
  }
  function paint(id,kind,d,a,layer){
   const N=d.N,cv=$(id);cv.width=cv.height=N;const ctx=cv.getContext('2d'),img=ctx.createImageData(N,N),v=img.data;
