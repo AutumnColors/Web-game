@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-16T08:48:30.013133+00:00",
+  "generatedAt": "2026-11-16T10:40:27.645459+00:00",
   "apps": [
+    {
+      "path": "explore/fractal-geography/",
+      "title": "Fractal Geography · Atlas",
+      "category": "Explore",
+      "date": "2026-11-16T17:40:19+07:00",
+      "update": "Add standalone Fractal Geography 3D terrain atlas engine"
+    },
     {
       "path": "explore/dual-reconstruction-lab/",
       "title": "Fractal Universe Lab ∥ Dual Reconstruction",
