@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-16T12:40:56.541139+00:00",
+  "generatedAt": "2026-11-16T12:52:09.965470+00:00",
   "apps": [
+    {
+      "path": "explore/mandelbulb-3d/",
+      "title": "Mandelbulb 3D",
+      "category": "Explore",
+      "date": "2026-11-16T19:52:03+07:00",
+      "update": "Add standalone GPU raymarched 3D Mandelbulb viewer"
+    },
     {
       "path": "explore/mandelbulb-slice/",
       "title": "Mandelbulb Slice Lab",
