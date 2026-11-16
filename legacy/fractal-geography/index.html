@@ -72,4 +72,4 @@ function resize(){const w=host.clientWidth,h=host.clientHeight;camera.aspect=w/h
 new ResizeObserver(()=>{resize();if(!in3D)draw2D()}).observe(host);resize();show2D();
 function animate(){requestAnimationFrame(animate);if(in3D){controls.update();renderer.render(scene,camera)}}animate();
 let dragging=false,lastX=0,lastY=0;map.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;map.setPointerCapture(e.pointerId)});map.addEventListener('pointerup',()=>{dragging=false;draw2D()});map.addEventListener('pointermove',e=>{if(!dragging)return;const unit=span2D/Math.min(host.clientWidth,host.clientHeight);center2D.x-=(e.clientX-lastX)*unit;center2D.y+=(e.clientY-lastY)*unit;lastX=e.clientX;lastY=e.clientY});map.addEventListener('wheel',e=>{e.preventDefault();span2D*=Math.exp(e.deltaY*.001);span2D=Math.max(1e-7,Math.min(20,span2D));draw2D()},{passive:false});
-</script></body></html>
+</script><script src="../../site-chrome.js" defer></script></body></html>
