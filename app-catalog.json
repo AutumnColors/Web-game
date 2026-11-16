@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-16T12:52:09.965470+00:00",
+  "generatedAt": "2026-11-16T12:55:26.567086+00:00",
   "apps": [
     {
       "path": "explore/mandelbulb-3d/",
       "title": "Mandelbulb 3D",
       "category": "Explore",
-      "date": "2026-11-16T19:52:03+07:00",
-      "update": "Add standalone GPU raymarched 3D Mandelbulb viewer"
+      "date": "2026-11-16T19:55:20+07:00",
+      "update": "Add Mandelbulb, Julia and custom twist shape modes with parameter controls"
     },
     {
       "path": "explore/mandelbulb-slice/",
