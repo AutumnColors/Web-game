@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-17T12:33:05.118522+00:00",
+  "generatedAt": "2026-11-17T13:10:47.252602+00:00",
   "apps": [
+    {
+      "path": "explore/group-invariant-matrix/",
+      "title": "Generator Invariant Matrix",
+      "category": "Explore",
+      "date": "2026-11-17T20:10:39+07:00",
+      "update": "Add exact generator invariant comparison matrix"
+    },
     {
       "path": "explore/group-evolution-lab/",
       "title": "Group Evolution Lab",
