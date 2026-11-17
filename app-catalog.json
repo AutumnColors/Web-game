@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-17T13:21:02.142206+00:00",
+  "generatedAt": "2026-11-17T13:24:55.000912+00:00",
   "apps": [
     {
       "path": "explore/group-invariant-matrix/",
       "title": "Generator Invariant Matrix",
       "category": "Explore",
-      "date": "2026-11-17T20:20:54+07:00",
-      "update": "Fix JavaScript parse error in invariant table row callbacks"
+      "date": "2026-11-17T20:24:47+07:00",
+      "update": "Transpose generator invariant matrix: classes as rows, measurements as columns"
     },
     {
       "path": "explore/group-evolution-lab/",
