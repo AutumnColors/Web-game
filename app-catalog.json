@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-17T13:10:47.252602+00:00",
+  "generatedAt": "2026-11-17T13:20:50.285555+00:00",
   "apps": [
     {
       "path": "explore/group-invariant-matrix/",
       "title": "Generator Invariant Matrix",
       "category": "Explore",
-      "date": "2026-11-17T20:10:39+07:00",
-      "update": "Add exact generator invariant comparison matrix"
+      "date": "2026-11-17T20:20:43+07:00",
+      "update": "Start invariant matrix at S3 and surface computation errors"
     },
     {
       "path": "explore/group-evolution-lab/",
