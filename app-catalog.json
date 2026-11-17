@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-17T11:57:45.433267+00:00",
+  "generatedAt": "2026-11-17T12:33:05.118522+00:00",
   "apps": [
+    {
+      "path": "explore/group-evolution-lab/",
+      "title": "Group Evolution Lab",
+      "category": "Explore",
+      "date": "2026-11-17T19:32:57+07:00",
+      "update": "Add group convolution evolution lab with generator-pair orbit classification"
+    },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
