@@ -10,7 +10,7 @@
 <label>Iterations <span id="iterVal" class="value">100</span></label><input id="iterations" type="range" min="40" max="240" step="20" value="100">
 <label>Surface opacity <span id="opVal" class="value">1.00</span></label><input id="opacity" type="range" min=".15" max="1" step=".05" value="1">
 <label><input id="section" type="checkbox"> Show 2D cross-section (k = 0)</label>
-<div id="status">Preparing basilica…</div><div class="muted">For real c, the boundedness set is rotationally symmetric about the real axis; the 3D volume is sampled from its 2D radial profile. For nonreal quaternion c, the complete quaternion recurrence is evaluated at every 3D sample. The section is the k = 0 plane in the selected 3D starting-point space. Escape radius 4, finite iteration cutoff. Rendering uses marching tetrahedra.</div>
+<div id="status">Preparing basilica…</div><div class="muted">For real c, the boundedness set is rotationally symmetric about the real axis; the 3D volume is sampled from its 2D radial profile. For nonreal quaternion c, the complete quaternion recurrence is evaluated at every 3D sample. The section is the k = 0 plane in the selected 3D starting-point space. Escape radius 4, finite iteration cutoff. Rendering uses interpolated marching tetrahedra with continuous exterior potential and gradient normals. The surface is a finite-resolution approximation; very fine fractal features remain unresolved.</div>
 </aside></main>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script>
 <script type="module">
@@ -22,50 +22,93 @@ const camera=new THREE.PerspectiveCamera(44,1,.01,100);camera.position.set(4.4,3
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));host.prepend(renderer.domElement);
 const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;
 scene.add(new THREE.AmbientLight(0xffffff,1.1));const key=new THREE.DirectionalLight(0xa9e0ff,2.2);key.position.set(3,5,6);scene.add(key);const fill=new THREE.DirectionalLight(0x6388ff,1.2);fill.position.set(-4,-3,-5);scene.add(fill);
-const grid=new THREE.GridHelper(4.8,12,0x345372,0x1b2a3e);grid.position.y=-2.2;scene.add(grid);
+// No floor grid: the Julia object floats freely in space.
 let mesh=null,sectionMesh=null,token=0,field=null,N=0,step=0,lo=-2.15;
-function quaternionBounded(x,y,z,cr,ci,cj,ck,it){
+// Continuous exterior potential with a small negative interior value.
+// This yields interpolated boundary crossings instead of voxel-midpoint stair steps.
+function orbitField(x,y,z,cr,ci,cj,ck,it){
  let w=x,a=y,b=z,d=0;
  for(let n=0;n<it;n++){
   const ww=w*w-a*a-b*b-d*d+cr,aa=2*w*a+ci,bb=2*w*b+cj,dd=2*w*d+ck;
   w=ww;a=aa;b=bb;d=dd;
-  if(w*w+a*a+b*b+d*d>16)return false;
- }return true;
+  const r2=w*w+a*a+b*b+d*d;
+  if(r2>256){const g=Math.log(Math.sqrt(r2))*Math.pow(.5,n+1);return Math.max(0.000001,g)}
+ }
+ return -0.003;
 }
-function profileBounded(x,r,cr,it){
+function radialField(x,r,cr,it){
  let w=x,v=r;
- for(let n=0;n<it;n++){const nw=w*w-v*v+cr,nv=2*w*v;w=nw;v=nv;if(w*w+v*v>16)return false}
- return true;
+ for(let n=0;n<it;n++){
+  const nw=w*w-v*v+cr,nv=2*w*v;w=nw;v=nv;
+  const r2=w*w+v*v;
+  if(r2>256){const g=Math.log(Math.sqrt(r2))*Math.pow(.5,n+1);return Math.max(.000001,g)}
+ }
+ return -0.003;
 }
 function dispose(o){if(o){scene.remove(o);o.geometry.dispose();o.material.dispose()}}
 const tetra=[[0,5,1,6],[0,1,2,6],[0,2,3,6],[0,3,7,6],[0,7,4,6],[0,4,5,6]];
 const corners=[[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]];
 const tetEdges=[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]];
 function makeMesh(data,n,spacing,origin){
- const verts=[];const idx=(i,j,k)=>(k*n+j)*n+i;
- const pushTri=(a,b,c)=>{verts.push(...a,...b,...c)};
+ const verts=[],normals=[],idx=(i,j,k)=>(k*n+j)*n+i;
+ const clamp=v=>Math.max(0,Math.min(n-1,v));
+ function sample(x,y,z){
+  x=clamp(x);y=clamp(y);z=clamp(z);
+  const i=Math.min(n-2,Math.floor(x)),j=Math.min(n-2,Math.floor(y)),k=Math.min(n-2,Math.floor(z));
+  const u=x-i,v=y-j,w=z-k;
+  let sum=0;
+  for(let dz=0;dz<=1;dz++)for(let dy=0;dy<=1;dy++)for(let dx=0;dx<=1;dx++)
+   sum+=data[idx(i+dx,j+dy,k+dz)]*(dx?u:1-u)*(dy?v:1-v)*(dz?w:1-w);
+  return sum;
+ }
+ function vertex(p){
+  verts.push(...p);
+  const x=(p[0]-origin)/spacing,y=(p[1]-origin)/spacing,z=(p[2]-origin)/spacing;
+  const e=.55,gx=sample(x+e,y,z)-sample(x-e,y,z),gy=sample(x,y+e,z)-sample(x,y-e,z),gz=sample(x,y,z+e)-sample(x,y,z-e);
+  const m=Math.hypot(gx,gy,gz)||1;normals.push(gx/m,gy/m,gz/m);
+ }
+ function tri(a,b,c){vertex(a);vertex(b);vertex(c)}
  for(let k=0;k<n-1;k++)for(let j=0;j<n-1;j++)for(let i=0;i<n-1;i++){
   const val=corners.map(q=>data[idx(i+q[0],j+q[1],k+q[2])]);
-  let count=0;for(const v of val)count+=v;if(count===0||count===8)continue;
+  const positive=val.filter(v=>v>=0).length;if(positive===0||positive===8)continue;
   const pos=corners.map(q=>[origin+(i+q[0])*spacing,origin+(j+q[1])*spacing,origin+(k+q[2])*spacing]);
   for(const tet of tetra){
    const hits=[];
-   for(const [u,v] of tetEdges){const a=tet[u],b=tet[v];if(val[a]===val[b])continue;hits.push([(pos[a][0]+pos[b][0])/2,(pos[a][1]+pos[b][1])/2,(pos[a][2]+pos[b][2])/2])}
-   if(hits.length===3)pushTri(hits[0],hits[1],hits[2]);
-   else if(hits.length===4){pushTri(hits[0],hits[1],hits[2]);pushTri(hits[1],hits[3],hits[2])}
+   for(const [u,v] of tetEdges){
+    const a=tet[u],b=tet[v],va=val[a],vb=val[b];
+    if((va>=0)===(vb>=0))continue;
+    const t=Math.max(.001,Math.min(.999,va/(va-vb)));
+    hits.push([pos[a][0]+t*(pos[b][0]-pos[a][0]),pos[a][1]+t*(pos[b][1]-pos[a][1]),pos[a][2]+t*(pos[b][2]-pos[a][2])]);
+   }
+   if(hits.length===3)tri(hits[0],hits[1],hits[2]);
+   else if(hits.length===4){tri(hits[0],hits[1],hits[2]);tri(hits[1],hits[3],hits[2])}
   }
  }
- const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
- // Winding of tetrahedron facets is arbitrary; use double-sided shading.
- geo.computeVertexNormals();
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+ geo.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
  return geo;
+}
+function fitCamera(){
+ if(!mesh)return;
+ mesh.geometry.computeBoundingSphere();
+ const sphere=mesh.geometry.boundingSphere;
+ if(!sphere||!Number.isFinite(sphere.radius)||sphere.radius===0)return;
+ const center=sphere.center.clone();
+ controls.target.copy(center);
+ const vfov=THREE.MathUtils.degToRad(camera.fov);
+ const hfov=2*Math.atan(Math.tan(vfov/2)*camera.aspect);
+ const minFov=Math.min(vfov,hfov);
+ const dist=sphere.radius/Math.sin(minFov/2)*1.32;
+ camera.position.copy(center).add(new THREE.Vector3(1,.65,1.5).normalize().multiplyScalar(dist));
+ camera.near=Math.max(.01,dist/100);camera.far=dist*5;camera.updateProjectionMatrix();controls.update();
 }
 function renderSection(){
  dispose(sectionMesh);sectionMesh=null;
  if(!$('section').checked||!field)return;
  const pos=[],col=[],idx=(i,j,k)=>(k*N+j)*N+i,center=Math.round((N-1)/2);
  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
-  if(!field[idx(i,j,center)])continue;
+  if(field[idx(i,j,center)]>=0)continue;
   pos.push(lo+i*step,lo+j*step,0);col.push(1,.67,.16);
  }
  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
@@ -73,42 +116,47 @@ function renderSection(){
 }
 async function generate(){
  const run=++token;$('generate').disabled=true;$('status').textContent='Computing…';dispose(mesh);mesh=null;dispose(sectionMesh);sectionMesh=null;
- const quality=$('quality').value;N=quality==='fast'?34:quality==='medium'?52:76;
+ const quality=$('quality').value;N=quality==='fast'?42:quality==='medium'?70:100;
  const it=+$('iterations').value,preset=$('preset').value;
  const c=preset==='basilica'?[-1,0,0,0]:preset==='circle'?[0,0,0,0]:preset==='rabbit'?[-.123,.745,0,0]:[+$('cr').value,+$('ci').value,+$('cj').value,+$('ck').value];
  const real=c[1]===0&&c[2]===0&&c[3]===0;
- lo=-2.15;step=4.3/(N-1);field=new Uint8Array(N*N*N);
+ lo=-2.15;step=4.3/(N-1);field=new Float32Array(N*N*N);
  const idx=(i,j,k)=>(k*N+j)*N+i;
- let radial=null;
  if(real){
-  radial=new Uint8Array(N*(N*2));
-  const dr=3.1/(N*2-1);
-  for(let i=0;i<N;i++)for(let m=0;m<N*2;m++)radial[i*(N*2)+m]=profileBounded(lo+i*step,m*dr,c[0],it)?1:0;
-  for(let k=0;k<N;k++)for(let j=0;j<N;j++)for(let i=0;i<N;i++){
-   const r=Math.hypot(lo+j*step,lo+k*step),u=r/dr,m=Math.floor(u),t=u-m;
-   // Use direct profile test near boundaries to avoid losing small features to radial interpolation.
-   field[idx(i,j,k)]=m>=N*2-1?0:(radial[i*(N*2)+m]===radial[i*(N*2)+m+1]?radial[i*(N*2)+m]:profileBounded(lo+i*step,r,c[0],it)?1:0);
+  // Evaluate only the 2D meridian; use the rotational symmetry exactly.
+  // Direct radial evaluation avoids nearest-neighbor banding.
+  const radialN=N*2,radialStep=3.15/(radialN-1);
+  const radial=new Float32Array(N*radialN);
+  for(let i=0;i<N;i++)for(let m=0;m<radialN;m++)
+   radial[i*radialN+m]=radialField(lo+i*step,m*radialStep,c[0],it);
+  for(let k=0;k<N;k++){
+   for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const r=Math.hypot(lo+j*step,lo+k*step),u=r/radialStep,m=Math.floor(u);
+    field[idx(i,j,k)]=m>=radialN-1?1:radial[i*radialN+m]*(1-(u-m))+radial[i*radialN+m+1]*(u-m);
+   }
+   if(k%8===0){$('status').textContent='Revolving Julia profile: '+Math.round(100*(k+1)/N)+'%';await new Promise(r=>setTimeout(r,0))}
   }
  }else{
   for(let k=0;k<N;k++){
    if(run!==token)return;
-   for(let j=0;j<N;j++)for(let i=0;i<N;i++)field[idx(i,j,k)]=quaternionBounded(lo+i*step,lo+j*step,lo+k*step,...c,it)?1:0;
-   if(k%4===0){$('status').textContent='Quaternion orbits: '+Math.round(100*(k+1)/N)+'%';await new Promise(r=>setTimeout(r,0))}
+   for(let j=0;j<N;j++)for(let i=0;i<N;i++)
+    field[idx(i,j,k)]=orbitField(lo+i*step,lo+j*step,lo+k*step,...c,it);
+   if(k%3===0){$('status').textContent='Quaternion orbits: '+Math.round(100*(k+1)/N)+'%';await new Promise(r=>setTimeout(r,0))}
   }
  }
  if(run!==token)return;
  $('status').textContent='Constructing surface…';await new Promise(r=>setTimeout(r,0));
  const geometry=makeMesh(field,N,step,lo);
- const mat=new THREE.MeshPhongMaterial({color:0x52b7ed,side:THREE.DoubleSide,flatShading:true,shininess:45,transparent:true,opacity:+$('opacity').value,depthWrite:+$('opacity').value>=.99});
+ const mat=new THREE.MeshPhongMaterial({color:0x52b7ed,side:THREE.DoubleSide,flatShading:false,shininess:65,transparent:true,opacity:+$('opacity').value,depthWrite:+$('opacity').value>=.99});
  mesh=new THREE.Mesh(geometry,mat);scene.add(mesh);
- renderSection();$('status').textContent=(real?'Rotational profile':'Full quaternion grid')+' · '+N+'³ samples · '+it+' iterations · '+Math.round(geometry.attributes.position.count/3).toLocaleString()+' triangles';$('generate').disabled=false;
+ renderSection();fitCamera();$('status').textContent=(real?'Rotational profile':'Full quaternion grid')+' · '+N+'³ samples · '+it+' iterations · '+Math.round(geometry.attributes.position.count/3).toLocaleString()+' triangles';$('generate').disabled=false;
 }
 $('preset').onchange=()=>{$('custom').hidden=$('preset').value!=='custom';$('status').textContent='Parameter changed. Press Generate 3D.'};
 $('quality').onchange=()=>{$('status').textContent='Quality changed. Press Generate 3D.'};
 $('iterations').oninput=()=>{$('iterVal').textContent=$('iterations').value;$('status').textContent='Iterations changed. Press Generate 3D.'};
 $('opacity').oninput=()=>{$('opVal').textContent=(+$('opacity').value).toFixed(2);if(mesh){mesh.material.opacity=+$('opacity').value;mesh.material.depthWrite=+$('opacity').value>=.99}};
 $('section').onchange=renderSection;$('generate').onclick=generate;
-$('reset').onclick=()=>{camera.position.set(4.4,3.3,5.4);controls.target.set(0,0,0);controls.update()};
+$('reset').onclick=fitCamera;
 new ResizeObserver(()=>{const w=host.clientWidth,h=host.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h)}).observe(host);
 function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();generate();
 </script></body></html>
