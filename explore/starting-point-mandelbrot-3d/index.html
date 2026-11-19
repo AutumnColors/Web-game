@@ -12,9 +12,12 @@
 <label><input id="mirror" type="checkbox" checked> Show symmetry plane s=0</label>
 <div id="status">Ready. Generate to compute the boundedness volume.</div><small>The 3D cloud shows sampled boundary voxels. Slice colors are based on the same escape-time test. Escape radius 2 is valid for real starting points s in [-2,2] after a first-step check, using a conservative escape radius 4 here for all sampled starts. Finite iteration nonescape is not guaranteed boundedness.</small>
 </aside></main>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
+</script>
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js';
-import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js';
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 const el=id=>document.getElementById(id), host=el('view');
 const scene=new THREE.Scene();scene.background=new THREE.Color('#080d17');
 const camera=new THREE.PerspectiveCamera(45,1,.01,100);camera.position.set(5,4.2,6);
