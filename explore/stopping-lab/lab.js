@@ -142,7 +142,7 @@ addEventListener('keydown',e=>{
 function setMode(m){
   // Coordinate choice remains independent of measurement.
   const was=cmp(); cfg.mode=m; document.body.classList.toggle('cmp',cmp());
-  if(cmp()!==was || (needD() && base && !base.S)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
+  if(cmp()!==was || (needD() && base && !base.S) || (m==='dld' && base && !base.DLD)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
   repaint(); updateChip(); syncQuick(); writeHash();
 }
 const coordOf=c=>c.bottcher?'bottcher':c.polar?(c.logPolar?'logpolar':'polar'):'cartesian';
