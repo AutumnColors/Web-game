@@ -14,6 +14,14 @@ h1{font-size:clamp(2rem,7vw,3rem);margin:0 0 6px;letter-spacing:.02em}
 .sub{color:var(--muted);margin:0 0 28px}
 .sec+.sub{margin-bottom:16px}
 .subsec{font-size:1.15rem;margin-top:28px;color:var(--accent)}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+.chip{display:inline-flex;align-items:center;gap:7px;min-height:42px;padding:0 14px;border-radius:999px;border:2px solid var(--line);background:var(--card);color:var(--text);font:600 .92rem system-ui,-apple-system,sans-serif;cursor:pointer}
+.chip i{width:9px;height:9px;border-radius:50%;background:var(--c,var(--muted))}
+.chip b{color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--c,var(--accent));background:var(--card2)}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tagl{display:inline-flex;align-items:center;gap:5px;font-size:.74rem;color:var(--muted);margin-top:3px}
+.tagl i{width:7px;height:7px;border-radius:50%;background:var(--c)}
 .levels{display:grid;gap:12px;list-style:none;padding:0;margin:0}
 .level{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card);border:2px solid var(--line);border-radius:16px;color:inherit;text-decoration:none;transition:transform .12s,border-color .12s,background .12s}
 .level:hover,.level:focus-visible{border-color:var(--accent);background:var(--card2);transform:translateY(-2px);outline:none}
@@ -48,6 +56,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
   .info{width:0;flex:1 1 0;overflow:hidden}
   .meta{display:none}
   .detail{font-size:.72rem}
+  .chip{min-height:40px;padding:0 12px;font-size:.88rem}
 }
 @media(max-width:390px){
   .level{gap:9px;padding:10px}
@@ -58,10 +67,13 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 </head>
 <body>
 <main>
-  <h1>Games & Labs</h1><p class="sub">All app entry points, newest updates first. Automatically refreshed from GitHub.</p><p class="sub" id="status">Loading app catalog…</p><ol class="levels" id="recent"></ol>
+  <h1>Games & Labs</h1><p class="sub">All app entry points, newest updates first. Automatically refreshed from GitHub.</p><p class="sub" id="status">Loading app catalog…</p>
+  <nav class="tags" id="tags" aria-label="Filter by category"></nav>
+  <ol class="levels" id="recent"></ol>
   <div class="foot"><button class="reset" id="reset" type="button">Reset progress</button></div>
 </main>
 <script src="shared/progress.js"></script>
+<script src="tags.js"></script>
 <script src="levels.js"></script>
 <script src="explore.js"></script>
 <script src="groups.js"></script>
@@ -76,6 +88,9 @@ const catalogUrl='app-catalog.json';
 const pinnedPaths=['explore/stopping-lab/'];
 // Hide retired experiments even if an older cached catalog is served.
 const removedPaths=new Set(['explore/fractal-atlas/terrain.html','explore/fractal-geography/','explore/dual-reconstruction-lab/','explore/fractal-lab/doubling-test.html','explore/fractal-lab/geometry-discovery.html','explore/fractal-lab/surface.html','explore/fractal-lab/wave-aligned.html','explore/polar-expedition/']);
+const TAGS=window.APP_TAGS||[];
+const tagById=new Map(TAGS.map(t=>[t.id,t]));
+let allItems=[];
 function fallbackItems(){
   const p=GameKit.get(),out=[];
   function add(arr,category){(arr||[]).forEach((x,i)=>out.push({path:x.path,title:x.title,badge:x.badge||String(i+1),category,done:category==='Games'&&!!p[x.id]?.completed}));}
@@ -85,6 +100,21 @@ function fallbackItems(){
   out.push({path:'explore/boundary-lab/',title:'Boundary Lab',badge:'≈',category:'Explore'});
   out.push({path:'boundary-wave-lab.html',title:'Circular Boundary Wave Lab',badge:'◯',category:'Explore'});
   return out;
+}
+function currentTag(){const h=location.hash.slice(1);return tagById.has(h)?h:''}
+function drawTags(active){
+  const nav=document.getElementById('tags');nav.replaceChildren();
+  const counts=new Map();allItems.forEach(e=>counts.set(e.tag,(counts.get(e.tag)||0)+1));
+  [{id:'',label:'All'},...TAGS].forEach(t=>{
+    const b=document.createElement('button');b.type='button';b.className='chip';
+    b.setAttribute('aria-pressed',String(t.id===active));
+    if(t.color)b.style.setProperty('--c',t.color);
+    if(t.color){const dot=document.createElement('i');b.append(dot)}
+    const n=document.createElement('b');n.textContent=t.id?(counts.get(t.id)||0):allItems.length;
+    b.append(t.label+' ',n);
+    b.addEventListener('click',()=>{if(t.id)location.hash=t.id;else history.replaceState(null,'',location.pathname+location.search);show()});
+    nav.append(b);
+  });
 }
 function draw(arr){
   const list=document.getElementById('recent');list.replaceChildren();
@@ -97,12 +127,19 @@ function draw(arr){
 
     if(e.pinned){const pinned=document.createElement('small');pinned.className='pinned-label';pinned.textContent='★ Pinned';info.append(pinned);}
     info.append(title);
+    const t=tagById.get(e.tag);
+    if(t){const tl=document.createElement('span');tl.className='tagl';tl.style.setProperty('--c',t.color);const d=document.createElement('i');tl.append(d,t.label);info.append(tl)}
     const meta=document.createElement('span');meta.className='meta';
     const stamp=e.date?new Date(e.date):null;
     meta.textContent=stamp&&!Number.isNaN(stamp.getTime())?stamp.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'—';
     if(e.done){const ok=document.createElement('div');ok.className='ok';ok.textContent='✓ Cleared';meta.append(ok)}
     a.append(num,info,meta);li.append(a);list.append(li);
   });
+}
+function show(){
+  const active=currentTag();
+  drawTags(active);
+  draw(active?allItems.filter(e=>e.tag===active):allItems);
 }
 async function render(){
   const status=document.getElementById('status');
@@ -115,17 +152,22 @@ async function render(){
     const completed=GameKit.get();
     const progress=new Map((window.LEVELS||[]).map(x=>[x.path,!!completed[x.id]?.completed]));
     arr=catalog.apps.map(e=>({...e,done:progress.get(e.path)||false}));
+    // Apps registered in levels.js but not yet in the generated catalog still show up.
+    const known=new Set(arr.map(e=>e.path));
+    (window.LEVELS||[]).forEach(x=>{if(!known.has(x.path))arr.push({path:x.path,title:x.title,category:'Levels',date:x.added||null,done:!!completed[x.id]?.completed})});
     status.textContent='Auto-discovered from main · updated '+new Date(catalog.generatedAt).toLocaleString();
   }catch(err){
     arr=fallbackItems();
     status.textContent='Showing the existing app list until the automatic catalog is generated.';
   }
   arr=arr.filter(e=>!removedPaths.has(e.path)&&!e.path.startsWith('legacy/'));
-  arr.forEach(e=>e.pinned=e.path==='explore/stopping-lab/');
+  arr.forEach(e=>{e.pinned=pinnedPaths.includes(e.path);e.tag=window.tagFor?window.tagFor(e.path):''});
   arr.sort((a,b)=>Number(b.pinned)-Number(a.pinned)||(Date.parse(b.date)||0)-(Date.parse(a.date)||0)||a.title.localeCompare(b.title));
-  draw(arr);
+  allItems=arr;
+  show();
 }
 document.getElementById('reset').addEventListener('click',()=>{if(!confirm('Reset all progress?'))return;try{localStorage.removeItem(GameKit.key)}catch{}render()});
+window.addEventListener('hashchange',show);
 window.addEventListener('pageshow',render);render();
 </script>
 <footer style="text-align:center;padding:22px"><a href="legacy/" style="color:#91baff">Legacy experiments archive</a></footer><script src="site-chrome.js" defer></script></body>

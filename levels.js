@@ -29,5 +29,12 @@ window.LEVELS = [
     title: 'Minesweeper',
     path: 'levels/05-minesweeper/',
     desc: 'Classic 16×16 field, then a round one. More rule-bending levels to come.'
+  },
+  {
+    id: 'cayley-catch',
+    title: 'Cayley Catch',
+    path: 'levels/06-cayley-catch/',
+    added: '2026-11-19T14:30:00+07:00',
+    desc: 'Walk the Cayley graph of A₅ by two generators. Seen before, or new?'
   }
 ];

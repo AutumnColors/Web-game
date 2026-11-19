@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cayley Catch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: playful memory game, honest maths
+   IDEA: a brush-and-seal machine that walks the Cayley graph, stroke by stroke
+   PICTURE: big seal card with the current element, two answer buttons, the A/B stroke trail
+   COLOUR and TYPE: lacquer crimson housing, paper white, gold accent; Yuji Syuku brush + Outfit
+   LAYOUT: machine left, collection right; stacks on phone as title, machine, collection */
+:root{color-scheme:light dark;
+--bg:light-dark(#fbf8f6,#140a0c);--ink:light-dark(#1c1214,#f4ecec);--mute:light-dark(#6d5f62,#b9a8ab);
+--house:light-dark(#8e1528,#6a0e1d);--house2:light-dark(#6e0f1f,#4e0915);--paper:light-dark(#fffdfb,#24171a);
+--line:light-dark(#e6dcdc,#3a2a2d);--soft:light-dark(#f4efee,#1b1113);--gold:#e3a826;
+--seed:#7686a8;--missed:#8a6f73;--common:#9aa3ad;--uncommon:#3b8ad8;--rare:#a35ce0;--legendary:#e3a826}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Outfit,system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(18px,3vw,40px) max(4vw,14px)}
+h1{font:400 clamp(34px,5vw,52px)/1.05 "Yuji Syuku",serif;margin:0}
+h2{font:600 20px/1.2 Outfit,sans-serif;margin:0}
+.sub{margin:6px 0 0;color:var(--mute);max-width:62ch}
+main{display:grid;gap:clamp(16px,3vw,32px);grid-template-columns:minmax(0,1fr) minmax(0,1fr);max-width:1240px;margin:0 auto;padding-top:0;align-items:start}
+@media(max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
+.machine{background:linear-gradient(160deg,var(--house),var(--house2));border-radius:22px;padding:16px;color:#fff;box-shadow:0 14px 30px -14px #5a0a16aa,inset 0 1px 0 #ffffff33}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.stat{background:#00000026;border-radius:12px;padding:8px 10px}
+.stat b{display:block;font:400 26px/1.1 "Yuji Syuku",serif;white-space:nowrap}
+.stat span{font-size:13px;opacity:.8}
+.stage{position:relative;display:grid;place-items:center;width:100%;aspect-ratio:1.5;max-height:320px;border-radius:18px;background:radial-gradient(circle at 50% 38%,var(--paper),light-dark(#f1e6e3,#1b1012));color:var(--ink);overflow:hidden;box-shadow:inset 0 -6px 0 #0000001a,0 2px 0 #ffffff40;transition:box-shadow .15s}
+.stage.ok{box-shadow:inset 0 0 0 6px #2fbf71}
+.stage.bad{box-shadow:inset 0 0 0 6px #ff3b3b}
+.big{font-size:clamp(84px,16vw,140px);line-height:1}
+.big.in{animation:in .22s ease-out}
+@keyframes in{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.via{position:absolute;top:10px;left:14px;font:400 22px "Yuji Syuku",serif;color:var(--house)}
+.tag{position:absolute;top:12px;right:14px;font-size:13px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--house);color:#fff}
+.tag:empty{display:none}
+.hint{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:14px;color:var(--mute)}
+.bar{position:absolute;left:0;right:0;bottom:0;height:7px;background:#0000001a}
+.bar i{display:block;height:100%;width:0;background:var(--gold)}
+@keyframes drain{from{width:100%}to{width:0}}
+.pop{position:absolute;font:800 30px Outfit;opacity:0;pointer-events:none}
+.pop.go{animation:pop .8s ease-out}
+@keyframes pop{0%{opacity:1;transform:translateY(20px)}100%{opacity:0;transform:translateY(-50px)}}
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.ans{min-height:64px;border:0;border-radius:16px;font:800 20px Outfit,sans-serif;cursor:pointer;touch-action:manipulation;box-shadow:inset 0 -4px 0 #0003}
+.ans small{display:block;font:400 13px Outfit;opacity:.75}
+.ans.seen{background:#fff;color:var(--house2)}
+.ans.new{background:var(--gold);color:#2a1a00}
+.ans:disabled{opacity:.45;cursor:default}
+.ans:focus-visible,.b:focus-visible,select:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.trail{display:flex;align-items:center;gap:2px;margin:12px 0;min-height:40px;overflow:hidden;justify-content:flex-end;font-size:24px}
+.trail s{text-decoration:none;font:400 16px "Yuji Syuku",serif;color:#ffd9de;padding:0 2px}
+.trail.letters{font:400 22px "Yuji Syuku",serif;color:#ffd9de;letter-spacing:.12em}
+.ctrls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.b,select{font:600 16px Outfit,sans-serif;min-height:44px;border-radius:12px;border:0;padding:0 16px;cursor:pointer}
+.b{background:var(--gold);color:#2a1a00}
+.b.alt{background:#ffffff22;color:#fff}
+label.s{display:flex;align-items:center;gap:6px;font-size:14px;min-height:44px}
+label.s input{width:20px;height:20px;accent-color:var(--gold)}
+select{background:#ffffff22;color:#fff;padding:0 10px}
+select option{color:#000}
+.gens{margin-top:12px;font-size:15px;background:#00000026;border-radius:12px;padding:10px 12px;line-height:1.7}
+.gens code{font:600 15px ui-monospace,monospace;white-space:nowrap}
+.colsec{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:16px}
+.colhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.colhead .b{background:var(--house);color:#fff}
+.colhead .b:focus-visible{outline:3px solid var(--gold)}
+.cover{display:grid;place-items:center;text-align:center;min-height:240px;border-radius:16px;background:repeating-linear-gradient(45deg,var(--soft) 0 14px,transparent 14px 28px);border:2px dashed var(--line);color:var(--mute);padding:20px}
+.cover b{display:block;font:400 44px/1.1 "Yuji Syuku",serif;color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px}
+@media(max-width:520px){.grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.grid.g12{grid-template-columns:repeat(6,minmax(0,1fr))}
+.grid.g24{grid-template-columns:repeat(8,minmax(0,1fr))}
+.cell{aspect-ratio:1;display:grid;place-items:center;font-size:clamp(18px,2.6vw,26px);border-radius:10px;border:2px solid var(--line);background:var(--soft);cursor:pointer;padding:0;color:var(--mute)}
+.cell.q{font:600 15px Outfit}
+.cell.sel{outline:3px solid var(--gold);outline-offset:1px}
+.cell.t-seed{border-color:var(--seed)}.cell.t-missed{border-color:var(--missed);border-style:dashed}
+.cell.t-common{border-color:var(--common)}.cell.t-uncommon{border-color:var(--uncommon)}
+.cell.t-rare{border-color:var(--rare);background:light-dark(#f6effd,#231833)}.cell.t-legendary{border-color:var(--legendary);background:light-dark(#fff6df,#2e2410)}
+.cell.fresh{animation:fresh .5s}
+@keyframes fresh{0%{transform:scale(1.5)}100%{transform:scale(1)}}
+.detail{margin-top:12px;min-height:64px;font-size:15px;padding:10px 12px;border-radius:12px;background:var(--soft)}
+.detail .e{font-size:30px;float:left;margin-right:10px;line-height:1.2}
+.detail code{font:600 14px ui-monospace,monospace}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font-size:13px;color:var(--mute)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.rules{grid-column:1/-1;color:var(--mute);font-size:14px;margin:0}
+.practice{display:none;font-size:13px;font-weight:600;color:var(--house);margin-top:8px}
+.reveal .practice{display:block}
+.win{position:fixed;inset:0;display:grid;place-items:center;background:#000a;padding:16px;z-index:5}
+.win[hidden]{display:none}
+.win div{background:var(--paper);color:var(--ink);border-radius:22px;padding:24px;max-width:380px;text-align:center}
+.win h2{font:400 34px "Yuji Syuku",serif;margin-bottom:8px}
+@media(prefers-reduced-motion:reduce){.pop.go,.cell.fresh,.big.in{animation:none}}
+</style>
+</head>
+<body>
+<header class="band" style="max-width:1240px;margin:0 auto">
+  <a href="../../" style="color:var(--mute);text-decoration:none;font-size:14px">← All games</a>
+  <h1>Cayley Catch</h1>
+  <p class="sub">A walk through the Cayley graph of <b id="gname">A₅</b>. Every element is an emoji, and every step applies A or B. Each time an emoji appears, decide: have you seen it before, or is it new?</p>
+</header>
+<main class="band" id="main">
+  <section class="machine">
+    <div class="stats">
+      <div class="stat"><b id="sc">0</b><span>Score</span></div>
+      <div class="stat"><b id="cn">2/60</b><span>Seen</span></div>
+      <div class="stat"><b id="st">0</b><span>Steps</span></div>
+      <div class="stat"><b id="ac">–</b><span>Accuracy</span></div>
+    </div>
+    <div class="stage" id="stage">
+      <span class="via" id="via">start</span><span class="tag" id="tag"></span>
+      <span class="big" id="big">🐙</span>
+      <span class="hint" id="hint">Press Start. A and B are already in your collection.</span>
+      <span class="pop" id="pop"></span>
+      <span class="bar"><i id="bar"></i></span>
+    </div>
+    <div class="answers">
+      <button class="ans seen" id="aSeen" disabled>Seen before<small>← or S</small></button>
+      <button class="ans new" id="aNew" disabled>New<small>→ or N</small></button>
+    </div>
+    <div class="trail letters" id="trail" aria-label="Path so far"></div>
+    <div class="ctrls">
+      <button class="b" id="go">Start</button>
+      <button class="b alt" id="newg">New generators</button>
+      <label class="s">Group <select id="grp"><option value="A4">A₄ (12)</option><option value="S4">S₄ (24)</option><option value="A5" selected>A₅ (60)</option></select></label>
+      <label class="s"><input type="checkbox" id="clock"> Clock</label>
+      <label class="s" id="spdl" hidden>per emoji <select id="spd"><option value="3000">3 s</option><option value="2000" selected>2 s</option><option value="1000">1 s</option></select></label>
+    </div>
+    <div class="gens" id="gens"></div>
+  </section>
+  <section class="colsec" id="colsec">
+    <div class="colhead"><h2>Collection</h2><button class="b" id="rev">Reveal</button></div>
+    <div id="colbody"></div>
+    <div class="practice">Practice mode: while the collection is revealed, answers score no points.</div>
+    <div class="legend" id="legend">
+      <span><i style="background:var(--seed)"></i>Seed (A, B)</span>
+      <span><i style="background:var(--missed)"></i>Missed (no points)</span>
+      <span><i style="background:var(--common)"></i>Common +10</span>
+      <span><i style="background:var(--uncommon)"></i>Uncommon +20</span>
+      <span><i style="background:var(--rare)"></i>Rare +40</span>
+      <span><i style="background:var(--legendary)"></i>Legendary +80</span>
+    </div>
+  </section>
+  <p class="rules">Correct "New" scores by rarity: the more you've already seen, the rarer a new one is and the more it's worth. Correct "Seen before" scores +2. A wrong answer costs 10, and a new emoji you call "seen" still enters your collection, marked as missed. With the clock on, running out of time counts as wrong. The game ends when every element has appeared.</p>
+</main>
+<div class="win" id="win" hidden><div>
+  <h2>Complete!</h2>
+  <p id="wintxt"></p>
+  <button class="b" id="again">Play again</button>
+</div></div>
+<script src="../../shared/progress.js"></script>
+<script>
+{
+const EMO=["🐙","🦊","🐸","🐢","🦉","🐝","🦋","🐳","🦀","🐌","🦔","🐧","🦩","🐨","🐼","🦁","🐯","🐮","🐷","🐵","🦄","🐲","🦕","🐠","🦜","🐞","🦓","🦒","🐘","🦘","🍎","🍋","🍇","🍉","🍒","🍍","🥥","🥝","🍄","🌵","🌻","🌙","⭐","🔥","💧","🌈","🎈","🎁","🔔","🎲","🧩","🪁","🎺","🎻","🥁","🪐","🚀","⚓","🧭","🪶","🍩","🧁","🍕","🌮","🍣","🎃","🦭","🦦","🐡"];
+const GROUPS={A4:{n:4,even:true,order:12,name:"A₄"},S4:{n:4,even:false,order:24,name:"S₄"},A5:{n:5,even:true,order:60,name:"A₅"}};
+const TIERS=[["common",10,.3],["uncommon",20,.6],["rare",40,.85],["legendary",80,1.01]];
+const $=id=>document.getElementById(id);
+const mul=(p,q)=>p.map(x=>q[x]);            // p first, then q
+const key=p=>p.join("");
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const parity=p=>{let s=0;for(let i=0;i<p.length;i++)for(let j=i+1;j<p.length;j++)if(p[i]>p[j])s++;return s%2};
+const randPerm=(n,even)=>{let p;do p=shuffle([...Array(n).keys()]);while(even&&parity(p));return p};
+const cycles=p=>{const seen=[],out=[];p.forEach((_,i)=>{if(seen[i]||p[i]===i)return;let c=[],j=i;while(!seen[j]){seen[j]=1;c.push(j+1);j=p[j]}out.push("("+c.join(" ")+")")});return out.join("")||"e"};
+const orderOf=p=>{let q=p,k=1;while(q.some((x,i)=>x!==i)){q=mul(q,p);k++}return k};
+
+let G,A,B,els,idx,col,score,steps,right,answered,cur,trail,phase="idle",revealed=false,sel=-1,fresh=-1,clockT=null,nextT=null;
+
+function bfs(a,b,n){
+  const e=[...Array(n).keys()],list=[{p:e,w:"e"}],m=new Map([[key(e),0]]);
+  for(let i=0;i<list.length;i++)for(const [g,l] of [[a,"A"],[b,"B"]]){
+    const y=mul(list[i].p,g),k=key(y);
+    if(!m.has(k)){m.set(k,list.length);list.push({p:y,w:list[i].w==="e"?l:list[i].w+l})}
+  }
+  return [list,m];
+}
+function setup(){
+  clearTimeout(clockT);clearTimeout(nextT);
+  G=GROUPS[$("grp").value];
+  const id=key([...Array(G.n).keys()]);
+  for(;;){
+    A=randPerm(G.n,G.even);B=randPerm(G.n,G.even);
+    if(key(A)===id||key(B)===id||key(A)===key(B))continue;
+    [els,idx]=bfs(A,B,G.n);
+    if(els.length===G.order)break;
+  }
+  const pool=shuffle(EMO.slice());
+  els.forEach((x,i)=>{x.e=pool[i];x.o=orderOf(x.p)});
+  col=new Map();
+  const iA=idx.get(key(A)),iB=idx.get(key(B));
+  col.set(iA,{t:"seed",s:0});col.set(iB,{t:"seed",s:0});
+  score=0;steps=0;right=0;answered=0;cur=iA;trail=[{i:iA,g:""}];sel=-1;fresh=-1;phase="idle";
+  $("gname").textContent=G.name;
+  $("gens").innerHTML=
+    `<b>A</b> ${els[iA].e} <code>${cycles(A)}</code>, order ${els[iA].o}<br>`+
+    `<b>B</b> ${els[iB].e} <code>${cycles(B)}</code>, order ${els[iB].o}<br>`+
+    `<span style="opacity:.8">These two generate all ${G.order} elements of ${G.name}. The walk starts at A; each step multiplies by A or B.</span>`;
+  $("big").textContent=els[iA].e;$("via").textContent="start";$("tag").textContent="";
+  $("hint").textContent="Press Start. A and B are already in your collection.";
+  $("bar").style.animation="none";
+  $("go").textContent="Start";
+  setAnswers(false);
+  renderAll();
+}
+function setAnswers(on){$("aSeen").disabled=!on;$("aNew").disabled=!on}
+function renderStats(){
+  $("sc").textContent=score;
+  $("cn").textContent=col.size+"/"+G.order;
+  $("st").textContent=steps;
+  $("ac").textContent=answered?Math.round(100*right/answered)+"%":"–";
+}
+function renderCollection(){
+  $("rev").textContent=revealed?"Hide":"Reveal";
+  $("main").classList.toggle("reveal",revealed);
+  $("legend").style.display=revealed?"":"none";
+  if(!revealed){
+    $("colbody").innerHTML=`<div class="cover"><div><b>${col.size} of ${G.order}</b>seen so far, hidden.<br>Keep them in your head, or reveal to practise.</div></div>`;
+    return;
+  }
+  const g=G.order===12?" g12":G.order===24?" g24":"";
+  $("colbody").innerHTML=`<div class="grid${g}" id="grid">`+els.map((x,i)=>{
+    const c=col.get(i),s=i===sel?" sel":"";
+    return c?`<button class="cell t-${c.t}${i===fresh?" fresh":""}${s}" data-i="${i}" aria-label="${c.t}">${x.e}</button>`
+            :`<button class="cell q${s}" data-i="${i}" aria-label="not seen">?</button>`;
+  }).join("")+`</div><div class="detail" id="detail">${detailHTML()}</div>`;
+}
+function detailHTML(){
+  if(sel<0)return "Tap a cell to see its permutation, order and shortest word in A and B.";
+  const c=col.get(sel),x=els[sel];
+  if(!c)return "<b>Not seen yet.</b> Keep walking.";
+  const t=c.t[0].toUpperCase()+c.t.slice(1);
+  return `<span class="e">${x.e}</span><b>${t}</b>${c.s?`, first seen at step ${c.s}`:", starting generator"}<br>`+
+    `Permutation <code>${cycles(x.p)}</code> · order ${x.o} · shortest word <code>${x.w}</code>`;
+}
+function renderTrail(){
+  const t=$("trail");
+  if(revealed){t.className="trail";t.innerHTML=trail.slice(-14).map((s,k)=>(k&&s.g?`<s>${s.g}</s>`:"")+`<span>${els[s.i].e}</span>`).join("")}
+  else{t.className="trail letters";t.textContent=trail.slice(-28).map(s=>s.g).join("")}
+}
+function renderAll(){renderStats();renderCollection();renderTrail()}
+function feedback(cls,txt,color){
+  const s=$("stage"),p=$("pop");
+  s.classList.remove("ok","bad");void s.offsetWidth;s.classList.add(cls);
+  setTimeout(()=>s.classList.remove(cls),350);
+  p.textContent=txt;p.style.color=color;p.classList.remove("go");void p.offsetWidth;p.classList.add("go");
+}
+function step(){
+  const g=Math.random()<.5?"A":"B";
+  cur=idx.get(key(mul(els[cur].p,g==="A"?A:B)));
+  steps++;trail.push({i:cur,g});if(trail.length>40)trail.shift();
+  const big=$("big");big.textContent=els[cur].e;big.classList.remove("in");void big.offsetWidth;big.classList.add("in");
+  $("via").textContent="· "+g;$("tag").textContent="";$("hint").textContent="Seen before, or new?";
+  phase="ask";setAnswers(true);fresh=-1;
+  const bar=$("bar");bar.style.animation="none";clearTimeout(clockT);
+  if($("clock").checked){
+    const ms=+$("spd").value;void bar.offsetWidth;
+    bar.style.animation=`drain ${ms}ms linear forwards`;
+    clockT=setTimeout(()=>answer(null),ms);
+  }
+  renderStats();renderTrail();
+}
+function answer(saidNew){
+  if(phase!=="ask")return;
+  phase="fb";setAnswers(false);clearTimeout(clockT);$("bar").style.animation="none";
+  const isNew=!col.has(cur),ok=saidNew===isNew;
+  answered++;if(ok)right++;
+  let pts=0,label;
+  if(isNew){
+    const f=(col.size-2)/Math.max(1,G.order-2),[t,p]=TIERS.find(x=>f<x[2]);
+    col.set(cur,{t:ok?t:"missed",s:steps});fresh=cur;
+    if(ok){pts=p;label=t}else{pts=-10;label="was new"}
+  }else{pts=ok?2:-10;label=ok?"seen":"already seen"}
+  if(revealed)pts=0;
+  score+=pts;
+  $("tag").textContent=label;
+  $("hint").textContent=saidNew===null?"Out of time.":ok?"Correct.":isNew?"That one was new.":"You'd seen it before.";
+  feedback(ok?"ok":"bad",revealed?(ok?"✓":"✗"):(pts>0?"+":"")+(pts<0?"−"+(-pts):pts),ok?(isNew?`var(--${label})`:"#2fbf71"):"#ff3b3b");
+  renderAll();
+  if(col.size===G.order){nextT=setTimeout(win,700);return}
+  nextT=setTimeout(step,ok?550:1100);
+}
+function win(){
+  phase="idle";
+  try{window.GameKit&&GameKit.complete("cayley-catch")}catch(e){}
+  let best=0;try{best=+localStorage.getItem("cc2-best-"+G.order)||0;if(score>best)localStorage.setItem("cc2-best-"+G.order,score)}catch(e){}
+  $("wintxt").innerHTML=`Every element of ${G.name} appeared within <b>${steps}</b> steps.<br>Score <b>${score}</b> · accuracy ${Math.round(100*right/answered)}%`+(score>best?"<br>New best score.":best?`<br>Your best here: ${best}`:"");
+  $("win").hidden=false;
+}
+$("aSeen").onclick=()=>answer(false);
+$("aNew").onclick=()=>answer(true);
+$("go").onclick=()=>{if(phase==="idle"&&steps===0){$("go").textContent="Restart";step()}else{setup();$("go").textContent="Restart";step()}};
+$("newg").onclick=setup;
+$("grp").onchange=setup;
+$("clock").onchange=()=>{$("spdl").hidden=!$("clock").checked;if(!$("clock").checked){clearTimeout(clockT);$("bar").style.animation="none"}};
+$("rev").onclick=()=>{revealed=!revealed;renderCollection();renderTrail()};
+$("colbody").onclick=e=>{const b=e.target.closest(".cell");if(b){sel=+b.dataset.i;renderCollection()}};
+$("again").onclick=()=>{$("win").hidden=true;setup()};
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==="SELECT")return;
+  const k=e.key.toLowerCase();
+  if(k==="arrowleft"||k==="s"){e.preventDefault();answer(false)}
+  else if(k==="arrowright"||k==="n"){e.preventDefault();answer(true)}
+  else if(k===" "&&phase==="idle"){e.preventDefault();$("go").click()}
+});
+try{window.GameKit&&GameKit.played("cayley-catch")}catch(e){}
+setup();
+}
+</script>
+<script src="../../site-chrome.js" defer></script>
+</body>
+</html>
