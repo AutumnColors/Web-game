@@ -4,13 +4,13 @@
 *{box-sizing:border-box}body{margin:0;background:#080d17;color:#e7edf8;font:14px system-ui,sans-serif}header{padding:13px 18px;border-bottom:1px solid #27354c;display:flex;justify-content:space-between;align-items:center;gap:12px}a{color:#9dcfff}h1{font-size:17px;margin:0}.sub{color:#94a5bd;font-size:12px}main{display:grid;grid-template-columns:minmax(0,1fr) 280px;height:calc(100dvh - 61px)}#view{position:relative;min-height:350px}canvas{display:block}aside{padding:20px;background:#101a2b;overflow:auto;border-left:1px solid #27354c}label{display:block;margin:17px 0 6px;color:#bccce0}input[type=range]{width:100%;accent-color:#57b6ff}button,select{background:#21354d;color:#fff;border:1px solid #45617c;padding:10px 12px;border-radius:8px;cursor:pointer}button:hover{background:#31516d}button.primary{background:#1264a0;border-color:#238ad3}button:disabled{opacity:.5}#status{font-size:12px;color:#a8bcd5;margin-top:15px;line-height:1.5}#legend{position:absolute;bottom:14px;left:14px;background:#091320c9;padding:10px 13px;border-radius:8px;font-size:12px;color:#bdcee3;pointer-events:none}.buttons{display:flex;gap:8px;flex-wrap:wrap}.num{float:right;color:#7bd2ff}small{color:#8ca0b9;line-height:1.5;display:block;margin-top:12px}@media(max-width:760px){main{grid-template-columns:1fr;height:auto}#view{height:54dvh;min-height:330px}aside{border-left:0;border-top:1px solid #27354c;padding:14px}header{padding:12px}}
 </style></head><body><header><div><h1>3D Starting-Point Mandelbrot Lab</h1><div class="sub">c = a + bi · z₀ = s · zₙ₊₁ = zₙ² + c</div></div><a href="../../index.html">Home</a></header><main><div id="view"><div id="legend">Drag to rotate · Scroll/pinch to zoom<br>Blue: finite-cutoff boundedness · Gold: current s slice</div></div><aside>
 <div class="buttons"><button id="build" class="primary">Generate 3D</button><button id="reset">Reset camera</button></div>
-<label>View mode</label><select id="mode"><option value="surface">3D boundary cloud</option><option value="slice">Slice only</option><option value="both">3D + slice</option></select>
+<label>View mode</label><select id="mode"><option value="surface">Solid surface</option><option value="cloud">Boundary points</option><option value="slice">Slice only</option><option value="both">3D + slice</option></select>
 <label>Starting point s <span id="sv" class="num">0.00</span></label><input id="s" type="range" min="-2" max="2" step=".025" value="0"><button id="zero">Central Mandelbrot slice (s=0)</button>
 <label>Grid resolution <span id="rv" class="num">52</span></label><input id="resolution" type="range" min="24" max="80" step="4" value="52">
 <label>Iterations <span id="iv" class="num">100</span></label><input id="iterations" type="range" min="30" max="300" step="10" value="100">
 <label>Point size <span id="pv" class="num">2.5</span></label><input id="size" type="range" min="1" max="6" step=".5" value="2.5">
-<label><input id="mirror" type="checkbox" checked> Show symmetry plane s=0</label>
-<div id="status">Ready. Generate to compute the boundedness volume.</div><small>The 3D cloud shows sampled boundary voxels. Slice colors are based on the same escape-time test. Escape radius 2 is valid for real starting points s in [-2,2] after a first-step check, using a conservative escape radius 4 here for all sampled starts. Finite iteration nonescape is not guaranteed boundedness.</small>
+<label>Surface opacity <span id="ov" class="num">0.90</span></label><input id="opacity" type="range" min=".15" max="1" step=".05" value=".9"><label><input id="mirror" type="checkbox" checked> Show symmetry plane s=0</label>
+<div id="status">Ready. Generate to compute the boundedness volume.</div><small>The solid surface is built from exposed voxel faces; it is an approximation, not a smooth mathematical boundary. Slice colors are based on the same escape-time test. Escape radius 2 is valid for real starting points s in [-2,2] after a first-step check, using a conservative escape radius 4 here for all sampled starts. Finite iteration nonescape is not guaranteed boundedness.</small>
 </aside></main>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
@@ -26,20 +26,53 @@ const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamp
 scene.add(new THREE.AmbientLight(0xffffff,1));
 const axes=new THREE.AxesHelper(2.3);axes.position.set(-2.2,-2,-1.5);scene.add(axes);
 const plane=new THREE.GridHelper(3.6,12,0x527aa0,0x24354b);plane.rotation.x=0;plane.position.y=0;scene.add(plane);
-let cloud=null,slice=null,computed=null,buildToken=0;
+let cloud=null,solid=null,slice=null,computed=null,buildToken=0;
 const A0=-2.2,A1=.8,B0=-1.5,B1=1.5,S0=-2,S1=2;
 function bounded(a,b,s,it){let x=s,y=0;for(let n=0;n<it;n++){let xx=x*x-y*y+a,yy=2*x*y+b;x=xx;y=yy;if(x*x+y*y>16)return n+1}return 0}
 function dispose(obj){if(obj){scene.remove(obj);obj.geometry.dispose();obj.material.dispose()}}
 function points(pos,col,size,opacity){const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));return new THREE.Points(geo,new THREE.PointsMaterial({size,vertexColors:true,transparent:true,opacity,depthWrite:false,sizeAttenuation:true}))}
 function color(n,it){if(!n)return [.12,.68,1];let t=n/it;return [.9,.22+.55*t,.1+.2*t]}
-function renderSlice(){dispose(slice);slice=null;const mode=el('mode').value;if(mode==='surface')return;const N=150,it=+el('iterations').value,s=+el('s').value,p=[],c=[];for(let j=0;j<N;j++)for(let i=0;i<N;i++){let a=A0+(A1-A0)*i/(N-1),b=B0+(B1-B0)*j/(N-1),n=bounded(a,b,s,it);if(n===0){p.push(a,s,b);c.push(1,.73,.25)}}slice=points(p,c,.022,1);scene.add(slice)}
-function updateMode(){if(cloud)cloud.visible=el('mode').value!=='slice';renderSlice()}
-async function build(){const token=++buildToken;el('build').disabled=true;el('status').textContent='Computing volume…';dispose(cloud);cloud=null;const N=+el('resolution').value,it=+el('iterations').value;const nx=N,ny=N,nz=Math.round(N*.85),field=new Uint8Array(nx*ny*nz);const idx=(i,j,k)=>(k*ny+j)*nx+i;
+function renderSlice(){dispose(slice);slice=null;const mode=el('mode').value;if(mode==='surface'||mode==='cloud')return;const N=150,it=+el('iterations').value,s=+el('s').value,p=[],c=[];for(let j=0;j<N;j++)for(let i=0;i<N;i++){let a=A0+(A1-A0)*i/(N-1),b=B0+(B1-B0)*j/(N-1),n=bounded(a,b,s,it);if(n===0){p.push(a,s,b);c.push(1,.73,.25)}}slice=points(p,c,.022,1);scene.add(slice)}
+function updateMode(){const mode=el('mode').value;if(cloud)cloud.visible=mode==='cloud';if(solid)solid.visible=mode==='surface'||mode==='both';renderSlice()}
+async function build(){const token=++buildToken;el('build').disabled=true;el('status').textContent='Computing volume…';dispose(cloud);dispose(solid);cloud=null;solid=null;const N=+el('resolution').value,it=+el('iterations').value;const nx=N,ny=N,nz=Math.round(N*.85),field=new Uint8Array(nx*ny*nz);const idx=(i,j,k)=>(k*ny+j)*nx+i;
 for(let k=0;k<nz;k++){if(token!==buildToken)return;let s=S0+(S1-S0)*k/(nz-1);for(let j=0;j<ny;j++){let b=B0+(B1-B0)*j/(ny-1);for(let i=0;i<nx;i++){let a=A0+(A1-A0)*i/(nx-1);field[idx(i,j,k)]=bounded(a,b,s,it)===0?1:0}}if(k%3===0){el('status').textContent='Computing volume: '+Math.round(100*(k+1)/nz)+'%';await new Promise(r=>setTimeout(r,0))}}
 let p=[],c=[];for(let k=0;k<nz;k++)for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){if(!field[idx(i,j,k)])continue;let edge=i===0||j===0||k===0||i===nx-1||j===ny-1||k===nz-1;for(const [di,dj,dk] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]){let x=i+di,y=j+dj,z=k+dk;if(x>=0&&x<nx&&y>=0&&y<ny&&z>=0&&z<nz&&!field[idx(x,y,z)]){edge=true;break}}if(!edge)continue;let a=A0+(A1-A0)*i/(nx-1),b=B0+(B1-B0)*j/(ny-1),s=S0+(S1-S0)*k/(nz-1);p.push(a,s,b);let t=(s+2)/4;c.push(.12+.2*t,.45+.38*(1-Math.abs(s)/2),.95-.25*t)}
-cloud=points(p,c,+el('size').value*.012,.82);scene.add(cloud);computed={N,it};el('status').textContent='Generated '+p.length.toLocaleString()+' boundary samples · '+N+'×'+N+'×'+nz+' grid · '+it+' iterations.';el('build').disabled=false;updateMode()}
+cloud=points(p,c,+el('size').value*.012,.82);scene.add(cloud);
+// Build a watertight voxel-face mesh of the sampled boundedness region.
+// Outward-facing quads are triangulated, with flat normals and per-height colors.
+const verts=[],norms=[],cols=[];
+const dx=(A1-A0)/(nx-1),dy=(S1-S0)/(nz-1),dz=(B1-B0)/(ny-1);
+const faces=[
+ [1,0,0, [[.5,-.5,-.5],[.5,.5,-.5],[.5,.5,.5],[.5,-.5,.5]]],
+ [-1,0,0,[[-.5,-.5,.5],[-.5,.5,.5],[-.5,.5,-.5],[-.5,-.5,-.5]]],
+ [0,1,0,[[-.5,.5,.5],[.5,.5,.5],[.5,.5,-.5],[-.5,.5,-.5]]],
+ [0,-1,0,[[-.5,-.5,-.5],[.5,-.5,-.5],[.5,-.5,.5],[-.5,-.5,.5]]],
+ [0,0,1,[[.5,-.5,.5],[.5,.5,.5],[-.5,.5,.5],[-.5,-.5,.5]]],
+ [0,0,-1,[[-.5,-.5,-.5],[-.5,.5,-.5],[.5,.5,-.5],[.5,-.5,-.5]]]
+];
+let faceCount=0;
+for(let k=0;k<nz;k++)for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
+ if(!field[idx(i,j,k)])continue;
+ const a=A0+i*dx,b=B0+j*dz,h=S0+k*dy;
+ const shade=.72+.22*(1-Math.abs(h)/2),rgb=[.13*shade,.65*shade,.98*shade];
+ for(const [di,dj,dk,quad] of faces){
+  // i -> a/x, j -> b/z, k -> s/y
+  const ii=i+di,jj=j+dk,kk=k+dj;
+  if(ii>=0&&ii<nx&&jj>=0&&jj<ny&&kk>=0&&kk<nz&&field[idx(ii,jj,kk)])continue;
+  const order=[0,1,2,0,2,3];
+  for(const v of order){const q=quad[v];verts.push(a+q[0]*dx,h+q[1]*dy,b+q[2]*dz);norms.push(di,dj,dk);cols.push(...rgb)}
+  faceCount++;
+ }
+}
+const geo=new THREE.BufferGeometry();
+geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+geo.setAttribute('normal',new THREE.Float32BufferAttribute(norms,3));
+geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+solid=new THREE.Mesh(geo,new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:+el('opacity').value,depthWrite:true,shininess:32}));
+scene.add(solid);
+computed={N,it};el('status').textContent='Generated '+faceCount.toLocaleString()+' surface faces and '+p.length.toLocaleString()+' boundary samples · '+N+'×'+N+'×'+nz+' grid · '+it+' iterations.';el('build').disabled=false;updateMode()}
 el('build').onclick=build;el('reset').onclick=()=>{camera.position.set(5,4.2,6);controls.target.set(-.65,0,0);controls.update()};el('zero').onclick=()=>{el('s').value=0;el('sv').textContent='0.00';renderSlice();el('mode').value='both';updateMode()};
-el('s').oninput=()=>{el('sv').textContent=(+el('s').value).toFixed(2);renderSlice()};el('mode').onchange=updateMode;el('mirror').onchange=()=>plane.visible=el('mirror').checked;el('size').oninput=()=>{el('pv').textContent=el('size').value;if(cloud)cloud.material.size=+el('size').value*.012};
+el('s').oninput=()=>{el('sv').textContent=(+el('s').value).toFixed(2);renderSlice()};el('mode').onchange=updateMode;el('opacity').oninput=()=>{el('ov').textContent=(+el('opacity').value).toFixed(2);if(solid){solid.material.opacity=+el('opacity').value;solid.material.depthWrite=+el('opacity').value>=.99}};el('mirror').onchange=()=>plane.visible=el('mirror').checked;el('size').oninput=()=>{el('pv').textContent=el('size').value;if(cloud)cloud.material.size=+el('size').value*.012};
 for(const [id,out] of [['resolution','rv'],['iterations','iv']])el(id).oninput=()=>{el(out).textContent=el(id).value;el('status').textContent='Settings changed. Press Generate 3D to recompute.'};
 function resize(){let w=host.clientWidth,h=host.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h)}new ResizeObserver(resize).observe(host);resize();function loop(){requestAnimationFrame(loop);controls.update();renderer.render(scene,camera)}loop();renderSlice();build();
 </script></body></html>
