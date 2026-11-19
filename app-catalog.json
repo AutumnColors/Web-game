@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-19T15:11:29.497091+00:00",
+  "generatedAt": "2026-11-19T15:14:24.921198+00:00",
   "apps": [
     {
       "path": "explore/julia-3d-lab/",
       "title": "3D Julia Lab",
       "category": "Explore",
-      "date": "2026-11-19T22:11:22+07:00",
-      "update": "Fix Julia surface geometry initialization"
+      "date": "2026-11-19T22:14:16+07:00",
+      "update": "Improve Julia 3D geometry with interpolated potential isosurface, smooth gradient normals and camera fitting"
     },
     {
       "path": "explore/stopping-lab/",
