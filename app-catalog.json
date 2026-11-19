@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-19T07:23:18.942629+00:00",
+  "generatedAt": "2026-11-19T11:16:55.484938+00:00",
   "apps": [
+    {
+      "path": "explore/music-from-symmetry/",
+      "title": "Music to Picture",
+      "category": "Explore",
+      "date": "2026-11-19T18:16:48+07:00",
+      "update": "Music to Picture: add Pyramids of Giza (Sound of A5, best walk) (#9)"
+    },
     {
       "path": "levels/06-cayley-catch/",
       "title": "Cayley Catch",
@@ -165,13 +172,6 @@
     {
       "path": "explore/nonsimple/",
       "title": "Non-Simple Group Explorer",
-      "category": "Explore",
-      "date": "2026-11-16T23:35:52+07:00",
-      "update": "Apply shared minimal navigation and author credit to additional apps"
-    },
-    {
-      "path": "explore/music-from-symmetry/",
-      "title": "Music to Picture",
       "category": "Explore",
       "date": "2026-11-16T23:35:52+07:00",
       "update": "Apply shared minimal navigation and author credit to additional apps"
