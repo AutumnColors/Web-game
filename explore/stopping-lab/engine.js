@@ -44,7 +44,7 @@ const modeOf=v=>MODES.find(m=>m.v===v)||MODES[0];
 const SEEDS=[['Rabbit',-0.122561166876654,0.744861766619744],['Basilica',-1,0],['Dendrite',0,1],['Siegel disk',-0.390540870218399,-0.586787907346969],
   ['Cauliflower',0.25,0],['Airplane',-1.754877666246693,0],['Spiral',-0.8,0.156],['Galaxy',0.285,0.01],['Seahorse',-0.745,0.113],['Dust',0.3,0.5]];
 const DEFAULTS={fractal:'mandelbrot', power:3, juliaPower:2, seed:{re:SEEDS[0][1],im:SEEDS[0][2]}, mode:'escape', panels:['escape','sens','gradt','flat'],
-  depth:0, polar:false, bottcher:false, bottcherGMin:0.02, bottcherGMax:0.6, logPolar:false, logOuter:Math.log(2), logSpan:Math.log(10000), palette:'classic', iter:0, radius:2, stopMode:'outward', clean:false, contours:true, contourLevels:8, contourOpacity:70, contourColor:'white'};
+  depth:0, polar:false, bottcher:false, bottcherGMin:0.02, bottcherGMax:0.6, logPolar:false, logOuter:Math.log(2), logSpan:Math.log(10000), palette:'classic', dldIterations:1000, dldContrast:2.5, iter:0, radius:2, stopMode:'outward', clean:false, contours:true, contourLevels:8, contourOpacity:70, contourColor:'white'};
 const clone=c=>({...c, seed:{...c.seed}, panels:[...c.panels]});
 let cfg=clone(DEFAULTS), started=false;
 const SUP={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
@@ -144,7 +144,7 @@ function parameterInverse(u,theta){
 }
 
 onmessage=e=>{
-  const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,needDLD,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
+  const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,needDLD,dldIterations,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
   const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float32Array(N):null, DLD=needDLD?new Float32Array(N):null;
   const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=pw>1?1/Math.log(pw):0;
   let minN=1e9;
@@ -173,7 +173,7 @@ onmessage=e=>{
           return [2*u*t/d,2*v*t/d,(u*u+v*v-t*t)/d];
         };
         let prev=sphere(x,y);
-        for(let step=0;step<Math.min(maxIt,256);step++){
+        for(let step=0;step<dldIterations;step++){
           let wr,wi;
           if(pw===2){wr=x*x-y*y;wi=2*x*y;}
           else if(!Number.isInteger(pw)||pw<2){[wr,wi]=principalPower(x,y,pw);}
@@ -370,7 +370,7 @@ function newLayer(v,W,H,maxIt,withS){
 function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
   const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;
-  for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,needDLD:!!L.DLD,...engMsg(e),...extra});
+  for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,needDLD:!!L.DLD,dldIterations:cfg.dldIterations,...engMsg(e),...extra});
   if(front) queue.unshift(...items); else queue.push(...items);
 }
 // one-shot renders (backdrop, thumbnails)
@@ -486,7 +486,9 @@ function paint(L,mode){
         if(!Number.isFinite(v)){o[i]=BLACK;continue;}
         const inside=T[i]===NO;
         // Bounded and escaping regions use separate contrast windows.
-        const t=scale(v,inside?ir:er);
+        const raw=scale(v,inside?ir:er);
+        const strength=Math.max(0.25,cfg.dldContrast);
+        const t=Math.max(0,Math.min(1,.5+.5*Math.tanh(strength*(raw-.5))/Math.tanh(strength*.5)));
         o[i]=Q[Math.min(1023,Math.max(0,Math.round((inside?.28+.72*t:.06+.72*t)*1023)))];
       }
       L.rng[mode]=[ir,er];
