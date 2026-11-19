@@ -185,8 +185,11 @@ function group(el,items,get,set){
 function syncGroups(root){ root.querySelectorAll('.grp').forEach(g=>[...g.children].forEach(b=>b.classList.toggle('on',b._v===g._get()))); }
 group($('qMode'),MODES,()=>cfg.mode,v=>setMode(v));
 group($('qPal'),Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t})),()=>cfg.palette,v=>setPalette(v));
-function syncQuick(){ $('qVector').querySelector('b').textContent='Vector arrows: '+(vectorOverlay.enabled?'on':'off'); $('qVector').classList.toggle('on',vectorOverlay.enabled); $('vectorOptions').style.display=vectorOverlay.enabled?'block':'none'; syncPolarButton(); syncGroups($('pop')); $('qClean').classList.toggle('on',cfg.clean); $('qContours').classList.toggle('on',cfg.contours); }
+function syncQuick(){ $('dldOptions').style.display=cfg.mode==='dld'?'block':'none'; $('dldContrast').value=cfg.dldContrast; $('dldContrastOut').textContent=cfg.dldContrast.toFixed(1)+'×'; $('dldIterations').value=String(cfg.dldIterations); $('qVector').querySelector('b').textContent='Vector arrows: '+(vectorOverlay.enabled?'on':'off'); $('qVector').classList.toggle('on',vectorOverlay.enabled); $('vectorOptions').style.display=vectorOverlay.enabled?'block':'none'; syncPolarButton(); syncGroups($('pop')); $('qClean').classList.toggle('on',cfg.clean); $('qContours').classList.toggle('on',cfg.contours); }
 const closePop=()=>{ $('pop').classList.remove('on'); $('bView').classList.remove('on'); };
+$('dldContrast').oninput=ev=>{cfg.dldContrast=+ev.target.value; $('dldContrastOut').textContent=cfg.dldContrast.toFixed(1)+'×';repaint();};
+$('dldContrast').onchange=()=>writeHash();
+$('dldIterations').onchange=ev=>{cfg.dldIterations=+ev.target.value;dirty=true;needDraw=true;writeHash();};
 $('bView').onclick=()=>{ const on=!$('pop').classList.contains('on'); $('pop').classList.toggle('on',on); $('bView').classList.toggle('on',on); syncQuick(); };
 $('qVector').onclick=()=>{vectorOverlay.enabled=!vectorOverlay.enabled;if(vectorOverlay.enabled&&vectorOverlay.source==='sens'&&base&&!base.S)dirty=true;needDraw=true;syncQuick();};
 $('vectorSource').onchange=e=>{vectorOverlay.source=e.target.value;if(vectorOverlay.enabled&&vectorOverlay.source==='sens'&&base&&!base.S)dirty=true;needDraw=true;};
