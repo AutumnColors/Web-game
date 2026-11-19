@@ -87,7 +87,7 @@ onmessage=e=>{
       if(julia){ zr=pr; zi=pq; cr=kr; ci=ki; dr=1; di=0; }
       else {
         cr=pr; ci=pq; zr=0; zi=0; dr=0; di=0;
-        if(quick){ const xr=cr-0.25, q=xr*xr+ci*ci; if(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625){ T[i]=65535; continue; } }
+        if(quick&&!needDLD){ const xr=cr-0.25, q=xr*xr+ci*ci; if(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625){ T[i]=65535; continue; } }
       }
       let zr2=zr*zr, zi2=zi*zi, n=0, qr=zr, qi=zi, lim=8, cnt=0, inside=false;
       if(needDLD){
@@ -103,6 +103,7 @@ onmessage=e=>{
           if(pw===2){wr=x*x-y*y;wi=2*x*y;}
           else {for(let q=2;q<pw;q++){const t=wr*x-wi*y;wi=wr*y+wi*x;wr=t;}const t=wr*x-wi*y;wi=wr*y+wi*x;wr=t;}
           x=wr+cr;y=wi+ci;
+          if(!Number.isFinite(x)||!Number.isFinite(y))break;
           const next=project(x,y);
           for(let q=0;q<3;q++)dld+=Math.pow(Math.abs(next[q]-prev[q]),1/64);
           prev=next;
