@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-19T15:14:24.921198+00:00",
+  "generatedAt": "2026-11-19T15:20:17.461352+00:00",
   "apps": [
     {
       "path": "explore/julia-3d-lab/",
       "title": "3D Julia Lab",
       "category": "Explore",
-      "date": "2026-11-19T22:14:16+07:00",
-      "update": "Improve Julia 3D geometry with interpolated potential isosurface, smooth gradient normals and camera fitting"
+      "date": "2026-11-19T22:20:01+07:00",
+      "update": "Add interactive real and imaginary Julia parameter sliders with regeneration"
     },
     {
       "path": "explore/stopping-lab/",
