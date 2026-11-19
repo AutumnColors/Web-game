@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-19T14:37:31.995965+00:00",
+  "generatedAt": "2026-11-19T14:37:43.034724+00:00",
   "apps": [
     {
       "path": "explore/fractal-lab/",
       "title": "Fractal Universe Lab (Legacy)",
       "category": "Explore",
-      "date": "2026-11-19T21:37:24+07:00",
-      "update": "Add Riemann-sphere DLD metric to Universal Fractal Lab"
+      "date": "2026-11-19T21:37:36+07:00",
+      "update": "Recompute DLD field on measurement switch"
     },
     {
       "path": "explore/starting-point-mandelbrot-3d/",
