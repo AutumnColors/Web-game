@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-19T14:58:43.836213+00:00",
+  "generatedAt": "2026-11-19T15:01:21.075274+00:00",
   "apps": [
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-19T21:58:36+07:00",
-      "update": "Trigger DLD recomputation on Universal Lab mode selection"
+      "date": "2026-11-19T22:01:13+07:00",
+      "update": "Fix DLD near-binary rendering with separate bounded and escaping contrast"
     },
     {
       "path": "explore/fractal-lab/",
