@@ -4,8 +4,8 @@
 *{box-sizing:border-box}body{margin:0;background:#090e19;color:#e7f0ff;font:14px system-ui,sans-serif}header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #26364d}h1{font-size:19px;margin:0}.sub{font-size:12px;color:#91a8c4;margin-top:4px}a{color:#9cd5ff}main{display:grid;grid-template-columns:minmax(0,1fr) 285px;height:calc(100dvh - 69px)}#stage{position:relative;min-height:350px}aside{padding:18px;background:#111b2d;overflow:auto;border-left:1px solid #26364d}label{display:block;margin:16px 0 7px;color:#b7c8dd}select,button{background:#20344c;color:white;border:1px solid #49627c;border-radius:9px;padding:10px 12px;font:inherit;max-width:100%}select{width:100%}button{cursor:pointer}button.primary{background:#126aa9}button:disabled{opacity:.5}input[type=range]{width:100%;accent-color:#54b5f7}#status{margin-top:18px;font-size:12px;line-height:1.5;color:#a9c3dd}#hint{position:absolute;left:12px;bottom:12px;padding:9px 12px;border-radius:8px;background:#0b1724d9;color:#b8cbe1;font-size:12px;pointer-events:none}.actions{display:flex;gap:8px;flex-wrap:wrap}.muted{font-size:12px;color:#92a6bf;line-height:1.6;margin-top:14px}.value{float:right;color:#81d2ff}@media(max-width:760px){main{grid-template-columns:1fr;height:auto}#stage{height:55dvh;min-height:320px}aside{border-left:0;border-top:1px solid #26364d;padding:15px}}</style></head>
 <body><header><div><h1>3D Julia Lab</h1><div class="sub">Quaternion dynamics · qₙ₊₁ = qₙ² + c</div></div><a href="../../index.html">Home</a></header><main><div id="stage"><div id="hint">Drag to rotate · Pinch to zoom<br>Solid = finite-iteration boundedness approximation</div></div><aside>
 <div class="actions"><button id="generate" class="primary">Generate 3D</button><button id="reset">Reset camera</button></div>
-<label>Julia parameter</label><select id="preset"><option value="basilica">Basilica · c = −1</option><option value="circle">Circle · c = 0</option><option value="rabbit">Rabbit · c = −0.123 + 0.745i</option><option value="custom">Custom quaternion c</option></select>
-<div id="custom" hidden><label>c real</label><input id="cr" type="number" step=".01" value="-1"><label>c i</label><input id="ci" type="number" step=".01" value="0"><label>c j</label><input id="cj" type="number" step=".01" value="0"><label>c k</label><input id="ck" type="number" step=".01" value="0"></div>
+<label>Julia parameter</label><select id="preset"><option value="basilica">Basilica · c = −1</option><option value="circle">Circle · c = 0</option><option value="rabbit">Rabbit · c = −0.123 + 0.745i</option><option value="free">Custom complex c · sliders</option><option value="custom">Custom quaternion c</option></select>
+<div id="complexControls"><label>Real part of c <span id="realValue" class="value">−1.000</span></label><input id="realSlider" type="range" min="-2" max="1" step=".005" value="-1"><label>Imaginary part of c <span id="imagValue" class="value">0.000</span></label><input id="imagSlider" type="range" min="-1.5" max="1.5" step=".005" value="0"><div class="muted">Move either slider; the 3D shape updates when you release it. For nonreal c, the viewer computes full quaternion orbits.</div></div><div id="custom" hidden><label>c real</label><input id="cr" type="number" step=".01" value="-1"><label>c i</label><input id="ci" type="number" step=".01" value="0"><label>c j</label><input id="cj" type="number" step=".01" value="0"><label>c k</label><input id="ck" type="number" step=".01" value="0"></div>
 <label>Quality</label><select id="quality"><option value="fast">Fast</option><option value="medium" selected>Medium</option><option value="high">Detailed</option></select>
 <label>Iterations <span id="iterVal" class="value">100</span></label><input id="iterations" type="range" min="40" max="240" step="20" value="100">
 <label>Surface opacity <span id="opVal" class="value">1.00</span></label><input id="opacity" type="range" min=".15" max="1" step=".05" value="1">
@@ -118,7 +118,7 @@ async function generate(){
  const run=++token;$('generate').disabled=true;$('status').textContent='Computing…';dispose(mesh);mesh=null;dispose(sectionMesh);sectionMesh=null;
  const quality=$('quality').value;N=quality==='fast'?42:quality==='medium'?70:100;
  const it=+$('iterations').value,preset=$('preset').value;
- const c=preset==='basilica'?[-1,0,0,0]:preset==='circle'?[0,0,0,0]:preset==='rabbit'?[-.123,.745,0,0]:[+$('cr').value,+$('ci').value,+$('cj').value,+$('ck').value];
+ const c=preset==='custom'?[+$('cr').value,+$('ci').value,+$('cj').value,+$('ck').value]:[+$('realSlider').value,+$('imagSlider').value,0,0];
  const real=c[1]===0&&c[2]===0&&c[3]===0;
  lo=-2.15;step=4.3/(N-1);field=new Float32Array(N*N*N);
  const idx=(i,j,k)=>(k*N+j)*N+i;
@@ -151,7 +151,31 @@ async function generate(){
  mesh=new THREE.Mesh(geometry,mat);scene.add(mesh);
  renderSection();fitCamera();$('status').textContent=(real?'Rotational profile':'Full quaternion grid')+' · '+N+'³ samples · '+it+' iterations · '+Math.round(geometry.attributes.position.count/3).toLocaleString()+' triangles';$('generate').disabled=false;
 }
-$('preset').onchange=()=>{$('custom').hidden=$('preset').value!=='custom';$('status').textContent='Parameter changed. Press Generate 3D.'};
+function syncSliders(){
+ $('realValue').textContent=(+$('realSlider').value).toFixed(3);
+ $('imagValue').textContent=(+$('imagSlider').value).toFixed(3);
+}
+let sliderTimer=null;
+function scheduleParameterUpdate(){
+ clearTimeout(sliderTimer);
+ $('preset').value='free';
+ $('custom').hidden=true;$('complexControls').hidden=false;
+ syncSliders();$('status').textContent='Parameter changed. Updating 3D…';
+ sliderTimer=setTimeout(()=>generate(),180);
+}
+for(const id of ['realSlider','imagSlider']){
+ $(id).addEventListener('input',()=>{clearTimeout(sliderTimer);$('preset').value='free';syncSliders();$('status').textContent='Release slider to update 3D.'});
+ $(id).addEventListener('change',scheduleParameterUpdate);
+}
+$('preset').onchange=()=>{
+ const p=$('preset').value;
+ $('custom').hidden=p!=='custom';$('complexControls').hidden=p==='custom';
+ if(p==='basilica'){$('realSlider').value=-1;$('imagSlider').value=0}
+ if(p==='circle'){$('realSlider').value=0;$('imagSlider').value=0}
+ if(p==='rabbit'){$('realSlider').value=-.123;$('imagSlider').value=.745}
+ syncSliders();generate();
+};
+for(const id of ['cr','ci','cj','ck'])$(id).addEventListener('change',()=>{if($('preset').value==='custom')generate()});
 $('quality').onchange=()=>{$('status').textContent='Quality changed. Press Generate 3D.'};
 $('iterations').oninput=()=>{$('iterVal').textContent=$('iterations').value;$('status').textContent='Iterations changed. Press Generate 3D.'};
 $('opacity').oninput=()=>{$('opVal').textContent=(+$('opacity').value).toFixed(2);if(mesh){mesh.material.opacity=+$('opacity').value;mesh.material.depthWrite=+$('opacity').value>=.99}};
