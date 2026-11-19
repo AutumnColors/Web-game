@@ -140,7 +140,7 @@ addEventListener('keydown',e=>{
 function setMode(m){
   if(cfg.polar && m!=='sens') {cfg.polar=false;cfg.logPolar=false;syncPolarButton();dirty=true;}
   const was=cmp(); cfg.mode=m; document.body.classList.toggle('cmp',cmp());
-  if(cmp()!==was || (needD() && base && !base.S)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
+  if(cmp()!==was || (needD() && base && !base.S) || (m==='dld' && base && !base.DLD)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
   repaint(); updateChip(); syncQuick(); writeHash();
 }
 function syncPolarButton(){ $('qPolar').querySelector('b').textContent='Coordinates: '+(cfg.polar?(cfg.logPolar?'Log-polar (θ, log r)':'Polar (θ, r)'):'Cartesian');$('qPolar').classList.toggle('on',cfg.polar); }
