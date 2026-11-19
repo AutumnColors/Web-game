@@ -36,6 +36,7 @@ const MODES=[
   {v:'escape', t:'Escape time',       s:'smooth μ = n + 1 − log₂ log₂|zₙ|',          tag:'Escape time μ'},
   {v:'binary', t:'Black / white',     s:'white: escaped · black: no escape detected', tag:'Escape / no escape'},
   {v:'sens',   t:'Orbit sensitivity', s:'S = ln(1 + |dzₙ/dc|) at escape',            tag:'Sensitivity S'},
+  {v:'dld',t:'Discrete Lagrangian Descriptor',s:'DLD = Σ |Δwⱼ|^(1/64), Riemann sphere, up to 256 steps',tag:'DLD orbit movement'},
   {v:'potential', t:"Green's potential", s:'Exterior potential G ≈ log|zₙ| / pⁿ; colors show log G (finite-escape estimate)', tag:'Green potential (estimated)'},
   {v:'flat',   t:'Sensitivity, bands removed', s:'ln(|D| / (|z| ln|z|)): exact |∇μ| by the chain rule', tag:'S, bands removed'},
 ];
@@ -143,8 +144,8 @@ function parameterInverse(u,theta){
 }
 
 onmessage=e=>{
-  const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
-  const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float32Array(N):null;
+  const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,needDLD,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
+  const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float32Array(N):null, DLD=needDLD?new Float32Array(N):null;
   const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=pw>1?1/Math.log(pw):0;
   let minN=1e9;
   for(let r=0;r<rows;r++){
@@ -157,14 +158,36 @@ onmessage=e=>{
         const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5);
         [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki):pw===2?parameterInverse(u,theta):[NaN,NaN];
       } else if(polar){ const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
-      if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;continue;}
+      if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
       let zr,zi,cr,ci,dr,di;
       if(julia){ zr=pr; zi=pq; cr=kr; ci=ki; dr=1; di=0; }
       else {
         cr=pr; ci=pq; zr=0; zi=0; dr=0; di=0;
-        if(quick && stopMode==='outward' && R2>=4){ const xr=cr-0.25, q=xr*xr+ci*ci; if(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625){ T[i]=65535; continue; } }
+        if(quick && !needDLD && stopMode==='outward' && R2>=4){ const xr=cr-0.25, q=xr*xr+ci*ci; if(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625){ T[i]=65535; continue; } }
       }
       let zr2=zr*zr, zi2=zi*zi, n=0, qr=zr, qi=zi, lim=8, cnt=0, inside=false;
+      if(needDLD){
+        let x=zr,y=zi,total=0;
+        const sphere=(x,y)=>{
+          const scale=Math.max(1,Math.abs(x),Math.abs(y)),u=x/scale,v=y/scale,t=1/scale,d=u*u+v*v+t*t;
+          return [2*u*t/d,2*v*t/d,(u*u+v*v-t*t)/d];
+        };
+        let prev=sphere(x,y);
+        for(let step=0;step<Math.min(maxIt,256);step++){
+          let wr,wi;
+          if(pw===2){wr=x*x-y*y;wi=2*x*y;}
+          else if(!Number.isInteger(pw)||pw<2){[wr,wi]=principalPower(x,y,pw);}
+          else {wr=x;wi=y;for(let q=2;q<pw;q++){const t=wr*x-wi*y;wi=wr*y+wi*x;wr=t;}}
+          x=wr+cr;y=wi+ci;
+          if(!Number.isFinite(x)||!Number.isFinite(y))break;
+          const next=sphere(x,y);
+          const dx=Math.abs(next[0]-prev[0]),dy=Math.abs(next[1]-prev[1]),dz=Math.abs(next[2]-prev[2]);
+          total+=Math.pow(dx,1/64)+Math.pow(dy,1/64)+Math.pow(dz,1/64);
+          prev=next;
+          if(dx+dy+dz<1e-12 && Math.hypot(x,y)>10)break;
+        }
+        DLD[i]=total;
+      }
       while(stopMode==='fixed' ? n<maxIt : stopMode==='inward' ? zr2+zi2>=R2 : zr2+zi2<=R2){
         if(n>=maxIt){ if(stopMode!=='fixed')inside=true; break; }
         if(pw===2){
@@ -190,7 +213,7 @@ onmessage=e=>{
       if(needD) S[i]=Math.log(1+Math.sqrt(dr*dr+di*di));
     }
   }
-  postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,minN},S?[T.buffer,F.buffer,S.buffer]:[T.buffer,F.buffer]);
+  postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,DLD,minN},[T.buffer,F.buffer,...(S?[S.buffer]:[]),...(DLD?[DLD.buffer]:[])]);
 };`;
 // Principal branch: z^p = exp(p (ln|z| + i Arg(z))), Arg in (-pi,pi].
 // For noninteger p this map is discontinuous across the negative real axis.
@@ -342,12 +365,12 @@ function gridFor(v,W,H,sx){
 
 /* ---------- layers of numbers ---------- */
 function newLayer(v,W,H,maxIt,withS){
-  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
+  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float32Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
 }
-function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
+function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
   const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;
-  for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,...engMsg(e),...extra});
+  for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,needDLD:!!L.DLD,...engMsg(e),...extra});
   if(front) queue.unshift(...items); else queue.push(...items);
 }
 // one-shot renders (backdrop, thumbnails)
@@ -427,8 +450,9 @@ function rangeOf(N,get,lo,hi){ // percentiles of a sample, so a few extreme pixe
   if(!(r[1]>r[0])) r[1]=r[0]+1e-9; return r;
 }
 function paint(L,mode){
-  const {W,H,T,F,S}=L, N=W*H;
+  const {W,H,T,F,S,DLD}=L, N=W*H;
   if((mode==='sens'||mode==='flat') && !S) return null;
+  if(mode==='dld'&&!DLD)return null;
   const img=new ImageData(W,H), o=new Uint32Array(img.data.buffer), P=PALETTES[cfg.palette], C=P.cyc, Q=P.seq;
   if(mode==='binary'){ for(let i=0;i<N;i++) o[i]=T[i]===NO?BLACK:WHITE; }
   else if(mode==='escape'){
@@ -443,6 +467,7 @@ function paint(L,mode){
       get=i=>T[i]===NO?NaN:Math.log(Math.LN2)+(1-F[i]-T[i])*lp;
     }
     else if(mode==='sens') get=i=>T[i]===NO?NaN:S[i];
+    else if(mode==='dld')get=i=>DLD[i];
     else if(mode==='flat'){ // F = 1 − log_p log₂|z| gives |z| back, so the overshoot past the escape radius can be divided out
       const lp=Math.log(L.pw), off=Math.log(lp);
       get=i=>{ if(T[i]===NO) return NaN; const lz=Math.LN2*Math.exp((1-F[i])*lp); return Math.log(Math.expm1(S[i]))-lz-Math.log(lz)-off; }; }
