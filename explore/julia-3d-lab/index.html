@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3D Julia Lab</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#090e19;color:#e7f0ff;font:14px system-ui,sans-serif}header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #26364d}h1{font-size:19px;margin:0}.sub{font-size:12px;color:#91a8c4;margin-top:4px}a{color:#9cd5ff}main{display:grid;grid-template-columns:minmax(0,1fr) 285px;height:calc(100dvh - 69px)}#stage{position:relative;min-height:350px}aside{padding:18px;background:#111b2d;overflow:auto;border-left:1px solid #26364d}label{display:block;margin:16px 0 7px;color:#b7c8dd}select,button{background:#20344c;color:white;border:1px solid #49627c;border-radius:9px;padding:10px 12px;font:inherit;max-width:100%}select{width:100%}button{cursor:pointer}button.primary{background:#126aa9}button:disabled{opacity:.5}input[type=range]{width:100%;accent-color:#54b5f7}#status{margin-top:18px;font-size:12px;line-height:1.5;color:#a9c3dd}#hint{position:absolute;left:12px;bottom:12px;padding:9px 12px;border-radius:8px;background:#0b1724d9;color:#b8cbe1;font-size:12px;pointer-events:none}.actions{display:flex;gap:8px;flex-wrap:wrap}.muted{font-size:12px;color:#92a6bf;line-height:1.6;margin-top:14px}.value{float:right;color:#81d2ff}@media(max-width:760px){main{grid-template-columns:1fr;height:auto}#stage{height:55dvh;min-height:320px}aside{border-left:0;border-top:1px solid #26364d;padding:15px}}</style></head>
+<body><header><div><h1>3D Julia Lab</h1><div class="sub">Quaternion dynamics · qₙ₊₁ = qₙ² + c</div></div><a href="../../index.html">Home</a></header><main><div id="stage"><div id="hint">Drag to rotate · Pinch to zoom<br>Solid = finite-iteration boundedness approximation</div></div><aside>
+<div class="actions"><button id="generate" class="primary">Generate 3D</button><button id="reset">Reset camera</button></div>
+<label>Julia parameter</label><select id="preset"><option value="basilica">Basilica · c = −1</option><option value="circle">Circle · c = 0</option><option value="rabbit">Rabbit · c = −0.123 + 0.745i</option><option value="custom">Custom quaternion c</option></select>
+<div id="custom" hidden><label>c real</label><input id="cr" type="number" step=".01" value="-1"><label>c i</label><input id="ci" type="number" step=".01" value="0"><label>c j</label><input id="cj" type="number" step=".01" value="0"><label>c k</label><input id="ck" type="number" step=".01" value="0"></div>
+<label>Quality</label><select id="quality"><option value="fast">Fast</option><option value="medium" selected>Medium</option><option value="high">Detailed</option></select>
+<label>Iterations <span id="iterVal" class="value">100</span></label><input id="iterations" type="range" min="40" max="240" step="20" value="100">
+<label>Surface opacity <span id="opVal" class="value">1.00</span></label><input id="opacity" type="range" min=".15" max="1" step=".05" value="1">
+<label><input id="section" type="checkbox"> Show 2D cross-section (k = 0)</label>
+<div id="status">Preparing basilica…</div><div class="muted">For real c, the boundedness set is rotationally symmetric about the real axis; the 3D volume is sampled from its 2D radial profile. For nonreal quaternion c, the complete quaternion recurrence is evaluated at every 3D sample. The section is the k = 0 plane in the selected 3D starting-point space. Escape radius 4, finite iteration cutoff. Rendering uses marching tetrahedra.</div>
+</aside></main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=id=>document.getElementById(id),host=$('stage');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x090e19);
+const camera=new THREE.PerspectiveCamera(44,1,.01,100);camera.position.set(4.4,3.3,5.4);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));host.prepend(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;
+scene.add(new THREE.AmbientLight(0xffffff,1.1));const key=new THREE.DirectionalLight(0xa9e0ff,2.2);key.position.set(3,5,6);scene.add(key);const fill=new THREE.DirectionalLight(0x6388ff,1.2);fill.position.set(-4,-3,-5);scene.add(fill);
+const grid=new THREE.GridHelper(4.8,12,0x345372,0x1b2a3e);grid.position.y=-2.2;scene.add(grid);
+let mesh=null,sectionMesh=null,token=0,field=null,N=0,step=0,lo=-2.15;
+function quaternionBounded(x,y,z,cr,ci,cj,ck,it){
+ let w=x,a=y,b=z,d=0;
+ for(let n=0;n<it;n++){
+  const ww=w*w-a*a-b*b-d*d+cr,aa=2*w*a+ci,bb=2*w*b+cj,dd=2*w*d+ck;
+  w=ww;a=aa;b=bb;d=dd;
+  if(w*w+a*a+b*b+d*d>16)return false;
+ }return true;
+}
+function profileBounded(x,r,cr,it){
+ let w=x,v=r;
+ for(let n=0;n<it;n++){const nw=w*w-v*v+cr,nv=2*w*v;w=nw;v=nv;if(w*w+v*v>16)return false}
+ return true;
+}
+function dispose(o){if(o){scene.remove(o);o.geometry.dispose();o.material.dispose()}}
+const tetra=[[0,5,1,6],[0,1,2,6],[0,2,3,6],[0,3,7,6],[0,7,4,6],[0,4,5,6]];
+const corners=[[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]];
+const tetEdges=[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]];
+function makeMesh(data,n,spacing,origin){
+ const verts=[];const idx=(i,j,k)=>(k*n+j)*n+i;
+ const pushTri=(a,b,c)=>{verts.push(...a,...b,...c)};
+ for(let k=0;k<n-1;k++)for(let j=0;j<n-1;j++)for(let i=0;i<n-1;i++){
+  const val=corners.map(q=>data[idx(i+q[0],j+q[1],k+q[2])]);
+  let count=0;for(const v of val)count+=v;if(count===0||count===8)continue;
+  const pos=corners.map(q=>[origin+(i+q[0])*spacing,origin+(j+q[1])*spacing,origin+(k+q[2])*spacing]);
+  for(const tet of tetra){
+   const hits=[];
+   for(const [u,v] of tetEdges){const a=tet[u],b=tet[v];if(val[a]===val[b])continue;hits.push([(pos[a][0]+pos[b][0])/2,(pos[a][1]+pos[b][1])/2,(pos[a][2]+pos[b][2])/2])}
+   if(hits.length===3)pushTri(hits[0],hits[1],hits[2]);
+   else if(hits.length===4){pushTri(hits[0],hits[1],hits[2]);pushTri(hits[1],hits[3],hits[2])}
+  }
+ }
+ const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo=geo.toNonIndexed?geo:geo;
+ // Winding of tetrahedron facets is arbitrary; use double-sided shading.
+ geo.computeVertexNormals();
+ return geo;
+}
+function renderSection(){
+ dispose(sectionMesh);sectionMesh=null;
+ if(!$('section').checked||!field)return;
+ const pos=[],col=[],idx=(i,j,k)=>(k*N+j)*N+i,center=Math.round((N-1)/2);
+ for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+  if(!field[idx(i,j,center)])continue;
+  pos.push(lo+i*step,lo+j*step,0);col.push(1,.67,.16);
+ }
+ const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+ sectionMesh=new THREE.Points(geo,new THREE.PointsMaterial({size:step*.9,vertexColors:true,depthTest:false,transparent:true,opacity:.95}));sectionMesh.renderOrder=2;scene.add(sectionMesh);
+}
+async function generate(){
+ const run=++token;$('generate').disabled=true;$('status').textContent='Computing…';dispose(mesh);mesh=null;dispose(sectionMesh);sectionMesh=null;
+ const quality=$('quality').value;N=quality==='fast'?34:quality==='medium'?52:76;
+ const it=+$('iterations').value,preset=$('preset').value;
+ const c=preset==='basilica'?[-1,0,0,0]:preset==='circle'?[0,0,0,0]:preset==='rabbit'?[-.123,.745,0,0]:[+$('cr').value,+$('ci').value,+$('cj').value,+$('ck').value];
+ const real=c[1]===0&&c[2]===0&&c[3]===0;
+ lo=-2.15;step=4.3/(N-1);field=new Uint8Array(N*N*N);
+ const idx=(i,j,k)=>(k*N+j)*N+i;
+ let radial=null;
+ if(real){
+  radial=new Uint8Array(N*(N*2));
+  const dr=3.1/(N*2-1);
+  for(let i=0;i<N;i++)for(let m=0;m<N*2;m++)radial[i*(N*2)+m]=profileBounded(lo+i*step,m*dr,c[0],it)?1:0;
+  for(let k=0;k<N;k++)for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+   const r=Math.hypot(lo+j*step,lo+k*step),u=r/dr,m=Math.floor(u),t=u-m;
+   // Use direct profile test near boundaries to avoid losing small features to radial interpolation.
+   field[idx(i,j,k)]=m>=N*2-1?0:(radial[i*(N*2)+m]===radial[i*(N*2)+m+1]?radial[i*(N*2)+m]:profileBounded(lo+i*step,r,c[0],it)?1:0);
+  }
+ }else{
+  for(let k=0;k<N;k++){
+   if(run!==token)return;
+   for(let j=0;j<N;j++)for(let i=0;i<N;i++)field[idx(i,j,k)]=quaternionBounded(lo+i*step,lo+j*step,lo+k*step,...c,it)?1:0;
+   if(k%4===0){$('status').textContent='Quaternion orbits: '+Math.round(100*(k+1)/N)+'%';await new Promise(r=>setTimeout(r,0))}
+  }
+ }
+ if(run!==token)return;
+ $('status').textContent='Constructing surface…';await new Promise(r=>setTimeout(r,0));
+ const geometry=makeMesh(field,N,step,lo);
+ const mat=new THREE.MeshPhongMaterial({color:0x52b7ed,side:THREE.DoubleSide,flatShading:true,shininess:45,transparent:true,opacity:+$('opacity').value,depthWrite:+$('opacity').value>=.99});
+ mesh=new THREE.Mesh(geometry,mat);scene.add(mesh);
+ renderSection();$('status').textContent=(real?'Rotational profile':'Full quaternion grid')+' · '+N+'³ samples · '+it+' iterations · '+Math.round(geometry.attributes.position.count/3).toLocaleString()+' triangles';$('generate').disabled=false;
+}
+$('preset').onchange=()=>{$('custom').hidden=$('preset').value!=='custom';$('status').textContent='Parameter changed. Press Generate 3D.'};
+$('quality').onchange=()=>{$('status').textContent='Quality changed. Press Generate 3D.'};
+$('iterations').oninput=()=>{$('iterVal').textContent=$('iterations').value;$('status').textContent='Iterations changed. Press Generate 3D.'};
+$('opacity').oninput=()=>{$('opVal').textContent=(+$('opacity').value).toFixed(2);if(mesh){mesh.material.opacity=+$('opacity').value;mesh.material.depthWrite=+$('opacity').value>=.99}};
+$('section').onchange=renderSection;$('generate').onclick=generate;
+$('reset').onclick=()=>{camera.position.set(4.4,3.3,5.4);controls.target.set(0,0,0);controls.update()};
+new ResizeObserver(()=>{const w=host.clientWidth,h=host.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h)}).observe(host);
+function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();generate();
+</script></body></html>
