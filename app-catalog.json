@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-19T14:22:33.621413+00:00",
+  "generatedAt": "2026-11-19T14:27:13.602454+00:00",
   "apps": [
     {
       "path": "explore/starting-point-mandelbrot-3d/",
       "title": "3D Starting-Point Mandelbrot Lab",
       "category": "Explore",
-      "date": "2026-11-19T21:22:25+07:00",
-      "update": "Fix Three.js module resolution for 3D viewer"
+      "date": "2026-11-19T21:27:05+07:00",
+      "update": "Add solid voxel surface rendering and opacity controls to 3D Mandelbrot lab"
     },
     {
       "path": "explore/music-from-symmetry/",
