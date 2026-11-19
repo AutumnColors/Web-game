@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-19T11:46:55.279515+00:00",
+  "generatedAt": "2026-11-19T14:17:42.432569+00:00",
   "apps": [
+    {
+      "path": "explore/starting-point-mandelbrot-3d/",
+      "title": "3D Starting-Point Mandelbrot Lab",
+      "category": "Explore",
+      "date": "2026-11-19T21:17:35+07:00",
+      "update": "Add 3D starting-point Mandelbrot boundedness viewer"
+    },
     {
       "path": "explore/music-from-symmetry/",
       "title": "Music to Picture",
