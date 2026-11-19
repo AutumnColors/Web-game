@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-19T14:37:43.034724+00:00",
+  "generatedAt": "2026-11-19T14:58:43.836213+00:00",
   "apps": [
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-19T21:58:36+07:00",
+      "update": "Trigger DLD recomputation on Universal Lab mode selection"
+    },
     {
       "path": "explore/fractal-lab/",
       "title": "Fractal Universe Lab (Legacy)",
@@ -42,13 +49,6 @@
       "category": "Explore",
       "date": "2026-11-17T19:32:57+07:00",
       "update": "Add group convolution evolution lab with generator-pair orbit classification"
-    },
-    {
-      "path": "explore/stopping-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
-      "date": "2026-11-16T23:44:08+07:00",
-      "update": "Hide unused gradient and comparison measurement choices"
     },
     {
       "path": "world/",
