@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-19T14:27:13.602454+00:00",
+  "generatedAt": "2026-11-19T14:37:31.995965+00:00",
   "apps": [
+    {
+      "path": "explore/fractal-lab/",
+      "title": "Fractal Universe Lab (Legacy)",
+      "category": "Explore",
+      "date": "2026-11-19T21:37:24+07:00",
+      "update": "Add Riemann-sphere DLD metric to Universal Fractal Lab"
+    },
     {
       "path": "explore/starting-point-mandelbrot-3d/",
       "title": "3D Starting-Point Mandelbrot Lab",
@@ -284,13 +291,6 @@
     {
       "path": "explore/constants/",
       "title": "Scale of Constants",
-      "category": "Explore",
-      "date": "2026-11-16T23:33:15+07:00",
-      "update": "Add shared chrome to fractal and constants labs"
-    },
-    {
-      "path": "explore/fractal-lab/",
-      "title": "Fractal Universe Lab (Legacy)",
       "category": "Explore",
       "date": "2026-11-16T23:33:15+07:00",
       "update": "Add shared chrome to fractal and constants labs"
