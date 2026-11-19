@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-18T11:50:34.884939+00:00",
+  "generatedAt": "2026-11-19T07:23:18.942629+00:00",
   "apps": [
+    {
+      "path": "levels/06-cayley-catch/",
+      "title": "Cayley Catch",
+      "category": "Levels",
+      "date": "2026-11-19T14:23:11+07:00",
+      "update": "Add category tags (Map viewer, Game, Laboratory, Graphics) and Cayley Catch game"
+    },
     {
       "path": "explore/group-invariant-matrix/",
       "title": "Generator Invariant Matrix",
