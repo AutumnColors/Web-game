@@ -36,6 +36,7 @@ const MODES=[
   {v:'escape', t:'Escape time',       s:'smooth μ = n + 1 − log₂ log₂|zₙ|',          tag:'Escape time μ'},
   {v:'binary', t:'Black / white',     s:'white: escaped · black: no escape detected', tag:'Escape / no escape'},
   {v:'sens',   t:'Orbit sensitivity', s:'S = ln(1 + |dzₙ/dc|) at escape',            tag:'Sensitivity S'},
+  {v:'dld',t:'Discrete Lagrangian Descriptor',s:'Σ |Δwⱼ|^(1/64) on sphere over N iterations',tag:'DLD orbit movement'},
   {v:'potential', t:"Green's potential", s:'Exterior potential G ≈ log|zₙ| / pⁿ; colors show log G (finite-escape estimate)', tag:'Green potential (estimated)'},
   {v:'flat',   t:'Sensitivity, bands removed', s:'ln(|D| / (|z| ln|z|)): exact |∇μ| by the chain rule', tag:'S, bands removed'},
   {v:'gradt',  t:'Gradient of T',     s:'|∇T| of the whole-step count: band edges',   tag:'|∇T| whole steps'},
@@ -73,8 +74,8 @@ const cmp=()=>cfg.mode==='compare';
    T = first n with |zₙ| > R (65535: no escape detected), F = μ − T, S = ln(1 + |Dₙ|) with D = dz/dc (kind 0) or dz/dz₀ (kind 1). ---------- */
 const WORKER_SRC=`
 onmessage=e=>{
-  const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,needD,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan}=m;
-  const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float32Array(N):null;
+  const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,needD,needDLD,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan}=m;
+  const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float32Array(N):null, DLD=needDLD?new Float32Array(N):null;
   const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=1/Math.log(pw);
   let minN=1e9;
   for(let r=0;r<rows;r++){
@@ -89,6 +90,26 @@ onmessage=e=>{
         if(quick){ const xr=cr-0.25, q=xr*xr+ci*ci; if(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625){ T[i]=65535; continue; } }
       }
       let zr2=zr*zr, zi2=zi*zi, n=0, qr=zr, qi=zi, lim=8, cnt=0, inside=false;
+      if(needDLD){
+        let dld=0,x=zr,y=zi;
+        const project=(x,y)=>{
+          const scale=Math.max(1,Math.abs(x),Math.abs(y));
+          const u=x/scale,v=y/scale,inv=1/scale,den=u*u+v*v+inv*inv;
+          return [2*u*inv/den,2*v*inv/den,(u*u+v*v-inv*inv)/den];
+        };
+        let prev=project(x,y);
+        for(let step=0;step<maxIt;step++){
+          let wr=x,wi=y;
+          if(pw===2){wr=x*x-y*y;wi=2*x*y;}
+          else {for(let q=2;q<pw;q++){const t=wr*x-wi*y;wi=wr*y+wi*x;wr=t;}const t=wr*x-wi*y;wi=wr*y+wi*x;wr=t;}
+          x=wr+cr;y=wi+ci;
+          const next=project(x,y);
+          for(let q=0;q<3;q++)dld+=Math.pow(Math.abs(next[q]-prev[q]),1/64);
+          prev=next;
+          if(!Number.isFinite(x)||!Number.isFinite(y))break;
+        }
+        DLD[i]=dld;
+      }
       while(zr2+zi2<=R2){
         if(n>=maxIt){ inside=true; break; }
         if(pw===2){
@@ -109,7 +130,7 @@ onmessage=e=>{
       if(needD) S[i]=Math.log(1+Math.sqrt(dr*dr+di*di));
     }
   }
-  postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,minN},S?[T.buffer,F.buffer,S.buffer]:[T.buffer,F.buffer]);
+  postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,DLD,minN},[T.buffer,F.buffer,...(S?[S.buffer]:[]),...(DLD?[DLD.buffer]:[])]);
 };`;
 const NW=Math.max(2,Math.min(8,(navigator.hardwareConcurrency||4)));
 const workerURL=URL.createObjectURL(new Blob([WORKER_SRC],{type:'text/javascript'}));
@@ -184,12 +205,12 @@ function gridFor(v,W,H,sx){
 
 /* ---------- layers of numbers ---------- */
 function newLayer(v,W,H,maxIt,withS){
-  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
+  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float32Array(W*H):null,DLD:(cfg.mode==='dld'||(cfg.mode==='compare'&&cfg.panels.includes('dld')))?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
 }
-function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
+function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W); if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
   const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&cfg.polar)?{polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;
-  for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,...engMsg(e),...extra});
+  for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,needDLD:!!L.DLD,...engMsg(e),...extra});
   if(front) queue.unshift(...items); else queue.push(...items);
 }
 // one-shot renders (backdrop, thumbnails)
@@ -266,8 +287,9 @@ function rangeOf(N,get,lo,hi){ // percentiles of a sample, so a few extreme pixe
   if(!(r[1]>r[0])) r[1]=r[0]+1e-9; return r;
 }
 function paint(L,mode){
-  const {W,H,T,F,S}=L, N=W*H;
+  const {W,H,T,F,S,DLD}=L, N=W*H;
   if((mode==='sens'||mode==='flat') && !S) return null;
+  if(mode==='dld'&&!DLD)return null;
   const img=new ImageData(W,H), o=new Uint32Array(img.data.buffer), P=PALETTES[cfg.palette], C=P.cyc, Q=P.seq;
   if(mode==='binary'){ for(let i=0;i<N;i++) o[i]=T[i]===NO?BLACK:WHITE; }
   else if(mode==='escape'){
@@ -282,6 +304,7 @@ function paint(L,mode){
       get=i=>T[i]===NO?NaN:Math.log(Math.LN2)+(1-F[i]-T[i])*lp;
     }
     else if(mode==='sens') get=i=>T[i]===NO?NaN:S[i];
+    else if(mode==='dld') {get=i=>DLD?DLD[i]:NaN;lo=.01;hi=.99;}
     else if(mode==='flat'){ // F = 1 − log_p log₂|z| gives |z| back, so the overshoot past the escape radius can be divided out
       const lp=Math.log(L.pw), off=Math.log(lp);
       get=i=>{ if(T[i]===NO) return NaN; const lz=Math.LN2*Math.exp((1-F[i])*lp); return Math.log(Math.expm1(S[i]))-lz-Math.log(lz)-off; }; }
