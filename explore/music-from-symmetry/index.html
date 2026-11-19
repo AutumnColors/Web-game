@@ -156,9 +156,22 @@ const dragonData='eNrtHcmO7LbxX+bcB4k733/kZPjwAgeOgcAOYgc5GP73iGSRrOKilrqlXmYIVH
 BUN.dragonforce=(async()=>{const bytes=Uint8Array.from(atob(dragonData),c=>c.charCodeAt(0));const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));return JSON.parse(await new Response(stream).text())})();
 const dragonParts=[['guitar','Acoustic Guitar',3418],['bass','Bass Guitar',2855],['triangle','8-bit Triangle',304],['sine','8-bit Sine',112],['sawtooth','8-bit Sawtooth',42]];
 const dragonEntries=[{id:'dragonforce-ensemble',c:'DragonForce',t:'Through the Fire and Flames — Full Ensemble (5 tracks)',cat:'MIDI transcription · synchronized five-channel recurrence',g:'dragonforce',track:'guitar',ensemble:true,n:3418,bpm:200},...dragonParts.map(([key,label,n])=>({id:'dragonforce-'+key,c:'DragonForce',t:'Through the Fire and Flames — '+label,cat:'MIDI transcription · '+label+' · one pitch per onset',g:'dragonforce',track:key,n,bpm:200}))];
+// Pyramids of Giza: rendered note by note from the Sound of A₅ page's "Pyramid of Giza (best walk)" song (layout V, melody lines, 126 bpm). Pitches are exact, in fractional MIDI.
+const gizaData='eNrtW81u3DYQfpc9jwX+/+x79GT44MJo4UNiI0YPaZB3L0hxqKFIaqV13E0bAtaQGg7Jb0bUiJK//XZ6/frl8dPz09vdyx93fz7//Xg6fzs9vXw+ne8ZcMaGGGKI/7vgggEXigGXhgFXjgE3ocGGBqfYA5xeT+d7pUFK+DhpOBgNxoOVYG2QxkeNmQyqdWzRqcVxcBacBqcnB05Oqj7hYN1kYjczCRwhVqPAxqhH63VJe8vJJWw2I+BzS1TySeUyQI72OvWPtglbQKlnB0i1gD85MHNg5BIGnecwErQFzYNMLTFuXhZjuUmA86nEuTbiEvUJbo7LjGiJSxltm2fxErxHBLzTn866ERcEvvLFszAEdsVYqEmQpTK5o+vvAU5Pp/N9WPMSPlB6kAKkAmlA+ihV1EhU2qi3Sa84KAVKRinKCgfForHDXi78JWXUzDZULvYWZ7c4CydKjdKgscMBBYGUKxmYAsmimwydsjgaA2FByCCTPkZAOTKCBmWiVF0fg8aVPgrioyDY5tFcuEnSLLzRaxm/6eM8CD3NAZn94ounB9fDA5x+O51DIv4O1Xbs7vfHt7exJxtiiLEnu8mebMghb7BHGnLIvXukpy9/fSKbpJAmGQjGwKRSkVKtdGjTs6d6vTpomwz7v7ABDHcK6U/1R20+ot6LBbVB/1q6Vlt8YrUaegE+arMncK0L1WvvXeBLQejhQNtLuiP9e/PqxkJsHdfi/hEY91zTSzfRtddwa/H2Fv/e9t7RvQHGXTLukp/6Ltlje8tHaeGXUGCsiKVQDqyaS2EFOG5iKbwB51wsdYiPVHNpw6Fi6QULR3qBCl+f7KRAq8nET1F+cqDFJOqTwqzfh7aEL0QoV11Ay8Z8Wbu3+Z2VrrNokrCXp2tlpdmK1QGTC1GoI90ZvX8ZO262Z0ajbdXuvvVsNLq1PI7uHVB2XJ6tZX3d5Wgutv4i3dfekP2IjqU8lvKPXMo7r91tn0CX43Rggcep0ncirkFwEAZCRYJQZSU31Tao4UQuZgKELu2zZk/TOyu1I9jETeN0raw0jTjsadrwtIxeY7T6EnRcqGfhZuv0on09Mjdbcj+SK6beCC83++JzaemuO1aLZ1vfkP3IjKX1ay2tjZh/aNbd8HHHoorDbn/SfX1+/PyyfNKVYvxLcIgheiJ9yjjOn1s4Y5FJlZhtc4n8L1kz2eyKeaUTSS1w0cK+MJQ+bBLxXJb6BJSS1yTCwTEjZoIdMayx6oKphiAXftxh7tzSjQf2XWSV6VRGDS/8CnvuMAhWk59p2oZPxJe1r3Mfj9enGdOgWsfWrrDKjDRhKKhxl3hz+D/egzy1hc/lkESGdKpQpzwyT5hTIpHFAi/MROmwronGo2WmjzGcdB5HEmwaMddI8mnmox3hqRVdeJyRl/h1eJSGjnNlxu9baDNOgj9ZKoxqHRlfxscSJIxgEwUlrcVT234Aq+Xhq9xIsPuFHUE4+NS6ksNdPKYIh1tWmZZm2Jjr5JIpOxzuKlO/k8P9C/Cx01PjAFsZ0/LCVjZlbsxZnZMs12Mry+vZyv9B9vF29tYje4/s/a9l7yobr7borfy73pPKq35/Y8ivcI7k7iqhkpeJAjx5jSgQr098/x0pj/MT+7jk7vV22ZUZNudiur80R35pwpYMvit301RryVuHKzbrCx5aUa23DkuUt8FMcvf3fwB5Lnss';
+BUN.giza=(async()=>{const bytes=Uint8Array.from(atob(gizaData),c=>c.charCodeAt(0));const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));return JSON.parse(await new Response(stream).text())})();
+const gizaBase={c:'Roman Kesler',g:'ours',ens:'giza',bpm:126,al:'pyramids of giza pyramid of giza a5 sound of a5 best walk our song two pyramids'};
+const gizaEntries=[
+ {id:'pyramids-of-giza-ensemble',t:'Pyramids of Giza — Full Ensemble (5 layers)',cat:'Sound of A₅, best walk · synchronized recurrence · bass, drums, piano, 4, 5',track:'pyramids-of-giza',ensemble:true,n:208},
+ {id:'pyramids-of-giza',t:'Pyramids of Giza — Melody',cat:'Sound of A₅, best walk · top line of bass, piano, violin/flute and gamelan/voice',n:208},
+ {id:'pyramids-of-giza-bass',t:'Pyramids of Giza — 1 · Bass',cat:'Sound of A₅ · trivial representation',n:208},
+ {id:'pyramids-of-giza-drums',t:'Pyramids of Giza — 3 · Drums',cat:'Sound of A₅ · kick 36, snare 38, toms at their pitch',n:521},
+ {id:'pyramids-of-giza-piano',t:'Pyramids of Giza — 3′ · Piano',cat:'Sound of A₅ · melody line',n:160},
+ {id:'pyramids-of-giza-4',t:'Pyramids of Giza — 4 · Violin, then flute',cat:'Sound of A₅ · violin in the first pyramid, flute in the second',n:120},
+ {id:'pyramids-of-giza-5',t:'Pyramids of Giza — 5 · Gamelan, then voice',cat:'Sound of A₅ · gamelan in the first pyramid, voice in the second',n:120}
+].map(e=>Object.assign({},gizaBase,e));
 const motherEnsembleEntry={id:'into-the-mother-of-all-ensemble',c:'Roman Kesler',t:'Into the Mother of All (version 1) — Full Ensemble (5 tracks)',cat:'Original composition · synchronized recurrence · lead, rhythm, bass, pad, tick',g:'mother',n:1150,bpm:132,ensemble:true};
 const motherEntry={id:'into-the-mother-of-all-v1',c:'Roman Kesler',t:'Into the Mother of All (version 1) — Lead Guitar',cat:'Original composition · lead guitar',g:'mother',n:1150,bpm:132};
-Promise.all([fetch('lib/index.json').then(r=>r.json()),fetch('lib/index2.json').then(r=>r.json()).catch(()=>[])]).then(([a,b])=>{IX=a.concat(b).filter(r=>INSTALLED.has(grp(r))).concat(dragonEntries,[motherEnsembleEntry,motherEntry],motherTrackEntries);search();$('libmsg').textContent+=' '+MISSING_NOTE}).catch(()=>{$('libmsg').textContent='The library could not load here.'});
+Promise.all([fetch('lib/index.json').then(r=>r.json()),fetch('lib/index2.json').then(r=>r.json()).catch(()=>[])]).then(([a,b])=>{IX=a.concat(b).filter(r=>INSTALLED.has(grp(r))).concat(gizaEntries,dragonEntries,[motherEnsembleEntry,motherEntry],motherTrackEntries);search();$('libmsg').textContent+=' '+MISSING_NOTE}).catch(()=>{$('libmsg').textContent='The library could not load here.'});
 const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9#]+/g,' ');
 const COLL=[['all','All collections'],['mozart','Mozart piano sonatas'],['beethoven','Beethoven piano sonatas'],['haydn','Haydn piano sonatas'],['chopin','Chopin preludes and mazurkas'],['joplin','Joplin rags'],
  ['keyboard','Bach keyboard and others'],['chorales','Bach chorales'],['lieder','Songs (Schubert, Schumann, Brahms…)'],['ryans',"Ryan's fiddle tunes"],['oneills',"O'Neill's Irish tunes"],['ours','Our music (Roman Kesler)'],['mother','Into the Mother of All'],['motherTracks','Into the Mother of All — Instruments'],['dragonforce','DragonForce — Through the Fire and Flames']];
@@ -179,10 +192,10 @@ function open(i){if(!LIST.length)return;POS=(i+LIST.length)%LIST.length;const r=
  const q=$('q').value.trim(),cn=COLL.find(c=>c[0]===$('coll').value)[1];$('bset').innerHTML='<b style="color:var(--ink)">'+r.c+' — '+r.t+'</b><br>in '+cn+(q?' matching "'+q.replace(/</g,'')+'"':'');
  busy(true);const c=grp(r);
  if(!INSTALLED.has(c)){busy(false);$('libmsg').textContent='The note data for this collection is not installed.';return}
- (BUN[c]||(BUN[c]=fetch('lib/'+c+'.json').then(x=>{if(!x.ok)throw Error('HTTP '+x.status);return x.json()}))).then(all=>{
-  const j=r.g==='dragonforce'?all[r.track]:(r.ensemble?all['into-the-mother-of-all-v1']:(r.track?all[r.track]:all[r.id]));if(!j||!Array.isArray(j.don)||!Array.isArray(j.p)||!Array.isArray(j.d)||!j.U)throw Error('Missing or invalid note sequence');
+ (r.ens==='giza'?BUN.giza:BUN[c]||(BUN[c]=fetch('lib/'+c+'.json').then(x=>{if(!x.ok)throw Error('HTTP '+x.status);return x.json()}))).then(all=>{
+  const j=r.g==='dragonforce'?all[r.track]:(r.ensemble&&r.g==='mother'?all['into-the-mother-of-all-v1']:(r.track?all[r.track]:all[r.id]));if(!j||!Array.isArray(j.don)||!Array.isArray(j.p)||!Array.isArray(j.d)||!j.U)throw Error('Missing or invalid note sequence');
   let on=0;const notes=j.don.map((d,i)=>{on+=d;return {on:on/j.U,p:j.p[i],d:j.d[i]}});
-  show({ensemble:!!r.ensemble,ensembleGroup:r.g,title:r.c+' — '+r.t,sub:(r.cat?r.cat+' · ':'')+(SRC[r.g]||'Humdrum edition by Craig Stuart Sapp (CC BY-NC-SA)'),bpm:r.bpm||100,notes},true)}).catch(err=>{delete BUN[c];busy(false);$('img').style.visibility='hidden';$('img').removeAttribute('src');$('img').alt='Picture unavailable — melody data could not load';$('tapinfo').textContent='Cannot generate picture: '+err.message+'. Choose another piece.';$('libmsg').textContent='Could not load '+r.t+': '+err.message;})}
+  show({ensemble:!!r.ensemble,ensembleGroup:r.ens||r.g,title:r.c+' — '+r.t,sub:(r.cat?r.cat+' · ':'')+(SRC[r.g]||'Humdrum edition by Craig Stuart Sapp (CC BY-NC-SA)'),bpm:r.bpm||100,notes},true)}).catch(err=>{delete BUN[c];busy(false);$('img').style.visibility='hidden';$('img').removeAttribute('src');$('img').alt='Picture unavailable — melody data could not load';$('tapinfo').textContent='Cannot generate picture: '+err.message+'. Choose another piece.';$('libmsg').textContent='Could not load '+r.t+': '+err.message;})}
 $('bprev').onclick=()=>open(POS-1);$('bnext').onclick=()=>open(POS+1);$('brnd').onclick=()=>open(Math.floor(Math.random()*LIST.length));
 document.addEventListener('keydown',e=>{if($('browse').hidden||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;if(e.key==='ArrowRight')open(POS+1);if(e.key==='ArrowLeft')open(POS-1)});
 // ---------- tabs ----------
@@ -284,7 +297,8 @@ $('fi').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileRead
  isMidi?r.readAsArrayBuffer(f):r.readAsText(f)};
 // ---------- the algorithm ----------
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-const enc=s=>((s[0]+64)*128+(s[1]+64))*16384+(s[2]+64)*128+(s[3]+64);
+// Steps are counted in fifths of a semitone so microtonal songs (A₅ moves in 0.4-semitone units) get exact keys; whole steps keep their old meaning.
+const enc=s=>{const q=s.map(x=>Math.round(x*5)+512);return ((q[0]*1024+q[1])*1024+q[2])*1024+q[3]};
 function shapes(steps,hop=1){const S=[];for(let i=0;i+3<steps.length;i+=hop)S.push(steps.slice(i,i+4));
  return {c:S.map(enc),r:S.map(s=>enc([-s[3],-s[2],-s[1],-s[0]])),i:S.map(s=>enc([-s[0],-s[1],-s[2],-s[3]])),ri:S.map(s=>enc([s[3],s[2],s[1],s[0]]))}}
 function counts(H,grid,R,hop=1){const N=H.c.length,k=N/R;let same=0,mir=0,best=0;
@@ -295,7 +309,7 @@ function counts(H,grid,R,hop=1){const N=H.c.length,k=N/R;let same=0,mir=0,best=0
 let CUR=null;
 function busy(b){$('busy').style.display=b?'grid':'none';if(b)$('outband').hidden=false}
 let MODE={t:'notes',p:'letters',h:1};try{const m=JSON.parse(localStorage.getItem('n2p-mode'));if(m&&m.t&&m.p)MODE=Object.assign(MODE,m)}catch(e){}
-function show(piece,fromLib){if(piece.ensembleGroup==='dragonforce'||(piece.title&&piece.title.includes('Into the Mother of All'))){ensGroup=piece.ensembleGroup==='dragonforce'?'dragonforce':'mother';ensTracks=null;if(piece.ensemble)ensMode='full';ensRender()}else{$('ensemble').hidden=true;ensStop()}stop();busy(true);if(!fromLib)$('browse').hidden=true;$('outband').hidden=false;if(!fromLib||$('outband').getBoundingClientRect().top>innerHeight*0.6)$('outband').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+function show(piece,fromLib){const eg=piece.ensembleGroup==='motherTracks'||(piece.title&&piece.title.includes('Into the Mother of All'))?'mother':piece.ensembleGroup;if(ENS[eg]){ensGroup=eg;ensTracks=null;if(piece.ensemble)ensMode='full';ensRender()}else{$('ensemble').hidden=true;ensStop()}stop();busy(true);if(!fromLib)$('browse').hidden=true;$('outband').hidden=false;if(!fromLib||$('outband').getBoundingClientRect().top>innerHeight*0.6)$('outband').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
  CUR={...piece};setTimeout(render,30)}
 function modeUI(){document.querySelectorAll('#mh button').forEach(b=>b.classList.toggle('on',+b.dataset.v===MODE.h));document.querySelectorAll('#mt button').forEach(b=>b.classList.toggle('on',b.dataset.v===MODE.t));document.querySelectorAll('#mp button').forEach(b=>b.classList.toggle('on',b.dataset.v===MODE.p))}
 ['mt','mp','mh'].forEach(id=>$(id).onclick=e=>{const b=e.target.closest('button');if(!b)return;if(id==='mh')MODE.h=+b.dataset.v;else MODE[id==='mt'?'t':'p']=b.dataset.v;try{localStorage.setItem('n2p-mode',JSON.stringify(MODE))}catch(err){}modeUI();if(CUR){stop();busy(true);setTimeout(render,30);if(!$('ensemble').hidden)ensRender()}});
@@ -341,9 +355,15 @@ new ResizeObserver(()=>{drawO();drawS()}).observe($('pl'));
 $('img').onclick=e=>{if(!CUR||!CUR.N)return;const r=e.target.getBoundingClientRect(),i=noteAt((e.clientY-r.top)/r.height),j=noteAt((e.clientX-r.left)/r.width);
  $('tapinfo').textContent=`Row: note ${i+1} at ${mmss(CUR.notes[i].on)}. Column: note ${j+1} at ${mmss(CUR.notes[j].on)}. Playing from the row.`;play(i)};
 // ---------- multi-instrument recurrence laboratory ----------
-const ensNamesMother=['Lead guitar','Rhythm guitar','Bass','Synth pad','Tick'];
-const ensNamesDragon=['Acoustic guitar','Bass guitar','8-bit triangle','8-bit sine','8-bit sawtooth'];
-const ensKeys=['lead','rhythm','bass','pad','tick'];
+// Every multi-track piece: track names, tempo, picture title, file name, and how its tracks load.
+const ENS={
+ mother:{title:'Into the Mother of All',file:'into-the-mother-of-all',bpm:132,names:['Lead guitar','Rhythm guitar','Bass','Synth pad','Tick'],
+  load:async()=>{const [lead,other]=await Promise.all([BUN.mother,BUN.motherTracks]);return [fromBundle(lead['into-the-mother-of-all-v1']),...['rhythm','bass','pad','tick'].map(k=>fromBundle(other[k]))]}},
+ dragonforce:{title:'DragonForce',file:'dragonforce',bpm:200,names:['Acoustic guitar','Bass guitar','8-bit triangle','8-bit sine','8-bit sawtooth'],
+  load:async()=>{const data=await BUN.dragonforce;return ['guitar','bass','triangle','sine','sawtooth'].map(k=>fromBundle(data[k]))}},
+ giza:{title:'Pyramids of Giza',file:'pyramids-of-giza',bpm:126,names:['1 · Bass','3 · Drums','3′ · Piano','4 · Violin → flute','5 · Gamelan → voice'],
+  load:async()=>{const data=await BUN.giza;return ['bass','drums','piano','4','5'].map(k=>fromBundle(data['pyramids-of-giza-'+k]))}}};
+const ensNames=()=>ENS[ensGroup].names;
 let ensTracks=null,ensGroup='mother',ensMode='full',ensPlaying=false,ensAudio=null,ensVoices=[];
 function fromBundle(j){
  if(!j||!j.don||!j.p||!j.d||!j.U)throw Error('Invalid MIDI notes');
@@ -351,8 +371,7 @@ function fromBundle(j){
 }
 async function loadEnsemble(){
  if(ensTracks)return ensTracks;
- if(ensGroup==='dragonforce'){const data=await BUN.dragonforce;ensTracks=['guitar','bass','triangle','sine','sawtooth'].map(k=>fromBundle(data[k]));}
- else{const [lead,other]=await Promise.all([BUN.mother,BUN.motherTracks]);ensTracks=[fromBundle(lead['into-the-mother-of-all-v1']),...['rhythm','bass','pad','tick'].map(k=>fromBundle(other[k]))];}
+ ensTracks=await ENS[ensGroup].load();
  return ensTracks;
 }
 function ensShape(n){
@@ -381,7 +400,7 @@ function ensCross(tracks){
  const cv=$('ensembleCanvas'),ctx=ensPaint(cv,grid,W,W);
  ctx.strokeStyle='#5b6374';ctx.lineWidth=1;
  for(let k=0;k<=K;k++){const p=k*tile+.5;ctx.beginPath();ctx.moveTo(p,0);ctx.lineTo(p,W);ctx.moveTo(0,p);ctx.lineTo(W,p);ctx.stroke()}
- $('ensembleExplain').textContent='Rows and columns, in order: '+(ensGroup==='dragonforce'?ensNamesDragon:ensNamesMother).join(' · ')+'. Diagonal tiles compare each instrument with itself; off-diagonal tiles compare different instruments. Each tile normalizes the two note sequences independently, so off-diagonal position is relative melodic progress, not synchronized time.';
+ $('ensembleExplain').textContent='Rows and columns, in order: '+ensNames().join(' · ')+'. Diagonal tiles compare each instrument with itself; off-diagonal tiles compare different instruments. Each tile normalizes the two note sequences independently, so off-diagonal position is relative melodic progress, not synchronized time.';
 }
 function ensFull(tracks){
  const R=480,grid=new Uint8Array(R*R),sig=tracks.map(ensShape);
@@ -391,7 +410,8 @@ function ensFull(tracks){
   for(let t=0;t<R;t++){
    const beat=(t+.5)/R*T;
    while(p+1<n.length&&n[p+1].on<=beat)p++;
-   v[t]=beat<n[0].on||beat>ends[k]?-1:Math.min(sig[k].c.length-1,Math.floor(p/hop));
+   // a track that has rested for more than 4 beats is silent there, not still repeating its last shape
+   v[t]=beat<n[0].on||beat>ends[k]||beat-n[p].on>4?-1:Math.min(sig[k].c.length-1,Math.floor(p/hop));
   }
   return v;
  });
@@ -411,22 +431,22 @@ function ensFull(tracks){
  $('ensembleExplain').textContent='Both axes show the same synchronized song timeline (0–'+T.toFixed(1)+' beats). White: at least half the active instruments repeat an exact shape. Blue: at least half repeat or mirror their shapes. At least two active channels are required. This is a strict multichannel recurrence test, not a merge of simultaneous pitches.';
 }
 async function ensRender(){
- $('ensemble').hidden=false;$('ensemble').querySelector('h2').textContent=ensGroup==='dragonforce'?'DragonForce — instrument relationships':'Into the Mother of All — instrument relationships';$('ensembleStatus').textContent='Calculating '+(ensMode==='cross'?'cross-instrument':'full-composition')+' picture…';
+ $('ensemble').hidden=false;$('ensemble').querySelector('h2').textContent=ENS[ensGroup].title+' — instrument relationships';$('ensembleStatus').textContent='Calculating '+(ensMode==='cross'?'cross-instrument':'full-composition')+' picture…';
  await new Promise(resolve=>setTimeout(resolve,25));
  try{const tracks=await loadEnsemble();if(ensMode==='cross')ensCross(tracks);else ensFull(tracks);
-  $('ensembleStatus').textContent='Five principal melodic tracks · '+(ensMode==='cross'?'7 × 7 comparison blocks':'one synchronized arrangement matrix');
+  $('ensembleStatus').textContent=ensTracks.length+' principal tracks · '+(ensMode==='cross'?ensTracks.length+' × '+ensTracks.length+' comparison blocks':'one synchronized arrangement matrix');
  }catch(e){$('ensembleStatus').textContent='Could not calculate: '+e.message}
 }
 $('ensembleCross').onclick=()=>{ensMode='cross';ensRender()};
 $('ensembleFull').onclick=()=>{ensMode='full';ensRender()};
-$('ensembleSave').onclick=()=>{const a=document.createElement('a');a.download='into-the-mother-of-all-'+ensMode+'-recurrence.png';a.href=$('ensembleCanvas').toDataURL('image/png');a.click()};
+$('ensembleSave').onclick=()=>{const a=document.createElement('a');a.download=ENS[ensGroup].file+'-'+ensMode+'-recurrence.png';a.href=$('ensembleCanvas').toDataURL('image/png');a.click()};
 function ensStop(){ensVoices.forEach(v=>{try{v.stop()}catch(e){}});ensVoices=[];if(ensAudio){ensAudio.close();ensAudio=null}ensPlaying=false;$('ensemblePlay').textContent='▶ Play all instruments'}
 $('ensemblePlay').onclick=async()=>{
  if(ensPlaying){ensStop();return}
  try{
   const tracks=await loadEnsemble();ensAudio=new (window.AudioContext||window.webkitAudioContext)();await ensAudio.resume();ensPlaying=true;$('ensemblePlay').textContent='■ Stop all';
   // Schedule only a short rolling horizon to avoid creating thousands of oscillators at once.
-  const bpm=ensGroup==='dragonforce'?200:132,secondsPerBeat=60/bpm,start=ensAudio.currentTime+.12;
+  const bpm=ENS[ensGroup].bpm,secondsPerBeat=60/bpm,start=ensAudio.currentTime+.12;
   const cursors=tracks.map(()=>0),end=Math.max(...tracks.map(n=>n[n.length-1].on));
   const master=ensAudio.createGain();master.gain.value=.11;master.connect(ensAudio.destination);
   const schedule=()=>{
