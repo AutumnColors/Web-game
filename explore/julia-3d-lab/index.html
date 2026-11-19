@@ -6,11 +6,11 @@
 <div class="actions"><button id="generate" class="primary">Generate 3D</button><button id="reset">Reset camera</button></div>
 <label>Julia parameter</label><select id="preset"><option value="basilica">Basilica · c = −1</option><option value="circle">Circle · c = 0</option><option value="rabbit">Rabbit · c = −0.123 + 0.745i</option><option value="free">Custom complex c · sliders</option><option value="custom">Custom quaternion c</option></select>
 <div id="complexControls"><label>Real part of c <span id="realValue" class="value">−1.000</span></label><input id="realSlider" type="range" min="-2" max="1" step=".005" value="-1"><label>Imaginary part of c <span id="imagValue" class="value">0.000</span></label><input id="imagSlider" type="range" min="-1.5" max="1.5" step=".005" value="0"><div class="muted">Move either slider; the 3D shape updates when you release it. For nonreal c, the viewer computes full quaternion orbits.</div></div><div id="custom" hidden><label>c real</label><input id="cr" type="number" step=".01" value="-1"><label>c i</label><input id="ci" type="number" step=".01" value="0"><label>c j</label><input id="cj" type="number" step=".01" value="0"><label>c k</label><input id="ck" type="number" step=".01" value="0"></div>
-<label>Quality</label><select id="quality"><option value="fast">Fast</option><option value="medium" selected>Medium</option><option value="high">Detailed</option></select>
+<label>4D visualization</label><select id="dimension"><option value="slice">3D slice · k = 0</option><option value="projection" selected>4D projection · k thickness color</option></select><div class="muted">Blue = narrow bounded k-range · gold = broad bounded k-range.</div><label>Quality</label><select id="quality"><option value="fast">Fast</option><option value="medium" selected>Medium</option><option value="high">Detailed</option></select>
 <label>Iterations <span id="iterVal" class="value">100</span></label><input id="iterations" type="range" min="40" max="240" step="20" value="100">
 <label>Surface opacity <span id="opVal" class="value">1.00</span></label><input id="opacity" type="range" min=".15" max="1" step=".05" value="1">
 <label><input id="section" type="checkbox"> Show 2D cross-section (k = 0)</label>
-<div id="status">Preparing basilica…</div><div class="muted">For real c, the boundedness set is rotationally symmetric about the real axis; the 3D volume is sampled from its 2D radial profile. For nonreal quaternion c, the complete quaternion recurrence is evaluated at every 3D sample. The section is the k = 0 plane in the selected 3D starting-point space. Escape radius 4, finite iteration cutoff. Rendering uses interpolated marching tetrahedra with continuous exterior potential and gradient normals. The surface is a finite-resolution approximation; very fine fractal features remain unresolved.</div>
+<div id="status">Preparing basilica…</div><div class="muted">For real c, the boundedness set is rotationally symmetric about the real axis; the 3D volume is sampled from its 2D radial profile. For nonreal quaternion c, the complete quaternion recurrence is evaluated at every 3D sample. The 3D slice fixes initial k = 0. Projection mode samples initial k in [-2.15, 2.15] and colors the fraction of sampled values that do not escape within the iteration cutoff. Escape radius 4, finite iteration cutoff. Rendering uses interpolated marching tetrahedra with continuous exterior potential and gradient normals. The surface is a finite-resolution approximation; very fine fractal features remain unresolved.</div>
 </aside></main>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script>
 <script type="module">
@@ -23,11 +23,11 @@ const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(
 const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;
 scene.add(new THREE.AmbientLight(0xffffff,1.1));const key=new THREE.DirectionalLight(0xa9e0ff,2.2);key.position.set(3,5,6);scene.add(key);const fill=new THREE.DirectionalLight(0x6388ff,1.2);fill.position.set(-4,-3,-5);scene.add(fill);
 // No floor grid: the Julia object floats freely in space.
-let mesh=null,sectionMesh=null,token=0,field=null,N=0,step=0,lo=-2.15;
+let mesh=null,sectionMesh=null,token=0,field=null,thickness=null,N=0,step=0,lo=-2.15;
 // Continuous exterior potential with a small negative interior value.
 // This yields interpolated boundary crossings instead of voxel-midpoint stair steps.
-function orbitField(x,y,z,cr,ci,cj,ck,it){
- let w=x,a=y,b=z,d=0;
+function orbitField(x,y,z,cr,ci,cj,ck,it,kStart=0){
+ let w=x,a=y,b=z,d=kStart;
  for(let n=0;n<it;n++){
   const ww=w*w-a*a-b*b-d*d+cr,aa=2*w*a+ci,bb=2*w*b+cj,dd=2*w*d+ck;
   w=ww;a=aa;b=bb;d=dd;
@@ -49,8 +49,8 @@ function dispose(o){if(o){scene.remove(o);o.geometry.dispose();o.material.dispos
 const tetra=[[0,5,1,6],[0,1,2,6],[0,2,3,6],[0,3,7,6],[0,7,4,6],[0,4,5,6]];
 const corners=[[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]];
 const tetEdges=[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]];
-function makeMesh(data,n,spacing,origin){
- const verts=[],normals=[],idx=(i,j,k)=>(k*n+j)*n+i;
+function makeMesh(data,n,spacing,origin,thick=null){
+ const verts=[],normals=[],colors=[],idx=(i,j,k)=>(k*n+j)*n+i;
  const clamp=v=>Math.max(0,Math.min(n-1,v));
  function sample(x,y,z){
   x=clamp(x);y=clamp(y);z=clamp(z);
@@ -66,6 +66,11 @@ function makeMesh(data,n,spacing,origin){
   const x=(p[0]-origin)/spacing,y=(p[1]-origin)/spacing,z=(p[2]-origin)/spacing;
   const e=.55,gx=sample(x+e,y,z)-sample(x-e,y,z),gy=sample(x,y+e,z)-sample(x,y-e,z),gz=sample(x,y,z+e)-sample(x,y,z-e);
   const m=Math.hypot(gx,gy,gz)||1;normals.push(gx/m,gy/m,gz/m);
+  if(thick){
+   const i=Math.max(0,Math.min(n-1,Math.round(x))),j=Math.max(0,Math.min(n-1,Math.round(y))),k=Math.max(0,Math.min(n-1,Math.round(z)));
+   const t=thick[idx(i,j,k)],u=Math.pow(t,.65);
+   colors.push(.08*(1-u)+u,.37*(1-u)+.76*u,.92*(1-u)+.19*u);
+  }
  }
  function tri(a,b,c){vertex(a);vertex(b);vertex(c)}
  for(let k=0;k<n-1;k++)for(let j=0;j<n-1;j++)for(let i=0;i<n-1;i++){
@@ -87,6 +92,7 @@ function makeMesh(data,n,spacing,origin){
  const geo=new THREE.BufferGeometry();
  geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
  geo.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
+ if(thick)geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
  return geo;
 }
 function fitCamera(){
@@ -116,13 +122,42 @@ function renderSection(){
 }
 async function generate(){
  const run=++token;$('generate').disabled=true;$('status').textContent='Computing…';dispose(mesh);mesh=null;dispose(sectionMesh);sectionMesh=null;
- const quality=$('quality').value;N=quality==='fast'?42:quality==='medium'?70:100;
+ const quality=$('quality').value,project=$('dimension').value==='projection';N=project?(quality==='fast'?30:quality==='medium'?40:52):(quality==='fast'?42:quality==='medium'?70:100);
  const it=+$('iterations').value,preset=$('preset').value;
  const c=preset==='custom'?[+$('cr').value,+$('ci').value,+$('cj').value,+$('ck').value]:[+$('realSlider').value,+$('imagSlider').value,0,0];
  const real=c[1]===0&&c[2]===0&&c[3]===0;
- lo=-2.15;step=4.3/(N-1);field=new Float32Array(N*N*N);
+ lo=-2.15;step=4.3/(N-1);field=new Float32Array(N*N*N);thickness=project?new Float32Array(N*N*N):null;
  const idx=(i,j,k)=>(k*N+j)*N+i;
- if(real){
+ if(project){
+  const samples=quality==='fast'?9:quality==='medium'?13:17;
+  const kMin=-2.15,kStep=4.3/(samples-1);
+  let radial=null,radialStep=0,radialN=0;
+  if(real){
+   radialN=N*3;radialStep=4.3/(radialN-1);radial=new Float32Array(N*radialN);
+   for(let i=0;i<N;i++)for(let m=0;m<radialN;m++)
+    radial[i*radialN+m]=radialField(lo+i*step,m*radialStep,c[0],it);
+  }
+  for(let k=0;k<N;k++){
+   if(run!==token)return;
+   const z=lo+k*step;
+   for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const x=lo+i*step,y=lo+j*step;
+    let min=Infinity,count=0;
+    for(let t=0;t<samples;t++){
+     const fourth=kMin+t*kStep;
+     let v;
+     if(real){
+      const r=Math.hypot(y,z,fourth),u=r/radialStep,m=Math.floor(u);
+      v=m>=radialN-1?1:radial[i*radialN+m]*(1-(u-m))+radial[i*radialN+m+1]*(u-m);
+     }else v=orbitField(x,y,z,...c,it,fourth);
+     if(v<min)min=v;
+     if(v<0)count++;
+    }
+    const id=idx(i,j,k);field[id]=min;thickness[id]=count/samples;
+   }
+   if(k%2===0){$('status').textContent='Sampling fourth dimension: '+Math.round(100*(k+1)/N)+'%';await new Promise(r=>setTimeout(r,0))}
+  }
+ }else if(real){
   // Evaluate only the 2D meridian; use the rotational symmetry exactly.
   // Direct radial evaluation avoids nearest-neighbor banding.
   const radialN=N*2,radialStep=3.15/(radialN-1);
@@ -146,10 +181,10 @@ async function generate(){
  }
  if(run!==token)return;
  $('status').textContent='Constructing surface…';await new Promise(r=>setTimeout(r,0));
- const geometry=makeMesh(field,N,step,lo);
- const mat=new THREE.MeshPhongMaterial({color:0x52b7ed,side:THREE.DoubleSide,flatShading:false,shininess:65,transparent:true,opacity:+$('opacity').value,depthWrite:+$('opacity').value>=.99});
+ const geometry=makeMesh(field,N,step,lo,thickness);
+ const mat=new THREE.MeshPhongMaterial({color:project?0xffffff:0x52b7ed,vertexColors:project,side:THREE.DoubleSide,flatShading:false,shininess:65,transparent:true,opacity:+$('opacity').value,depthWrite:+$('opacity').value>=.99});
  mesh=new THREE.Mesh(geometry,mat);scene.add(mesh);
- renderSection();fitCamera();$('status').textContent=(real?'Rotational profile':'Full quaternion grid')+' · '+N+'³ samples · '+it+' iterations · '+Math.round(geometry.attributes.position.count/3).toLocaleString()+' triangles';$('generate').disabled=false;
+ renderSection();fitCamera();$('status').textContent=(project?'4D k-projection':real?'Rotational profile':'Full quaternion grid')+' · '+N+'³ samples · '+it+' iterations · '+Math.round(geometry.attributes.position.count/3).toLocaleString()+' triangles';$('generate').disabled=false;
 }
 function syncSliders(){
  $('realValue').textContent=(+$('realSlider').value).toFixed(3);
@@ -179,7 +214,7 @@ for(const id of ['cr','ci','cj','ck'])$(id).addEventListener('change',()=>{if($(
 $('quality').onchange=()=>{$('status').textContent='Quality changed. Press Generate 3D.'};
 $('iterations').oninput=()=>{$('iterVal').textContent=$('iterations').value;$('status').textContent='Iterations changed. Press Generate 3D.'};
 $('opacity').oninput=()=>{$('opVal').textContent=(+$('opacity').value).toFixed(2);if(mesh){mesh.material.opacity=+$('opacity').value;mesh.material.depthWrite=+$('opacity').value>=.99}};
-$('section').onchange=renderSection;$('generate').onclick=generate;
+$('section').onchange=renderSection;$('dimension').onchange=generate;$('generate').onclick=generate;
 $('reset').onclick=fitCamera;
 new ResizeObserver(()=>{const w=host.clientWidth,h=host.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h)}).observe(host);
 function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();generate();
