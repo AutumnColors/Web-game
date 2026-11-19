@@ -474,6 +474,25 @@ function paint(L,mode){
     else { const G=gradient(L,mode==='gradmu');
       if(mode==='gradt'){ get=i=>G[i]<0?NaN:Math.log(1+G[i]); lo=0; hi=0.995; }
       else get=i=>G[i]>0?Math.log(G[i]/L.sx):NaN; }
+    if(mode==='dld'){
+      // DLD spans radically different ranges for escaping and bounded trajectories.
+      // Normalize the two populations independently; otherwise it looks binary.
+      const interior=i=>T[i]===NO&&Number.isFinite(DLD[i])?DLD[i]:NaN;
+      const exterior=i=>T[i]!==NO&&Number.isFinite(DLD[i])?DLD[i]:NaN;
+      const ir=rangeOf(N,interior,.01,.99),er=rangeOf(N,exterior,.01,.99);
+      const scale=(v,r)=>Math.max(0,Math.min(1,(v-r[0])/(r[1]-r[0])));
+      for(let i=0;i<N;i++){
+        const v=DLD[i];
+        if(!Number.isFinite(v)){o[i]=BLACK;continue;}
+        const inside=T[i]===NO;
+        // Bounded and escaping regions use separate contrast windows.
+        const t=scale(v,inside?ir:er);
+        o[i]=Q[Math.min(1023,Math.max(0,Math.round((inside?.28+.72*t:.06+.72*t)*1023)))];
+      }
+      L.rng[mode]=[ir,er];
+      const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
+      canvas.getContext('2d').putImageData(img,0,0);return canvas;
+    }
     const rng=rangeOf(N,get,lo,hi); if(mode==='gradt') rng[0]=0;
     const k=1023/(rng[1]-rng[0]), floor=Q[0];
     for(let i=0;i<N;i++){ const v=get(i); if(v!==v){ o[i]=T[i]===NO?BLACK:floor; continue; } const t=(v-rng[0])*k; o[i]=Q[t<0?0:t>1023?1023:t|0]; }
