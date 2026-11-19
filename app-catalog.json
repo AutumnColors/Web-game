@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-19T15:04:49.698424+00:00",
+  "generatedAt": "2026-11-19T15:11:29.497091+00:00",
   "apps": [
+    {
+      "path": "explore/julia-3d-lab/",
+      "title": "3D Julia Lab",
+      "category": "Explore",
+      "date": "2026-11-19T22:11:22+07:00",
+      "update": "Fix Julia surface geometry initialization"
+    },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
