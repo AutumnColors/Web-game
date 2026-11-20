@@ -1,0 +1,23 @@
+name: Populate Dead Sea DEM
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'research/dead-sea/populate.py'
+      - '.github/workflows/dead-sea-dem.yml'
+jobs:
+  populate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests pillow numpy
+      - run: python research/dead-sea/populate.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dead-sea-elevation-sqlite
+          path: research/dead-sea/dead_sea.sqlite
+          retention-days: 30
