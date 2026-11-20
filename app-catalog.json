@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-20T08:46:35.183940+00:00",
+  "generatedAt": "2026-11-20T08:48:01.106589+00:00",
   "apps": [
     {
       "path": "explore/dead-sea-basin/",
       "title": "Dead Sea Basin — Terrain Lab",
       "category": "Explore",
-      "date": "2026-11-20T15:46:28+07:00",
-      "update": "Add approximate submerged floor and full-depth volume integration"
+      "date": "2026-11-20T15:47:53+07:00",
+      "update": "Fix initialization order for underwater terrain and show loading errors"
     },
     {
       "path": "explore/julia-3d-lab/",
