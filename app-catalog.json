@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-20T08:49:19.437813+00:00",
+  "generatedAt": "2026-11-20T08:54:08.732554+00:00",
   "apps": [
     {
       "path": "explore/dead-sea-basin/",
       "title": "Dead Sea Basin — Terrain Lab",
       "category": "Explore",
-      "date": "2026-11-20T15:49:13+07:00",
-      "update": "Repair Three.js module resolution and add startup and tile-loading diagnostics"
+      "date": "2026-11-20T15:54:00+07:00",
+      "update": "Fix syntax error in Dead Sea Basin: replace literal \\n with a real line break"
     },
     {
       "path": "explore/julia-3d-lab/",
