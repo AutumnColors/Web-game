@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-20T08:54:08.732554+00:00",
+  "generatedAt": "2026-11-20T08:55:00.794430+00:00",
   "apps": [
     {
       "path": "explore/dead-sea-basin/",
       "title": "Dead Sea Basin — Terrain Lab",
       "category": "Explore",
-      "date": "2026-11-20T15:54:00+07:00",
-      "update": "Fix syntax error in Dead Sea Basin: replace literal \\n with a real line break"
+      "date": "2026-11-20T15:54:50+07:00",
+      "update": "Add full elevation-grid CSV export with measured DEM and modeled bathymetry columns"
     },
     {
       "path": "explore/julia-3d-lab/",
