@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-20T08:35:53.058254+00:00",
+  "generatedAt": "2026-11-20T08:41:49.628939+00:00",
   "apps": [
     {
       "path": "explore/dead-sea-basin/",
       "title": "Dead Sea Basin — Terrain Lab",
       "category": "Explore",
-      "date": "2026-11-20T15:35:45+07:00",
-      "update": "Add Dead Sea Basin 3D terrain prototype using real DEM tiles"
+      "date": "2026-11-20T15:41:43+07:00",
+      "update": "Fix integration script line breaks"
     },
     {
       "path": "explore/julia-3d-lab/",
