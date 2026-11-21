@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-21T08:21:17.143472+00:00",
+  "generatedAt": "2026-11-21T08:21:31.505706+00:00",
   "apps": [
     {
       "path": "explore/fractal-atlas/",
@@ -28,13 +28,6 @@
       "category": "Explore",
       "date": "2026-11-19T22:04:41+07:00",
       "update": "Add DLD contrast and independent iteration controls to pinned Universal Lab"
-    },
-    {
-      "path": "explore/fractal-lab/",
-      "title": "Fractal Universe Lab (Legacy)",
-      "category": "Explore",
-      "date": "2026-11-19T21:37:36+07:00",
-      "update": "Recompute DLD field on measurement switch"
     },
     {
       "path": "explore/starting-point-mandelbrot-3d/",
