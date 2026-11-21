@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-11-21T09:26:25.397877+00:00",
+  "generatedAt": "2026-11-21T09:26:44.700942+00:00",
   "apps": [
+    {
+      "path": "explore/basilica-3d-lab/",
+      "title": "Julia · 3D Boundary Lab",
+      "category": "Explore",
+      "date": "2026-11-21T16:26:38+07:00",
+      "update": "Show full playable shared catalog and ensure animation runs during recording"
+    },
     {
       "path": "explore/music-from-symmetry/",
       "title": "Music to Picture",
       "category": "Explore",
       "date": "2026-11-21T16:26:19+07:00",
       "update": "Use extracted shared music extras module in Music to Picture"
-    },
-    {
-      "path": "explore/basilica-3d-lab/",
-      "title": "Julia · 3D Boundary Lab",
-      "category": "Explore",
-      "date": "2026-11-21T16:26:00+07:00",
-      "update": "Add shared music playback, reactive rotation, and browser audio-video recording"
     },
     {
       "path": "explore/stopping-lab/",
