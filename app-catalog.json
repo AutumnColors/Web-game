@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-21T08:21:51.672878+00:00",
+  "generatedAt": "2026-11-21T08:43:45.049109+00:00",
   "apps": [
+    {
+      "path": "explore/basilica-3d-lab/",
+      "title": "Basilica · 3D Boundary Lab",
+      "category": "Explore",
+      "date": "2026-11-21T15:43:32+07:00",
+      "update": "Create basilica 3D boundary lab with scene and mathematical color controls"
+    },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
