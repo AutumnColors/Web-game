@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-21T09:10:08.417821+00:00",
+  "generatedAt": "2026-11-21T09:21:24.515589+00:00",
   "apps": [
     {
       "path": "explore/basilica-3d-lab/",
       "title": "Julia · 3D Boundary Lab",
       "category": "Explore",
-      "date": "2026-11-21T16:10:02+07:00",
-      "update": "Add axial camera and opposing blue-purple angular animation"
+      "date": "2026-11-21T16:21:10+07:00",
+      "update": "Reset 3D Julia camera to axial view"
     },
     {
       "path": "explore/stopping-lab/",
