@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-20T11:46:45.899939+00:00",
+  "generatedAt": "2026-11-21T08:13:35.621152+00:00",
   "apps": [
+    {
+      "path": "explore/fractal-atlas/",
+      "title": "Fractal Atlas · Universal Lab",
+      "category": "Explore",
+      "date": "2026-11-21T15:13:29+07:00",
+      "update": "Load OKLCH color controls in pinned Universal Lab"
+    },
     {
       "path": "explore/dead-sea-basin/",
       "title": "Dead Sea Basin — Terrain Lab",
@@ -313,13 +320,6 @@
       "path": "explore/fractal-atlas/terrain.html",
       "title": "Fractal Geography · Atlas",
       "category": "Fractal Atlas",
-      "date": "2026-11-16T23:33:15+07:00",
-      "update": "Add shared chrome to fractal and constants labs"
-    },
-    {
-      "path": "explore/fractal-atlas/",
-      "title": "Fractal Atlas · Universal Lab",
-      "category": "Explore",
       "date": "2026-11-16T23:33:15+07:00",
       "update": "Add shared chrome to fractal and constants labs"
     },
