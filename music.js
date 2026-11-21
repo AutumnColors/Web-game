@@ -1,6 +1,13 @@
 // Music registry: groups and other structures played as sound. To add one: create music/name/index.html, then add an entry here.
 window.MUSIC = [
   {
+    id: 'studio',
+    badge: '♫',
+    title: 'Studio',
+    path: 'music/studio/',
+    desc: 'The shared player and NoteGrid editor: pick any of our songs or the library, change notes on the grid or as score text, save versions, export MP3. The same player sits inside other pages, which can follow the music and export synced MP4s.'
+  },
+  {
     id: 'sound-of-a5',
     badge: 'A₅',
     title: 'Sound of A₅',
