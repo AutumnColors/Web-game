@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-21T08:55:24.850116+00:00",
+  "generatedAt": "2026-11-21T09:02:19.173553+00:00",
   "apps": [
     {
       "path": "explore/basilica-3d-lab/",
       "title": "Julia · 3D Boundary Lab",
       "category": "Explore",
-      "date": "2026-11-21T15:55:14+07:00",
-      "update": "Add complex Julia parameter controls and named presets to 3D lab"
+      "date": "2026-11-21T16:02:13+07:00",
+      "update": "Add synchronized 2D Julia and radius-distribution analysis panels"
     },
     {
       "path": "explore/stopping-lab/",
