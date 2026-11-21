@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-21T09:02:34.890444+00:00",
+  "generatedAt": "2026-11-21T09:10:08.417821+00:00",
   "apps": [
     {
       "path": "explore/basilica-3d-lab/",
       "title": "Julia · 3D Boundary Lab",
       "category": "Explore",
-      "date": "2026-11-21T16:02:27+07:00",
-      "update": "Compute 2D Julia slice, radius histograms, and cross-resolution CDF convergence"
+      "date": "2026-11-21T16:10:02+07:00",
+      "update": "Add axial camera and opposing blue-purple angular animation"
     },
     {
       "path": "explore/stopping-lab/",
