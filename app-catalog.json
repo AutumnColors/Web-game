@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-21T08:13:35.621152+00:00",
+  "generatedAt": "2026-11-21T08:20:07.035283+00:00",
   "apps": [
     {
       "path": "explore/fractal-atlas/",
       "title": "Fractal Atlas · Universal Lab",
       "category": "Explore",
-      "date": "2026-11-21T15:13:29+07:00",
-      "update": "Load OKLCH color controls in pinned Universal Lab"
+      "date": "2026-11-21T15:19:55+07:00",
+      "update": "Expose OKLCH as fourth palette in main and quick configuration"
     },
     {
       "path": "explore/dead-sea-basin/",
