@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-11-21T09:26:07.218935+00:00",
+  "generatedAt": "2026-11-21T09:26:25.397877+00:00",
   "apps": [
+    {
+      "path": "explore/music-from-symmetry/",
+      "title": "Music to Picture",
+      "category": "Explore",
+      "date": "2026-11-21T16:26:19+07:00",
+      "update": "Use extracted shared music extras module in Music to Picture"
+    },
     {
       "path": "explore/basilica-3d-lab/",
       "title": "Julia · 3D Boundary Lab",
       "category": "Explore",
       "date": "2026-11-21T16:26:00+07:00",
       "update": "Add shared music playback, reactive rotation, and browser audio-video recording"
-    },
-    {
-      "path": "explore/music-from-symmetry/",
-      "title": "Music to Picture",
-      "category": "Explore",
-      "date": "2026-11-21T16:25:39+07:00",
-      "update": "Point Music to Picture catalog and note bundles at shared music library"
     },
     {
       "path": "explore/stopping-lab/",
