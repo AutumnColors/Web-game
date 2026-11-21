@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-21T08:21:31.505706+00:00",
+  "generatedAt": "2026-11-21T08:21:51.672878+00:00",
   "apps": [
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-21T15:21:37+07:00",
+      "update": "Load perceptual palette in pinned Universal Lab"
+    },
     {
       "path": "explore/fractal-atlas/",
       "title": "Fractal Atlas · Universal Lab",
@@ -21,13 +28,6 @@
       "category": "Explore",
       "date": "2026-11-19T22:31:10+07:00",
       "update": "Add 4D quaternion Julia projection with k occupancy coloring"
-    },
-    {
-      "path": "explore/stopping-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
-      "date": "2026-11-19T22:04:41+07:00",
-      "update": "Add DLD contrast and independent iteration controls to pinned Universal Lab"
     },
     {
       "path": "explore/starting-point-mandelbrot-3d/",
