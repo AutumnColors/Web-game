@@ -25,7 +25,7 @@ const pLoc=gl.getAttribLocation(program,'pos'),nLoc=gl.getAttribLocation(program
 const pbuf=gl.createBuffer(),nbuf=gl.createBuffer(),dbuf=gl.createBuffer(),ibuf=gl.createBuffer(),wbuf=gl.createBuffer();
 let indices=0,lines=0,indexType=gl.UNSIGNED_SHORT,angle=.48,tilt=.28,zoom=4.6,drag=null,profile=[],coords=[],normals=[],faces=[],wire=[],nx=0,na=88,cParam=-1,buildToken=0;
 function bounded(x,y,it,c){let a=x,b=y;for(let i=0;i<it;i++){const aa=a*a-b*b+c,bb=2*a*b;a=aa;b=bb;if(a*a+b*b>64)return false;}return true}
-function attraction(x,y,it,c){let a=x,b=y;let prevA=a,prevB=b;for(let i=0;i<it;i++){const aa=a*a-b*b+c,bb=2*a*b;prevA=a;prevB=b;a=aa;b=bb;if(a*a+b*b>64)return it;if(i>=2){const da=a*a-b*b+c,db=2*a*b;if((da-prevA)*(da-prevA)+(db-prevB)*(db-prevB)<.0004)return i;}}return it}
+function attraction(x,y,it,c){let a=x,b=y;for(let i=0;i<it;i++){const aa=a*a-b*b+c,bb=2*a*b;a=aa;b=bb;if(a*a+b*b>64)return it;if(i>=2){const da=a*a-b*b+c,db=2*a*b;if((da-a)*(da-a)+(db-b)*(db-b)<.0004)return i;}}return it}
 function buffer(buf,data){gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW)}
 function build(){const token=++buildToken;nx=+$('res').value;const it=+$('iter').value,c=cParam;const ny=Math.round(nx*.85);$('status').textContent='Computing Julia boundary for c = '+c.toFixed(3)+'…';setTimeout(()=>{if(token!==buildToken)return;
 profile=[];for(let i=0;i<=nx;i++){const x=-1.62+i*2.82/nx;let outer=0;for(let j=0;j<=ny;j++){const y=1.28*j/ny;if(bounded(x,y,it,c))outer=y;}profile.push(outer)}
