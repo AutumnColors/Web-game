@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-21T08:43:45.049109+00:00",
+  "generatedAt": "2026-11-21T08:48:00.287177+00:00",
   "apps": [
     {
       "path": "explore/basilica-3d-lab/",
-      "title": "Basilica · 3D Boundary Lab",
+      "title": "Julia · 3D Boundary Lab",
       "category": "Explore",
-      "date": "2026-11-21T15:43:32+07:00",
-      "update": "Create basilica 3D boundary lab with scene and mathematical color controls"
+      "date": "2026-11-21T15:47:47+07:00",
+      "update": "Correct period-two return color measurement"
     },
     {
       "path": "explore/stopping-lab/",
