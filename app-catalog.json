@@ -1,12 +1,19 @@
 {
-  "generatedAt": "2026-11-21T14:58:39.539419+00:00",
+  "generatedAt": "2026-11-21T16:09:49.437729+00:00",
   "apps": [
     {
       "path": "explore/fractal-atlas/",
       "title": "Terrain Fractal",
       "category": "Explore",
-      "date": "2026-11-21T21:58:32+07:00",
-      "update": "Refine OKLCH palette to muted Oceanic tones"
+      "date": "2026-11-21T23:09:39+07:00",
+      "update": "Apply Oceanic to pinned lab and clarify Terrain Fractal naming"
+    },
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-21T23:09:37+07:00",
+      "update": "Apply Oceanic to pinned lab and clarify Terrain Fractal naming"
     },
     {
       "path": "explore/basilica-3d-lab/",
@@ -28,13 +35,6 @@
       "category": "Explore",
       "date": "2026-11-21T16:26:19+07:00",
       "update": "Use extracted shared music extras module in Music to Picture"
-    },
-    {
-      "path": "explore/stopping-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
-      "date": "2026-11-21T15:21:37+07:00",
-      "update": "Load perceptual palette in pinned Universal Lab"
     },
     {
       "path": "explore/dead-sea-basin/",
