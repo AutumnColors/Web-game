@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-21T11:13:19.468459+00:00",
+  "generatedAt": "2026-11-21T14:58:39.539419+00:00",
   "apps": [
+    {
+      "path": "explore/fractal-atlas/",
+      "title": "Fractal Atlas · Universal Lab",
+      "category": "Explore",
+      "date": "2026-11-21T21:58:32+07:00",
+      "update": "Refine OKLCH palette to muted Oceanic tones"
+    },
     {
       "path": "explore/basilica-3d-lab/",
       "title": "Julia · 3D Boundary Lab",
@@ -28,13 +35,6 @@
       "category": "Explore",
       "date": "2026-11-21T15:21:37+07:00",
       "update": "Load perceptual palette in pinned Universal Lab"
-    },
-    {
-      "path": "explore/fractal-atlas/",
-      "title": "Fractal Atlas · Universal Lab",
-      "category": "Explore",
-      "date": "2026-11-21T15:19:55+07:00",
-      "update": "Expose OKLCH as fourth palette in main and quick configuration"
     },
     {
       "path": "explore/dead-sea-basin/",
