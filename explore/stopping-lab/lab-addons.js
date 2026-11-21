@@ -11,7 +11,7 @@ const FL=window.FractalLab={
   hashExtra:'',        // kept at the end of the link (e.g. mu=… for the music)
   initialMu,
   get cfg(){ return cfg; }, view, canvas:cv,
-  size:()=>[Wd,Hd], layers:()=>[home,base].filter(Boolean), shown:()=>shown(),
+  size:()=>[Wd,Hd], layers:()=>[...new Set([home,under,base])].filter(Boolean), shown:()=>shown(),
   paint:(L,m)=>paint(L,m), palettes:PALETTES, contours:(c,L)=>drawGreenContours(c,L),
   redraw:()=>{ needDraw=true; }, draw:o=>draw(o), repaint:()=>repaint(), settled:()=>settled(),
   writeHash:()=>writeHash(), toast:(t,ms)=>toast(t,ms), name:()=>eng.name
