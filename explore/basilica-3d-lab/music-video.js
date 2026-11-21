@@ -8,7 +8,7 @@
  player.onstop=()=>{play.textContent='Play music';if(recorder?.state==='recording')recorder.stop()};
  SharedMusic.catalog().then(list=>{
    catalog=list;pick.innerHTML='';
-   const ordered=list.filter(x=>x.g==='ours'||x.c==='Roman Kesler').concat(list.filter(x=>x.g!=='ours'&&x.c!=='Roman Kesler').slice(0,400));
+   const ordered=list.filter(x=>!x.ensemble).sort((a,b)=>(b.g==='ours'||b.c==='Roman Kesler')-(a.g==='ours'||a.c==='Roman Kesler'));
    for(const e of ordered){const opt=document.createElement('option');opt.value=e.id;opt.textContent=(e.c||'')+' — '+e.t;pick.append(opt)}
    say(ordered.length+' shared-library pieces available');
  }).catch(e=>say('Could not load music catalog: '+e.message));
@@ -28,6 +28,7 @@
      if(!cv.captureStream)throw Error('Canvas recording is not supported here');
      const mime=supportedMime();if(!mime)throw Error('No supported MP4 or WebM recorder');
      if(!player.playing)await startMusic();
+     if(!spinning)setSpinning(true);
      draw();
      const video=cv.captureStream(30);
      const tracks=[...video.getVideoTracks(),...(player.stream?.getAudioTracks()||[])];
