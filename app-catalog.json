@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-21T09:25:25.475539+00:00",
+  "generatedAt": "2026-11-21T09:25:46.035436+00:00",
   "apps": [
+    {
+      "path": "explore/music-from-symmetry/",
+      "title": "Music to Picture",
+      "category": "Explore",
+      "date": "2026-11-21T16:25:39+07:00",
+      "update": "Point Music to Picture catalog and note bundles at shared music library"
+    },
     {
       "path": "explore/basilica-3d-lab/",
       "title": "Julia · 3D Boundary Lab",
@@ -42,13 +49,6 @@
       "category": "Explore",
       "date": "2026-11-19T21:27:05+07:00",
       "update": "Add solid voxel surface rendering and opacity controls to 3D Mandelbrot lab"
-    },
-    {
-      "path": "explore/music-from-symmetry/",
-      "title": "Music to Picture",
-      "category": "Explore",
-      "date": "2026-11-19T18:16:48+07:00",
-      "update": "Music to Picture: add Pyramids of Giza (Sound of A5, best walk) (#9)"
     },
     {
       "path": "levels/06-cayley-catch/",
