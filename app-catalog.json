@@ -1,12 +1,19 @@
 {
-  "generatedAt": "2026-11-21T09:26:44.700942+00:00",
+  "generatedAt": "2026-11-21T11:12:27.946897+00:00",
   "apps": [
     {
       "path": "explore/basilica-3d-lab/",
       "title": "Julia · 3D Boundary Lab",
       "category": "Explore",
-      "date": "2026-11-21T16:26:38+07:00",
-      "update": "Show full playable shared catalog and ensure animation runs during recording"
+      "date": "2026-11-21T17:39:02+07:00",
+      "update": "Basilica lab: remove old music-video.js (replaced by dance.js)"
+    },
+    {
+      "path": "music/studio/",
+      "title": "Studio · NoteGrid",
+      "category": "Music",
+      "date": "2026-11-21T17:05:05+07:00",
+      "update": "Studio page: NoteGrid piano roll, score text, versions, export"
     },
     {
       "path": "explore/music-from-symmetry/",
