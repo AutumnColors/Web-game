@@ -1,0 +1,61 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Basilica · 3D Boundary Lab</title><style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#080c16;color:#e8edf9;font:14px system-ui}main{max-width:1100px;margin:auto;padding:12px}h1{font-size:20px;margin:4px 0 8px}p{color:#aab7cf;line-height:1.45}canvas{display:block;width:100%;height:min(65vh,680px);min-height:320px;touch-action:none;background:#070b15;border-radius:12px}.panel{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:13px 2px}.panel label{display:flex;align-items:center;gap:7px}select,button,input{accent-color:#80c8fa}select,button{background:#263a57;color:#fff;border:1px solid #52627c;border-radius:8px;padding:8px}button{cursor:pointer}small,.note{color:#aab7cf}.note{font-size:12px}#legend{display:flex;align-items:center;gap:10px;font-size:12px;color:#b8c8df}#gradient{height:10px;width:150px;border-radius:4px;background:linear-gradient(90deg,#2789cc,#c858c9)}#status{font-size:12px;color:#aab7cf}strong{color:#e9d39e}</style></head><body><main>
+<h1>Basilica · 3D Boundary Lab <small>c = −1</small></h1>
+<p>Rotational reconstruction of the filled Julia set for <strong>z → z² − 1</strong>. Drag to rotate; pinch or scroll to zoom. Change the scene and choose what the surface color represents.</p>
+<canvas id="view"></canvas>
+<div class="panel"><label>Scene <select id="scene"><option value="solid">Solid surface</option><option value="wire">Wireframe</option><option value="both">Surface + mesh</option></select></label>
+<label>Color data <select id="color"><option value="position">Real-axis position</option><option value="radius">Cross-section radius</option><option value="slope">Boundary slope</option><option value="orbit">Attraction speed (sampled)</option><option value="plain">Single color</option></select></label>
+<label>Palette <select id="palette"><option value="pink">Pink → blue</option><option value="heat">Warm → cool</option><option value="gray">Grayscale</option></select></label></div>
+<div class="panel"><label>Resolution <select id="res"><option value="180">Medium</option><option value="300" selected>High</option><option value="450">Very high</option></select></label>
+<label>Iterations <input id="iter" type="range" min="60" max="360" step="30" value="180"><output id="iterv">180</output></label>
+<button id="reset">Reset camera</button><button id="shot">Save PNG</button><span id="status">Preparing surface…</span></div>
+<div id="legend"><div id="gradient"></div><span id="legendText">Color encodes real-axis position</span></div>
+<p class="note"><strong>Mathematical definition:</strong> At each real x, compute r(x) = max{y ≥ 0 : x + iy is numerically bounded under z² − 1}. The displayed surface is (x, r(x)cos θ, r(x)sin θ). This rotation is a chosen 3D construction, not a unique 3D Julia set. The outer envelope omits internal gaps. Attraction-speed color samples points just inside the estimated boundary; it is approximate and is not an intrinsic surface invariant.</p>
+</main><script>
+'use strict';
+const $=id=>document.getElementById(id),cv=$('view'),gl=cv.getContext('webgl',{antialias:true,alpha:false,preserveDrawingBuffer:true});
+if(!gl){$('status').textContent='WebGL unavailable';throw Error('WebGL unavailable')}
+function shader(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s}
+const program=gl.createProgram();
+gl.attachShader(program,shader(gl.VERTEX_SHADER,'attribute vec3 pos;attribute vec3 norm;attribute float datum;uniform mat4 mvp;uniform mat4 model;varying vec3 n;varying float v;void main(){gl_Position=mvp*vec4(pos,1.);n=mat3(model)*norm;v=datum;}'));
+gl.attachShader(program,shader(gl.FRAGMENT_SHADER,'precision mediump float;varying vec3 n;varying float v;uniform int palette;uniform int colorMode;vec3 ramp(float t){t=clamp(t,0.,1.);if(palette==2)return vec3(.13+.78*t);if(palette==1)return mix(vec3(.96,.38,.19),vec3(.18,.68,.91),t);return mix(vec3(.14,.51,.82),vec3(.83,.34,.75),t);}void main(){vec3 N=normalize(n);vec3 L=normalize(vec3(.5,.8,1.));float diff=.27+.73*abs(dot(N,L));vec3 base=colorMode==4?vec3(.58,.46,.83):ramp(v);gl_FragColor=vec4(base*diff+vec3(.045),1.);}'));
+gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);
+const pLoc=gl.getAttribLocation(program,'pos'),nLoc=gl.getAttribLocation(program,'norm'),dLoc=gl.getAttribLocation(program,'datum'),mvpLoc=gl.getUniformLocation(program,'mvp'),modelLoc=gl.getUniformLocation(program,'model'),palLoc=gl.getUniformLocation(program,'palette'),modeLoc=gl.getUniformLocation(program,'colorMode');
+const pbuf=gl.createBuffer(),nbuf=gl.createBuffer(),dbuf=gl.createBuffer(),ibuf=gl.createBuffer(),wbuf=gl.createBuffer();
+let indices=0,lines=0,indexType=gl.UNSIGNED_SHORT,angle=.48,tilt=.28,zoom=4.6,drag=null,profile=[],coords=[],normals=[],faces=[],wire=[],nx=0,na=88;
+function bounded(x,y,it){let a=x,b=y;for(let i=0;i<it;i++){const aa=a*a-b*b-1,bb=2*a*b;a=aa;b=bb;if(a*a+b*b>64)return false;}return true}
+function attraction(x,y,it){let a=x,b=y;for(let i=0;i<it;i++){const aa=a*a-b*b-1,bb=2*a*b;a=aa;b=bb;if(a*a+b*b>64)return it;if(i>3&&Math.min(a*a+b*b,(a+1)*(a+1)+b*b)<.0004)return i;}return it}
+function buffer(buf,data){gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW)}
+function build(){nx=+$('res').value;const it=+$('iter').value;const ny=Math.round(nx*.85);$('status').textContent='Computing basilica boundary…';setTimeout(()=>{
+profile=[];for(let i=0;i<=nx;i++){const x=-1.62+i*2.82/nx;let outer=0;for(let j=0;j<=ny;j++){const y=1.28*j/ny;if(bounded(x,y,it))outer=y;}profile.push(outer)}
+coords=[];normals=[];faces=[];wire=[];
+for(let i=0;i<=nx;i++){const x=-1.62+i*2.82/nx,r=profile[i],l=Math.max(0,i-1),h=Math.min(nx,i+1),dr=(profile[h]-profile[l])/((h-l)*2.82/nx),len=Math.hypot(dr,1);for(let j=0;j<=na;j++){const th=2*Math.PI*j/na,c=Math.cos(th),s=Math.sin(th);coords.push(x,r*c,r*s);normals.push(-dr/len,c/len,s/len)}}
+for(let i=0;i<nx;i++)for(let j=0;j<na;j++){const a=i*(na+1)+j,b=a+na+1;faces.push(a,b,a+1,b,b+1,a+1);if(j%4===0)wire.push(a,b);if(i%5===0)wire.push(a,a+1)}
+const ext=gl.getExtension('OES_element_index_uint');const use32=coords.length/3>65535;if(use32&&!ext){$('status').textContent='This device cannot index the selected resolution';return}
+indexType=use32?gl.UNSIGNED_INT:gl.UNSIGNED_SHORT;const T=use32?Uint32Array:Uint16Array;
+buffer(pbuf,new Float32Array(coords));buffer(nbuf,new Float32Array(normals));gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibuf);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new T(faces),gl.STATIC_DRAW);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,wbuf);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new T(wire),gl.STATIC_DRAW);
+indices=faces.length;lines=wire.length;recolor();$('status').textContent=(nx+1)+' real slices · '+(coords.length/3).toLocaleString()+' vertices';
+},25)}
+function recolor(){if(!coords.length)return;const mode=$('color').value,it=+$('iter').value;const data=new Float32Array(coords.length/3);for(let i=0;i<=nx;i++){const x=-1.62+i*2.82/nx,r=profile[i],l=Math.max(0,i-1),h=Math.min(nx,i+1),dr=(profile[h]-profile[l])/((h-l)*2.82/nx);let v=0;
+if(mode==='position')v=(x+1.62)/2.82;
+else if(mode==='radius')v=Math.min(1,r/1.12);
+else if(mode==='slope')v=.5+Math.atan(dr)/Math.PI;
+else if(mode==='orbit')v=1-Math.min(1,attraction(x,Math.max(0,r-0.018),it)/Math.max(1,it));
+else v=.5;
+for(let j=0;j<=na;j++)data[i*(na+1)+j]=v;}
+buffer(dbuf,data);$('legendText').textContent=({position:'Real-axis coordinate x',radius:'Maximum filled radius r(x)',slope:'Signed slope of radius profile',orbit:'Approximate iterations to reach the attracting 2-cycle',plain:'Single color; lighting only'})[mode];$('gradient').style.background=$('palette').value==='gray'?'linear-gradient(90deg,#222,#eee)':$('palette').value==='heat'?'linear-gradient(90deg,#f56330,#30ade8)':'linear-gradient(90deg,#2582d1,#d459bd)';draw()}
+function mul(a,b){const c=new Float32Array(16);for(let col=0;col<4;col++)for(let row=0;row<4;row++)for(let k=0;k<4;k++)c[col*4+row]+=a[k*4+row]*b[col*4+k];return c}
+function ident(){return new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1])}
+function rotY(t){const m=ident();m[0]=Math.cos(t);m[2]=-Math.sin(t);m[8]=Math.sin(t);m[10]=Math.cos(t);return m}
+function rotX(t){const m=ident();m[5]=Math.cos(t);m[6]=Math.sin(t);m[9]=-Math.sin(t);m[10]=Math.cos(t);return m}
+function attrib(buf,loc,size){gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,size,gl.FLOAT,false,0,0)}
+function draw(){if(!indices)return;const dpr=Math.min(devicePixelRatio||1,2),w=Math.max(1,cv.clientWidth),h=Math.max(1,cv.clientHeight);cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);gl.viewport(0,0,cv.width,cv.height);gl.clearColor(.027,.043,.082,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
+const model=mul(rotX(tilt),rotY(angle)),aspect=w/h,f=1/Math.tan(.75/2),near=.1,far=100,proj=new Float32Array([f/aspect,0,0,0,0,f,0,0,0,0,(far+near)/(near-far),-1,0,0,2*far*near/(near-far),0]);const tr=ident();tr[12]=.2;tr[14]=-zoom;
+gl.uniformMatrix4fv(modelLoc,false,model);gl.uniformMatrix4fv(mvpLoc,false,mul(proj,mul(tr,model)));gl.uniform1i(palLoc,['pink','heat','gray'].indexOf($('palette').value));gl.uniform1i(modeLoc,['position','radius','slope','orbit','plain'].indexOf($('color').value));attrib(pbuf,pLoc,3);attrib(nbuf,nLoc,3);attrib(dbuf,dLoc,1);
+const scene=$('scene').value;if(scene!=='wire'){gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibuf);gl.drawElements(gl.TRIANGLES,indices,indexType,0)}
+if(scene!=='solid'){if(scene==='both'){gl.enable(gl.POLYGON_OFFSET_FILL)}gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,wbuf);gl.drawElements(gl.LINES,lines,indexType,0)}
+}
+cv.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId)});cv.addEventListener('pointermove',e=>{if(!drag)return;angle+=(e.clientX-drag[0])*.009;tilt+=(e.clientY-drag[1])*.009;drag=[e.clientX,e.clientY];draw()});cv.addEventListener('pointerup',()=>drag=null);cv.addEventListener('pointercancel',()=>drag=null);
+cv.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(2.5,Math.min(12,zoom*Math.exp(e.deltaY*.001)));draw()},{passive:false});let touchDist=null;cv.addEventListener('touchmove',e=>{if(e.touches.length===2){const a=e.touches[0],b=e.touches[1],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);if(touchDist)zoom=Math.max(2.5,Math.min(12,zoom*touchDist/d));touchDist=d;draw()}},{passive:true});cv.addEventListener('touchend',()=>touchDist=null);
+$('reset').onclick=()=>{angle=.48;tilt=.28;zoom=4.6;draw()};$('shot').onclick=()=>{draw();const a=document.createElement('a');a.download='basilica-3d-c-minus-1.png';a.href=cv.toDataURL('image/png');a.click()};$('scene').onchange=draw;$('color').onchange=recolor;$('palette').onchange=recolor;$('res').onchange=build;$('iter').oninput=e=>$('iterv').textContent=e.target.value;$('iter').onchange=build;addEventListener('resize',draw);build();
+</script><script src="../../site-chrome.js" defer></script></body></html>
