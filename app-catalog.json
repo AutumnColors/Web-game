@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-21T09:25:59.236700+00:00",
+  "generatedAt": "2026-11-21T09:26:07.218935+00:00",
   "apps": [
     {
       "path": "explore/basilica-3d-lab/",
       "title": "Julia · 3D Boundary Lab",
       "category": "Explore",
-      "date": "2026-11-21T16:25:52+07:00",
-      "update": "Add shared music selector, reactive mode and recording controls to 3D Julia lab"
+      "date": "2026-11-21T16:26:00+07:00",
+      "update": "Add shared music playback, reactive rotation, and browser audio-video recording"
     },
     {
       "path": "explore/music-from-symmetry/",
