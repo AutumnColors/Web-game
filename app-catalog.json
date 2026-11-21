@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-21T09:02:19.173553+00:00",
+  "generatedAt": "2026-11-21T09:02:34.890444+00:00",
   "apps": [
     {
       "path": "explore/basilica-3d-lab/",
       "title": "Julia · 3D Boundary Lab",
       "category": "Explore",
-      "date": "2026-11-21T16:02:13+07:00",
-      "update": "Add synchronized 2D Julia and radius-distribution analysis panels"
+      "date": "2026-11-21T16:02:27+07:00",
+      "update": "Compute 2D Julia slice, radius histograms, and cross-resolution CDF convergence"
     },
     {
       "path": "explore/stopping-lab/",
