@@ -1,0 +1,149 @@
+[
+ {
+  "id": "motherofall-1",
+  "title": "Into the Mother of All — version 1",
+  "file": "motherofall-1.z64",
+  "group": "ours",
+  "about": "Into the Mother of All, version 1 (was Cornfields in Summer, draft 29), by Roman Kesler."
+ },
+ {
+  "id": "cornfields-punk-1",
+  "title": "Cornfields in Summer — punk version",
+  "file": "cornfields-punk-1.z64",
+  "group": "ours",
+  "about": "Punk version of draft 29: same structure and melodies."
+ },
+ {
+  "id": "giza-best",
+  "title": "Pyramid of Giza — best walk",
+  "file": "giza-best.z64",
+  "group": "ours",
+  "about": "Sound of A5, song 2 (Roman)."
+ },
+ {
+  "id": "giza-class",
+  "title": "Pyramid of Giza — by class",
+  "file": "giza-class.z64",
+  "group": "ours",
+  "about": "Sound of A5, song 2 (Roman)."
+ },
+ {
+  "id": "symmetry-1",
+  "title": "Music from Symmetry — draft 1",
+  "file": "symmetry-1.z64",
+  "group": "ours",
+  "about": "Music from Symmetry, by Roman Kesler."
+ },
+ {
+  "id": "melodeath-7",
+  "title": "Melodeath — grinding riff 1 (draft 7)",
+  "file": "melodeath-7.z64",
+  "group": "ours",
+  "about": "Draft 7 of Roman Kesler's first melodeath grinding riff — the enemies' sound."
+ },
+ {
+  "id": "riff-1",
+  "title": "Roman's riff 1",
+  "file": "riff-1.z64",
+  "group": "ours",
+  "about": "Roman Kesler's power-chord riff, played from his tab: C5 and Bb5 palm-muted chugs, a Bb5 → C5 → Bb5 slide, then open Bb5 and A-F-A chords that ring."
+ },
+ {
+  "id": "presto-3",
+  "title": "Presto in C minor — draft 3 (four breaks + solo)",
+  "file": "presto-3.z64",
+  "group": "ours",
+  "about": "The intro's four deep notes (C, C, A♭, G) now each open a break where every other layer freezes and one layer plays the melody: 1 deep C + bass · 2 deep C +…"
+ },
+ {
+  "id": "presto-cmin",
+  "title": "Presto in C minor — bars 1–35 (lead guitar)",
+  "file": "presto-cmin.z64",
+  "group": "ours",
+  "about": "From Roman's score images: right hand on overdriven lead guitar, left-hand octaves on piano, ♩=200."
+ },
+ {
+  "id": "efg-figure",
+  "title": "E♭–F–G figure",
+  "file": "efg-figure.z64",
+  "group": "ours",
+  "about": "Roman's 5-measure melody in eighth notes: A B A B A, piano, ♩=100."
+ },
+ {
+  "id": "k545-1",
+  "title": "Mozart — Sonata facile K.545, I. Allegro",
+  "file": "k545-1.z64",
+  "group": "classic",
+  "about": "Mozart, Piano Sonata in C major K.545, first movement (1788), written form without repeats, quarter = 132."
+ },
+ {
+  "id": "moonlight",
+  "title": "Moonlight Sonata — opening",
+  "file": "moonlight.z64",
+  "group": "classic",
+  "about": "Beethoven, Op. 27 No. 2, first movement, bars 1–15."
+ },
+ {
+  "id": "walk-z12",
+  "title": "Walking Z12 by 7",
+  "file": "walk-z12.z64",
+  "group": "lab",
+  "about": "7 generates Z12: the walk hits all 12 pitch classes."
+ },
+ {
+  "id": "hello-grid",
+  "title": "Hello, Grid",
+  "file": "hello-grid.z64",
+  "group": "lab",
+  "about": "Demo of the short forms: seq, copy, mark."
+ },
+ {
+  "id": "exp1",
+  "title": "Lab 1 · Major vs minor",
+  "file": "exp1.z64",
+  "group": "lab",
+  "about": "Music theory lab, experiment 1."
+ },
+ {
+  "id": "exp2",
+  "title": "Lab 2 · Arpeggio vs chord",
+  "file": "exp2.z64",
+  "group": "lab",
+  "about": "Music theory lab, experiment 2."
+ },
+ {
+  "id": "exp3",
+  "title": "Lab 3 · Adding the third",
+  "file": "exp3.z64",
+  "group": "lab",
+  "about": "Music theory lab, experiment 3."
+ },
+ {
+  "id": "exp4",
+  "title": "Lab 4 · G7 resolving",
+  "file": "exp4.z64",
+  "group": "lab",
+  "about": "Music theory lab, experiment 4."
+ },
+ {
+  "id": "exp5",
+  "title": "Lab 5 · ET vs just (sine)",
+  "file": "exp5.z64",
+  "group": "lab",
+  "about": "Music theory lab, experiment 5, as specified (pure sine waves)."
+ },
+ {
+  "id": "exp5b",
+  "title": "Lab 5b · ET vs just (overtones)",
+  "file": "exp5b.z64",
+  "group": "lab",
+  "about": "Experiment 5 with a sawtooth tone so the beats between overtones are audible."
+ },
+ {
+  "id": "exp6",
+  "title": "Lab 6 · Moonlight triplets",
+  "file": "exp6.z64",
+  "group": "lab",
+  "about": "Music theory lab, experiment 6: ♩=60 then ♩=90."
+ }
+]

@@ -16,6 +16,7 @@ sketches.js           sketches registry (drawings rebuilt as 3D models)
 music.js              music registry (groups played as sound)
 research.js           research registry (Mandelbrot investigations, computed live)
 shared/progress.js    progress store used by every level
+shared/studio/        the shared media player (<studio-player>) — see "Studio player" below
 levels/
   01-smiley-paths/    Smiley Paths
   02-vector-pairs/    Vector Pairs
@@ -152,3 +153,24 @@ Open `index.html` in a browser, or `python3 -m http.server` in this folder. The 
 ## Live
 
 https://web-game-cyan-eta.vercel.app (Vercel, from `main`).
+
+## Studio player
+
+`shared/studio/` is one media player for the whole site. Include `shared/studio/player.js` and put
+`<studio-player song="ng:motherofall-1" compact></studio-player>` anywhere.
+
+```
+notegrid.js   NoteGrid score parser + writer (the format from the NoteGrid music lab) and library converters
+synth.js      every NoteGrid instrument as Web Audio synthesis (live or offline)
+engine.js     StudioEngine: transport, events, features(t) = the music as numbers at any time, offline render
+player.js     the <studio-player> element: UI, song picker, settings, page API, cross-tab sync
+choreo.js     StudioChoreo: a grid that maps parts of the music (drums, melody pitch, energy…) to movements
+export.js     WAV, MP3 (lamejs) and frame-exact MP4 (WebCodecs + mp4-muxer, both loaded from jsDelivr); live recording fallback
+songs/        NoteGrid scores as .z64 (base64 of zlib-compressed score text) and their index.json
+```
+
+Songs: `ng:<id>` (songs/), `lib:<id>` (shared/music library, ensembles included), `ver:<id>` (versions saved in the Studio on this device).
+Page API: `el.play() el.pause() el.seek(s) el.load(spec) el.config={tempo,transpose,volume,loop,mute,solo} el.features(t)`;
+events `studio:time studio:note studio:beat studio:bar studio:mark studio:change studio:state studio:load studio:end`.
+`music/studio/` is the standalone page (grid editor, score text, versions). `explore/basilica-3d-lab/` is the first page
+that dances to it (`dance.js`).

@@ -1,0 +1,260 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Studio · NoteGrid</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#080c16;color:#e8edf9;font:14px system-ui,-apple-system,sans-serif}
+main{max-width:1200px;margin:auto;padding:12px}h1{font-size:20px;margin:4px 0 2px}p.lead{color:#9fb0cc;margin:0 0 12px;line-height:1.45}
+.tabs{display:flex;gap:6px;margin:14px 0 10px}.tabs button{font:inherit;color:#fff;background:#18263c;border:1px solid #3b4d6a;border-radius:9px;padding:8px 14px;cursor:pointer}.tabs button.on{background:#2f4e78;border-color:#8fcaff}
+button,select,input{font:inherit}button{color:#fff;background:#22344f;border:1px solid #4a5d7c;border-radius:8px;padding:6px 10px;cursor:pointer}button:hover{background:#2b4163}button.on{background:#3a5f8f;border-color:#8fcaff}button:disabled{opacity:.4}
+select,input[type=text],input[type=number]{background:#18263e;color:#fff;border:1px solid #4a5d7c;border-radius:8px;padding:6px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}.bar label{display:flex;align-items:center;gap:6px;color:#b7c5dc}.sep{width:1px;height:24px;background:#33445f}
+.seg{display:inline-flex}.seg button{border-radius:0}.seg button:first-child{border-radius:8px 0 0 8px}.seg button:last-child{border-radius:0 8px 8px 0}
+#roll{display:block;width:100%;height:max(300px,52vh);touch-action:none;border-radius:12px;background:#0a101d;border:1px solid #24324a;cursor:crosshair}
+.insp{min-height:38px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:#101a2b;border:1px solid #26354f;border-radius:10px;padding:6px 8px;margin-top:8px}
+.insp .info{color:#c9d6ee;font-variant-numeric:tabular-nums;margin-right:6px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}
+textarea{width:100%;height:60vh;background:#0b1322;color:#e6eefc;border:1px solid #2d3d58;border-radius:10px;padding:10px;font:12.5px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre;tab-size:4}
+.err{color:#ff9aa8;white-space:pre-wrap;font-size:13px;margin:6px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border-bottom:1px solid #26354f;padding:7px 6px;text-align:left;vertical-align:top}th{color:#8ea0bd;font-weight:500;font-size:12px}
+code{font:12.5px ui-monospace,Menlo,monospace;color:#ffd99a}
+.muted{color:#8ea0bd}.dirty{color:#ffcf7a}
+#export{background:#101a2b;border:1px solid #26354f;border-radius:12px;padding:10px;margin-top:12px}
+</style></head><body><main>
+<h1>Studio</h1>
+<p class="lead">Pick any song, change it on the NoteGrid, play it. Edits stay on this device as versions; every page with the player can play them.</p>
+<studio-player id="player" sync="studio" nostudio></studio-player>
+<div class="tabs"><button data-v="grid" class="on">Grid</button><button data-v="score">Score</button><button data-v="versions">Versions</button><span style="flex:1"></span><span id="dirty" class="muted"></span></div>
+
+<section id="v-grid">
+ <div class="bar">
+  <label>Track <select id="track"></select></label>
+  <div class="seg" id="tool"><button data-t="select" class="on" title="Tap a note to select it; drag to scroll">Select</button><button data-t="add" title="Tap an empty cell to add a note">Add</button><button data-t="erase" title="Tap a note to delete it">Erase</button></div>
+  <label>Length <select id="len"></select></label>
+  <label>Snap <select id="snap"></select></label>
+  <div class="sep"></div>
+  <button id="zx-" title="Zoom out">−</button><button id="zx+" title="Zoom in">+</button><button id="zy" title="Row height">↕</button>
+  <button id="follow" class="on" title="Follow the playhead">Follow</button>
+  <div class="sep"></div>
+  <button id="undo" disabled>Undo</button><button id="redo" disabled>Redo</button>
+ </div>
+ <canvas id="roll"></canvas>
+ <div class="insp" id="insp"><span class="info muted">Tap a note to select it. Tap the top ruler to jump there.</span></div>
+ <div class="bar" id="trackbar">
+  <span class="muted">Whole track:</span>
+  <label>Instrument <select id="inst"></select></label>
+  <label>Volume <input id="tvol" type="range" min="0" max="1.5" step="0.05" style="width:110px"></label>
+  <button data-tt="-12">−12</button><button data-tt="-1">−1</button><button data-tt="1">+1</button><button data-tt="12">+12</button>
+  <button id="addtrack">+ New track</button>
+ </div>
+</section>
+
+<section id="v-score" hidden>
+ <div class="bar"><button id="apply">Apply score</button><button id="revert">Revert to playing</button><span class="muted">The full NoteGrid score. Paste a score from the chat here and press Apply.</span></div>
+ <div id="errs" class="err"></div>
+ <textarea id="text" spellcheck="false"></textarea>
+ <details style="margin-top:10px"><summary>Score grammar</summary><table id="grammar"></table></details>
+</section>
+
+<section id="v-versions" hidden>
+ <div class="bar"><input id="vtitle" type="text" placeholder="Version name" style="flex:1;min-width:180px"><button id="save">Save as new version</button></div>
+ <div class="bar"><button id="dltxt">Download score .txt</button><label><button id="impbtn">Import score .txt</button><input id="imp" type="file" accept=".txt,text/plain" hidden></label></div>
+ <table><thead><tr><th>Version</th><th>Based on</th><th>Saved</th><th></th></tr></thead><tbody id="vlist"></tbody></table>
+</section>
+
+<div id="export"><div class="bar"><b>Export</b><button id="mp3">MP3</button><button id="wav">WAV</button><span id="xs" class="muted"></span></div>
+<div class="muted" style="font-size:12px">MP3 artist tag: Roman Kesler. For a video of a figure dancing to the song, open a page with the player and a Sync panel (first one: Julia 3D Lab).</div></div>
+</main>
+<script src="../../shared/studio/player.js"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const COLORS=['#6fb7ff','#ff8fd0','#ffd36b','#7ee6a8','#c49bff','#ff9e6b','#69e0e0','#f2f2a0','#a0b4ff','#ff7a8a','#9ce07a','#e0a0ff'];
+const NAMES12=['C','C#','D','E♭','E','F','F#','G','G#','A','B♭','B'];
+const st={tool:'select',track:0,len:2,snap:1,pxStep:10,rowH:14,x0:0,yTop:0,sel:null,undo:[],redo:[],dirty:false,base:'',follow:true,applying:false};
+let player,song;
+
+StudioReady.then(()=>{
+ player=$('player');
+ player.addEventListener('studio:load',onLoad);
+ player.addEventListener('studio:song',e=>{st.base=e.detail.spec;});
+ player.addEventListener('studio:seek',()=>draw());
+ fromHash();addEventListener('hashchange',fromHash);
+ requestAnimationFrame(loop);
+});
+function fromHash(){
+ const h=decodeURIComponent(location.hash.slice(1));
+ if(h==='handoff'){try{const d=JSON.parse(localStorage.getItem('studio.handoff')||'null');if(d&&d.text){player.load({text:d.text,title:d.title,id:d.spec||''});st.base=d.spec||'';if(d.config)player.config={tempo:d.config.tempo,transpose:d.config.transpose};}}catch(e){}history.replaceState(null,'',location.pathname);return;}
+ const m=h.match(/^(song|version)=(.+)$/);if(m)player.load(m[1]==='version'?'ver:'+m[2]:m[2]);
+}
+// ---------- song state ----------
+function onLoad(){
+ song=player.engine.song;
+ if(!st.applying){st.undo=[];st.redo=[];st.dirty=false;st.sel=null;st.track=Math.min(st.track,song.tracks.length-1);if(st.track<0)st.track=0;
+   // choose the busiest pitched track first
+   let best=0,bn=-1;song.tracks.forEach((t,i)=>{if(t.inst!=='drums'&&t.notes.length>bn){bn=t.notes.length;best=i;}});st.track=best;
+   st.x0=0;fitRows();}
+ else if(st.sel){const s=st.sel;const t=song.tracks.find(t=>t.name===s.track);const n=t&&t.notes.find(n=>Math.abs(n.step-s.step)<1e-6&&Math.abs(n.p-s.p)<1e-6);st.sel=n?{track:t.name,note:n,step:n.step,p:n.p}:null;}
+ st.applying=false;
+ fillTracks();fillSnap();$('text').value=player.engine.text;$('errs').textContent='';$('vtitle').value=player.engine.meta.title+(st.dirty?'':' (edit)');
+ updDirty();inspector();draw();
+}
+function commit(mutate,label){
+ const before=player.engine.text;mutate();
+ const text=NoteGrid.serialize(song,'Edited in Studio from '+(st.base||'a score')+' · '+new Date().toISOString().slice(0,16).replace('T',' '));
+ st.undo.push(before);if(st.undo.length>60)st.undo.shift();st.redo=[];st.dirty=true;apply(text);
+}
+function apply(text){
+ st.applying=true;
+ try{player.loadText(text,{keepTime:true});}catch(e){st.applying=false;$('errs').textContent=(e.errors||[e.message]).join('\n');switchView('score');return false;}
+ return true;
+}
+function updDirty(){$('dirty').textContent=st.dirty?'● unsaved edits':'';$('dirty').className=st.dirty?'dirty':'muted';$('undo').disabled=!st.undo.length;$('redo').disabled=!st.redo.length;}
+$('undo').onclick=()=>{if(!st.undo.length)return;st.redo.push(player.engine.text);st.dirty=true;apply(st.undo.pop());};
+$('redo').onclick=()=>{if(!st.redo.length)return;st.undo.push(player.engine.text);st.dirty=true;apply(st.redo.pop());};
+// ---------- toolbars ----------
+const T=()=>song.tracks[st.track];
+const isDrum=t=>t&&t.inst==='drums';
+function fillTracks(){
+ const s=$('track');s.innerHTML='';song.tracks.forEach((t,i)=>s.append(new Option('● '+t.name+' ('+t.inst+', '+t.notes.length+')',i)));s.value=st.track;
+ s.style.color=COLORS[st.track%COLORS.length];
+ const ins=$('inst');if(!ins.options.length)NoteGrid.INSTRUMENTS.forEach(n=>ins.append(new Option(n,n)));ins.value=T().inst;$('tvol').value=T().vol;
+}
+function fillSnap(){
+ const S=song.steps,L=$('len'),N=$('snap'),cur=[st.len,st.snap];L.innerHTML='';N.innerHTML='';
+ const opts=[1,2,3,4,6,8,12,16,24,32].filter(x=>x<=S*8);
+ const name=x=>x+' step'+(x>1?'s':'')+(x%S===0?' = '+(x/S)+' beat'+(x/S>1?'s':''):'');
+ opts.forEach(x=>L.append(new Option(name(x),x)));[1,2,3,4,6,8].filter(x=>x<=S*2).concat([S,S*song.beats]).filter((v,i,a)=>a.indexOf(v)===i).forEach(x=>N.append(new Option(x%S===0?(x/S)+' beat'+(x/S>1?'s':''):x+' step'+(x>1?'s':''),x)));
+ L.value=opts.includes(cur[0])?cur[0]:Math.min(S/2||1,opts[opts.length-1]);N.value=[...N.options].some(o=>+o.value===cur[1])?cur[1]:1;st.len=+L.value;st.snap=+N.value;
+}
+$('track').onchange=e=>{st.track=+e.target.value;st.sel=null;fitRows();fillTracks();inspector();draw();};
+$('len').onchange=e=>{st.len=+e.target.value;};$('snap').onchange=e=>{st.snap=+e.target.value;};
+document.querySelectorAll('#tool button').forEach(b=>b.onclick=()=>{st.tool=b.dataset.t;document.querySelectorAll('#tool button').forEach(x=>x.classList.toggle('on',x===b));});
+$('zx-').onclick=()=>zoomX(1/1.4);$('zx+').onclick=()=>zoomX(1.4);$('zy').onclick=()=>{st.rowH=st.rowH>=20?9:st.rowH+5;draw();};
+$('follow').onclick=()=>{st.follow=!st.follow;$('follow').classList.toggle('on',st.follow);};
+$('inst').onchange=e=>commit(()=>{const t=T(),was=t.inst;t.inst=e.target.value;if(t.legato&&!NoteGrid.LEGATO_OK.includes(t.inst))t.legato=false;
+  if((was==='drums')!==(t.inst==='drums'))t.notes=[];});
+$('tvol').onchange=e=>commit(()=>{T().vol=+e.target.value;});
+document.querySelectorAll('[data-tt]').forEach(b=>b.onclick=()=>{if(isDrum(T()))return;const d=+b.dataset.tt;commit(()=>{T().notes.forEach(n=>n.p+=d);if(st.sel)st.sel.p+=d;});});
+$('addtrack').onclick=()=>{const name=prompt('Name of the new track (one word):','melody'+(song.tracks.length+1));if(!name)return;const inst=prompt('Instrument: '+NoteGrid.INSTRUMENTS.join(', '),'piano');if(!inst||!NoteGrid.INSTRUMENTS.includes(inst))return;
+ commit(()=>{song.tracks.push({name:name.replace(/\s+/g,'-'),inst,vol:0.8,oct:0,legato:false,pedal:0,notes:[],idx:song.tracks.length,muted:false});st.track=song.tracks.length-1;});};
+// ---------- piano roll ----------
+const cv=$('roll'),g=cv.getContext('2d');const GUT=46,RUL=32;
+function rows(){const t=T();if(isDrum(t))return NoteGrid.DRUMS.map((d,i)=>({v:i,label:d}));
+ let lo=Infinity,hi=-Infinity;song.tracks.forEach(tr=>{if(isDrum(tr))return;tr.notes.forEach(n=>{const r=n.p+12*tr.oct;lo=Math.min(lo,r);hi=Math.max(hi,r);});});
+ if(!isFinite(lo)){lo=-12;hi=24;}lo=Math.floor(lo)-5;hi=Math.ceil(hi)+5;const R=[];for(let v=hi;v>=lo;v--)R.push({v,label:v+' '+NAMES12[(((song.root+v)%12)+12)%12]+(Math.floor((song.root+v)/12)-1)});return R;}
+function fitRows(){const R=rows(),t=T(),H=cv.clientHeight-RUL;if(isDrum(t)){st.yTop=0;return;}
+ let lo=Infinity,hi=-Infinity;t.notes.forEach(n=>{const r=n.p+12*t.oct;lo=Math.min(lo,r);hi=Math.max(hi,r);});if(!isFinite(lo)){st.yTop=0;return;}
+ const mid=(lo+hi)/2,idx=R.findIndex(r=>r.v<=mid);st.yTop=Math.max(0,idx*st.rowH-H/2);}
+const X=step=>GUT+(step-st.x0)*st.pxStep;const stepX=x=>(x-GUT)/st.pxStep+st.x0;
+function noteRect(t,n,R){const v=isDrum(t)?n.p:n.p+12*t.oct;const i=isDrum(t)?v:R.findIndex(r=>Math.abs(r.v-v)<0.5);if(i<0)return null;
+ return {x:X(n.step),y:RUL+i*st.rowH-st.yTop+(isDrum(t)?0:(Math.round(v)-v)*st.rowH),w:Math.max(2,n.len*st.pxStep-1),h:st.rowH-1};}
+function draw(){
+ if(!song)return;const dpr=Math.min(2,devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;if(cv.width!==W*dpr||cv.height!==H*dpr){cv.width=W*dpr;cv.height=H*dpr;}
+ g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle='#0a101d';g.fillRect(0,0,W,H);
+ const R=rows(),S=song.steps,B=S*song.beats,t=T();
+ // rows
+ g.save();g.beginPath();g.rect(0,RUL,W,H-RUL);g.clip();
+ R.forEach((r,i)=>{const y=RUL+i*st.rowH-st.yTop;if(y<RUL-st.rowH||y>H)return;const pc=((song.root+r.v)%12+12)%12;
+   g.fillStyle=isDrum(t)?(i%2?'#0d1424':'#101a2c'):([1,3,6,8,10].includes(pc)?'#0b111e':'#111a2b');g.fillRect(GUT,y,W-GUT,st.rowH);
+   if(!isDrum(t)&&pc===((song.root%12)+12)%12){g.fillStyle='#ffffff10';g.fillRect(GUT,y,W-GUT,st.rowH);}});
+ // vertical lines
+ const s0=Math.floor(st.x0),s1=Math.ceil(stepX(W));
+ for(let s=Math.max(0,s0);s<=s1;s++){const x=X(s);let c=null;if(s%B===0)c='#3c5175';else if(s%S===0)c=st.pxStep*S>14?'#223049':null;else if(st.pxStep>=7)c='#151f33';if(c){g.fillStyle=c;g.fillRect(x,RUL,1,H-RUL);}}
+ // notes: other tracks dim, selected track bright
+ const order=song.tracks.map((tr,i)=>i).filter(i=>i!==st.track);if(!isDrum(t))order.forEach(i=>{const tr=song.tracks[i];if(isDrum(tr))return;g.fillStyle=COLORS[i%COLORS.length]+'40';
+   tr.notes.forEach(n=>{if(n.step+n.len<st.x0||n.step>s1)return;const r=noteRect(tr,n,R);if(r)g.fillRect(r.x,r.y+2,r.w,r.h-4);});});
+ const col=COLORS[st.track%COLORS.length];
+ t.notes.forEach(n=>{if(n.step+n.len<st.x0||n.step>s1)return;const r=noteRect(t,n,R);if(!r)return;g.fillStyle=col;g.globalAlpha=0.45+0.55*Math.min(1,n.vel);g.fillRect(r.x,r.y,r.w,r.h);g.globalAlpha=1;
+   if(st.sel&&st.sel.note===n){g.strokeStyle='#fff';g.lineWidth=2;g.strokeRect(r.x-1,r.y-1,r.w+2,r.h+2);}});
+ g.restore();
+ // gutter labels
+ g.fillStyle='#0d1526';g.fillRect(0,RUL,GUT,H-RUL);g.font='10px system-ui';g.textBaseline='middle';
+ R.forEach((r,i)=>{const y=RUL+i*st.rowH-st.yTop;if(y<RUL-2||y>H)return;if(st.rowH<11&&!isDrum(t)&&r.v%12!==0)return;g.fillStyle='#93a4c0';g.fillText(r.label,4,y+st.rowH/2);});
+ // ruler: bars + marks
+ g.fillStyle='#0f1930';g.fillRect(0,0,W,RUL);g.fillStyle='#b7c5dc';g.font='11px system-ui';
+ const every=Math.max(1,Math.ceil(36/(st.pxStep*B)));for(let b=Math.floor(Math.max(0,s0)/B);b*B<=s1;b++){if(b%every)continue;const x=X(b*B);if(x<GUT-1)continue;g.fillRect(x,RUL-8,1,8);g.fillText(String(b),x+3,8);}
+ g.fillStyle='#ffd36b';song.marks.forEach(m=>{const x=X(m.step);if(x>=GUT&&x<W){g.fillRect(x,15,2,RUL-15);g.fillText(m.text.slice(0,34),x+4,RUL-8);}});
+ // playhead
+ const ph=NoteGrid.stepAt(song,player.time*player.config.tempo),px=X(ph);if(px>=GUT&&px<=W){g.fillStyle='#ff5fa8';g.fillRect(px,0,2,H);}
+}
+function zoomX(f,cx){const W=cv.clientWidth;cx=cx??(GUT+(W-GUT)/2);const s=stepX(cx);st.pxStep=Math.max(0.15,Math.min(60,st.pxStep*f));st.x0=Math.max(0,s-(cx-GUT)/st.pxStep);draw();}
+function loop(){if(song&&player.playing&&st.follow){const ph=NoteGrid.stepAt(song,player.time*player.config.tempo),W=cv.clientWidth,vis=(W-GUT)/st.pxStep;if(ph<st.x0||ph>st.x0+vis*0.85)st.x0=Math.max(0,ph-vis*0.1);}if(song)draw();requestAnimationFrame(loop);}
+addEventListener('resize',draw);
+// pointer: tap = tool action; drag = scroll; two fingers = zoom
+const pts=new Map();let drag=null,pinch=null;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
+ if(pts.size===2){const [a,b]=[...pts.values()];pinch={d:Math.abs(a.x-b.x)+1,px:st.pxStep};drag=null;return;}
+ drag={x:e.offsetX,y:e.offsetY,x0:st.x0,y0:st.yTop,moved:false};});
+cv.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
+ if(pinch&&pts.size===2){const [a,b]=[...pts.values()],d=Math.abs(a.x-b.x)+1;st.pxStep=Math.max(0.15,Math.min(60,pinch.px*d/pinch.d));draw();return;}
+ if(!drag)return;const dx=e.offsetX-drag.x,dy=e.offsetY-drag.y;if(Math.abs(dx)+Math.abs(dy)>6)drag.moved=true;
+ if(drag.moved){st.x0=Math.max(0,drag.x0-dx/st.pxStep);const maxY=Math.max(0,rows().length*st.rowH-(cv.clientHeight-RUL));st.yTop=Math.max(0,Math.min(maxY,drag.y0-dy));if(player.playing)st.follow=false,$('follow').classList.remove('on');draw();}});
+const end=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null;if(drag&&!drag.moved&&e.type==='pointerup')tap(e.offsetX,e.offsetY);drag=null;};
+cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+cv.addEventListener('wheel',e=>{e.preventDefault();if(e.ctrlKey||e.metaKey){zoomX(Math.exp(-e.deltaY*0.01),e.offsetX);return;}
+ if(e.shiftKey||Math.abs(e.deltaX)>Math.abs(e.deltaY))st.x0=Math.max(0,st.x0+(e.deltaX||e.deltaY)/st.pxStep);else{const maxY=Math.max(0,rows().length*st.rowH-(cv.clientHeight-RUL));st.yTop=Math.max(0,Math.min(maxY,st.yTop+e.deltaY));}draw();},{passive:false});
+function hit(x,y){const R=rows();const cand=[];song.tracks.forEach((tr,i)=>{if(isDrum(T())!==isDrum(tr))return;if(isDrum(tr)&&i!==st.track)return;tr.notes.forEach(n=>{const r=noteRect(tr,n,R);if(r&&x>=r.x&&x<=r.x+Math.max(r.w,6)&&y>=r.y&&y<=r.y+r.h)cand.push({i,n});});});
+ return cand.find(c=>c.i===st.track)||cand[0]||null;}
+function tap(x,y){
+ if(y<RUL){const step=Math.max(0,stepX(x));player.seek(NoteGrid.songTime(song,step)/player.config.tempo);return;}
+ if(x<GUT)return;const h=hit(x,y),t=T();
+ if(st.tool==='erase'){if(h&&h.i===st.track)commit(()=>{t.notes.splice(t.notes.indexOf(h.n),1);if(st.sel&&st.sel.note===h.n)st.sel=null;});return;}
+ if(h&&(st.tool==='select'||h.i===st.track)){if(h.i!==st.track){st.track=h.i;fillTracks();}select(h.n);preview(song.tracks[h.i],h.n);draw();return;}
+ if(st.tool==='add'){const R=rows(),i=Math.floor((y-RUL+st.yTop)/st.rowH);if(i<0||i>=R.length)return;
+   const step=Math.max(0,Math.floor(stepX(x)/st.snap)*st.snap),p=isDrum(t)?R[i].v:R[i].v-12*t.oct;
+   const n={step,len:isDrum(t)?1:st.len,p,vel:0.8,line:0};commit(()=>{t.notes.push(n);st.sel={track:t.name,note:n,step,p};});preview(t,n);return;}
+ st.sel=null;inspector();draw();
+}
+function select(n){st.sel={track:T().name,note:n,step:n.step,p:n.p};inspector();}
+async function preview(t,n){try{const e=player.engine;await e.ensureContext();await e.ctx.resume();const k=e.config.tempo;
+ const dur=Math.min(1.2,(NoteGrid.songTime(song,n.step+n.len)-NoteGrid.songTime(song,n.step))/k);
+ e.synth.play({vel:n.vel,track:{inst:t.inst,vol:t.vol,legato:false},drum:n.p},e.ctx.currentTime+0.02,dur,song.root+n.p+12*t.oct+e.config.transpose,e.master);}catch(err){}}
+// ---------- inspector ----------
+function inspector(){
+ const I=$('insp');I.innerHTML='';const s=st.sel;
+ if(!s||!song){I.innerHTML='<span class="info muted">'+(st.tool==='add'?'Tap an empty cell to add a note ('+st.len+' steps long).':'Tap a note to select it. Tap the top ruler to jump there. Drag to scroll, pinch or ± to zoom.')+'</span>';return;}
+ const t=song.tracks.find(x=>x.name===s.track),n=s.note,B=song.steps*song.beats;
+ const where=Math.floor(n.step/B)+':'+(+(n.step%B).toFixed(3));
+ const pitch=isDrum(t)?NoteGrid.DRUMS[n.p]:(n.p+12*t.oct)+' · '+NoteGrid.midiName(song.root+n.p+12*t.oct)+' · '+NoteGrid.midiHz(song.root+n.p+12*t.oct).toFixed(1)+' Hz';
+ const info=document.createElement('span');info.className='info';info.innerHTML='<span class="dot" style="background:'+COLORS[song.tracks.indexOf(t)%COLORS.length]+'"></span>'+t.name+' · step '+(+n.step.toFixed(3))+' ('+where+') · '+pitch+' · len '+(+n.len.toFixed(3))+' · vel '+n.vel.toFixed(2);I.append(info);
+ const B_=(label,fn,title)=>{const b=document.createElement('button');b.textContent=label;if(title)b.title=title;b.onclick=()=>commit(()=>fn(n,t));I.append(b);};
+ if(!isDrum(t)){B_('▲',n=>{n.p+=1;s.p=n.p;},'Up 1');B_('▼',n=>{n.p-=1;s.p=n.p;},'Down 1');B_('+12',n=>{n.p+=12;s.p=n.p;},'Octave up');B_('−12',n=>{n.p-=12;s.p=n.p;},'Octave down');}
+ else{B_('▲',n=>{n.p=Math.max(0,n.p-1);s.p=n.p;},'Previous drum');B_('▼',n=>{n.p=Math.min(NoteGrid.DRUMS.length-1,n.p+1);s.p=n.p;},'Next drum');}
+ B_('◀',n=>{n.step=Math.max(0,n.step-st.snap);s.step=n.step;},'Earlier by snap');B_('▶',n=>{n.step+=st.snap;s.step=n.step;},'Later by snap');
+ B_('shorter',n=>{n.len=Math.max(0.25,n.len-st.snap);});B_('longer',n=>{n.len+=st.snap;});
+ B_('softer',n=>{n.vel=Math.max(0.05,+(n.vel-0.1).toFixed(2));});B_('louder',n=>{n.vel=Math.min(1.2,+(n.vel+0.1).toFixed(2));});
+ B_('duplicate →',(n,t)=>{const c={...n,step:n.step+n.len};t.notes.push(c);st.sel={track:t.name,note:c,step:c.step,p:c.p};});
+ B_('delete',(n,t)=>{t.notes.splice(t.notes.indexOf(n),1);st.sel=null;});
+}
+// ---------- score ----------
+$('apply').onclick=()=>{const before=player.engine.text,txt=$('text').value;const r=NoteGrid.parseScore(txt);if(r.errors.length){$('errs').textContent=r.errors.slice(0,12).join('\n');return;}
+ st.undo.push(before);st.redo=[];st.dirty=true;apply(txt);$('errs').textContent='Applied ✓';};
+$('revert').onclick=()=>{$('text').value=player.engine.text;$('errs').textContent='';};
+const GR=[['title: My song','Header lines come first: title, bpm, steps (per beat), beats (per bar), root (pitch 0), loop, length'],
+ ['tempo 8:0 140','Tempo change at bar 8, step 0'],['mark 4:0 Chorus','A named section (shown in the player; pages can react to it)'],
+ ['track lead guitar vol=0.8 legato','A track: name, instrument, options vol=, oct=, pedal=, legato'],
+ ['12 7 2 0.9','A note: step, pitch (semitones from root), length in steps, velocity. Steps can be bar:step like 3:4'],
+ ['0 0,4,7 16','A chord: several pitches at once'],['0:0 seq 2 0 4 7 - 12 _','A sequence: one token every 2 steps; - holds, _ is a rest'],
+ ['copy 0:0 4:0 at 4:0 x3 +12','Copy bars 0–4 to bar 4, three times, an octave up'],['kick |x... ..x. x... ....|','Drum or pitch pattern, repeats to the end; X = accent'],
+ ['7.5   r3/2   440hz','Microtones: decimals, frequency ratios, or Hz']];
+function grammar(){const t=$('grammar');t.innerHTML='<tr><th>Write</th><th>Means</th></tr>';GR.forEach(([a,b])=>{const r=t.insertRow();r.insertCell().innerHTML='<code>'+a+'</code>';r.insertCell().textContent=b;});
+ const r=t.insertRow();r.insertCell().textContent='Instruments';r.insertCell().textContent=NoteGrid.INSTRUMENTS.join(', ')+'. Drum names: '+NoteGrid.DRUMS.join(', ');}
+StudioReady.then(grammar);
+// ---------- versions ----------
+function versions(){const L=StudioPlayer.Library.versions(),tb=$('vlist');tb.innerHTML=L.length?'':'<tr><td colspan=4 class="muted">No versions yet.</td></tr>';
+ L.forEach(v=>{const r=tb.insertRow();r.insertCell().textContent=v.title;r.insertCell().textContent=v.base||'';r.insertCell().textContent=new Date(v.savedAt).toLocaleString();const c=r.insertCell();
+  const b=(l,f)=>{const x=document.createElement('button');x.textContent=l;x.onclick=f;x.style.marginRight='4px';c.append(x);};
+  b('Open',()=>{player.load('ver:'+v.id).then(()=>{st.base=v.base||'';});switchView('grid');});
+  b('.txt',()=>StudioExport.download(new Blob([v.text],{type:'text/plain'}),StudioExport.slug(v.title)+'.txt'));
+  b('Delete',()=>{if(confirm('Delete "'+v.title+'"?')){StudioPlayer.Library.deleteVersion(v.id);versions();}});});}
+$('save').onclick=()=>{const title=($('vtitle').value||player.engine.meta.title).trim();const text=player.engine.text.replace(/^title:.*$/m,'title: '+title);
+ const v=StudioPlayer.Library.saveVersion({id:Date.now().toString(36),title,text,base:st.base,savedAt:Date.now()});st.dirty=false;updDirty();versions();
+ player.load('ver:'+v.id).then(()=>{});};
+$('dltxt').onclick=()=>StudioExport.download(new Blob([player.engine.text],{type:'text/plain'}),StudioExport.slug(player.engine.meta.title)+'.txt');
+$('impbtn').onclick=()=>$('imp').click();
+$('imp').onchange=async e=>{const f=e.target.files[0];if(!f)return;const txt=await f.text();const r=NoteGrid.parseScore(txt);if(r.errors.length){alert(r.errors.slice(0,8).join('\n'));return;}
+ player.load({text:txt,title:r.song.title});st.base='file: '+f.name;e.target.value='';};
+// ---------- views + export ----------
+function switchView(v){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));['grid','score','versions'].forEach(x=>$('v-'+x).hidden=x!==v);if(v==='versions')versions();if(v==='grid')draw();if(v==='score')$('text').value=player.engine.text;}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>switchView(b.dataset.v));
+$('mp3').onclick=()=>player.exportAudio('mp3').then(b=>$('xs').textContent='MP3 saved').catch(e=>$('xs').textContent=e.message);
+$('wav').onclick=()=>player.exportAudio('wav').then(b=>$('xs').textContent='WAV saved').catch(e=>$('xs').textContent=e.message);
+</script><script src="../../site-chrome.js" defer></script></body></html>
