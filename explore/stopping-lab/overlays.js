@@ -6,38 +6,49 @@
 let needDraw=true;
 const frameFallback=document.createElement('canvas');
 const frameFallbackCtx=frameFallback.getContext('2d');
-let hasFallback=false;
-// Keep a full-viewport raster of the last composited map, excluding UI overlays.
-// During expensive re-renders this fills areas outside reprojected tile bounds.
-function blit(L,k){
-  const img=L.imgs[k]; if(!img) return;
+let hasFallback=false, fbView=null, fbRing=false;
+// The last composited map (without UI overlays) is kept with the camera it was drawn with, and drawn beneath the layers
+// moved to the current camera, so areas no layer covers yet show the old picture in the right place instead of black.
+const ringView=()=>!!(cfg.polar||cfg.bottcher);
+function place(img,L,sw,sh,sx0,sy0,dw,dh){   // draw a layer (or the kept frame) where its camera puts it on the current screen
+  if(L.ring){   // polar / Böttcher: the whole layer is the screen; a change of angle is a horizontal shift that wraps around
+    const dx=((-wrap(view.a-L.a)/TAU*Wd)%Wd+Wd)%Wd;
+    for(const x of [dx-Wd,dx]) ctx.drawImage(img,sx0,sy0,sw,sh,x,0,Wd,Hd);
+    return;
+  }
   const [sx,sy]=toScreen(L.cx,L.cy), s=L.sx/(view.w/Wd);
-  ctx.save(); ctx.translate(sx,sy); ctx.rotate(view.a-L.a); ctx.scale(s,s); ctx.drawImage(img,-L.W/2,-L.H/2); ctx.restore();
+  ctx.save(); ctx.translate(sx,sy); ctx.rotate(view.a-L.a); ctx.scale(s,s); ctx.drawImage(img,sx0,sy0,sw,sh,-dw/2,-dh/2,dw,dh); ctx.restore();
+}
+function blit(L,k){
+  const img=L.imgs[k]; if(!img || L.ring!==ringView()) return;
+  place(img,L,L.W,L.H,0,0,L.W,L.H);
+}
+function blitFallback(k,four){
+  if(!hasFallback || !fbView || fbRing!==ringView() || frameFallback.width!==Wd || frameFallback.height!==Hd) return;
+  const ox=four?(k&1)*Wd/2:0, oy=four?(k>>1)*Hd/2:0, sw=four?Wd/2:Wd, sh=four?Hd/2:Hd;
+  place(frameFallback,{...fbView,ring:fbRing,sx:fbView.w/Wd},sw,sh,ox,oy,Wd,Hd);
 }
 function draw(overlays=!cfg.clean){
   needDraw=false;
   ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#000'; ctx.fillRect(0,0,Wd,Hd);
-  if(hasFallback && frameFallback.width===Wd && frameFallback.height===Hd)
-    ctx.drawImage(frameFallback,0,0);
   ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  if(!base){ under=null; hasFallback=false; }   // a new universe: nothing of the old one may show through
   const four=cmp(), n=four?4:1;
-  // Never draw a finite, unrelated home tile on top of the cached viewport:
-  // its rectangular edges were visible as orange strips during deep zooms.
-  const under=home && !hasFallback && !base;
+  // The whole-universe backdrop only while it is still reasonably sharp: magnified far, its square edges showed as strips.
+  const backdrop=home && !ringView() && home.sx/(view.w/Wd)<40;
   for(let k=0;k<n;k++){
     ctx.save();
     if(four){ const ox=(k&1)*Wd/2, oy=(k>>1)*Hd/2; ctx.beginPath(); ctx.rect(ox,oy,Wd/2,Hd/2); ctx.clip(); ctx.translate(ox,oy); ctx.scale(.5,.5); }
-    if(under) blit(home,k);
+    if(backdrop) blit(home,k);
+    blitFallback(k,four);
+    if(under && under!==base) blit(under,k);
     if(base) blit(base,k);
     ctx.restore();
   }
-  // Capture the complete composited map every draw (not only on pass changes).
-  // Do this before annotations so old compass/labels never ghost during motion.
-  if(frameFallback.width!==Wd || frameFallback.height!==Hd){
-    frameFallback.width=Wd; frameFallback.height=Hd; hasFallback=false;
-  }
-  frameFallbackCtx.drawImage(cv,0,0);
-  hasFallback=true;
+  // Keep the composited map for the next frame, before annotations so the compass and labels never ghost.
+  if(frameFallback.width!==Wd || frameFallback.height!==Hd){ frameFallback.width=Wd; frameFallback.height=Hd; }
+  frameFallbackCtx.globalCompositeOperation='copy'; frameFallbackCtx.drawImage(cv,0,0); frameFallbackCtx.globalCompositeOperation='source-over';
+  hasFallback=true; fbView={cx:view.cx,cy:view.cy,w:view.w,a:view.a}; fbRing=ringView();
   if(four){ ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(Wd/2-DPR/2,0,DPR,Hd); ctx.fillRect(0,Hd/2-DPR/2,Wd,DPR); }
   if(!four && typeof vectorOverlay!=='undefined' && vectorOverlay.enabled) vectorOverlay.draw();
   tagBoxes=[]; labelBox=null;

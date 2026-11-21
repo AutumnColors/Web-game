@@ -365,7 +365,7 @@ function gridFor(v,W,H,sx){
 
 /* ---------- layers of numbers ---------- */
 function newLayer(v,W,H,maxIt,withS){
-  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float32Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
+  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float32Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
 }
 function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
@@ -383,13 +383,18 @@ function cancel(id){ if(!id) return; renders.delete(id); queue=queue.filter(q=>q
 
 /* ---------- progressive render jobs for the map ---------- */
 const PASSES=[8,3,1];
-let job=0, cur=null, dirty=true, lastStart=0, roughMs=150, base=null, home=null, homeId=0, stats=null;
+let job=0, cur=null, dirty=true, lastStart=0, roughMs=150, base=null, under=null, home=null, homeId=0, stats=null;
+// Rough passes are rendered 1.3× larger than the screen, so a pan or turn never shows an empty edge before the next pass.
+// The final pass is exactly the screen: it dominates the cost (1.69× more pixels otherwise) and its numbers are what ⓘ measures.
+// Polar and Böttcher views map the whole layer onto the screen (360° across), so they are never overscanned.
+const OVERSCAN=1.3;
 function startJob(){
   job++; queue=queue.filter(q=>q.tag!=='main'); dirty=false; lastStart=performance.now();
   const v= back ? backView(performance.now()+Math.min(500,Math.max(50,roughMs*1.15))) : {...view}, maxIt=itFor(v.w), div=cmp()?2:1, d=needD();
   cur={id:job,v,maxIt,passes:[]};
-  const overscan=1.3;
-  (back?[6]:PASSES).forEach((ds,p)=>{
+  const passes=back?[6]:PASSES, ring=cfg.polar||cfg.bottcher;
+  passes.forEach((ds,p)=>{
+    const overscan=ring?1:(back||p<passes.length-1)?OVERSCAN:1;
     const tw=Math.ceil(Wd*overscan/(ds*div)), th=Math.ceil(Hd*overscan/(ds*div));
     const tileView={...v,w:v.w*tw*ds*div/Wd};
     const L=newLayer(tileView,tw,th,maxIt,d); L.ds=ds; cur.passes.push(L);
@@ -417,6 +422,7 @@ function mainStrip(m){
     }
   }
   if(!base || base.job!==cur.id || base.pass<m.pass){
+    if(m.pass===cur.passes.length-1 && base && base.job===cur.id && !back) under=base;   // keep the overscanned rough pass beneath the sharp one
     L.job=cur.id; L.pass=m.pass; paintLayer(L); base=L; needDraw=true;
     if(m.pass===cur.passes.length-1 && !back){ stats=measure(L); writeHash(); if(infoOpen) fillInfo(); }
   }
@@ -424,7 +430,7 @@ function mainStrip(m){
 function renderHome(){ // the whole universe as a backdrop, wide enough to fill the corners of a turned, zoomed-out view
   cancel(homeId); home=null;
   const w=3*HOME.w*Math.max(1,Hd/Wd), v={cx:eng.cxm===undefined?HOME.cx:eng.cxm,cy:HOME.cy,w,a:0};
-  homeId=render('home',v,440,440,cfg.iter||300,eng,true,L=>{ home=L; paintLayer(L); needDraw=true; });
+  homeId=render('home',v,440,440,cfg.iter||300,eng,true,L=>{ L.ring=false; home=L; paintLayer(L); needDraw=true; });   // always a flat (Cartesian) picture
 }
 
 /* ---------- from numbers to colour ---------- */
@@ -547,7 +553,7 @@ function drawGreenContours(canvas,L){
 
 const shown=()=>cmp()?cfg.panels:[cfg.mode];
 function paintLayer(L){ L.imgs=shown().map((m,k)=>paint(L,m) || L.imgs[k] || paint(L,'escape')); }
-function repaint(){ if(home) paintLayer(home); if(base) paintLayer(base); needDraw=true; }
+function repaint(){ if(home) paintLayer(home); if(under) paintLayer(under); if(base) paintLayer(base); needDraw=true; }
 
 // descriptive numbers of the finished frame (recomputed for every frame: they depend on the grid)
 function corr(n,sa,sb,saa,sbb,sab){ const va=saa-sa*sa/n, vb=sbb-sb*sb/n; return n>2&&va>0&&vb>0 ? (sab-sa*sb/n)/Math.sqrt(va*vb) : NaN; }
