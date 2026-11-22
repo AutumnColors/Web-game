@@ -50,6 +50,11 @@
   .card .hint { font-size: 10.5px; opacity: .5; margin-top: 3px; text-align: right; }
   .eq { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; background: #0b2233; border-radius: 6px; padding: 6px 8px; margin-top: 6px; line-height: 1.5; }
   .warn { color: #ffb38a; }
+  .intro { font-size: 13.5px; line-height: 1.5; margin: 12px 4px; }
+  button.small { padding: 3px 8px; font-size: 12px; margin-left: 6px; }
+  #toast { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); z-index: 4; background: rgba(42,22,32,.95); border: 1px solid #a65370; border-radius: 8px; padding: 6px 10px; font-size: 12.5px; pointer-events: none; opacity: 0; transition: opacity .25s; max-width: 90%; }
+  #toast.on { opacity: 1; }
+  @media (max-width: 520px) { header b { display: none; } }
   .chip { font-size: 9.5px; padding: 1px 6px; border-radius: 9px; white-space: nowrap; font-weight: 600; }
   .chip.exact, .chip.theory { background: #1f5d3d; color: #c9f2d6; }
   .chip.literature { background: #1f4d7a; color: #cfe6ff; }
@@ -75,15 +80,20 @@
     <option value="mountain">Mountains</option>
     <option value="gust">Variable winds</option>
   </select>
-  <button id="random">New random map</button>
+  <select id="layoutMode" aria-label="Turbines">
+    <option value="random">12 random turbines</option>
+    <option value="build">Empty map — place your own</option>
+  </select>
+  <button id="random">New map</button>
   <button id="pause">Pause</button>
-  <button id="reset">Reset camera</button>
+  <button id="reset">Reset view</button>
 </header>
 <div id="status">Loading…</div>
 <div id="main">
   <div id="stage">
     <div id="viewSwitch"><button data-view="3d" class="on">3D</button><button data-view="top">Top</button><button data-view="side">Side</button></div>
     <button id="legend" hidden><span id="legendLabel"></span> <span class="hint">(tap to switch)</span><div class="bar" id="legendBar"></div><div class="ends"><span></span><span></span></div></button>
+    <div id="toast"></div>
     <div id="error"><div id="errorText"></div></div>
   </div>
   <div id="panel"></div>
