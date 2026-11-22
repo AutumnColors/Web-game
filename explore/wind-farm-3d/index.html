@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>3D Wind Farm Lab</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #081b2a; color: #e6f3f8; font: 14px system-ui, -apple-system, Segoe UI, sans-serif; }
+  body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; }
+  header { padding: 10px 12px 6px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  header b { margin-right: 4px; }
+  button, select { background: #183b4e; color: #fff; border: 1px solid #527789; border-radius: 8px; padding: 8px 10px; font: inherit; }
+  button:active { background: #24536b; }
+  #status { padding: 0 12px 8px; opacity: .8; font-size: 12.5px; line-height: 1.35; min-height: 1.35em; }
+  #view { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; }
+  #view canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+  #legend { position: absolute; left: 10px; bottom: 10px; font-size: 11px; text-align: left; background: rgba(8,27,42,.78); padding: 6px 8px; border-radius: 8px; border: 1px solid #2e5366; cursor: pointer; max-width: calc(100% - 40px); }
+  #legend .bar { width: 160px; height: 8px; border-radius: 4px; margin: 4px 0 2px; }
+  #legend .hint { opacity: .6; }
+  #legend .ends { display: flex; justify-content: space-between; opacity: .8; }
+  #error { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; padding: 20px; }
+  #error div { max-width: 560px; background: #2a1620; border: 1px solid #a65370; border-radius: 10px; padding: 14px 16px; white-space: pre-wrap; font-size: 13px; }
+  a { color: #8fd3ef; }
+</style>
+</head>
+<body>
+<header>
+  <b>3D Wind Farm Lab</b>
+  <select id="scenario" aria-label="Scenario">
+    <option value="coast">Coastal</option>
+    <option value="plain">Plains</option>
+    <option value="mountain">Mountains</option>
+    <option value="gust">Variable winds</option>
+  </select>
+  <button id="random">New random map</button>
+  <button id="pause">Pause</button>
+  <button id="reset">Reset camera</button>
+</header>
+<div id="status">Loading…</div>
+<div id="view">
+  <button id="legend" hidden><span id="legendLabel"></span> <span class="hint">(tap to switch)</span><div class="bar" id="legendBar"></div><div class="ends"><span></span><span></span></div></button>
+  <div id="error"><div id="errorText"></div></div>
+</div>
+<script>
+  // Classic script: runs even when module loading fails, so failures are visible.
+  (function () {
+    function show(msg) {
+      var box = document.getElementById('error'), t = document.getElementById('errorText');
+      t.textContent = (t.textContent ? t.textContent + '\n\n' : '') + msg;
+      box.style.display = 'flex';
+      document.getElementById('status').textContent = 'Not running — see the message below.';
+    }
+    window.windLabError = show;
+    window.addEventListener('error', function (e) {
+      if (/ResizeObserver loop/.test(e.message || '')) return; // benign browser notice
+      show('Error: ' + (e.message || (e.target && e.target.src ? 'could not load ' + e.target.src : 'unknown')));
+    }, true);
+    window.addEventListener('unhandledrejection', function (e) { show('Error: ' + (e.reason && e.reason.message || e.reason)); });
+    setTimeout(function () {
+      if (!window.windLabReady && document.getElementById('error').style.display !== 'flex')
+        show('Still loading after 20 s. three.js comes from a CDN (jsDelivr, then unpkg); check the network connection.');
+    }, 20000);
+  })();
+</script>
+<script nomodule>window.windLabError('This browser does not support JavaScript modules; please use a current browser.');</script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
