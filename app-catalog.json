@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-11-22T11:11:43.621365+00:00",
+  "generatedAt": "2026-11-22T11:15:50.880668+00:00",
   "apps": [
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-22T18:11:36+07:00",
-      "update": "Add frozen map pan/zoom with cached raster and explicit recalculation"
+      "date": "2026-11-22T18:15:44+07:00",
+      "update": "Add bounded connected basin-component generation classification and palette controls"
     },
     {
       "path": "explore/stopping-lab/dynamics/",
       "title": "Dynamics Atlas · Universal Lab",
       "category": "Stopping Lab",
-      "date": "2026-11-22T18:11:36+07:00",
-      "update": "Add frozen map pan/zoom with cached raster and explicit recalculation"
+      "date": "2026-11-22T18:15:44+07:00",
+      "update": "Add bounded connected basin-component generation classification and palette controls"
     },
     {
       "path": "explore/wind-farm-3d/",
