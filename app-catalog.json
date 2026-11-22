@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-11-22T12:29:14.263903+00:00",
+  "generatedAt": "2026-11-22T12:33:58.771522+00:00",
   "apps": [
     {
       "path": "explore/stopping-lab/dynamics-map/",
       "title": "Static Dynamics Map",
       "category": "Stopping Lab",
-      "date": "2026-11-22T19:29:07+07:00",
-      "update": "Extend static Julia inverse preimages to 24 generations with bounded per-level sampling and clear depth reporting"
+      "date": "2026-11-22T19:33:51+07:00",
+      "update": "Extend bounded static Julia inverse generation explorer to 40 generations"
     },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-22T19:29:07+07:00",
-      "update": "Extend static Julia inverse preimages to 24 generations with bounded per-level sampling and clear depth reporting"
+      "date": "2026-11-22T19:33:51+07:00",
+      "update": "Extend bounded static Julia inverse generation explorer to 40 generations"
     },
     {
       "path": "explore/stopping-lab/dynamics/",
