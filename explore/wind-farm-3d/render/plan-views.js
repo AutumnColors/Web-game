@@ -11,8 +11,9 @@ const TRACER_SECONDS = { top: 15, side: 10 };
 const PROFILE_STATIONS_D = [-2, 3, 7, 12];
 
 export class PlanView {
-  constructor(stage, { mobile, onPick }) {
-    this.stage = stage; this.mobile = mobile; this.onPick = onPick;
+  constructor(stage, { mobile, onPick, onPlace, onMove }) {
+    this.stage = stage; this.mobile = mobile; this.onPick = onPick; this.onPlace = onPlace; this.onMove = onMove;
+    this.build = false;
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'plan';
     this.canvas.hidden = true;
@@ -22,12 +23,27 @@ export class PlanView {
     this.img = document.createElement('canvas');
     this.tracers = null;
     new ResizeObserver(() => this.resize()).observe(stage);
+    // tap = select / place; in build mode a drag that starts on a turbine (Top view) moves it
     let down = null;
-    this.canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+    this.canvas.addEventListener('pointerdown', (e) => {
+      down = { x: e.clientX, y: e.clientY, t: performance.now(), drag: null, moved: false };
+      if (this.build && this.field && this.field.kind === 'top') {
+        const t = this.turbineNear(e.clientX, e.clientY, 22);
+        if (t) { down.drag = t.id; try { this.canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ } }
+      }
+    });
+    this.canvas.addEventListener('pointermove', (e) => {
+      if (!down || down.drag === null) return;
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 6) down.moved = true;
+      if (down.moved) { const [x, z] = this.worldFromTop(e.clientX, e.clientY); this.onMove(down.drag, x, z, false); }
+    });
     this.canvas.addEventListener('pointerup', (e) => {
-      if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 10 && performance.now() - down.t < 600) this.tap(e);
+      if (down && down.drag !== null && down.moved) {
+        const [x, z] = this.worldFromTop(e.clientX, e.clientY); this.onMove(down.drag, x, z, true);
+      } else if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 10 && performance.now() - down.t < 600) this.tap(e);
       down = null;
     });
+    this.canvas.addEventListener('pointercancel', () => { down = null; });
   }
 
   show(mode) {
@@ -37,6 +53,14 @@ export class PlanView {
   }
 
   setSimulation(sim, selected) { this.sim = sim; this.selected = selected; if (!this.canvas.hidden) { this.refreshField(); this.resetTracers(); } }
+  // layout changed (place / move / remove): recompute the field, keep the tracers moving
+  refresh(selected, { coarse = false } = {}) {
+    const planeChanged = this.mode === 'side' && selected?.id !== this.selected?.id;
+    this.selected = selected;
+    if (this.canvas.hidden) return;
+    this.refreshField(coarse);
+    if (planeChanged || !this.tracers) this.resetTracers();
+  }
   setSelected(t) { this.selected = t; if (this.mode === 'side' && !this.canvas.hidden) { this.refreshField(); this.resetTracers(); } }
   setColorMode(m) { this.colorMode = m; this.buildImage(); }
 
@@ -65,13 +89,18 @@ export class PlanView {
   topXY(x, z) { const m = this.map, b = this.sim.terrain.bounds; return [m.ox + (x - b.xMin) * m.k, m.oy + (z - b.zMin) * m.k]; }
   sideXY(s, y) { const m = this.map, f = this.field; return [m.ox + (s - f.sMin) * m.kx, m.oy + (f.yMax - y) * m.ky]; }
 
-  refreshField() {
+  // coarse: lower resolution while a turbine is being dragged
+  refreshField(coarse = false) {
     if (!this.sim) return;
     if (this.mode === 'top') {
-      this.field = { kind: 'top', ...sliceTop(this.sim, this.mobile ? { nx: 120, nz: 90 } : { nx: 160, nz: 120 }) };
+      const res = coarse ? { nx: 64, nz: 48 } : this.mobile ? { nx: 120, nz: 90 } : { nx: 160, nz: 120 };
+      this.field = { kind: 'top', ...sliceTop(this.sim, res) };
     } else if (this.mode === 'side' && this.selected) {
       this.field = { kind: 'side', ...sliceSide(this.sim, this.selected, this.mobile ? { ns: 160, ny: 70 } : {}) };
       this.profiles = profilesAt(this.sim, this.selected, PROFILE_STATIONS_D);
+    } else if (this.mode === 'side') {
+      this.field = { kind: 'empty' };
+      return;
     }
     this.layout();
     this.buildImage();
@@ -79,7 +108,7 @@ export class PlanView {
 
   buildImage() {
     const f = this.field;
-    if (!f) return;
+    if (!f || f.kind === 'empty') return;
     const nx = f.kind === 'top' ? f.nx : f.ns, ny = f.kind === 'top' ? f.nz : f.ny;
     this.img.width = nx; this.img.height = ny;
     const ictx = this.img.getContext('2d'), data = ictx.createImageData(nx, ny), ramp = rampRGB(this.colorMode), c = [0, 0, 0];
@@ -95,6 +124,7 @@ export class PlanView {
   }
 
   resetTracers() {
+    if (!this.field || this.field.kind === 'empty') { this.tracers = null; return; }
     const n = this.mode === 'top' ? (this.mobile ? 500 : 900) : (this.mobile ? 300 : 500);
     this.tracers = { n, a: new Float32Array(n), b: new Float32Array(n), age: new Float32Array(n), life: new Float32Array(n), va: new Float32Array(n), vb: new Float32Array(n) };
     for (let i = 0; i < n; i++) { this.spawn(i); this.tracers.age[i] = Math.random() * this.tracers.life[i]; }
@@ -149,7 +179,14 @@ export class PlanView {
     const ctx = this.ctx, d = this.dpr;
     ctx.setTransform(d, 0, 0, d, 0, 0);
     ctx.clearRect(0, 0, this.W, this.H);
-    if (this.field.kind === 'top') this.drawTop(ctx); else this.drawSide(ctx);
+    if (this.field.kind === 'top') this.drawTop(ctx);
+    else if (this.field.kind === 'side') this.drawSide(ctx);
+    else {
+      ctx.fillStyle = 'rgba(230,243,248,0.85)'; ctx.font = '14px system-ui, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('No turbine selected.', this.W / 2, this.H / 2 - 10);
+      ctx.fillText(this.build ? 'Place one in the Top or 3D view, or tap an existing one.' : 'Tap a turbine in the Top or 3D view.', this.W / 2, this.H / 2 + 14);
+      ctx.textAlign = 'left';
+    }
   }
 
   clipToMap(ctx, fn) {
@@ -181,8 +218,10 @@ export class PlanView {
     if (sel) {
       const n = sel.basis.n, [ax, ay] = this.topXY(sel.hub[0] - 4 * D * n[0], sel.hub[2] - 4 * D * n[2]);
       const [bx, by] = this.topXY(sel.hub[0] + 18 * D * n[0], sel.hub[2] + 18 * D * n[2]);
-      ctx.setLineDash([6, 5]); ctx.strokeStyle = 'rgba(255,214,90,0.9)'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
+      this.clipToMap(ctx, () => {
+        ctx.setLineDash([6, 5]); ctx.strokeStyle = 'rgba(255,214,90,0.9)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
+      });
     }
     ctx.font = '11px system-ui, sans-serif'; ctx.textBaseline = 'middle';
     for (const t of sim.farm.turbines) {
@@ -205,7 +244,10 @@ export class PlanView {
     ctx.textAlign = 'center'; ctx.fillText('wind', cx, cy + 30); ctx.fillText('N ↑', m.ox + m.ww - 16, m.oy + 12); ctx.textAlign = 'left';
     const bar = 1000 * m.k, bx0 = m.ox + 10, by0 = m.oy + m.hh - 12;
     ctx.fillRect(bx0, by0, bar, 3); ctx.fillText('1 km', bx0 + bar + 6, by0 + 1);
-    this.caption(`From above · cut at ${sim.model.def.hubHeight} m above the ground (hub height) · tap a turbine`);
+    this.caption(this.build
+      ? (sim.farm.turbines.length ? 'Build: tap empty ground to place · drag a turbine to move it · tap one to follow it'
+        : 'Empty map — tap anywhere to place your first turbine. Watch its wake appear.')
+      : `From above · cut at ${sim.model.def.hubHeight} m above the ground (hub height) · tap a turbine`);
   }
 
   drawSide(ctx) {
@@ -270,8 +312,28 @@ export class PlanView {
     lines.slice(0, 2).forEach((l, i) => ctx.fillText(l, 12, this.H - PAD.b + 30 + i * 15));
   }
 
+  worldFromTop(clientX, clientY) {
+    const rect = this.canvas.getBoundingClientRect(), m = this.map, b = this.sim.terrain.bounds;
+    return [b.xMin + (clientX - rect.left - m.ox) / m.k, b.zMin + (clientY - rect.top - m.oy) / m.k];
+  }
+
+  turbineNear(clientX, clientY, radius) {
+    const rect = this.canvas.getBoundingClientRect();
+    let best = null, bestD = radius;
+    for (const t of this.sim.farm.turbines) {
+      const [x, y] = this.topXY(t.x, t.z), d = Math.hypot(clientX - rect.left - x, clientY - rect.top - y);
+      if (d < bestD) { bestD = d; best = t; }
+    }
+    return best;
+  }
+
   tap(e) {
-    if (!this.sim) return;
+    if (!this.sim || !this.field || this.field.kind === 'empty') return;
+    if (this.build && this.field.kind === 'top' && !this.turbineNear(e.clientX, e.clientY, 30)) {
+      const [x, z] = this.worldFromTop(e.clientX, e.clientY), b = this.sim.terrain.bounds;
+      if (x >= b.xMin && x <= b.xMax && z >= b.zMin && z <= b.zMax) this.onPlace(x, z);
+      return;
+    }
     const rect = this.canvas.getBoundingClientRect(), px = e.clientX - rect.left, py = e.clientY - rect.top;
     let best = null, bestD = 30;
     for (const t of this.sim.farm.turbines) {
