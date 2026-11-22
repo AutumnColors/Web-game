@@ -10,6 +10,9 @@
 // (ΔU = Σ ΔU_i). Both are empirical rules, neither follows from first principles.
 // Power from the disk-averaged speed: P_i = P(U_i). Shear across the disk enters only
 // through that average.
+// Wake centreline: follows the ambient streamline through the hub (the mean flow carries the
+// wake over hills); it runs along the rotor axis horizontally. Width is not changed by the terrain.
+// STATUS: approximation — plausible advection, not validated against terrain-wake data.
 
 import { createGaussianWake, wakeGrowthRate } from './wake.js';
 import { rotorBasis, hubCenter, bladeDirection, dot } from './geometry.js';
@@ -47,15 +50,40 @@ export function createFarm({ terrain, atmosphere, model, layout, superposition =
     ...p, basis: null, hub: null, inflow: 0, freeInflow: 0, op: null, freeOp: null, wake: null,
   }));
 
+  // Centreline heights along the axis, tabulated every CL_STEP metres (numerical resolution only).
+  const CL_STEP = 25, CL_MAX = 7000;
+  function buildCentreline(t) {
+    const eta0 = atmosphere.eta(t.hub[0], t.hub[1], t.hub[2]), n = Math.ceil(CL_MAX / CL_STEP) + 1;
+    const ys = new Float64Array(n);
+    let y = t.hub[1];
+    for (let i = 0; i < n; i++) {
+      const s = i * CL_STEP;
+      y = atmosphere.streamlineHeight(t.hub[0] + s * t.basis.n[0], t.hub[2] + s * t.basis.n[2], eta0, y);
+      ys[i] = y;
+    }
+    t.centreline = ys;
+  }
+  function centreHeight(t, xd) {
+    const f = xd / CL_STEP, i = Math.floor(f), ys = t.centreline;
+    if (i >= ys.length - 1) return ys[ys.length - 1];
+    return ys[i] + (f - i) * (ys[i + 1] - ys[i]);
+  }
+
+  // speed deficit [m/s] that turbine t's wake causes at a point
+  function wakeOf(t, x, y, z) {
+    if (!t.wake) return 0;
+    const dx = x - t.hub[0], dz = z - t.hub[2];
+    const xd = dx * t.basis.n[0] + dz * t.basis.n[2];
+    if (xd <= 0) return 0;
+    const dy = y - centreHeight(t, xd);
+    return t.wake.deficit(xd, dx * dx + dz * dz - xd * xd + dy * dy) * t.inflow;
+  }
+
   function wakeDeficitAt(x, y, z, skip) {
     let lin = 0, sq = 0;
     for (const t of turbines) {
       if (t === skip || !t.wake) continue;
-      const dx = x - t.hub[0], dy = y - t.hub[1], dz = z - t.hub[2];
-      const xd = dx * t.basis.n[0] + dz * t.basis.n[2];
-      if (xd <= 0) continue;
-      const r2 = dx * dx + dy * dy + dz * dz - xd * xd;
-      const d = t.wake.deficit(xd, r2) * t.inflow;
+      const d = wakeOf(t, x, y, z);
       lin += d; sq += d * d;
     }
     return superposition === 'linear' ? lin : Math.sqrt(sq);
@@ -80,6 +108,7 @@ export function createFarm({ terrain, atmosphere, model, layout, superposition =
       atmosphere.velocity(t.x, t.base + def.hubHeight, t.z, v);
       t.basis = rotorBasis(v[0], v[2]);
       t.hub = hubCenter([t.x, t.base, t.z], def.hubHeight, def.overhang, t.basis);
+      buildCentreline(t);
       t.wake = null;
       t.freeInflow = diskAverage(t, false);
       t.freeOp = model.operatingPoint(t.freeInflow);
@@ -119,5 +148,5 @@ export function createFarm({ terrain, atmosphere, model, layout, superposition =
     return out;
   }
 
-  return { turbines, kStar, superposition, solve, velocity, wakeDeficitAt, ambient: atmosphere.velocity };
+  return { turbines, kStar, superposition, solve, velocity, wakeDeficitAt, wakeOf, centreHeight, ambient: atmosphere.velocity };
 }

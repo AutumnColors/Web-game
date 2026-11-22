@@ -76,8 +76,22 @@ export function createAtmosphere({ terrain, z0, uRef, zRef, direction, variable 
   return {
     z0, zRef, decayLength: L, turbulenceIntensity: TI, state,
     setTime, profile, velocity,
-    // the stream coordinate η is exposed for tests (streamline check)
+    // the stream coordinate η (constant along every streamline)
     eta(x, y, z) { terrain.sample(x, z, h3); return y - h3[0] * Math.exp(-(y - h3[0]) / L); },
+    // height y above (x, z) of the streamline with stream coordinate etaTarget (Newton; η is
+    // strictly increasing in y because H > −L, which the tests check for every terrain)
+    streamlineHeight(x, z, etaTarget, guess) {
+      terrain.sample(x, z, h3);
+      const H = h3[0];
+      let y = Math.max(guess ?? etaTarget, H + 1e-3);
+      for (let i = 0; i < 30; i++) {
+        const e = Math.exp(-(y - H) / L), f = y - H * e - etaTarget, df = 1 + (H / L) * e;
+        const yn = Math.max(H + 1e-6, y - f / df);
+        if (Math.abs(yn - y) < 1e-9) return yn;
+        y = yn;
+      }
+      return y;
+    },
     isVariable: modes.length > 0,
   };
 }
