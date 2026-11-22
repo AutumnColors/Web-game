@@ -1,29 +1,24 @@
 'use strict';
-/* Dynamics Atlas: bounded, opt-in Julia dynamics overlay. Does not alter the renderer. */
+/* Open a separate Dynamics Atlas workspace; the Universal Lab remains untouched. */
 (()=>{
-const FL=window.FractalLab;if(!FL)return;
-const LIMIT={maxDepth:4,markersDepth:7,maxPeriod:6,maxRoots:24,maxSeeds:90,maxIter:160,maxPixels:240*160};
-let enabled=false,job=0,timer=0,cache=null,signature='',points=[],status='';
-const canvas=document.createElement('canvas');canvas.style.cssText='position:fixed;inset:0;width:100vw;height:100dvh;pointer-events:none;z-index:1;display:none';document.body.append(canvas);
-const ctx=canvas.getContext('2d');
-const btn=document.createElement('button');btn.className='glass';btn.type='button';btn.title='Dynamics Atlas (Julia only)';btn.textContent='◎';btn.style.cssText='width:44px;height:44px;border-radius:50%;font-size:26px';
-document.getElementById('tools')?.insertBefore(btn,document.getElementById('shot'));
-const info=document.createElement('div');info.style.cssText='position:fixed;right:12px;top:64px;max-width:210px;padding:8px 10px;border-radius:10px;background:rgba(5,10,20,.82);border:1px solid #64748b;color:#fff;font:11px system-ui;z-index:2;pointer-events:none;display:none';document.body.append(info);
-const add=(a,b)=>[a[0]+b[0],a[1]+b[1]],mul=(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]],abs=a=>Math.hypot(...a);
-const div=(a,b)=>{const d=b[0]*b[0]+b[1]*b[1];return d>1e-28?[(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d]:null;};
-function pow(z,n){let a=[1,0],b=z;while(n){if(n&1)a=mul(a,b);b=mul(b,b);n=Math.floor(n/2);}return a;}
-function f(z,p,c){return add(pow(z,p),c);}
-function iterate(z,n,p,c){let d=[1,0];for(let k=0;k<n;k++){d=mul(mul([p,0],pow(z,p-1)),d);z=f(z,p,c);if(!isFinite(abs(z))||abs(z)>1e8)break;}return [z,d];}
-function criticalCycle(p,c){let z=[0,0],orbit=[];for(let i=0;i<LIMIT.maxIter;i++){z=f(z,p,c);if(abs(z)>8)return null;for(let j=0;j<orbit.length;j++){if(abs(add(z,[-orbit[j][0],-orbit[j][1]]))<1e-9){const period=i-j+1;if(period>LIMIT.maxPeriod)return null;let cyc=orbit.slice(j);cyc.push(z);return cyc.slice(0,period);}}orbit.push(z);}return null;}
-function findRoots(p,c){const out=[];for(let period=1;period<=3&&out.length<LIMIT.maxRoots;period++){const count=Math.min(LIMIT.maxSeeds,30*period);for(let k=0;k<count;k++){let z=[2*Math.cos(k*2*Math.PI/count),2*Math.sin(k*2*Math.PI/count)];for(let j=0;j<36;j++){const [v,d]=iterate(z,period,p,c),diff=[v[0]-z[0],v[1]-z[1]],step=div(diff,[d[0]-1,d[1]]);if(!step)break;z=[z[0]-step[0],z[1]-step[1]];if(abs(step)<1e-11)break;}const [v,d]=iterate(z,period,p,c);if(abs([v[0]-z[0],v[1]-z[1]])>1e-7||abs(z)>10||out.some(r=>abs([r.z[0]-z[0],r.z[1]-z[1]])<1e-5))continue;let actual=period;for(let j=1;j<period;j++)if(period%j===0){const u=iterate(z,j,p,c)[0];if(abs([u[0]-z[0],u[1]-z[1]])<1e-6){actual=j;break;}}if(actual!==period)continue;out.push({z,period,mod:abs(d),residual:abs([v[0]-z[0],v[1]-z[1]])});if(out.length>=LIMIT.maxRoots)break;}}return out;}
-function depth(){return Math.log2(HOME.w/FL.view.w);}
-function key(){const c=FL.cfg;return [c.fractal,c.juliaPower,c.seed.re,c.seed.im,Math.round(FL.view.cx*1e5),Math.round(FL.view.cy*1e5),Math.round(FL.view.w*1e5),Math.round(FL.view.a*1e4),canvas.width,canvas.height].join('|');}
-function clear(){ctx.clearRect(0,0,canvas.width,canvas.height);}
-function position(){const d=window.devicePixelRatio||1,w=Math.max(1,Math.round(innerWidth*d)),h=Math.max(1,Math.round(innerHeight*d));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;signature='';}}
-function markers(){const c=FL.cfg,p=c.juliaPower||2,C=[c.seed.re,c.seed.im];const cycle=criticalCycle(p,C);const roots=findRoots(p,C);return {cycle,roots};}
-function paintMarkers(data){const d=window.devicePixelRatio||1;ctx.save();ctx.lineWidth=1.6*d;ctx.font=(11*d)+'px system-ui';const arr=[];if(data.cycle)data.cycle.forEach((z,i)=>arr.push({z,label:'A'+i,color:'#f4d06f'}));data.roots.filter(r=>r.mod>1+1e-5).forEach(r=>arr.push({z:r.z,label:'R'+r.period,color:'#fb9298'}));for(const m of arr){const [x,y]=toScreen(m.z[0],m.z[1]);if(x<10||y<10||x>canvas.width-10||y>canvas.height-10)continue;ctx.beginPath();ctx.arc(x,y,4*d,0,Math.PI*2);ctx.fillStyle=m.color;ctx.fill();ctx.strokeStyle='#07121e';ctx.stroke();ctx.fillStyle=m.color;ctx.fillText(m.label,x+7*d,y-5*d);}ctx.restore();}
-async function compute(){const ticket=++job;position();clear();if(!enabled)return;const d=depth(),c=FL.cfg;if(c.fractal!=='julia'){info.textContent='Dynamics Atlas: Julia mode only (parameter-space analysis is different).';return;}if(d>LIMIT.markersDepth){info.textContent='Atlas paused at deep zoom (depth '+d.toFixed(1)+').';return;}const k=key();if(k===signature&&cache){ctx.putImageData(cache,0,0);paintMarkers(points);return;}const p=c.juliaPower||2,C=[c.seed.re,c.seed.im];if(p<2||p>7){info.textContent='Atlas supports polynomial degrees 2–7.';return;}info.textContent='Analyzing dynamics…';const data=markers();points=data;const showBasins=d<=LIMIT.maxDepth&&!!data.cycle;const W=Math.min(240,Math.max(80,Math.round(canvas.width/4))),H=Math.min(160,Math.max(60,Math.round(canvas.height/4)));const off=document.createElement('canvas');off.width=W;off.height=H;const ox=off.getContext('2d'),im=ox.createImageData(W,H);const v={...FL.view},sx=v.w/canvas.width,co=Math.cos(v.a),si=Math.sin(v.a);const cycles=data.cycle;const maxIt=Math.min(LIMIT.maxIter,100+Math.max(0,Math.round(d))*8);if(showBasins){for(let y=0;y<H;y++){if(ticket!==job)return;for(let x=0;x<W;x++){const dx=(x+.5)*canvas.width/W-canvas.width/2,dy=(y+.5)*canvas.height/H-canvas.height/2;let z=[v.cx+sx*(dx*co+dy*si),v.cy+sx*(dx*si-dy*co)];let phase=-1;for(let n=0;n<maxIt;n++){if(abs(z)>8)break;for(let j=0;j<cycles.length;j++){if(abs([z[0]-cycles[j][0],z[1]-cycles[j][1]])<1e-5){phase=(j-n%cycles.length+cycles.length)%cycles.length;break;}}if(phase>=0)break;z=f(z,p,C);}if(phase>=0){const i=(y*W+x)*4,h=phase/cycles.length;im.data[i]=Math.round(45+65*Math.cos(h*6.283));im.data[i+1]=Math.round(120+40*Math.sin(h*6.283));im.data[i+2]=Math.round(170+50*Math.cos(h*6.283+2));im.data[i+3]=105;}}if(y%12===0)await new Promise(r=>setTimeout(r,0));}ox.putImageData(im,0,0);}if(ticket!==job)return;clear();if(showBasins){ctx.imageSmoothingEnabled=true;ctx.drawImage(off,0,0,canvas.width,canvas.height);}cache=ctx.getImageData(0,0,canvas.width,canvas.height);signature=k;paintMarkers(data);info.textContent=(cycles?'Attracting cycle: '+cycles.length+' · ':'No detected attracting cycle · ')+data.roots.length+' periodic points (period ≤3) · depth '+d.toFixed(1)+(showBasins?' · basins':' · markers only');}
-function schedule(){if(!enabled)return;clearTimeout(timer);timer=setTimeout(()=>compute().catch(e=>{info.textContent='Atlas calculation failed';console.warn(e)}),300);}
-btn.onclick=()=>{enabled=!enabled;btn.classList.toggle('on',enabled);canvas.style.display=enabled?'block':'none';info.style.display=enabled?'block':'none';if(enabled){signature='';schedule();}else{++job;clearTimeout(timer);clear();}};
-let last='';function watch(){if(enabled){const s=[FL.cfg.fractal,FL.cfg.juliaPower,FL.cfg.seed.re,FL.cfg.seed.im,FL.view.cx.toFixed(5),FL.view.cy.toFixed(5),FL.view.w.toFixed(5),FL.view.a.toFixed(4),innerWidth,innerHeight].join('|');if(s!==last){last=s;++job;schedule();}}requestAnimationFrame(watch);}watch();
+const btn=document.createElement('button');
+btn.className='glass';btn.type='button';btn.title='Open Dynamics Atlas';btn.setAttribute('aria-label','Open Dynamics Atlas');
+btn.style.cssText='width:44px;height:44px;border-radius:50%;font-size:25px';
+btn.textContent='◎';
+const tools=document.getElementById('tools');
+tools?.insertBefore(btn,document.getElementById('shot'));
+btn.onclick=()=>{
+const c=window.FractalLab?.cfg||cfg;
+const v=window.FractalLab?.view||view;
+const q=new URLSearchParams({
+p:String(c.fractal==='multibrot'?c.power:c.juliaPower||2),
+cr:String(c.fractal==='julia'?c.seed.re:-1),
+ci:String(c.fractal==='julia'?c.seed.im:0),
+cx:String(c.fractal==='julia'?v.cx:0),
+cy:String(c.fractal==='julia'?v.cy:0),
+w:String(c.fractal==='julia'?v.w:4.2),
+a:String(c.fractal==='julia'?v.a:0)
+});
+location.href='dynamics/?'+q;
+};
 })();
