@@ -1,29 +1,68 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3D Wind Farm Lab</title><style>body{margin:0;background:#081b2a;color:#e6f3f8;font:14px system-ui}header{padding:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}button,select{background:#183b4e;color:white;border:1px solid #527789;border-radius:8px;padding:9px}#view{height:calc(100dvh - 100px);min-height:350px}small{opacity:.75;padding:0 12px}</style></head><body><header><b>3D Wind Farm Lab</b><select id="scenario"><option value="coast">Coastal</option><option value="plain">Plains</option><option value="mountain">Mountains</option><option value="gust">Variable winds</option></select><button id="random">New random map</button><button id="pause">Pause</button><button id="reset">Reset camera</button></header><small id="status">Loading Three.js…</small><div id="view"></div>
-<script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
-import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/controls/OrbitControls.js';
-const view=document.querySelector('#view'),status=document.querySelector('#status');
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x091d2e);scene.fog=new THREE.Fog(0x091d2e,160,400);
-const camera=new THREE.PerspectiveCamera(55,1,.1,800);camera.position.set(90,85,120);
-const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));view.appendChild(renderer.domElement);
-const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,12,0);controls.enableDamping=true;
-scene.add(new THREE.HemisphereLight(0xd9efff,0x38503b,2));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-60,100,20);scene.add(sun);
-let group=new THREE.Group();scene.add(group);let turbines=[],particles=[],running=true,clock=0,windSpeed=10,dir=new THREE.Vector3(1,0,.15),scenario='coast';
-const mat=(c)=>new THREE.MeshStandardMaterial({color:c,roughness:.78,side:THREE.DoubleSide});
-const towerMat=mat(0xdde9ec),bladeMat=mat(0xf4fafc),groundMat=mat(0x4d715d);
-const rand=(a,b)=>a+Math.random()*(b-a);
-function height(x,z){if(scenario==='mountain')return 30*Math.exp(-((x+12)**2+(z-5)**2)/1700)+9*Math.sin(x/23)*Math.cos(z/30);if(scenario==='coast')return 2*Math.sin(x/20)+3*Math.sin(z/35);return 1.5*Math.sin(x/30)*Math.cos(z/25);}
-function wind(x,y,z,t){let v=windSpeed*(1+.12*Math.sin(z/35+t*.4));if(scenario==='gust')v*=1+.3*Math.sin(x/23-t*1.4)*Math.cos(z/28);v*=.8+.2*Math.min(1,Math.max(0,y)/40);let deficit=0;for(const turbine of turbines){const dx=x-turbine.x,dz=z-turbine.z;const down=dx*dir.x+dz*dir.z,cross=-dx*dir.z+dz*dir.x;if(down<=0)continue;const spread=6+down*.12;const rr=cross*cross+(y-turbine.h)**2;deficit+=.33/Math.pow(1+down/35,1.4)*Math.exp(-rr/(2*spread*spread));}v*=Math.max(.2,1-Math.min(.8,deficit));return new THREE.Vector3(dir.x*v,.05*Math.sin(x/20+t)*v,dir.z*v);}
-function build(){scene.remove(group);group=new THREE.Group();scene.add(group);turbines=[];particles=[];clock=0;windSpeed=rand(8,15);const a=rand(-.45,.45);dir.set(Math.cos(a),0,Math.sin(a));
-const geo=new THREE.PlaneGeometry(230,190,55,45);geo.rotateX(-Math.PI/2);const pos=geo.attributes.position;for(let i=0;i<pos.count;i++)pos.setY(i,height(pos.getX(i),pos.getZ(i)));geo.computeVertexNormals();group.add(new THREE.Mesh(geo,groundMat));
-const towerGeo=new THREE.CylinderGeometry(.6,1.3,1,10),hubGeo=new THREE.SphereGeometry(1.6,12,10);
-for(let i=0;i<12;i++){let x=rand(-88,75),z=rand(-70,70);if(turbines.some(p=>Math.hypot(x-p.x,z-p.z)<25)){i--;continue;}const y=height(x,z),h=y+rand(23,37),tower=new THREE.Mesh(towerGeo,towerMat);tower.scale.y=h-y;tower.position.set(x,(y+h)/2,z);group.add(tower);
-const hub=new THREE.Group();hub.position.set(x,h,z);hub.rotation.y=Math.atan2(-dir.z,dir.x);group.add(hub);hub.add(new THREE.Mesh(hubGeo,towerMat));const rotor=new THREE.Group();hub.add(rotor);
-for(let b=0;b<3;b++){const blade=new THREE.Mesh(new THREE.BoxGeometry(1.1,14,.25),bladeMat);blade.position.y=7;const arm=new THREE.Group();arm.rotation.x=b*2*Math.PI/3;arm.add(blade);rotor.add(arm);}
-turbines.push({x,z,h,rotor});}
-const points=new Float32Array(1300*3);for(let i=0;i<1300;i++){points[i*3]=rand(-110,110);points[i*3+1]=rand(8,90);points[i*3+2]=rand(-95,95);}const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(points,3));const cloud=new THREE.Points(pg,new THREE.PointsMaterial({color:0x7bd9f2,size:1.2,transparent:true,opacity:.8}));group.add(cloud);particles.push({cloud,points});status.textContent='12 turbines · approximate volumetric wakes · '+windSpeed.toFixed(1)+' m/s reference wind';}
-function resize(){const w=view.clientWidth,h=view.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
-window.addEventListener('resize',resize);document.querySelector('#scenario').onchange=e=>{scenario=e.target.value;build();};document.querySelector('#random').onclick=build;document.querySelector('#pause').onclick=e=>{running=!running;e.target.textContent=running?'Pause':'Play';};document.querySelector('#reset').onclick=()=>{camera.position.set(90,85,120);controls.target.set(0,12,0);controls.update();};
-let prev=performance.now();function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-prev)/1000);prev=now;if(running){clock+=dt;for(const tr of turbines)tr.rotor.rotation.x+=dt*1.8;for(const p of particles){for(let i=0;i<p.points.length;i+=3){let x=p.points[i],y=p.points[i+1],z=p.points[i+2];const v=wind(x,y,z,clock);x+=v.x*dt*2;y+=v.y*dt*2;z+=v.z*dt*2;if(x>115||x< -115||z>95||z< -95||y>110){x=-110;y=rand(10,85);z=rand(-90,90);}p.points[i]=x;p.points[i+1]=y;p.points[i+2]=z;}p.cloud.geometry.attributes.position.needsUpdate=true;}}controls.update();renderer.render(scene,camera);}build();resize();requestAnimationFrame(frame);
-</script></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>3D Wind Farm Lab</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #081b2a; color: #e6f3f8; font: 14px system-ui, -apple-system, Segoe UI, sans-serif; }
+  body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; }
+  header { padding: 10px 12px 6px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  header b { margin-right: 4px; }
+  button, select { background: #183b4e; color: #fff; border: 1px solid #527789; border-radius: 8px; padding: 8px 10px; font: inherit; }
+  button:active { background: #24536b; }
+  #status { padding: 0 12px 8px; opacity: .8; font-size: 12.5px; line-height: 1.35; min-height: 1.35em; }
+  #view { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; }
+  #view canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+  #legend { position: absolute; left: 10px; bottom: 10px; font-size: 11px; text-align: left; background: rgba(8,27,42,.78); padding: 6px 8px; border-radius: 8px; border: 1px solid #2e5366; cursor: pointer; max-width: calc(100% - 40px); }
+  #legend .bar { width: 160px; height: 8px; border-radius: 4px; margin: 4px 0 2px; }
+  #legend .hint { opacity: .6; }
+  #legend .ends { display: flex; justify-content: space-between; opacity: .8; }
+  #error { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; padding: 20px; }
+  #error div { max-width: 560px; background: #2a1620; border: 1px solid #a65370; border-radius: 10px; padding: 14px 16px; white-space: pre-wrap; font-size: 13px; }
+  a { color: #8fd3ef; }
+</style>
+</head>
+<body>
+<header>
+  <b>3D Wind Farm Lab</b>
+  <select id="scenario" aria-label="Scenario">
+    <option value="coast">Coastal</option>
+    <option value="plain">Plains</option>
+    <option value="mountain">Mountains</option>
+    <option value="gust">Variable winds</option>
+  </select>
+  <button id="random">New random map</button>
+  <button id="pause">Pause</button>
+  <button id="reset">Reset camera</button>
+</header>
+<div id="status">Loading…</div>
+<div id="view">
+  <button id="legend" hidden><span id="legendLabel"></span> <span class="hint">(tap to switch)</span><div class="bar" id="legendBar"></div><div class="ends"><span></span><span></span></div></button>
+  <div id="error"><div id="errorText"></div></div>
+</div>
+<script>
+  // Classic script: runs even when module loading fails, so failures are visible.
+  (function () {
+    function show(msg) {
+      var box = document.getElementById('error'), t = document.getElementById('errorText');
+      t.textContent = (t.textContent ? t.textContent + '\n\n' : '') + msg;
+      box.style.display = 'flex';
+      document.getElementById('status').textContent = 'Not running — see the message below.';
+    }
+    window.windLabError = show;
+    window.addEventListener('error', function (e) {
+      if (/ResizeObserver loop/.test(e.message || '')) return; // benign browser notice
+      show('Error: ' + (e.message || (e.target && e.target.src ? 'could not load ' + e.target.src : 'unknown')));
+    }, true);
+    window.addEventListener('unhandledrejection', function (e) { show('Error: ' + (e.reason && e.reason.message || e.reason)); });
+    setTimeout(function () {
+      if (!window.windLabReady && document.getElementById('error').style.display !== 'flex')
+        show('Still loading after 20 s. three.js comes from a CDN (jsDelivr, then unpkg); check the network connection.');
+    }, 20000);
+  })();
+</script>
+<script nomodule>window.windLabError('This browser does not support JavaScript modules; please use a current browser.');</script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

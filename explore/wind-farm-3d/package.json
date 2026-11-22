@@ -1,0 +1,7 @@
+{
+  "name": "wind-farm-3d-lab",
+  "private": true,
+  "type": "module",
+  "description": "Physics modules are plain ES modules; this file only tells Node to treat .js as ES modules for the tests.",
+  "scripts": { "test": "node --test tests/*.test.js" }
+}
