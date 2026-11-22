@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-22T09:02:10.020944+00:00",
+  "generatedAt": "2026-11-22T10:42:23.024153+00:00",
   "apps": [
+    {
+      "path": "explore/wind-farm-3d/",
+      "title": "3D Wind Farm Lab",
+      "category": "Explore",
+      "date": "2026-11-22T16:15:32+07:00",
+      "update": "Wind farm 3D lab (5/5): validation tests and README (verified vs approximate)"
+    },
     {
       "path": "explore/julia-3d-lab/",
       "title": "3D Julia Lab",
