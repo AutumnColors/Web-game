@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-21T16:40:56.455067+00:00",
+  "generatedAt": "2026-11-22T09:02:10.020944+00:00",
   "apps": [
+    {
+      "path": "explore/julia-3d-lab/",
+      "title": "3D Julia Lab",
+      "category": "Explore",
+      "date": "2026-11-22T16:02:02+07:00",
+      "update": "Add high-detail 2D contour revolution mode for real-parameter 3D Julia bulbs"
+    },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
@@ -42,13 +49,6 @@
       "category": "Explore",
       "date": "2026-11-20T15:54:50+07:00",
       "update": "Add full elevation-grid CSV export with measured DEM and modeled bathymetry columns"
-    },
-    {
-      "path": "explore/julia-3d-lab/",
-      "title": "3D Julia Lab",
-      "category": "Explore",
-      "date": "2026-11-19T22:31:10+07:00",
-      "update": "Add 4D quaternion Julia projection with k occupancy coloring"
     },
     {
       "path": "explore/starting-point-mandelbrot-3d/",
