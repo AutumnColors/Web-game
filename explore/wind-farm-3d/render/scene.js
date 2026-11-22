@@ -217,6 +217,28 @@ export class FarmView {
     return near;
   }
 
+  // Recreate turbine meshes after the layout changed (terrain, particles and camera are kept).
+  rebuildTurbines() {
+    if (!this.group) return;
+    for (const h of this.turbines) this.group.remove(h.root);
+    this.turbines = this.sim.farm.turbines.map((t) => {
+      const h = this.factory.create(t);
+      this.group.add(h.root);
+      return h;
+    });
+    this.syncTurbines();
+  }
+
+  // Ground point [x, z] under a screen point, or null.
+  pickGround(clientX, clientY) {
+    const THREE = this.THREE, rect = this.renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    const ray = new THREE.Raycaster(); ray.setFromCamera(ndc, this.camera);
+    const terrain = this.group && this.group.getObjectByName('terrain');
+    const hit = terrain && ray.intersectObject(terrain, false)[0];
+    return hit ? [hit.point.x, hit.point.z] : null;
+  }
+
   // Copy yaw and pitch from the physics state into the meshes.
   syncTurbines() {
     this.sim.farm.turbines.forEach((t, i) => this.turbines[i].orient(t.basis, t.op.pitch));

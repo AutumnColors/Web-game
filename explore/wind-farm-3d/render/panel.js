@@ -30,10 +30,13 @@ function regionOf(r) {
 }
 
 export class InfoPanel {
-  constructor(el, { onSelect }) {
-    this.el = el; this.onSelect = onSelect; this.tab = 'turbine';
+  constructor(el, { onSelect, onRemove, onClear }) {
+    this.el = el; this.onSelect = onSelect; this.onRemove = onRemove; this.onClear = onClear; this.tab = 'turbine';
+    this.build = false;
     this.open = new Set(['wake']);
     el.addEventListener('click', (e) => {
+      const act = e.target.closest('[data-action]');
+      if (act) { if (act.dataset.action === 'remove') this.onRemove(this.selected.id); else this.onClear(); return; }
       const tab = e.target.closest('[data-tab]');
       if (tab) { this.tab = tab.dataset.tab; this.render(); return; }
       const row = e.target.closest('[data-select]');
@@ -48,7 +51,7 @@ export class InfoPanel {
     el.addEventListener('change', (e) => { if (e.target.id === 'turbineSelect') this.onSelect(+e.target.value); });
   }
 
-  update(sim, selected) { this.sim = sim; this.selected = selected; this.render(); }
+  update(sim, selected, { build = this.build } = {}) { this.sim = sim; this.selected = selected; this.build = build; this.render(); }
 
   render() {
     if (!this.sim) return;
@@ -76,8 +79,18 @@ export class InfoPanel {
   }
 
   turbineTab() {
-    const sim = this.sim, t = this.selected, r = turbineReport(sim, t), reg = regionOf(r);
+    const sim = this.sim, t = this.selected;
+    if (!t) {
+      return sim.farm.turbines.length
+        ? '<p class="intro">Tap a turbine in any view, or pick one in the Farm tab, to follow the wind through it.</p>'
+        : `<p class="intro"><b>Empty map.</b> Tap the ground in the <b>Top</b> view (or in 3D) to place a turbine.
+           Then place a second one behind it — downwind — and watch how the first one's wake changes the second one's power.</p>
+           <p class="muted">The wind here: ${f(sim.atmosphere.state.uRef, 1)} m/s at 90 m. The arrow in the Top view shows where it blows.</p>`;
+    }
+    const r = turbineReport(sim, t), reg = regionOf(r);
     this.report = r;
+    const nearWarn = r.inNearWakeOf.length
+      ? `<br><span class="warn">⚠ closer than 3 D behind T${r.inNearWakeOf.join(', T')}: here the wake model is only a placeholder</span>` : '';
     const options = sim.farm.turbines.map((q) => `<option value="${q.id}" ${q === t ? 'selected' : ''}>T${q.id}</option>`).join('');
     const shadowTxt = r.shadowedBy.length
       ? 'slowed by the wake of ' + r.shadowedBy.map((s) => `T${s.id} (−${f(s.dU, 2)} m/s, ${f(s.dist, 1)} D away)`).join(', ')
@@ -89,12 +102,13 @@ export class InfoPanel {
     const betzPct = (100 * r.cp) / (16 / 27);
     return `
     <div class="pick">Follow the wind through turbine <select id="turbineSelect">${options}</select>
-      <span class="muted">or tap a turbine in any view</span></div>
+      <span class="muted">or tap a turbine in any view</span>
+      ${this.build ? `<button class="small" data-action="remove">Remove T${t.id}</button>` : ''}</div>
     <h3>① Wind arriving</h3>
     <div class="grid">
       ${this.card('u0', 'Wind if no other turbines', f(r.U0, 2), 'm/s', 'average over the rotor disk', 'approx',
         `Average wind speed over the rotor disk (32 points) if this turbine stood alone. It comes from the logarithmic wind profile — wind grows with height because the ground slows the air — and from the terrain flow model (hills speed it up, valleys slow it).<div class="eq">U(h) = U<sub>ref</sub> · ln(h/z₀) / ln(90 m/z₀)</div>`)}
-      ${this.card('u', 'Wind it actually gets', f(r.U, 2), 'm/s', r.wakeReduction > 0.0005 ? `−${f(100 * r.wakeReduction, 1)} % · ${shadowTxt}` : shadowTxt, 'literature',
+      ${this.card('u', 'Wind it actually gets', f(r.U, 2), 'm/s', (r.wakeReduction > 0.0005 ? `−${f(100 * r.wakeReduction, 1)} % · ${shadowTxt}` : shadowTxt) + nearWarn, 'literature',
         `The same disk average after subtracting the slowed air (wakes) of turbines upstream. This is the speed that decides the turbine's power and thrust. Wakes from several turbines are combined as the square root of the sum of squares (an empirical rule).`)}
       ${this.card('shear', 'Top tip vs bottom tip', `${f(r.uTop, 1)} / ${f(r.uBottom, 1)}`, 'm/s', `blade tips at ${Math.round(r.hubHeight + r.R)} m and ${Math.round(r.hubHeight - r.R)} m`, 'approx',
         `Wind speed where a blade tip is at the top and at the bottom of its circle. Friction with the ground makes the lower air slower (wind shear), so every blade meets faster and slower air once per revolution.`)}
@@ -152,7 +166,7 @@ export class InfoPanel {
       ${this.card('fw', 'Reference wind', f(a.state.uRef, 1), 'm/s', `at 90 m over flat ground · roughness z₀ = ${a.z0} m`, 'approx',
         'Wind speed at hub height that the scenario starts from. The roughness length z₀ describes the surface (sea 0.0002 m, open grass 0.03 m, rougher land 0.1 m) and sets both the wind profile and the turbulence.')}
     </div>
-    <p class="muted">Tap a row to follow that turbine.</p>
+    <p class="muted">Tap a row to follow that turbine.${this.build && sim.farm.turbines.length ? ' <button class="small" data-action="clear">Remove all turbines</button>' : ''}</p>
     <table class="list"><tr><th>turbine</th><th>wind m/s</th><th>wake %</th><th>MW</th><th>Ct</th><th>rpm</th><th>pitch °</th></tr>${rows}</table>`;
   }
 
