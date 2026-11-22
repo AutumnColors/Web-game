@@ -13,7 +13,9 @@ Build a browser-based scientific playground to investigate how wind turbine geom
 - **Tap any turbine** (in any view, or in the Farm table) to follow it. The panel tells its story in four steps — wind arriving → what the turbine does → energy → push on the air and the wake — as small cards. Tap a card for the explanation and formula. Every card carries a label: exact, theory, published model, approximate, reference design.
 - Panel tabs: **Turbine** (the story + power curve + blade-span chart), **Farm** (totals and a table of all turbines), **Model & trust** (what each model is and every coefficient with its source).
 - The legend switches the colouring: wind speed ÷ reference, or wake deficit (speed ÷ turbine-free speed at the same point).
-- Reproducible: the URL holds `#scenario=…&seed=…&view=…&t=…`.
+- **Build mode** ("Empty map — place your own"): start with the same site and wind but no turbines. Tap the ground (Top or 3D view) to place a turbine, drag it in the Top view to move it, remove it from the panel. Everything — wakes, power, the panel — is recomputed at once. Placement rules: rotors may not touch (≥ 1 D apart), the rotor must stay on the map, and blade tips must clear slopes by 15 m. Turbines placed closer than 3 D behind another are flagged: there the wake model is only a placeholder. "New map" and scenario changes keep your layout (turbines that no longer fit are left out).
+- **Orientation**: every turbine turns its rotor straight into the local hub-height wind (perfect yaw). Deliberate misalignment (yaw steering) is not modelled yet — see Next tasks.
+- Reproducible: the URL holds `#scenario=…&seed=…&view=…&t=…`, and in build mode the layout itself (`&layout=build&L=id:x:z,…`), so a built farm can be shared as a link.
 - 12 NREL 5-MW reference turbines on a 4 km × 3 km site, real dimensions, yawed into the local wind, rotor speed and pitch from the controller. Tracers move with the physics field at 10× real time; rotors spin at real speed.
 
 ### Why the previous prototype never started
@@ -69,7 +71,7 @@ Coordinates: metres, x = east, y = up, z = south (three.js convention, −z = no
 Every coefficient is listed with its meaning, source and status in `physics/parameters.js`; the layout rules (spacing 4D, 350 m edge margin, ≥ 15 m tip clearance for any yaw) are in `physics/index.js` and are site choices, not physics.
 
 ## What has been verified
-`npm test` (Node 18+) in this folder runs 36 tests:
+`npm test` (Node 18+) in this folder runs 40 tests:
 
 - **Momentum theory**: actuator disk gives Cp = 16/27, Ct = 8/9 at a = 1/3.
 - **BEM vs Glauert's optimum rotor** (ideal airfoil, no drag, no tip loss, chord and twist from the optimum design): BEM Cp agrees with an independent numerical Glauert integral within 0.2 % at λ = 1, 2, 5, 7.5, 10, and that integral matches the classical table (Manwell et al.) within 0.0015; induction a agrees section by section to 1e-6.
@@ -80,8 +82,9 @@ Every coefficient is listed with its meaning, source and status in `physics/para
 - **Geometry**: rotor axis parallel to the hub wind; tips stay in the rotor plane at radius R; rotation clockwise seen from upwind; geometric angle of attack from the section frame equals BEM α, and the vector lift + drag reproduce the BEM thrust and driving force; minimum tip clearance over 100 maps 25.8 m.
 - **Diagnostics**: Cp·P_wind equals the operating power, 4a(1−a) = Ct, slices sample exactly the field the tracers use, wakes only slow the wind, wake interactions are mutual.
 - **Wake centreline**: stays on the hub's streamline (η constant to 1e-6) and above the ground on mountain maps; at hub height on flat ground.
+- **Build mode**: an empty map gives exactly the ambient wind and zero power; rebuilding a random layout by hand gives the same power; a turbine placed 6 D downstream loses power and is reported in the upstream turbine's wake, moving it sideways removes the loss, ids survive moves; placement rules and the near-wake flag work.
 - **Farm**: single-turbine power equals the power curve at its inflow; downstream inflow equals the disk-averaged upstream wake; power loss decreases with spacing; farm power ≤ wake-free power; deterministic per seed; spacing respected.
-- **Browser** (`tests/browser_smoke.py`, 24 checks, see its header for how to run it offline): all four scenarios start with a clean console; Top/Side views render; tapping a turbine (view or table) selects it; cards expand; charts draw; rendered blade tips and chord directions equal the physics geometry (≤ 3e-13 m, 2e-15); mouse orbit/zoom; phone layout without page scroll; one-finger orbit, two-finger pinch/pan/twist; legend tap; jsDelivr blocked → unpkg; no CDN → visible error.
+- **Browser** (`tests/browser_smoke.py`, 31 checks, see its header for how to run it offline): all four scenarios start with a clean console; Top/Side views render; tapping a turbine (view or table) selects it; cards expand; charts draw; build mode places turbines by tapping in Top and 3D, dragging moves one out of a wake (wake loss drops), Remove works, the layout survives a reload from the URL; rendered blade tips and chord directions equal the physics geometry (≤ 3e-13 m, 2e-15); mouse orbit/zoom; phone layout without page scroll; one-finger orbit, two-finger pinch/pan/twist; legend tap; jsDelivr blocked → unpkg; no CDN → visible error.
 
 ## Comparisons, not validations
 - NREL 5-MW with our approximate polars: Cp_max 0.461 at λ 8.24, rated wind 11.7 m/s, pitch 22.5° at 25 m/s. Published: 0.482 at 7.55, 11.4 m/s, ≈ 23.5°. The gap comes from the polars; tabulated DU/NACA 64 polars are the next step before any turbine result is called validated.
@@ -98,7 +101,7 @@ Every coefficient is listed with its meaning, source and status in `physics/para
 ## Next tasks (in order)
 1. ~~Visual diagnostics~~ — done: Top/Side cuts, profiles, turbine story panel. Possible additions: cross-wake cut (looking downwind), time-series of a turbine in Variable winds.
 2. **Airfoil data**: replace the simplified polars with the tabulated NREL 5-MW polars and re-run the reference comparison; add precone and tilt.
-3. **Turbine operation**: yaw misalignment (needs skewed BEM correction and wake deflection), derating.
+3. **Turbine operation**: yaw misalignment / wake steering — turning a rotor off the wind on purpose to bend its wake away from the next turbine. Needs a skewed-inflow correction in BEM (power drops roughly like cos^p of the yaw angle) and the wake-deflection model of Bastankhah & Porté-Agel (2016). Then derating.
 4. **Wake model**: near-wake length (Bastankhah & Porté-Agel 2016), ground image, added turbulence, terrain-following centreline; compare superposition methods against published LES / Horns Rev data.
 5. **Layout optimisation**: fixed-grid vs staggered vs optimised under a wind rose; AEP and wake losses.
 6. **Advanced**: boundary-layer modelling, stability, mesoscale coupling — kept clearly separate from fast wake models and from CFD.

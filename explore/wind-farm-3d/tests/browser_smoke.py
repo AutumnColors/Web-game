@@ -7,7 +7,7 @@ three.js npm package (CDN requests are answered from it, so the test runs offlin
     python3 tests/browser_smoke.py --three ./package --chrome /usr/bin/google-chrome --out /tmp/windlab
 
 Checks: page starts without errors in every scenario; Top/Side views, tap-to-select, panel cards,
-farm table and model tab; rendered blade tips and chord lines
+farm table and model tab; build mode (place, drag, remove, URL); rendered blade tips and chord lines
 match physics/geometry.js; mouse orbit/zoom and two-finger touch pinch/pan/twist move the
 camera; CDN fallback (jsDelivr blocked → unpkg); a visible error when no CDN is reachable.
 Screenshots are written to --out.
@@ -120,6 +120,38 @@ async def main(a):
         sizes = await page.evaluate("(() => { const s = document.getElementById('stage'), p = document.getElementById('panel'); return [s.clientHeight, p.clientHeight, p.scrollHeight]; })()")
         check(sizes[0] > 250 and sizes[1] > 250 and sizes[2] > sizes[1], f'phone: view and scrollable panel both visible {sizes}')
         check(not errors, f'phone console clean {errors[:3]}')
+        await b.close()
+
+        # build mode: empty map, place by tapping (Top and 3D), drag to move, remove, URL round trip
+        b, page, errors = await open_page(p, a)
+        await page.goto('http://lab/index.html#scenario=plain&seed=11&layout=build')
+        await page.wait_for_function('window.windLabReady', timeout=30000); await page.wait_for_timeout(800)
+        check(await page.evaluate('window.windLab.sim.farm.turbines.length') == 0 and await page.evaluate('window.windLab.plan.mode') == 'top', 'build mode starts empty in the Top view')
+        def to_screen(x, z): return page.evaluate(f"(() => {{ const p = window.windLab.plan, r = p.canvas.getBoundingClientRect(), [a, b] = p.topXY({x}, {z}); return [r.left + a, r.top + b]; }})()")
+        sx, sy = await to_screen(-1200, 0); await page.mouse.click(sx, sy); await page.wait_for_timeout(200)
+        sx, sy = await to_screen(-400, 120); await page.mouse.click(sx, sy); await page.wait_for_timeout(200)
+        n = await page.evaluate('window.windLab.sim.farm.turbines.length')
+        check(n == 2, f'tap on empty ground places turbines ({n})')
+        loss1 = await page.evaluate('window.windLab.sim.summary.wakeLoss')
+        sx, sy = await to_screen(-400, 120); tx, ty = await to_screen(-400, 700)
+        await page.mouse.move(sx, sy); await page.mouse.down(); await page.mouse.move(tx, ty, steps=10); await page.mouse.up(); await page.wait_for_timeout(300)
+        z2 = await page.evaluate('window.windLab.sim.farm.turbines.find(t => t.id === 2).z')
+        loss2 = await page.evaluate('window.windLab.sim.summary.wakeLoss')
+        check(abs(z2 - 700) < 30 and loss2 < loss1, f'drag moves T2 out of the wake: z {z2:.0f}, wake loss {loss1:.3f} -> {loss2:.3f}')
+        await page.screenshot(path=str(out / 'build-top.png'))
+        await page.click('[data-view="3d"]'); await page.wait_for_timeout(500)
+        before = await page.evaluate('window.windLab.sim.farm.turbines.length')
+        g = await page.evaluate("(() => { const r = document.querySelector('#stage canvas').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height * 0.75]; })()")
+        await page.mouse.click(g[0], g[1]); await page.wait_for_timeout(400)
+        after = await page.evaluate('window.windLab.sim.farm.turbines.length')
+        check(after == before + 1, f'tap on the ground in 3D places a turbine ({before} -> {after})')
+        await page.screenshot(path=str(out / 'build-3d.png'))
+        await page.click('[data-action=remove]'); await page.wait_for_timeout(300)
+        check(await page.evaluate('window.windLab.sim.farm.turbines.length') == before, 'Remove button removes the selected turbine')
+        url = await page.evaluate('location.href')
+        await page.goto('about:blank'); await page.goto(url); await page.wait_for_function('window.windLabReady', timeout=30000)
+        check(await page.evaluate('window.windLab.sim.farm.turbines.length') == before, 'hand-built layout survives a reload from the URL')
+        check(not errors, f'build mode console clean {errors[:3]}')
         await b.close()
 
         # CDN fallback and failure message
