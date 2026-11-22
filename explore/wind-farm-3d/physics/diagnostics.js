@@ -25,8 +25,12 @@ export function turbineReport(sim, t) {
 
   const others = sim.farm.turbines.filter((o) => o !== t);
   const deficitFrom = (src, p) => sim.farm.wakeOf(src, p[0], p[1], p[2]);
-  const shadowedBy = others.map((o) => ({ id: o.id, dU: deficitFrom(o, t.hub), dist: Math.hypot(t.x - o.x, t.z - o.z) / D }))
+  // xD: how far downstream of the source (along its axis), in rotor diameters
+  const downstreamD = (src, p) => ((p[0] - src.hub[0]) * src.basis.n[0] + (p[2] - src.hub[2]) * src.basis.n[2]) / D;
+  const shadowedBy = others.map((o) => ({ id: o.id, dU: deficitFrom(o, t.hub), dist: Math.hypot(t.x - o.x, t.z - o.z) / D, xD: downstreamD(o, t.hub) }))
     .filter((s) => s.dU > INFLUENCE_THRESHOLD * U0).sort((p, q) => q.dU - p.dU);
+  // the Gaussian wake model is a placeholder closer than 3 D (see parameters.js, nearWakeEnd)
+  const inNearWakeOf = shadowedBy.filter((s) => s.xD < 3).map((s) => s.id);
   const shadows = others.map((o) => ({ id: o.id, dU: deficitFrom(t, o.hub), dist: Math.hypot(t.x - o.x, t.z - o.z) / D }))
     .filter((s) => s.dU > INFLUENCE_THRESHOLD * freeInflowOf(others, s.id))
     .sort((p, q) => q.dU - p.dU);
@@ -46,7 +50,7 @@ export function turbineReport(sim, t) {
     pWind, cp, pAero: op.P, pElec: op.Pel, efficiency: m.def.efficiency,
     ct: op.Ct, ctWake: ctW, ctClamped: !!(t.wake && t.wake.clamped), thrust, a,
     uRotor: U * (1 - a), uFarIdeal: U * (1 - 2 * a),
-    stations, shadowedBy, shadows, D, R, hubHeight: m.def.hubHeight,
+    stations, shadowedBy, shadows, inNearWakeOf, D, R, hubHeight: m.def.hubHeight,
   };
 }
 function freeInflowOf(list, id) { return list.find((o) => o.id === id).freeInflow; }
