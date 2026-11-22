@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-22T10:42:23.024153+00:00",
+  "generatedAt": "2026-11-22T11:01:57.312676+00:00",
   "apps": [
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-22T18:01:50+07:00",
+      "update": "Load opt-in bounded Dynamics Atlas in pinned Universal Lab"
+    },
     {
       "path": "explore/wind-farm-3d/",
       "title": "3D Wind Farm Lab",
@@ -14,13 +21,6 @@
       "category": "Explore",
       "date": "2026-11-22T16:02:02+07:00",
       "update": "Add high-detail 2D contour revolution mode for real-parameter 3D Julia bulbs"
-    },
-    {
-      "path": "explore/stopping-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
-      "date": "2026-11-21T23:40:47+07:00",
-      "update": "Merge pull request #11 from AutumnColors/fractal-music"
     },
     {
       "path": "explore/fractal-atlas/",
