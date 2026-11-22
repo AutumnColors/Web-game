@@ -6,7 +6,8 @@ three.js npm package (CDN requests are answered from it, so the test runs offlin
     npm pack three@0.170.0 && tar xzf three-0.170.0.tgz      # gives ./package
     python3 tests/browser_smoke.py --three ./package --chrome /usr/bin/google-chrome --out /tmp/windlab
 
-Checks: page starts without errors in every scenario; rendered blade tips and chord lines
+Checks: page starts without errors in every scenario; Top/Side views, tap-to-select, panel cards,
+farm table and model tab; rendered blade tips and chord lines
 match physics/geometry.js; mouse orbit/zoom and two-finger touch pinch/pan/twist move the
 camera; CDN fallback (jsDelivr blocked → unpkg); a visible error when no CDN is reachable.
 Screenshots are written to --out.
@@ -69,6 +70,25 @@ async def main(a):
         await page.mouse.wheel(0, 400); await page.wait_for_timeout(200)
         c1 = await page.evaluate(CAM)
         check(abs(c1['az'] - c0['az']) > 0.1 and abs(c1['el'] - c0['el']) > 0.02 and c1['d'] > c0['d'], f'mouse orbit + wheel zoom {c0} -> {c1}')
+        # learning UI: 2D views, tap-to-select, panel cards and farm table
+        await page.click('[data-view=top]'); await page.wait_for_timeout(800)
+        target = await page.evaluate("""(() => { const w = window.windLab, t = w.sim.farm.turbines.find(q => q !== w.selected);
+            const [x, y] = w.plan.topXY(t.x, t.z), r = w.plan.canvas.getBoundingClientRect(); return {id: t.id, x: r.left + x, y: r.top + y}; })()""")
+        await page.mouse.click(target['x'], target['y']); await page.wait_for_timeout(300)
+        check((await page.evaluate('window.windLab.selected.id')) == target['id'], f'tap in Top view selects T{target["id"]}')
+        await page.screenshot(path=str(out / 'desktop-top.png'))
+        await page.click('[data-view=side]'); await page.wait_for_timeout(800)
+        side = await page.evaluate("(() => { const p = window.windLab.plan; return {mode: p.mode, kind: p.field.kind, hidden: p.canvas.hidden, profiles: p.profiles.length}; })()")
+        check(side == {'mode': 'side', 'kind': 'side', 'hidden': False, 'profiles': 4}, f'Side view shows slice + 4 profiles {side}')
+        await page.click('[data-card=thrust]'); await page.wait_for_timeout(200)
+        check(await page.evaluate("document.querySelector('[data-card=thrust] .more').textContent.includes('Newton')"), 'card expands with explanation')
+        await page.click('[data-card=curve]'); await page.wait_for_timeout(200)
+        check(await page.evaluate("!!document.querySelector('canvas[data-chart=curve]')"), 'power-curve chart drawn')
+        await page.screenshot(path=str(out / 'desktop-side.png'))
+        await page.click('[data-tab=farm]'); await page.click('[data-select="1"]'); await page.wait_for_timeout(300)
+        check((await page.evaluate('window.windLab.selected.id')) == 1, 'farm table row selects turbine')
+        await page.click('[data-tab=model]'); await page.wait_for_timeout(200)
+        check(await page.evaluate("document.querySelectorAll('[data-card^=reg-]').length") >= 15, 'model tab lists the coefficient registry')
         check(not errors, f'desktop console clean {errors[:3]}')
         await b.close()
 
@@ -76,24 +96,29 @@ async def main(a):
         b, page, errors = await open_page(p, a, mobile=True)
         await page.goto('http://lab/index.html#scenario=mountain&seed=5')
         await page.wait_for_function('window.windLabReady', timeout=30000); await page.wait_for_timeout(1500)
-        size = await page.evaluate("(() => { const c = document.querySelector('#view canvas'), v = document.getElementById('view'); return [c.clientWidth, c.clientHeight, v.clientWidth, v.clientHeight, innerWidth, innerHeight, document.documentElement.scrollHeight]; })()")
+        size = await page.evaluate("(() => { const c = document.querySelector('#stage canvas'), v = document.getElementById('stage'); return [c.clientWidth, c.clientHeight, v.clientWidth, v.clientHeight, innerWidth, innerHeight, document.documentElement.scrollHeight]; })()")
         check(size[0] == size[2] and size[1] == size[3] and size[1] > 300 and size[6] <= size[5], f'phone layout: canvas fills view, no page scroll {size}')
         cdp = await page.context.new_cdp_session(page)
         async def touch(kind, pts): await cdp.send('Input.dispatchTouchEvent', {'type': kind, 'touchPoints': [{'x': x, 'y': y, 'id': i} for i, (x, y) in enumerate(pts)]})
+        cx, cy = await page.evaluate("(() => { const r = document.getElementById('stage').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2 + 20]; })()")
         c0 = await page.evaluate(CAM)
-        await touch('touchStart', [(200, 500)])
-        for k in range(1, 9): await touch('touchMove', [(200 + 10 * k, 500 - 4 * k)])
+        await touch('touchStart', [(cx - 60, cy)])
+        for k in range(1, 9): await touch('touchMove', [(cx - 60 + 10 * k, cy - 4 * k)])
         await touch('touchEnd', [])
         c1 = await page.evaluate(CAM)
         check(abs(c1['az'] - c0['az']) > 0.05, f'one-finger orbit {c0["az"]:.3f} -> {c1["az"]:.3f}')
-        await touch('touchStart', [(150, 450), (250, 550)])
-        for k in range(1, 9): await touch('touchMove', [(150 - 6 * k, 450 - 6 * k + 3 * k), (250 + 6 * k, 550 + 6 * k + 3 * k)])
+        await touch('touchStart', [(cx - 40, cy - 30), (cx + 40, cy + 30)])
+        for k in range(1, 9): await touch('touchMove', [(cx - 40 - 5 * k, cy - 30 - 4 * k + 2 * k), (cx + 40 + 5 * k, cy + 30 + 4 * k + 2 * k)])
         await touch('touchEnd', [])
         c2 = await page.evaluate(CAM)
         check(c2['d'] < c1['d'] and c2['t'] != c1['t'], f'pinch zoom-in + two-finger pan d {c1["d"]:.0f} -> {c2["d"]:.0f}')
         await page.tap('#legend'); await page.wait_for_timeout(300)
         check((await page.evaluate('window.windLab.view.colorMode')) == 'wake', 'tap legend switches colouring')
         await page.screenshot(path=str(out / 'phone-mountain.png'))
+        await page.tap('[data-view=side]'); await page.wait_for_timeout(800)
+        await page.screenshot(path=str(out / 'phone-side.png'))
+        sizes = await page.evaluate("(() => { const s = document.getElementById('stage'), p = document.getElementById('panel'); return [s.clientHeight, p.clientHeight, p.scrollHeight]; })()")
+        check(sizes[0] > 250 and sizes[1] > 250 and sizes[2] > sizes[1], f'phone: view and scrollable panel both visible {sizes}')
         check(not errors, f'phone console clean {errors[:3]}')
         await b.close()
 

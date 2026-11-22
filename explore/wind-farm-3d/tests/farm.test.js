@@ -69,3 +69,19 @@ test('every scenario: converged, deterministic, farm power ≤ wake-free power',
     for (const t of a.farm.turbines) for (const u of a.farm.turbines) if (t !== u) assert.ok(Math.hypot(t.x - u.x, t.z - u.z) >= 4 * D);
   }
 });
+
+test('wake centreline follows the ambient streamline through the hub (flat: stays at hub height)', () => {
+  const flat = flatFarm([[0, 0]]).farm.turbines[0];
+  assert.ok(flat.centreline.every((y) => Math.abs(y - flat.hub[1]) < 1e-9));
+  for (let seed = 1; seed <= 6; seed++) {
+    const sim = createSimulation({ scenario: 'mountain', seed });
+    for (const t of sim.farm.turbines) {
+      const eta0 = sim.atmosphere.eta(...t.hub);
+      for (let xd = 0; xd <= 4000; xd += 250) {
+        const x = t.hub[0] + xd * t.basis.n[0], z = t.hub[2] + xd * t.basis.n[2], y = sim.farm.centreHeight(t, xd);
+        assert.ok(y > sim.terrain.height(x, z), 'centreline above ground');
+        if (xd % 25 === 0) assert.ok(Math.abs(sim.atmosphere.eta(x, y, z) - eta0) < 1e-6, 'on the hub streamline');
+      }
+    }
+  }
+});
