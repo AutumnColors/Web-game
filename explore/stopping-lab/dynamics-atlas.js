@@ -1,24 +1,18 @@
 'use strict';
-/* Open a separate Dynamics Atlas workspace; the Universal Lab remains untouched. */
+/* One canonical Julia Dynamics Map, available as standalone page or embedded full-screen workspace. */
 (()=>{
-const btn=document.createElement('button');
-btn.className='glass';btn.type='button';btn.title='Open Dynamics Atlas';btn.setAttribute('aria-label','Open Dynamics Atlas');
-btn.style.cssText='width:44px;height:44px;border-radius:50%;font-size:25px';
-btn.textContent='◎';
-const tools=document.getElementById('tools');
-tools?.insertBefore(btn,document.getElementById('shot'));
+const btn=document.createElement('button');btn.className='glass';btn.type='button';btn.title='Open Julia Dynamics Map';btn.setAttribute('aria-label','Open Julia Dynamics Map');btn.style.cssText='width:44px;height:44px;border-radius:50%;font-size:25px';btn.textContent='◎';
+document.getElementById('tools')?.insertBefore(btn,document.getElementById('shot'));
+let frame=null,wrap=null;
+function close(){wrap?.remove();wrap=null;frame=null;document.body.style.overflow='';}
 btn.onclick=()=>{
-const c=window.FractalLab?.cfg||cfg;
-const v=window.FractalLab?.view||view;
-const q=new URLSearchParams({
-p:String(c.fractal==='multibrot'?c.power:c.juliaPower||2),
-cr:String(c.fractal==='julia'?c.seed.re:-1),
-ci:String(c.fractal==='julia'?c.seed.im:0),
-cx:String(c.fractal==='julia'?v.cx:0),
-cy:String(c.fractal==='julia'?v.cy:0),
-w:String(c.fractal==='julia'?v.w:4.2),
-a:String(c.fractal==='julia'?v.a:0)
-});
-location.href='dynamics/?'+q;
+ if(wrap){close();return;}
+ const c=window.FractalLab?.cfg||window.cfg;
+ const q=new URLSearchParams();
+ if(c?.fractal==='julia'){q.set('p',String(c.juliaPower||2));q.set('cr',String(c.seed?.re??-1));q.set('ci',String(c.seed?.im??0));}
+ wrap=document.createElement('div');wrap.id='dynamics-map-overlay';wrap.style.cssText='position:fixed;inset:0;z-index:10000;background:#08111e;display:flex;flex-direction:column';
+ frame=document.createElement('iframe');frame.title='Julia Dynamics Map';frame.style.cssText='border:0;width:100%;height:100%;flex:1';frame.src='dynamics-map/'+(q.size?'?'+q:'');
+ wrap.append(frame);document.body.append(wrap);
 };
+window.addEventListener('message',e=>{if(e.origin===location.origin&&e.source===frame?.contentWindow&&e.data?.type==='close-dynamics-map')close();});
 })();
