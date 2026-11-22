@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-22T11:42:43.183861+00:00",
+  "generatedAt": "2026-11-22T12:01:28.521468+00:00",
   "apps": [
+    {
+      "path": "explore/wind-farm-3d/",
+      "title": "3D Wind Farm Lab",
+      "category": "Explore",
+      "date": "2026-11-22T19:01:05+07:00",
+      "update": "Wind farm lab: build-mode browser checks and README"
+    },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
@@ -14,13 +21,6 @@
       "category": "Stopping Lab",
       "date": "2026-11-22T18:42:34+07:00",
       "update": "Add bounded inverse-iteration preimage markers, generation controls and strength measurements"
-    },
-    {
-      "path": "explore/wind-farm-3d/",
-      "title": "3D Wind Farm Lab",
-      "category": "Explore",
-      "date": "2026-11-22T18:18:03+07:00",
-      "update": "Wind farm lab: learning layout (3D/Top/Side switch, panel), 3D picking + highlight, tests, README"
     },
     {
       "path": "explore/julia-3d-lab/",
