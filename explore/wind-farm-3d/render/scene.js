@@ -2,6 +2,7 @@
 import { createTurbineFactory } from './turbine-mesh.js';
 import { OrbitCamera } from './controls.js';
 import { bladeDirection, sectionFrame } from '../physics/geometry.js';
+import { COLOR_MODES } from './colors.js';
 
 // Visual settings (no physical meaning).
 export const VISUAL = {
@@ -9,12 +10,7 @@ export const VISUAL = {
   streakSeconds: 4,       // streak length = velocity × this many (simulated) seconds
   particles: { desktop: 4000, mobile: 1800 },
   heightRange: [10, 250], // m above ground where particles are seeded (rotor spans 27–153 m)
-  colorModes: {
-    speed: { label: 'wind speed ÷ reference hub-height speed',
-      stops: [[0.45, 0x3b1f8f], [0.7, 0x2c7fb8], [0.9, 0x41b6c4], [1.05, 0xc7e9b4], [1.25, 0xffffcc]] },
-    wake: { label: 'wake: speed ÷ turbine-free speed at the same point',
-      stops: [[0.5, 0xd7301f], [0.7, 0xfc8d59], [0.85, 0xfdd49e], [0.97, 0x6d8796], [1.0, 0x4f6878]] },
-  },
+  colorModes: COLOR_MODES,
 };
 
 function colorRamp(THREE, mode) {
@@ -174,12 +170,60 @@ export class FarmView {
     for (const g of [this.lineGeo, this.headGeo]) { g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true; }
   }
 
+  // Highlight one turbine: translucent rotor disk + dashed wake centreline (15 D downstream).
+  setSelected(t) {
+    const THREE = this.THREE;
+    this.selected = t;
+    if (this.selGroup) { this.group?.remove(this.selGroup); this.selGroup.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); }); }
+    this.selGroup = null;
+    if (!t || !this.group) return;
+    const g = new THREE.Group(), R = this.sim.model.rotor.R, D = this.sim.model.D;
+    const disk = new THREE.Mesh(new THREE.CircleGeometry(R, 48), new THREE.MeshBasicMaterial({ color: 0xffd65a, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false }));
+    const ring = new THREE.Mesh(new THREE.RingGeometry(R - 1.2, R + 1.2, 64), new THREE.MeshBasicMaterial({ color: 0xffd65a, side: THREE.DoubleSide }));
+    for (const m of [disk, ring]) {
+      m.position.fromArray(t.hub);
+      m.lookAt(t.hub[0] + t.basis.n[0], t.hub[1], t.hub[2] + t.basis.n[2]);
+      g.add(m);
+    }
+    const pts = [];
+    for (let xd = 0; xd <= 15 * D; xd += 25) pts.push(new THREE.Vector3(t.hub[0] + xd * t.basis.n[0], this.sim.farm.centreHeight(t, xd), t.hub[2] + xd * t.basis.n[2]));
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: 0xffd65a, dashSize: 25, gapSize: 18 }));
+    line.computeLineDistances();
+    g.add(line);
+    this.selGroup = g;
+    this.group.add(g);
+  }
+
+  // Turbine index under a screen point, or -1.
+  pick(clientX, clientY) {
+    const THREE = this.THREE, rect = this.renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    const ray = new THREE.Raycaster(); ray.setFromCamera(ndc, this.camera);
+    let best = -1, bestD = Infinity;
+    this.turbines.forEach((h, i) => {
+      const hit = ray.intersectObject(h.root, true)[0];
+      if (hit && hit.distance < bestD) { bestD = hit.distance; best = i; }
+    });
+    if (best >= 0) return best;
+    // forgiving fallback for small targets: nearest hub within 40 px
+    let near = -1, nd = 40;
+    this.sim.farm.turbines.forEach((t, i) => {
+      const p = new THREE.Vector3(...t.hub).project(this.camera);
+      if (p.z > 1) return;
+      const sx = rect.left + ((p.x + 1) / 2) * rect.width, sy = rect.top + ((1 - p.y) / 2) * rect.height;
+      const d = Math.hypot(sx - clientX, sy - clientY);
+      if (d < nd) { nd = d; near = i; }
+    });
+    return near;
+  }
+
   // Copy yaw and pitch from the physics state into the meshes.
   syncTurbines() {
     this.sim.farm.turbines.forEach((t, i) => this.turbines[i].orient(t.basis, t.op.pitch));
   }
 
-  frame(dtReal, running) {
+  frame(dtReal, running, visible = true) {
+    if (!visible) return;
     if (running) {
       this.stepParticles(dtReal * VISUAL.timeScale);
       this.sim.farm.turbines.forEach((t, i) => this.turbines[i].setAzimuth(this.turbines[i].psi + t.op.omega * dtReal));
@@ -211,11 +255,13 @@ export class FarmView {
 
   disposeGroup() {
     if (!this.group) return;
+    this.setSelected(null);
     this.scene.remove(this.group);
     this.group.traverse((o) => {
       if (o.name === 'terrain' || o.isLineSegments || o.isPoints) { o.geometry.dispose(); o.material.dispose(); }
     });
     this.factory?.dispose();
+    this.selGroup = null;
     this.group = null;
   }
 }

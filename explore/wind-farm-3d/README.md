@@ -5,10 +5,16 @@ Build a browser-based scientific playground to investigate how wind turbine geom
 
 ## Current state (Nov 2026)
 - Runs in desktop and mobile browsers (checked in headless Chrome, desktop 1280×800 and an emulated Pixel 7 with real multi-touch events).
-- Minimal UI kept: scenario (Coastal, Plains, Mountains, Variable winds), New random map, Pause/Play, Reset camera. The legend is tappable and switches the particle colouring between *speed ÷ reference hub-height speed* and *wake: speed ÷ turbine-free speed at the same point*.
-- Maps are reproducible: the URL holds `#scenario=…&seed=…`.
-- 12 NREL 5-MW reference turbines on a 4 km × 3 km site, real dimensions in metres, yawed into the local wind, rotor speed and blade pitch from the turbine controller.
-- Particles are advected by the physics velocity field (wake deficits included) at 10× real time; rotors spin at real speed.
+- **Three views of the same physics field** (switch at the top-left of the picture):
+  - **3D** — terrain, turbines, wind tracers; the selected turbine shows its rotor disk and wake centreline.
+  - **Top** — horizontal cut at hub height (90 m above the local ground), seen from above, north up. Wakes appear as dark/red bands.
+  - **Side** — vertical cut through the selected turbine along the wind, from 4 D upstream to 18 D downstream (height stretched, factor shown). Four velocity profiles (−2 D, +3 D, +7 D, +12 D): solid = with wakes, dashed = no turbines.
+  These are *cuts* (slices), not projections: a projection would pile all heights on top of each other.
+- **Tap any turbine** (in any view, or in the Farm table) to follow it. The panel tells its story in four steps — wind arriving → what the turbine does → energy → push on the air and the wake — as small cards. Tap a card for the explanation and formula. Every card carries a label: exact, theory, published model, approximate, reference design.
+- Panel tabs: **Turbine** (the story + power curve + blade-span chart), **Farm** (totals and a table of all turbines), **Model & trust** (what each model is and every coefficient with its source).
+- The legend switches the colouring: wind speed ÷ reference, or wake deficit (speed ÷ turbine-free speed at the same point).
+- Reproducible: the URL holds `#scenario=…&seed=…&view=…&t=…`.
+- 12 NREL 5-MW reference turbines on a 4 km × 3 km site, real dimensions, yawed into the local wind, rotor speed and pitch from the controller. Tracers move with the physics field at 10× real time; rotors spin at real speed.
 
 ### Why the previous prototype never started
 It imported `examples/jsm/controls/OrbitControls.js` from the CDN. That file imports the bare specifier `"three"`, which a browser can only resolve with an import map, so the module graph failed ("Failed to resolve module specifier 'three'") and the page stayed at "Loading Three.js…" with no message. Reproduced in headless Chrome. Fix: only the three.js core build is loaded (it has no imports), from jsDelivr with unpkg as fallback, and the camera control is our own Pointer-Events controller (`render/controls.js`). Any loading or WebGL failure now shows a visible message.
@@ -16,7 +22,7 @@ It imported `examples/jsm/controls/OrbitControls.js` from the CDN. That file imp
 ## Architecture
 
 ```
-index.html            minimal UI, error panel (classic script, so it works even if modules fail)
+index.html            page layout (view + learning panel), error panel (classic script, works even if modules fail)
 main.js               UI wiring, URL state, animation loop
 physics/              PURE JavaScript — no three.js, no DOM (enforced by tests/architecture.test.js)
   parameters.js       registry of every coefficient: value, unit, meaning, source, status
@@ -28,13 +34,17 @@ physics/              PURE JavaScript — no three.js, no DOM (enforced by tests
   turbine.js          NREL 5-MW geometry, controller, power/thrust table
   geometry.js         rotor axis, blade azimuth, section frames (shared with the renderer)
   wake.js             Gaussian far-wake model
-  farm.js             layout, turbine–wake coupling, combined velocity field
+  farm.js             layout, turbine–wake coupling, wake centrelines, combined velocity field
+  diagnostics.js      read-only views for teaching: turbine report, top/side slices, profiles, blade span
   index.js            createSimulation({scenario, seed}), scenarios, layout rules
 render/               three.js only; reads the simulation, never changes its physics
   three-loader.js     CDN loading with fallback
   controls.js         orbit / pan / zoom for mouse and touch
   turbine-mesh.js     tower, nacelle, hub, lofted blades from the chord/twist table
-  scene.js            terrain mesh, turbines, particle streaks, render/physics self-check
+  scene.js            terrain mesh, turbines, particle streaks, picking, render/physics self-check
+  plan-views.js       2D Top and Side cuts with tracers and profiles (canvas, no three.js)
+  panel.js            learning panel: turbine story cards, farm table, model & coefficient list
+  colors.js           colour scales shared by all views
 tests/                node --test (physics) and browser_smoke.py (headless browser)
 ```
 
@@ -51,14 +61,15 @@ Coordinates: metres, x = east, y = up, z = south (three.js convention, −z = no
 | Airfoils | Smooth thin-airfoil lift with saturation, parabolic drag, flat-plate deep stall; cylinder drag 0.50/0.35 | **Approximation** — not the reference polar tables |
 | Rotor | BEM, Ning (2014) guaranteed-convergence form, Prandtl tip/hub loss, Buhl high-thrust correction | Solver verified (below); results only as good as the polars. No yaw/tilt/cone, dynamic or 3-D effects |
 | Turbine | NREL 5-MW chord/twist/airfoil table, 6.9–12.1 rpm, variable speed at λ_opt, pitch-to-feather above rated | Geometry is the reference design; controller simplified; precone 2.5° and tilt 5° not yet modelled |
-| Wake | Bastankhah & Porté-Agel (2014) Gaussian; k* = 0.3837 I + 0.003678 (Niayifar & Porté-Agel 2016) | Literature model, implemented and checked against its own momentum derivation. Far wake only (x < 3D frozen at the 3D value); straight centreline from the hub, no ground image, no terrain following |
+| Wake | Bastankhah & Porté-Agel (2014) Gaussian; k* = 0.3837 I + 0.003678 (Niayifar & Porté-Agel 2016) | Literature model, implemented and checked against its own momentum derivation. Far wake only (x < 3D frozen at the 3D value); no ground image |
+| Wake path over terrain | Centreline follows the ambient streamline through the hub (carried over hills by the mean flow); width unchanged | **Approximation.** Before Nov 22 the centreline was a straight line and wakes ran into hills — the Side view made this visible |
 | Coupling | Disk-averaged inflow (32 equal-area points), Gauss–Seidel iteration, quadratic (Katić) superposition, perfect yaw | Engineering wake-model coupling; empirical superposition |
 | Wake-modified field | Ambient velocity scaled by (speed − ΔU) ÷ speed | **Not divergence-free** (no radial wake velocity); a visual of the deficit, not CFD |
 
 Every coefficient is listed with its meaning, source and status in `physics/parameters.js`; the layout rules (spacing 4D, 350 m edge margin, ≥ 15 m tip clearance for any yaw) are in `physics/index.js` and are site choices, not physics.
 
 ## What has been verified
-`npm test` (Node 18+) in this folder runs 30 tests:
+`npm test` (Node 18+) in this folder runs 36 tests:
 
 - **Momentum theory**: actuator disk gives Cp = 16/27, Ct = 8/9 at a = 1/3.
 - **BEM vs Glauert's optimum rotor** (ideal airfoil, no drag, no tip loss, chord and twist from the optimum design): BEM Cp agrees with an independent numerical Glauert integral within 0.2 % at λ = 1, 2, 5, 7.5, 10, and that integral matches the classical table (Manwell et al.) within 0.0015; induction a agrees section by section to 1e-6.
@@ -67,8 +78,10 @@ Every coefficient is listed with its meaning, source and status in `physics/para
 - **Atmosphere**: log law reproduced exactly on flat ground; ∇·v = 0 (relative error < 1e-8 with Richardson-extrapolated differences) and v·∇η = 0 on mountain, coast and plain maps; flow tangent to the ground; stream coordinate never folds; variable-wind statistics have the intended σ.
 - **Wake**: momentum-deficit flux equals rotor thrust within 1e-6 for Ct 0.2–0.9, I 0.07–0.15, x/D 3–40; linear width growth k*; monotonically decaying deficit.
 - **Geometry**: rotor axis parallel to the hub wind; tips stay in the rotor plane at radius R; rotation clockwise seen from upwind; geometric angle of attack from the section frame equals BEM α, and the vector lift + drag reproduce the BEM thrust and driving force; minimum tip clearance over 100 maps 25.8 m.
+- **Diagnostics**: Cp·P_wind equals the operating power, 4a(1−a) = Ct, slices sample exactly the field the tracers use, wakes only slow the wind, wake interactions are mutual.
+- **Wake centreline**: stays on the hub's streamline (η constant to 1e-6) and above the ground on mountain maps; at hub height on flat ground.
 - **Farm**: single-turbine power equals the power curve at its inflow; downstream inflow equals the disk-averaged upstream wake; power loss decreases with spacing; farm power ≤ wake-free power; deterministic per seed; spacing respected.
-- **Browser** (`tests/browser_smoke.py`, see its header for how to run it offline): all four scenarios start with a clean console; rendered blade tips and chord directions equal the physics geometry (≤ 3e-13 m, 2e-15); mouse orbit/zoom; phone layout without page scroll; one-finger orbit, two-finger pinch/pan/twist; legend tap; jsDelivr blocked → unpkg; no CDN → visible error.
+- **Browser** (`tests/browser_smoke.py`, 24 checks, see its header for how to run it offline): all four scenarios start with a clean console; Top/Side views render; tapping a turbine (view or table) selects it; cards expand; charts draw; rendered blade tips and chord directions equal the physics geometry (≤ 3e-13 m, 2e-15); mouse orbit/zoom; phone layout without page scroll; one-finger orbit, two-finger pinch/pan/twist; legend tap; jsDelivr blocked → unpkg; no CDN → visible error.
 
 ## Comparisons, not validations
 - NREL 5-MW with our approximate polars: Cp_max 0.461 at λ 8.24, rated wind 11.7 m/s, pitch 22.5° at 25 m/s. Published: 0.482 at 7.55, 11.4 m/s, ≈ 23.5°. The gap comes from the polars; tabulated DU/NACA 64 polars are the next step before any turbine result is called validated.
@@ -77,13 +90,13 @@ Every coefficient is listed with its meaning, source and status in `physics/para
 
 ## Known limitations
 - Only the ambient field is mass-conserving; wakes are superposed deficits.
-- Near wake (< 3D) is a placeholder; ground effect on wakes ignored.
+- Near wake (< 3D) is a placeholder; ground effect on wakes ignored; wake width does not react to terrain.
 - No atmospheric stability, Coriolis veer, internal boundary layer at the coastline (single z0 per scenario), or flow around (instead of over) hills.
 - Quasi-steady: in "Variable winds" wakes change everywhere at once.
 - Parked turbines (below cut-in or above cut-out) are given zero thrust.
 
 ## Next tasks (in order)
-1. **Visual diagnostics**: optional velocity slice at hub height and a vertical slice along a wake; tap a turbine to see inflow, Ct, Cp, rpm, pitch.
+1. ~~Visual diagnostics~~ — done: Top/Side cuts, profiles, turbine story panel. Possible additions: cross-wake cut (looking downwind), time-series of a turbine in Variable winds.
 2. **Airfoil data**: replace the simplified polars with the tabulated NREL 5-MW polars and re-run the reference comparison; add precone and tilt.
 3. **Turbine operation**: yaw misalignment (needs skewed BEM correction and wake deflection), derating.
 4. **Wake model**: near-wake length (Bastankhah & Porté-Agel 2016), ground image, added turbulence, terrain-following centreline; compare superposition methods against published LES / Horns Rev data.
@@ -99,7 +112,7 @@ Every coefficient is listed with its meaning, source and status in `physics/para
 6. Second 3D prototype (this folder, first commit): prescribed velocity field and ad-hoc wake deficits; replaced by the modules above.
 
 ## Design philosophy
-- Keep first-run UI minimal; model configuration modular for later advanced controls.
+- The UI is for learning: show what the physics computes, step by step, without flooding the screen (details open on tap).
 - Reproducible random seeds and unit-aware outputs.
 - Never equate visual wake effects with physically validated simulations.
 - Preserve other labs in the repository.
