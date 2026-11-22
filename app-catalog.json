@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-22T11:17:41.664529+00:00",
+  "generatedAt": "2026-11-22T11:19:10.544710+00:00",
   "apps": [
+    {
+      "path": "explore/wind-farm-3d/",
+      "title": "3D Wind Farm Lab",
+      "category": "Explore",
+      "date": "2026-11-22T18:18:03+07:00",
+      "update": "Wind farm lab: learning layout (3D/Top/Side switch, panel), 3D picking + highlight, tests, README"
+    },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
@@ -14,13 +21,6 @@
       "category": "Stopping Lab",
       "date": "2026-11-22T18:17:34+07:00",
       "update": "Improve bounded basin generation classification with multiple interior parent probes"
-    },
-    {
-      "path": "explore/wind-farm-3d/",
-      "title": "3D Wind Farm Lab",
-      "category": "Explore",
-      "date": "2026-11-22T16:15:32+07:00",
-      "update": "Wind farm 3D lab (5/5): validation tests and README (verified vs approximate)"
     },
     {
       "path": "explore/julia-3d-lab/",
