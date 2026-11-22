@@ -30,20 +30,20 @@ function componentAtlas(phases,W,H,maxGen){
  const N=W*H,ids=new Int32Array(N);ids.fill(-1);const comps=[],queue=new Int32Array(N);
  for(let start=0;start<N;start++){
   if(phases[start]<0||ids[start]>=0)continue;
-  const id=comps.length,phase=phases[start];let head=0,tail=1,sx=0,sy=0;
+  const id=comps.length,phase=phases[start];let head=0,tail=1,sx=0,sy=0,representatives=[];
   queue[0]=start;ids[start]=id;
-  while(head<tail){const at=queue[head++],x=at%W,y=(at/W)|0;sx+=x;sy+=y;
+  while(head<tail){const at=queue[head++],x=at%W,y=(at/W)|0;sx+=x;sy+=y;if(representatives.length<12&&(head===1||head%Math.max(1,Math.floor(tail/8))===0))representatives.push(at);
    const visit=n=>{if(n>=0&&n<N&&ids[n]<0&&phases[n]===phase){ids[n]=id;queue[tail++]=n;}};
    if(x>0)visit(at-1);if(x+1<W)visit(at+1);if(y>0)visit(at-W);if(y+1<H)visit(at+W);
   }
-  comps.push({id,phase,count:tail,center:[sx/tail,sy/tail],sample:queue[(tail/2)|0],gen:-1,parent:-1});
+  comps.push({id,phase,count:tail,center:[sx/tail,sy/tail],sample:queue[(tail/2)|0],representatives,gen:-1,parent:-1});
  }
  const atWorld=z=>{const [sx,sy]=screen(z);const x=Math.floor(sx*W/cv.width),y=Math.floor(sy*H/cv.height);return x>=0&&x<W&&y>=0&&y<H?ids[y*W+x]:-1;};
  if(dynamics.cycle)for(const z of dynamics.cycle){const id=atWorld(z);if(id>=0)comps[id].gen=0;}
  /* Each component maps to one component under f. Test several interior points
     to avoid boundary samples; unresolved mappings stay unclassified. */
  for(const c of comps){
-  const x=c.center[0],y=c.center[1],samples=[c.sample,Math.floor(y)*W+Math.floor(x)];
+  const x=c.center[0],y=c.center[1],samples=[c.sample,...c.representatives,Math.floor(y)*W+Math.floor(x)];
   for(const ix of samples){if(ix<0||ix>=N||ids[ix]!==c.id)continue;
    const z=world(((ix%W)+.5)*cv.width/W,(((ix/W)|0)+.5)*cv.height/H);
    const parent=atWorld(f(z));if(parent>=0&&parent!==c.id){c.parent=parent;break;}
