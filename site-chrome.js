@@ -19,4 +19,16 @@ function sync(){const hidden=document.fullscreenElement||new URLSearchParams(loc
 new MutationObserver(sync).observe(document.documentElement,{attributes:true,attributeFilter:['class']});
 if(document.body)new MutationObserver(sync).observe(document.body,{attributes:true,attributeFilter:['class']});
 document.addEventListener('fullscreenchange',sync);sync();
+/* Pages under legacy/ are archives: a red ribbon that stays on (even in clean view) says so and points to the current app. */
+const rel=decodeURIComponent(location.pathname).slice(decodeURIComponent(new URL(home).pathname).length);
+if(/^legacy(\/|$)/.test(rel)&&!document.getElementById('legacy-ribbon')){
+  const NEXT={'fractal-lab':['explore/stopping-lab/','Fractal Universe Lab'],'dual-reconstruction-lab':['explore/stopping-lab/','Fractal Universe Lab'],
+    'fractal-atlas-terrain':['explore/fractal-atlas/','Terrain Fractal'],'fractal-geography':['explore/fractal-atlas/','Terrain Fractal']};
+  const n=NEXT[rel.split('/')[1]]||['','apps'];
+  const bar=document.createElement('div');bar.id='legacy-ribbon';bar.setAttribute('role','alert');
+  bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483647;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 12px;padding:calc(7px + env(safe-area-inset-top,0px)) 12px 7px;background:#b3261e;color:#fff;font:600 13px/1.3 system-ui,-apple-system,sans-serif;text-align:center;box-shadow:0 2px 10px #0008;pointer-events:auto';
+  bar.innerHTML='<span>⚠ ARCHIVE · NOT MAINTAINED · may show wrong results. Kept for history only.</span><a href="'+home+n[0]+'" style="color:#fff;background:#0004;border:1px solid #fff8;border-radius:999px;padding:4px 10px;text-decoration:none;white-space:nowrap">Use the current '+n[1]+' →</a>';
+  (document.body||document.documentElement).appendChild(bar);
+  if(!/^\[ARCHIVE\]/.test(document.title))document.title='[ARCHIVE] '+document.title;
+}
 })();
