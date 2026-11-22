@@ -23,8 +23,7 @@ const vectorOverlay = {
    const a=(right-left)/2,b=(down-up)/2;
    const fx=this.sign*(a*cos+b*sin),fy=this.sign*(a*sin-b*cos),m=Math.hypot(fx,fy);
    if(m<1e-12)continue;
-   // vx = rightward, vy = upward on screen (the canvas y axis points down, hence y − vy below)
-   const c=Math.cos(view.a),s=Math.sin(view.a),vx=(fx*c+fy*s)/m,vy=(-fx*s+fy*c)/m;
+   const c=Math.cos(view.a),s=Math.sin(view.a),vx=(fx*c+fy*s)/m,vy=(fx*s-fy*c)/m;
    const len=Math.min(20,spacing*.45),ex=x+vx*len/2,ey=y-vy*len/2;
    ctx.beginPath();ctx.moveTo(x-vx*len/2,y+vy*len/2);ctx.lineTo(ex,ey);
    ctx.moveTo(ex-5*vx-3*vy,ey+5*vy-3*vx);ctx.lineTo(ex,ey);
