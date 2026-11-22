@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-11-22T12:55:50.441097+00:00",
+  "generatedAt": "2026-11-22T16:30:28.904016+00:00",
   "apps": [
     {
       "path": "explore/stopping-lab/dynamics-map/",
       "title": "Julia Dynamics Map",
       "category": "Stopping Lab",
-      "date": "2026-11-22T19:55:43+07:00",
-      "update": "Use Julia Dynamics Map name consistently for canonical shared tool"
+      "date": "2026-11-22T23:30:21+07:00",
+      "update": "Julia Dynamics Map: allow exponent up to 12 and show setup errors in the card (#17)"
     },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-22T19:55:43+07:00",
-      "update": "Use Julia Dynamics Map name consistently for canonical shared tool"
+      "date": "2026-11-22T23:30:21+07:00",
+      "update": "Julia Dynamics Map: allow exponent up to 12 and show setup errors in the card (#17)"
     },
     {
       "path": "explore/stopping-lab/dynamics/",
