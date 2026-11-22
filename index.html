@@ -160,7 +160,7 @@ async function render(){
     arr=fallbackItems();
     status.textContent='Showing the existing app list until the automatic catalog is generated.';
   }
-  arr=arr.filter(e=>!removedPaths.has(e.path)&&!e.path.startsWith('legacy/'));
+  arr=arr.filter(e=>!removedPaths.has(e.path)&&!e.path.startsWith('legacy/')&&e.path!=='explore/stopping-lab/dynamics/');
   arr.forEach(e=>{if(e.path==='explore/stopping-lab/dynamics-map/')e.title='Julia Dynamics Map';});
   arr.forEach(e=>{e.pinned=pinnedPaths.includes(e.path);e.tag=window.tagFor?window.tagFor(e.path):''});
   arr.sort((a,b)=>Number(b.pinned)-Number(a.pinned)||(Date.parse(b.date)||0)-(Date.parse(a.date)||0)||a.title.localeCompare(b.title));
