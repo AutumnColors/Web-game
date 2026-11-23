@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-23T07:44:46.081788+00:00",
+  "generatedAt": "2026-11-23T07:49:37.652696+00:00",
   "apps": [
     {
       "path": "explore/prime-number-boundary-test/",
       "title": "Prime Number Boundary Test",
       "category": "Explore",
-      "date": "2026-11-23T14:44:38+07:00",
-      "update": "Add standalone Prime Number Boundary Test to main"
+      "date": "2026-11-23T14:49:29+07:00",
+      "update": "Add prime-period critical orbit solver to prime boundary test"
     },
     {
       "path": "explore/stopping-lab/dynamics-map/",
