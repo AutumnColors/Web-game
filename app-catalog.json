@@ -1,26 +1,26 @@
 {
-  "generatedAt": "2026-11-23T14:40:59.811373+00:00",
+  "generatedAt": "2026-11-23T14:42:53.769081+00:00",
   "apps": [
+    {
+      "path": "explore/stopping-lab/dynamics-map/",
+      "title": "Julia Dynamics Map",
+      "category": "Stopping Lab",
+      "date": "2026-11-23T21:42:45+07:00",
+      "update": "Add forward orbit and Julia-boundary repelling-seed backward iteration to dynamics map"
+    },
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-23T21:42:45+07:00",
+      "update": "Add forward orbit and Julia-boundary repelling-seed backward iteration to dynamics map"
+    },
     {
       "path": "explore/prime-number-boundary-test/",
       "title": "Julie Cycle Lab",
       "category": "Explore",
       "date": "2026-11-23T21:40:50+07:00",
       "update": "Rename prime experiment interface to Julie Cycle Lab"
-    },
-    {
-      "path": "explore/stopping-lab/dynamics-map/",
-      "title": "Julia Dynamics Map",
-      "category": "Stopping Lab",
-      "date": "2026-11-22T23:30:21+07:00",
-      "update": "Julia Dynamics Map: allow exponent up to 12 and show setup errors in the card (#17)"
-    },
-    {
-      "path": "explore/stopping-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
-      "date": "2026-11-22T23:30:21+07:00",
-      "update": "Julia Dynamics Map: allow exponent up to 12 and show setup errors in the card (#17)"
     },
     {
       "path": "explore/stopping-lab/dynamics/",
