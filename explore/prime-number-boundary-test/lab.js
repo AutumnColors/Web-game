@@ -220,7 +220,7 @@ function applyConfig(next,cam){
 let draft=clone(cfg);
 const FR=FRACTALS.map(f=>({...f,thumb:true}));
 group($('gFractal'),FR,()=>draft.fractal,v=>{ draft.fractal=v; syncCfg(); });
-const JULIA_EXPONENTS=[2,3,4,5,6,7,8,9,10,-1,-2,-3,-4,-5,-6,-7,-8,0.5,0.75,0.9,1,1.001,1.01,1.1,1.25,1.5,Math.E,Math.PI];
+const JULIA_EXPONENTS=[2,3,4,5,6,7,8,9,10,11,13,17,19,23,29,31,37,41,43,47,-1,-2,-3,-4,-5,-6,-7,-8,0.5,0.75,0.9,1,1.001,1.01,1.1,1.25,1.5,Math.E,Math.PI];
 const juliaPowerLabel=p=>p===Math.PI?'π':p===Math.E?'e':String(p);
 group($('gJuliaPower'),JULIA_EXPONENTS.map(v=>({v,t:juliaPowerLabel(v)})),()=>draft.juliaPower,v=>{draft.juliaPower=v;syncCfg();thumbs();});
 group($('gPower'),[3,4,5,6,7,8].map(v=>({v,t:'n = '+v})),()=>draft.power,v=>{ draft.power=v; syncCfg(); thumbs(); });
