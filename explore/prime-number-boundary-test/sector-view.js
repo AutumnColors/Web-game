@@ -2,12 +2,34 @@
 /* Sector filter: a fixed world-space wedge, no secondary fractal renderer. */
 (()=>{
 const mask=document.getElementById('sectorMask'),button=document.getElementById('sectorOpen'),ctx=mask.getContext('2d');
-let enabled=false,sectorIndex=0,lockedDegree=0,lastKey='';
+let enabled=false,sectorIndex=0,lockedDegree=0,lastKey='',unfolded=false,saved=null;
 const tau=Math.PI*2;
 function valid(){return cfg.fractal==='julia'&&Number.isInteger(cfg.juliaPower)&&cfg.juliaPower>=2&&!cfg.polar&&!cfg.bottcher;}
 function hide(){enabled=false;mask.style.display='none';button.textContent='Show one sector';lastKey='';}
 function choose(){const d=cfg.juliaPower,angle=((Math.atan2(view.cy,view.cx)%tau)+tau)%tau;return Math.floor(angle/(tau/d))%d;}
+const unfoldButton=document.getElementById('sectorUnfold');
+function stopUnfold(){
+if(!unfolded)return;
+unfolded=false;
+const old=saved;saved=null;
+if(old){cfg.polar=old.polar;cfg.logPolar=old.logPolar;cfg.logOuter=old.logOuter;cfg.logSpan=old.logSpan;cfg.sectorUnfold=false;cfg.sectorStart=0;Object.assign(view,old.view);}
+unfoldButton.textContent='Unfold · log';
+hide();dirty=true;needDraw=true;
+}
+unfoldButton.onclick=()=>{
+if(unfolded){stopUnfold();return;}
+if(!valid()){document.getElementById('primeStatus').textContent='Generate a polynomial Julia set in Cartesian view first.';return;}
+if(!enabled){sectorIndex=choose();lockedDegree=cfg.juliaPower;}
+saved={polar:cfg.polar,logPolar:cfg.logPolar,logOuter:cfg.logOuter,logSpan:cfg.logSpan,view:{...view}};
+hide();
+const radius=Math.max(1.01,eng.span/2);
+cfg.polar=true;cfg.logPolar=true;cfg.logOuter=Math.log(radius);cfg.logSpan=Math.log(radius/0.0001);
+cfg.sectorUnfold=true;cfg.sectorStart=sectorIndex*tau/lockedDegree;
+unfolded=true;unfoldButton.textContent='Return to sector';
+dirty=true;needDraw=true;
+};
 button.onclick=()=>{
+if(unfolded){stopUnfold();return;}
 if(enabled){hide();return;}
 if(!valid()){document.getElementById('primeStatus').textContent='Generate a polynomial Julia set in Cartesian view first.';return;}
 sectorIndex=choose();lockedDegree=cfg.juliaPower;enabled=true;mask.style.display='block';button.textContent='Show full set';lastKey='';
