@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-23T12:56:10.513575+00:00",
+  "generatedAt": "2026-11-23T14:40:59.811373+00:00",
   "apps": [
     {
       "path": "explore/prime-number-boundary-test/",
-      "title": "Prime Number Boundary Test",
+      "title": "Julie Cycle Lab",
       "category": "Explore",
-      "date": "2026-11-23T14:53:46+07:00",
-      "update": "Integrate prime-period Newton solver and orbit overlays into copied Universal Lab"
+      "date": "2026-11-23T21:40:50+07:00",
+      "update": "Rename prime experiment interface to Julie Cycle Lab"
     },
     {
       "path": "explore/stopping-lab/dynamics-map/",
