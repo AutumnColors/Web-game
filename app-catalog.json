@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-23T17:23:03.789136+00:00",
+  "generatedAt": "2026-11-23T17:23:12.759605+00:00",
   "apps": [
     {
       "path": "explore/prime-number-boundary-test/",
       "title": "Julie Cycle Lab",
       "category": "Explore",
-      "date": "2026-11-24T00:22:55+07:00",
-      "update": "Add log-polar unfold toggle alongside one-sector view"
+      "date": "2026-11-24T00:23:05+07:00",
+      "update": "Connect log-polar sector unfolding to existing Julia viewer with reversible camera state"
     },
     {
       "path": "explore/stopping-lab/dynamics-map/",
