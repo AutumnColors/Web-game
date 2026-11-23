@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-23T16:49:04.243813+00:00",
+  "generatedAt": "2026-11-23T16:49:13.352022+00:00",
   "apps": [
     {
       "path": "explore/prime-number-boundary-test/",
       "title": "Julie Cycle Lab",
       "category": "Explore",
-      "date": "2026-11-23T23:48:56+07:00",
-      "update": "Simplify Julie Cycle Lab to independent degree and cycle length with regenerate"
+      "date": "2026-11-23T23:49:06+07:00",
+      "update": "Solve arbitrary degree and exact superattracting period; regenerate distinct parameters using random internal seeds"
     },
     {
       "path": "explore/stopping-lab/dynamics-map/",
