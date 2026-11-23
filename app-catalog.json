@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-23T07:53:39.217392+00:00",
+  "generatedAt": "2026-11-23T07:53:52.861151+00:00",
   "apps": [
     {
       "path": "explore/prime-number-boundary-test/",
       "title": "Prime Number Boundary Test",
       "category": "Explore",
-      "date": "2026-11-23T14:53:31+07:00",
-      "update": "Use isolated pinned Universal Lab viewer for prime boundary experiment"
+      "date": "2026-11-23T14:53:46+07:00",
+      "update": "Integrate prime-period Newton solver and orbit overlays into copied Universal Lab"
     },
     {
       "path": "explore/stopping-lab/dynamics-map/",
