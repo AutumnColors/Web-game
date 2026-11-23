@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-23T07:53:20.986368+00:00",
+  "generatedAt": "2026-11-23T07:53:39.217392+00:00",
   "apps": [
     {
       "path": "explore/prime-number-boundary-test/",
       "title": "Prime Number Boundary Test",
       "category": "Explore",
-      "date": "2026-11-23T14:53:10+07:00",
-      "update": "Allow prime Julia exponents in isolated Universal Lab copy"
+      "date": "2026-11-23T14:53:31+07:00",
+      "update": "Use isolated pinned Universal Lab viewer for prime boundary experiment"
     },
     {
       "path": "explore/stopping-lab/dynamics-map/",
