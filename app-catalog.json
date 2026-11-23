@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-23T17:02:00.006981+00:00",
+  "generatedAt": "2026-11-23T17:04:29.775901+00:00",
   "apps": [
     {
       "path": "explore/prime-number-boundary-test/",
       "title": "Julie Cycle Lab",
       "category": "Explore",
-      "date": "2026-11-24T00:01:44+07:00",
-      "update": "Implement standalone Julia fundamental sector wedge and linear/log polar inspector"
+      "date": "2026-11-24T00:04:22+07:00",
+      "update": "Replace standalone sector renderer with noninteractive mask over existing Julia viewer"
     },
     {
       "path": "explore/stopping-lab/dynamics-map/",
