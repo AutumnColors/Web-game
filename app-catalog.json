@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-23T16:53:59.736630+00:00",
+  "generatedAt": "2026-11-23T17:01:34.652873+00:00",
   "apps": [
     {
       "path": "explore/prime-number-boundary-test/",
       "title": "Julie Cycle Lab",
       "category": "Explore",
-      "date": "2026-11-23T23:53:50+07:00",
-      "update": "Replace 47 cap with workload-based solver safeguards and responsive batches"
+      "date": "2026-11-24T00:01:27+07:00",
+      "update": "Add standalone sector viewer with wedge, linear and log unfolding controls"
     },
     {
       "path": "explore/stopping-lab/dynamics-map/",
