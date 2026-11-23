@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-23T17:04:40.945122+00:00",
+  "generatedAt": "2026-11-23T17:18:44.601604+00:00",
   "apps": [
     {
       "path": "explore/prime-number-boundary-test/",
       "title": "Julie Cycle Lab",
       "category": "Explore",
-      "date": "2026-11-24T00:04:33+07:00",
-      "update": "Use GPU-friendly overlay mask to hide all but one Julia symmetry sector; preserve viewer interactions"
+      "date": "2026-11-24T00:18:35+07:00",
+      "update": "Lock one world-space Julia sector and clip camera viewport robustly during pan zoom rotation"
     },
     {
       "path": "explore/stopping-lab/dynamics-map/",
