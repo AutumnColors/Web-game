@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-11-23T14:42:53.769081+00:00",
+  "generatedAt": "2026-11-23T14:46:41.634933+00:00",
   "apps": [
     {
       "path": "explore/stopping-lab/dynamics-map/",
       "title": "Julia Dynamics Map",
       "category": "Stopping Lab",
-      "date": "2026-11-23T21:42:45+07:00",
-      "update": "Add forward orbit and Julia-boundary repelling-seed backward iteration to dynamics map"
+      "date": "2026-11-23T21:46:27+07:00",
+      "update": "Make dynamics map mobile panel scrollable and add unlimited interactive forward/backward orbit walk"
     },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-23T21:42:45+07:00",
-      "update": "Add forward orbit and Julia-boundary repelling-seed backward iteration to dynamics map"
+      "date": "2026-11-23T21:46:27+07:00",
+      "update": "Make dynamics map mobile panel scrollable and add unlimited interactive forward/backward orbit walk"
     },
     {
       "path": "explore/prime-number-boundary-test/",
