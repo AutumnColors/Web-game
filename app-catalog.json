@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-23T16:53:49.602160+00:00",
+  "generatedAt": "2026-11-23T16:53:59.736630+00:00",
   "apps": [
     {
       "path": "explore/prime-number-boundary-test/",
       "title": "Julie Cycle Lab",
       "category": "Explore",
-      "date": "2026-11-23T23:53:41+07:00",
-      "update": "Remove arbitrary degree and period input caps in Julie Cycle Lab"
+      "date": "2026-11-23T23:53:50+07:00",
+      "update": "Replace 47 cap with workload-based solver safeguards and responsive batches"
     },
     {
       "path": "explore/stopping-lab/dynamics-map/",
