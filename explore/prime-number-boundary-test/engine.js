@@ -144,7 +144,7 @@ function parameterInverse(u,theta){
 }
 
 onmessage=e=>{
-  const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,needDLD,dldIterations,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
+  const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,needDLD,dldIterations,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,sectorUnfold,sectorStart,sectorWidth,logPolar,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
   const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float32Array(N):null, DLD=needDLD?new Float32Array(N):null;
   const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=pw>1?1/Math.log(pw):0;
   let minN=1e9;
@@ -157,7 +157,7 @@ onmessage=e=>{
         const u=Math.exp(Math.log(bottcherGMax)*(1-t)+Math.log(bottcherGMin)*t);
         const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5);
         [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki):pw===2?parameterInverse(u,theta):[NaN,NaN];
-      } else if(polar){ const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
+      } else if(polar){ const theta=sectorUnfold?sectorStart+sectorWidth*(x+0.5)/W:polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
       if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
       let zr,zi,cr,ci,dr,di;
       if(julia){ zr=pr; zi=pq; cr=kr; ci=ki; dr=1; di=0; }
@@ -369,7 +369,7 @@ function newLayer(v,W,H,maxIt,withS){
 }
 function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
-  const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;
+  const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,sectorUnfold:!!cfg.sectorUnfold,sectorStart:cfg.sectorStart||0,sectorWidth:TAU/(cfg.juliaPower||2),logPolar:!!cfg.logPolar,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;
   for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,needDLD:!!L.DLD,dldIterations:cfg.dldIterations,...engMsg(e),...extra});
   if(front) queue.unshift(...items); else queue.push(...items);
 }
