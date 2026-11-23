@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prime Number Boundary Test</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0a101a;color:#e4edf8;font:14px system-ui}header{padding:13px 18px;border-bottom:1px solid #344052}h1{font-size:20px;margin:0}p{color:#a7b8ca;margin:6px 0}main{display:grid;grid-template-columns:minmax(0,1fr) 290px;height:calc(100dvh - 80px)}#stage{position:relative;min-height:320px;overflow:hidden}canvas{width:100%;height:100%;touch-action:none;display:block}aside{background:#121e2d;padding:16px;overflow:auto}label{display:block;margin:14px 0 5px;color:#a8bfd5}select,input,button{font:inherit;background:#23374b;color:white;border:1px solid #52687f;border-radius:7px;padding:9px;max-width:100%}select,input{width:100%}button{cursor:pointer}button:hover{background:#35516b}.buttons{display:flex;gap:7px;flex-wrap:wrap;margin-top:15px}#status{font-size:12px;line-height:1.5;margin-top:14px;color:#b5c9da}#legend{position:absolute;bottom:12px;left:12px;background:#0b1420cc;padding:7px;border-radius:6px;font-size:12px;pointer-events:none}@media(max-width:700px){main{display:block;height:auto}#stage{height:58dvh}aside{min-height:40vh}}</style>
+<header><h1>Prime Number Boundary Test</h1><p>Julia sets · prime degree · roots of unity versus Basilica-style critical cycles</p></header>
+<main><div id="stage"><canvas id="canvas"></canvas><div id="legend">Drag to pan · wheel/pinch to zoom · cyan: roots of unity</div></div><aside>
+<label for="degree">Prime degree</label><select id="degree"><option>3</option><option>5</option><option>7</option><option>11</option><option selected>13</option><option>17</option><option>19</option><option>23</option><option>29</option><option>31</option><option>37</option><option>41</option><option>43</option><option>47</option></select>
+<label for="family">Parameter family</label><select id="family"><option value="unity">Degree-d roots of unity: c^d = 1</option><option value="basilica" selected>Basilica analogue: c^(d−1) = −1</option></select>
+<label for="index">Root index k</label><input type="number" id="index" min="0" step="1" value="0">
+<label for="iterations">Max iterations</label><input id="iterations" type="range" min="30" max="500" step="10" value="160"><output id="itout">160</output>
+<label><input id="roots" type="checkbox" checked style="width:auto"> Show degree-d roots of unity</label>
+<label><input id="orbit" type="checkbox" checked style="width:auto"> Show critical orbit</label>
+<div class="buttons"><button id="reset">Reset camera</button><button id="save">Save PNG</button></div>
+<div id="status"></div>
+<p style="margin-top:18px">Each pixel is an initial z₀. We iterate z ↦ zᵈ+c. A bounded orbit is rendered dark; escaping orbits are colored by escape speed. Root markers are reference directions, not a substitute for Julia iteration.</p>
+</aside></main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),cv=$('canvas'),ctx=cv.getContext('2d',{alpha:false});
+let centerX=0,centerY=0,span=2.5,job=0,drag=null,pointers=new Map(),pinch=null;
+const degree=$('degree'),family=$('family'),index=$('index'),iterations=$('iterations');
+function params(){let d=+degree.value,k=Math.max(0,Math.min((family.value==='unity'?d:d-1)-1,Math.floor(+index.value||0)));index.value=k;let theta=family.value==='unity'?2*Math.PI*k/d:(2*k+1)*Math.PI/(d-1);return {d,k,cr:Math.cos(theta),ci:Math.sin(theta),theta};}
+function multiply(ar,ai,br,bi){return [ar*br-ai*bi,ar*bi+ai*br];}
+function power(zr,zi,n){let ar=1,ai=0,br=zr,bi=zi;while(n){if(n%2)[ar,ai]=multiply(ar,ai,br,bi);n=Math.floor(n/2);if(n)[br,bi]=multiply(br,bi,br,bi);}return [ar,ai];}
+function step(zr,zi,p){let [r,i]=power(zr,zi,p.d);return [r+p.cr,i+p.ci];}
+function size(){let rect=cv.getBoundingClientRect(),scale=Math.min(devicePixelRatio||1,2);cv.width=Math.max(1,Math.round(rect.width*scale));cv.height=Math.max(1,Math.round(rect.height*scale));render();}
+function world(px,py){let unit=span/Math.min(cv.width,cv.height);return [centerX+(px-cv.width/2)*unit,centerY-(py-cv.height/2)*unit];}
+function screen(x,y){let unit=Math.min(cv.width,cv.height)/span;return [cv.width/2+(x-centerX)*unit,cv.height/2-(y-centerY)*unit];}
+function overlay(p){ctx.save();let scale=Math.min(cv.width,cv.height)/span;
+if($('roots').checked){ctx.strokeStyle='#61dfeb';ctx.fillStyle='#61dfeb';ctx.lineWidth=Math.max(1,cv.width/900);for(let k=0;k<p.d;k++){let a=2*Math.PI*k/p.d,[x,y]=screen(Math.cos(a),Math.sin(a));if(x>=0&&x<cv.width&&y>=0&&y<cv.height){ctx.beginPath();ctx.arc(x,y,Math.max(2,cv.width/350),0,Math.PI*2);ctx.fill();}}}
+if($('orbit').checked){let zr=0,zi=0;ctx.fillStyle='#ffcf6b';for(let i=0;i<Math.min(80,+iterations.value);i++){let [x,y]=screen(zr,zi);if(x>=0&&x<cv.width&&y>=0&&y<cv.height){ctx.beginPath();ctx.arc(x,y,Math.max(2,cv.width/280),0,Math.PI*2);ctx.fill();}let next=step(zr,zi,p);[zr,zi]=next;if(!Number.isFinite(zr)||Math.hypot(zr,zi)>10)break;}}
+ctx.restore();}
+function render(){let token=++job,p=params(),max=+iterations.value,W=cv.width,H=cv.height;index.max=(family.value==='unity'?p.d:p.d-1)-1;$('itout').textContent=max;
+$('status').textContent='Rendering… degree '+p.d+' · c = '+p.cr.toFixed(8)+(p.ci<0?' − ':' + ')+Math.abs(p.ci).toFixed(8)+'i';
+const image=ctx.createImageData(W,H),data=image.data,unit=span/Math.min(W,H),R2=16;let y=0;
+function batch(){if(token!==job)return;let until=Math.min(H,y+Math.max(1,Math.floor(140000/W)));for(;y<until;y++)for(let x=0;x<W;x++){let zr=centerX+(x+.5-W/2)*unit,zi=centerY-(y+.5-H/2)*unit,n=0,r2=0;for(;n<max;n++){let v=power(zr,zi,p.d);zr=v[0]+p.cr;zi=v[1]+p.ci;r2=zr*zr+zi*zi;if(r2>R2||!Number.isFinite(r2))break;}let o=(y*W+x)*4;if(n===max){data[o]=8;data[o+1]=16;data[o+2]=29;}else{let smooth=n+1-Math.log(Math.max(1e-12,Math.log(Math.sqrt(r2))))/Math.log(p.d),t=Math.max(0,smooth);let hue=(205+27*t)%360,s=.72,l=.39+.14*Math.sin(t*.16);let C=(1-Math.abs(2*l-1))*s,X=C*(1-Math.abs((hue/60)%2-1)),m=l-C/2;let rgb=hue<60?[C,X,0]:hue<120?[X,C,0]:hue<180?[0,C,X]:hue<240?[0,X,C]:hue<300?[X,0,C]:[C,0,X];data[o]=255*(rgb[0]+m);data[o+1]=255*(rgb[1]+m);data[o+2]=255*(rgb[2]+m);}data[o+3]=255;}
+if(y<H){requestAnimationFrame(batch);}else{ctx.putImageData(image,0,0);overlay(p);$('status').textContent='Degree '+p.d+' · '+(family.value==='unity'?'root-of-unity parameter':'superattracting period-2 parameter')+' · c = '+p.cr.toFixed(8)+(p.ci<0?' − ':' + ')+Math.abs(p.ci).toFixed(8)+'i · '+W+' × '+H;}}
+requestAnimationFrame(batch);}
+function zoom(factor,px,py){let before=world(px,py);span=Math.max(1e-8,Math.min(10,span*factor));let after=world(px,py);centerX+=before[0]-after[0];centerY+=before[1]-after[1];render();}
+cv.addEventListener('wheel',e=>{e.preventDefault();let r=cv.getBoundingClientRect();zoom(Math.exp(Math.sign(e.deltaY)*.16),(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height)},{passive:false});
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);pointers.set(e.pointerId,[e.clientX,e.clientY]);});
+cv.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;let old=pointers.get(e.pointerId);pointers.set(e.pointerId,[e.clientX,e.clientY]);let a=[...pointers.values()],rect=cv.getBoundingClientRect();if(a.length===1){let unit=span/Math.min(cv.width,cv.height);centerX-=(e.clientX-old[0])*cv.width/rect.width*unit;centerY+=(e.clientY-old[1])*cv.height/rect.height*unit;render();}else if(a.length===2){let dist=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);if(pinch)zoom(pinch/dist,((a[0][0]+a[1][0])/2-rect.left)*cv.width/rect.width,((a[0][1]+a[1][1])/2-rect.top)*cv.height/rect.height);pinch=dist;}});
+for(let name of ['pointerup','pointercancel'])cv.addEventListener(name,e=>{pointers.delete(e.pointerId);pinch=null;});
+for(let el of [degree,family,index,iterations,$('roots'),$('orbit')])el.addEventListener('input',()=>{if(el===degree||el===family){index.value=0;centerX=0;centerY=0;span=2.5;}render();});
+$('reset').onclick=()=>{centerX=0;centerY=0;span=2.5;render();};
+$('save').onclick=()=>{let a=document.createElement('a');a.download='prime-boundary-'+degree.value+'-'+family.value+'.png';a.href=cv.toDataURL('image/png');a.click();};
+new ResizeObserver(size).observe($('stage'));
+</script></html>
