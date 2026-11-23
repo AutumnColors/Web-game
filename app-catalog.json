@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-23T14:46:41.634933+00:00",
+  "generatedAt": "2026-11-23T16:49:04.243813+00:00",
   "apps": [
+    {
+      "path": "explore/prime-number-boundary-test/",
+      "title": "Julie Cycle Lab",
+      "category": "Explore",
+      "date": "2026-11-23T23:48:56+07:00",
+      "update": "Simplify Julie Cycle Lab to independent degree and cycle length with regenerate"
+    },
     {
       "path": "explore/stopping-lab/dynamics-map/",
       "title": "Julia Dynamics Map",
@@ -14,13 +21,6 @@
       "category": "Explore",
       "date": "2026-11-23T21:46:27+07:00",
       "update": "Make dynamics map mobile panel scrollable and add unlimited interactive forward/backward orbit walk"
-    },
-    {
-      "path": "explore/prime-number-boundary-test/",
-      "title": "Julie Cycle Lab",
-      "category": "Explore",
-      "date": "2026-11-23T21:40:50+07:00",
-      "update": "Rename prime experiment interface to Julie Cycle Lab"
     },
     {
       "path": "explore/stopping-lab/dynamics/",
