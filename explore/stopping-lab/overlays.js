@@ -50,6 +50,7 @@ function draw(overlays=!cfg.clean){
   frameFallbackCtx.globalCompositeOperation='copy'; frameFallbackCtx.drawImage(cv,0,0); frameFallbackCtx.globalCompositeOperation='source-over';
   hasFallback=true; fbView={cx:view.cx,cy:view.cy,w:view.w,a:view.a}; fbRing=ringView();
   if(four){ ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(Wd/2-DPR/2,0,DPR,Hd); ctx.fillRect(0,Hd/2-DPR/2,Wd,DPR); }
+  if(typeof juliaFields!=='undefined') juliaFields.draw(); // hides its panel outside Julia; draws nothing in four-panel mode
   if(!four && typeof vectorOverlay!=='undefined' && vectorOverlay.enabled) vectorOverlay.draw();
   tagBoxes=[]; labelBox=null;
   if(!overlays) return;
