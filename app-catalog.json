@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T09:27:01.648776+00:00",
+  "generatedAt": "2026-11-24T11:30:35.185143+00:00",
   "apps": [
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-24T16:26:23+07:00",
-      "update": "Universal Lab: draw Julia Fields from the frame renderer"
+      "date": "2026-11-24T18:30:03+07:00",
+      "update": "Julia Fields panel: source point, second source, difference and charge dots"
     },
     {
       "path": "explore/julia-field-viewer/",
