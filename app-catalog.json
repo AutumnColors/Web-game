@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T08:20:09.014382+00:00",
+  "generatedAt": "2026-11-24T08:24:14.892358+00:00",
   "apps": [
     {
       "path": "explore/orbit-stability-lab/",
       "title": "Orbit Stability Lab",
       "category": "Explore",
-      "date": "2026-11-24T15:20:00+07:00",
-      "update": "Add joint divergence curl magnitude and phase views"
+      "date": "2026-11-24T15:24:00+07:00",
+      "update": "Add independent period doubling scaling analysis with derivative and spatial ratios"
     },
     {
       "path": "explore/stopping-lab/",
