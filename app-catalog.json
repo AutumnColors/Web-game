@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T15:57:55.313157+00:00",
+  "generatedAt": "2026-11-24T16:11:51.464937+00:00",
   "apps": [
     {
       "path": "explore/julia-field-invariance-lab/",
       "title": "Julia Field Invariance Lab",
       "category": "Explore",
-      "date": "2026-11-24T22:57:47+07:00",
-      "update": "Add Julia field invariance experiment"
+      "date": "2026-11-24T23:11:43+07:00",
+      "update": "Expose complex source target controls in invariance lab"
     },
     {
       "path": "explore/stopping-lab/",
