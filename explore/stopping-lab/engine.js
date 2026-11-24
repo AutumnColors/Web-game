@@ -33,6 +33,7 @@ const FRACTALS=[
   {v:'multibrot',  t:'Multibrot',  s:'z → zⁿ + c'}
 ];
 const MODES=[
+  {v:'waves',t:'Hide Set · stability field',s:'Log derivative magnitude at orbit stopping point; no membership mask',tag:'Unmasked sensitivity'},
   {v:'escape', t:'Escape time',       s:'smooth μ = n + 1 − log₂ log₂|zₙ|',          tag:'Escape time μ'},
   {v:'binary', t:'Black / white',     s:'white: escaped · black: no escape detected', tag:'Escape / no escape'},
   {v:'sens',   t:'Orbit sensitivity', s:'S = ln(1 + |dzₙ/dc|) at escape',            tag:'Sensitivity S'},
@@ -63,7 +64,7 @@ function engineOf(c){
 }
 let eng=engineOf(cfg);
 const asciiRule=()=>'z -> z^'+eng.pw+' + c';
-const needD=()=>cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
+const needD=()=>cfg.mode==='waves'||cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
 const cmp=()=>cfg.mode==='compare';
 
 /* ---------- worker: one strip of rows on a rotated grid. kind 0: the pixel is c and z₀ = 0 (parameter plane);
@@ -163,7 +164,7 @@ onmessage=e=>{
       if(julia){ zr=pr; zi=pq; cr=kr; ci=ki; dr=1; di=0; }
       else {
         cr=pr; ci=pq; zr=0; zi=0; dr=0; di=0;
-        if(quick && !needDLD && stopMode==='outward' && R2>=4){ const xr=cr-0.25, q=xr*xr+ci*ci; if(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625){ T[i]=65535; continue; } }
+        if(quick && !needD && !needDLD && stopMode==='outward' && R2>=4){ const xr=cr-0.25, q=xr*xr+ci*ci; if(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625){ T[i]=65535; continue; } }
       }
       let zr2=zr*zr, zi2=zi*zi, n=0, qr=zr, qi=zi, lim=8, cnt=0, inside=false;
       if(needDLD){
@@ -207,10 +208,11 @@ onmessage=e=>{
         if(stopMode==='outward' && Math.abs(zr-qr)+Math.abs(zi-qi)<=eps){ inside=true; break; }
         if(++cnt===lim){ cnt=0; lim<<=1; qr=zr; qi=zi; }
       }
+      if(needD) S[i]=Math.log1p(Math.hypot(dr,di));
       if(inside){ T[i]=65535; continue; }
       if(n<minN) minN=n;
       T[i]=n; F[i]=stopMode==='outward' && pw>1 ? 1-Math.log(Math.max(1e-300,Math.log2(Math.max(1.000001,zr2+zi2))*0.5))*ilp : 0;
-      if(needD) S[i]=Math.log(1+Math.sqrt(dr*dr+di*di));
+      if(needD) S[i]=Math.log1p(Math.hypot(dr,di));
     }
   }
   postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,DLD,minN},[T.buffer,F.buffer,...(S?[S.buffer]:[]),...(DLD?[DLD.buffer]:[])]);
@@ -457,7 +459,7 @@ function rangeOf(N,get,lo,hi){ // percentiles of a sample, so a few extreme pixe
 }
 function paint(L,mode){
   const {W,H,T,F,S,DLD}=L, N=W*H;
-  if((mode==='sens'||mode==='flat') && !S) return null;
+  if((mode==='waves'||mode==='sens'||mode==='flat') && !S) return null;
   if(mode==='dld'&&!DLD)return null;
   const img=new ImageData(W,H), o=new Uint32Array(img.data.buffer), P=PALETTES[cfg.palette], C=P.cyc, Q=P.seq;
   if(mode==='binary'){ for(let i=0;i<N;i++) o[i]=T[i]===NO?BLACK:WHITE; }
@@ -472,6 +474,7 @@ function paint(L,mode){
       const lp=Math.log(L.pw);
       get=i=>T[i]===NO?NaN:Math.log(Math.LN2)+(1-F[i]-T[i])*lp;
     }
+    else if(mode==='waves') get=i=>Number.isFinite(S[i])?S[i]:NaN;
     else if(mode==='sens') get=i=>T[i]===NO?NaN:S[i];
     else if(mode==='dld')get=i=>DLD[i];
     else if(mode==='flat'){ // F = 1 − log_p log₂|z| gives |z| back, so the overshoot past the escape radius can be divided out
@@ -503,7 +506,7 @@ function paint(L,mode){
     }
     const rng=rangeOf(N,get,lo,hi); if(mode==='gradt') rng[0]=0;
     const k=1023/(rng[1]-rng[0]), floor=Q[0];
-    for(let i=0;i<N;i++){ const v=get(i); if(v!==v){ o[i]=T[i]===NO?BLACK:floor; continue; } const t=(v-rng[0])*k; o[i]=Q[t<0?0:t>1023?1023:t|0]; }
+    for(let i=0;i<N;i++){ const v=get(i); if(v!==v){ o[i]=mode==='waves'?floor:T[i]===NO?BLACK:floor; continue; } const t=(v-rng[0])*k; o[i]=Q[t<0?0:t>1023?1023:t|0]; }
     L.rng[mode]=rng;
   }
   const c=document.createElement('canvas'); c.width=W; c.height=H; c.getContext('2d').putImageData(img,0,0); if(mode==='potential')drawGreenContours(c,L); return c;

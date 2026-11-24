@@ -134,15 +134,15 @@ addEventListener('keydown',e=>{
   else if(k==='p') requestShot();
   else if(k==='h') setClean(!cfg.clean);
   else if(k==='i') openInfo();
-  else if(k>='1' && k<='7') setMode(MODES[+k-1].v);
+  else if(k>='1' && k<=String(Math.min(9,MODES.length))) setMode(MODES[+k-1].v);
 });
 ['gesturestart','gesturechange','contextmenu'].forEach(t=>document.addEventListener(t,e=>{ if(!e.target.closest || !e.target.closest('.sheet,#sec')) e.preventDefault(); }));
 
 /* ---------- quick switches (same camera, same numbers) ---------- */
 function setMode(m){
   // Coordinate choice remains independent of measurement.
-  const was=cmp(); cfg.mode=m; document.body.classList.toggle('cmp',cmp());
-  if(cmp()!==was || (needD() && base && !base.S) || (m==='dld' && base && !base.DLD)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
+  const was=cmp(), wasWaves=cfg.mode==='waves'; cfg.mode=m; document.body.classList.toggle('cmp',cmp());
+  if(wasWaves!==(m==='waves') || cmp()!==was || (needD() && base && !base.S) || (m==='dld' && base && !base.DLD)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
   repaint(); updateChip(); syncQuick(); writeHash();
 }
 const coordOf=c=>c.bottcher?'bottcher':c.polar?(c.logPolar?'logpolar':'polar'):'cartesian';
