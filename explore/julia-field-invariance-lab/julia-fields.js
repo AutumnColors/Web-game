@@ -46,10 +46,35 @@ const juliaFields={
   if(![x,y,u,v].every(Number.isFinite))return null;
  }return null;
  },
- F(mode,s,wx,wy,a,c,n,p){ if(mode==='green')return this.green(wx,wy,a,c,p,+document.getElementById('jfCompose').value,+document.getElementById('jfN').value); return mode==='crit'?this.field(wx,wy,a,c,n,p):this.sourceField(wx,wy,a,c,n,p,s[0],s[1]); },
+ basilicaInterior(x,y,k,quality){
+ // Pull back the local Böttcher logarithmic gradient through the return map h=f².
+ let u=1,v=0, scale=1;
+ for(let i=0;i<quality*24;i++){
+  let r=Math.hypot(x,y);
+  if(r>8||!Number.isFinite(r)||r===0)return null;
+  if(Math.hypot(x+1,y)<0.05){
+   // f maps the other cycle phase to the zero phase; no return-degree factor.
+   const U=2*(x*u-y*v);v=2*(x*v+y*u);u=U;
+   const X=x*x-y*y-1;y=2*x*y;x=X;r=Math.hypot(x,y);
+   if(!r)return null;
+  }
+  if(r<1e-5){const m=(2**k-1)*scale;return [m*(u*x+v*y)/(r*r),m*(u*y-v*x)/(r*r)];}
+  const X=x*x-y*y,Y=2*x*y;
+  const dr=2*(x*(X-1)-y*Y),di=2*(x*Y+y*(X-1));
+  const U=dr*u-di*v;v=dr*v+di*u;u=U; // h'/2
+  x=X*(X-2)-Y*Y;y=Y*(2*X-2);
+ }
+ return null;
+ },
+ F(mode,s,wx,wy,a,c,n,p){ if(mode==='green'){
+ const k=+document.getElementById('jfCompose').value,q=+document.getElementById('jfN').value;
+ const basilica=p===2&&Math.abs(a+1)<1e-12&&Math.abs(c)<1e-12;
+ if(basilica&&document.getElementById('jfInterior').checked)return this.green(wx,wy,a,c,p,2*k,q)||this.basilicaInterior(wx,wy,k,q);
+ return this.green(wx,wy,a,c,p,k,q);
+ } return mode==='crit'?this.field(wx,wy,a,c,n,p):this.sourceField(wx,wy,a,c,n,p,s[0],s[1]); },
  draw(){const panel=document.getElementById('juliaFieldControls');const active=cfg.fractal==='julia';panel.hidden=!active;if(!active||cfg.polar||cfg.bottcher||cmp()||cfg.clean||!Number.isInteger(cfg.juliaPower)||cfg.juliaPower<2)return;
  const $j=id=>document.getElementById(id);
- const sk=[cfg.juliaPower,$j('jfN').value,$j('jfCompose').value,this.src()].join(); if(this.syncKey!==sk){ this.syncKey=sk; this.sync(); }
+ const sk=[cfg.juliaPower,$j('jfN').value,$j('jfCompose').value,this.src(),cfg.seed.re,cfg.seed.im,$j('jfInterior').checked].join(); if(this.syncKey!==sk){ this.syncKey=sk; this.sync(); }
  const e=$j('jfE').checked,b=$j('jfB').checked,j=$j('jfJ').checked,showQ=$j('jfQ').checked&&this.src()!=='green',diff=$j('jfDiff').checked&&this.src()!=='green',n=+$j('jfN').value * +$j('jfCompose').value,mode=this.src();
  const w=Wd/DPR,h=Hd/DPR,spacing=w/(+$j("jfDensity").value),arrowScale=+$j("jfSize").value,p=cfg.juliaPower,a=cfg.seed.re,c=cfg.seed.im,co=Math.cos(view.a),si=Math.sin(view.a);
  const showA=mode==='a', showA2=diff;
@@ -79,10 +104,12 @@ const juliaFields={
  },
  fmt(s){ const r=x=>String(+x.toFixed(6)); return r(s[0])+(s[1]<0?' − ':' + ')+r(Math.abs(s[1]))+'i'; },
  sync(){ const $j=id=>document.getElementById(id), mode=this.src(), n=+$j('jfN').value * +$j('jfCompose').value, p=typeof cfg!=='undefined'?cfg.juliaPower:2;
+  const basilica=typeof cfg!=='undefined'&&p===2&&Math.abs(cfg.seed.re+1)<1e-12&&Math.abs(cfg.seed.im)<1e-12;
+  $j('jfInteriorRow').hidden=mode!=='green'||!basilica;
   $j('jfSourceSliders').hidden=mode!=='a'; $j('jfLegacyStrength').hidden=mode==='green'; $j('jfQ').disabled=mode==='green'; $j('jfDiff').disabled=mode==='green'; $j('jfARow').hidden=mode!=='a'; $j('jfA2Row').hidden=!$j('jfDiff').checked;
   $j('jfOut').textContent=$j('jfN').value; for(const id of ['jfCompose','jfElectric','jfMagnetic']) $j(id+'Out').textContent=$j(id).value; $j('jfDensityOut').textContent=$j('jfDensity').value; $j('jfSizeOut').textContent=$j('jfSize').value+'×';
   const total=Number.isInteger(p)&&p>=2?(mode==='crit'?p**n-1:p**n):NaN;
-  $j('jfCount').textContent=mode==='green'?'Intrinsic magnitude factor: '+(p**(+$j('jfCompose').value)-1):Number.isFinite(total)?total.toLocaleString('en-US')+(mode==='crit'?' charges at the critical points of fⁿ':' charges at the points with fⁿ(z) = a'):'';
+  $j('jfCount').textContent=mode==='green'?(basilica&&$j('jfInterior').checked?'Exterior factor: '+(4**(+$j('jfCompose').value)-1)+' · Interior factor: '+(2**(+$j('jfCompose').value)-1):'Intrinsic magnitude factor: '+(p**(+$j('jfCompose').value)-1)):Number.isFinite(total)?total.toLocaleString('en-US')+(mode==='crit'?' charges at the critical points of fⁿ':' charges at the points with fⁿ(z) = a'):'';
  }
 };
 // Tapping the map while "Tap map" is armed places a or a2 instead of a pin. placePin is the lab's tap handler (overlays.js).
@@ -96,7 +123,7 @@ const juliaFields={
    toast((k===1?'a':'a₂')+' = '+juliaFields.fmt(s)); needDraw=true;
   };
 }
-for(const id of ['jfE','jfB','jfJ','jfQ','jfDiff','jfN','jfDensity','jfSize','jfSrc','jfCompose','jfElectric','jfMagnetic'])document.getElementById(id).addEventListener('input',()=>{juliaFields.sync();needDraw=true;});
+for(const id of ['jfInterior','jfE','jfB','jfJ','jfQ','jfDiff','jfN','jfDensity','jfSize','jfSrc','jfCompose','jfElectric','jfMagnetic'])document.getElementById(id).addEventListener('input',()=>{juliaFields.sync();needDraw=true;});
 for(const [id,key] of [['jfA','a'],['jfA2','a2']]) document.getElementById(id).addEventListener('input',e=>{const v=parseC(e.target.value);e.target.classList.toggle('bad',!v);if(v){juliaFields[key]=[v.re,v.im];needDraw=true;}});
 for(const [id,k] of [['jfPickA',1],['jfPickA2',2]]) document.getElementById(id).addEventListener('click',()=>{
  const on=juliaFields.placing!==k; juliaFields.placing=on?k:0;
