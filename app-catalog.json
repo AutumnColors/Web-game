@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-24T11:30:35.185143+00:00",
+  "generatedAt": "2026-11-24T12:59:57.465273+00:00",
   "apps": [
+    {
+      "path": "explore/orbit-stability-lab/",
+      "title": "Orbit Stability Lab",
+      "category": "Explore",
+      "date": "2026-11-24T19:59:47+07:00",
+      "update": "Add stable Basilica phase experiment with log-polar return and winding tests"
+    },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
@@ -14,13 +21,6 @@
       "category": "Explore",
       "date": "2026-11-24T16:12:27+07:00",
       "update": "Support higher-degree Julia fields"
-    },
-    {
-      "path": "explore/orbit-stability-lab/",
-      "title": "Orbit Stability Lab",
-      "category": "Explore",
-      "date": "2026-11-24T15:24:00+07:00",
-      "update": "Add independent period doubling scaling analysis with derivative and spatial ratios"
     },
     {
       "path": "explore/orbit-stability-lab/dynamics/",
