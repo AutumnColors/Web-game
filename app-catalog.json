@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T16:39:50.755043+00:00",
+  "generatedAt": "2026-11-24T16:46:00.488297+00:00",
   "apps": [
     {
       "path": "explore/julia-field-invariance-lab/",
       "title": "Julia Field Invariance Lab",
       "category": "Explore",
-      "date": "2026-11-24T23:39:43+07:00",
-      "update": "Add orbit sensitivity asymptotic convergence diagnostics"
+      "date": "2026-11-24T23:45:47+07:00",
+      "update": "Estimate asymptotic amplitude and simplify convergence controls"
     },
     {
       "path": "explore/stopping-lab/",
