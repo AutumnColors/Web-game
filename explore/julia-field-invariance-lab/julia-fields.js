@@ -92,7 +92,7 @@ const juliaFields={
  }
  if(samples.length!==3)return null;
  const [A,B,C]=samples,angle=(a,b)=>Math.abs(Math.atan2(a.x*b.y-a.y*b.x,a.x*b.x+a.y*b.y));
- return {x:C.x,y:C.y,growth:Math.exp((C.log-B.log)/L),angle:angle(B,C),stable:Math.max(angle(A,B),angle(B,C))<0.05&&Math.abs((C.log-B.log)-(B.log-A.log))/L<0.05};
+ const rate=(C.log-B.log)/L,prev=(B.log-A.log)/L,logAmp=C.log-N*rate; return {x:C.x,y:C.y,logAmp,ampStable:Math.abs(logAmp-(B.log-(N-L)*prev))<0.15,growth:Math.exp((C.log-B.log)/L),angle:angle(B,C),stable:Math.max(angle(A,B),angle(B,C))<0.05&&Math.abs((C.log-B.log)-(B.log-A.log))/L<0.05};
  },
  F(mode,s,wx,wy,a,c,n,p){ if(mode==='green'){
  const k=+document.getElementById('jfCompose').value,q=+document.getElementById('jfN').value;
@@ -103,7 +103,7 @@ const juliaFields={
  draw(){const panel=document.getElementById('juliaFieldControls');const active=cfg.fractal==='julia';panel.hidden=!active;if(!active||cfg.polar||cfg.bottcher||cmp()||cfg.clean||!Number.isInteger(cfg.juliaPower)||cfg.juliaPower<2)return;
  const $j=id=>document.getElementById(id);
  const sk=[cfg.juliaPower,$j('jfN').value,$j('jfCompose').value,this.src(),cfg.seed.re,cfg.seed.im,$j('jfInterior').checked].join(); if(this.syncKey!==sk){ this.syncKey=sk; this.sync(); }
- const e=$j('jfE').checked,b=$j('jfB').checked,j=$j('jfJ').checked,showQ=$j('jfQ').checked&&!['green','limit'].includes(this.src()),diff=$j('jfDiff').checked&&!['green','limit'].includes(this.src()),n=+$j('jfN').value * +$j('jfCompose').value,mode=this.src();
+ const e=$j('jfE').checked,b=$j('jfB').checked,j=$j('jfJ').checked,showQ=$j('jfQ').checked&&!['green','limit'].includes(this.src()),diff=$j('jfDiff').checked&&this.src()==='a',n=+$j('jfN').value * +$j('jfCompose').value,mode=this.src();
  const w=Wd/DPR,h=Hd/DPR,spacing=w/(+$j("jfDensity").value),arrowScale=+$j("jfSize").value,p=cfg.juliaPower,a=cfg.seed.re,c=cfg.seed.im,co=Math.cos(view.a),si=Math.sin(view.a);
  const showA=mode==='a', showA2=diff;
  if(!e&&!b&&!j&&!showQ&&!showA&&!showA2)return;
@@ -119,7 +119,7 @@ const juliaFields={
    if(N<=2*L)continue;
    const q=this.convergence(wx,wy,a,c,p,N,L);if(!q)continue;
    const kind=$j('jfLimitView').value;
-   if(kind==='direction'){if(q.stable){if(e)arrow(x,y,q.x,q.y,'#eac16c',16*k0);if(b)arrow(x,y,-q.y,q.x,'#63c9ee',16*k0);}else{ctx.fillStyle='#888';ctx.fillRect(x-1,y-1,2,2);}}
+   if(kind==='direction'||kind==='strength'){if(q.stable&&(kind==='direction'||q.ampStable)){const len=kind==='direction'?16*k0:22*k0*Math.tanh(Math.exp(Math.min(40,q.logAmp)));if(e)arrow(x,y,q.x,q.y,'#eac16c',len);if(b)arrow(x,y,-q.y,q.x,'#63c9ee',len);}else{ctx.fillStyle='#888';ctx.fillRect(x-1,y-1,2,2);}}
    else {const t=kind==='growth'?Math.max(0,Math.min(1,Math.log(Math.max(q.growth,1e-12))/Math.log(p))):Math.min(1,q.angle/Math.PI);ctx.fillStyle='hsl('+ (240-240*t)+' 85% 55%)';ctx.fillRect(x-spacing*.43,y-spacing*.43,spacing*.86,spacing*.86);}
    continue;
   }
@@ -143,12 +143,18 @@ const juliaFields={
  fmt(s){ const r=x=>String(+x.toFixed(6)); return r(s[0])+(s[1]<0?' − ':' + ')+r(Math.abs(s[1]))+'i'; },
  sync(){ const $j=id=>document.getElementById(id), mode=this.src(), n=+$j('jfN').value * +$j('jfCompose').value, p=typeof cfg!=='undefined'?cfg.juliaPower:2;
   const basilica=typeof cfg!=='undefined'&&p===2&&Math.abs(cfg.seed.re+1)<1e-12&&Math.abs(cfg.seed.im)<1e-12;
-  $j('jfLimitRow').hidden=mode!=='limit'; $j('jfDepthOut').textContent=$j('jfDepth').value;
+  const limit=mode==='limit', source=mode==='a', legacy=source||mode==='crit';
+  for(const id of ['jfCompose','jfN','jfQ','jfDiff']){
+   const el=$j(id).closest('label'),hide=id==='jfDiff'?!source:id==='jfQ'?!legacy:limit;
+   el.hidden=hide;if(el.nextElementSibling?.tagName==='BR')el.nextElementSibling.hidden=hide;
+  }
+  $j('jfGreenNote').hidden=mode!=='green';
+  $j('jfLimitRow').hidden=!limit; $j('jfDepthOut').textContent=$j('jfDepth').value;
   $j('jfInteriorRow').hidden=mode!=='green'||!basilica;
-  $j('jfSourceSliders').hidden=mode!=='a'; $j('jfLegacyStrength').hidden=mode==='green'||mode==='limit'; $j('jfQ').disabled=mode==='green'; $j('jfDiff').disabled=mode==='green'; $j('jfARow').hidden=mode!=='a'; $j('jfA2Row').hidden=!$j('jfDiff').checked;
+  $j('jfSourceSliders').hidden=mode!=='a'; $j('jfLegacyStrength').hidden=mode==='green'||mode==='limit'; $j('jfQ').disabled=mode==='green'; $j('jfDiff').disabled=mode==='green'; $j('jfARow').hidden=mode!=='a'; $j('jfA2Row').hidden=mode!=='a'||!$j('jfDiff').checked;
   $j('jfOut').textContent=$j('jfN').value; for(const id of ['jfCompose','jfElectric','jfMagnetic']) $j(id+'Out').textContent=$j(id).value; $j('jfDensityOut').textContent=$j('jfDensity').value; $j('jfSizeOut').textContent=$j('jfSize').value+'×';
   const total=Number.isInteger(p)&&p>=2?(mode==='crit'?p**n-1:p**n):NaN;
-  $j('jfCount').textContent=mode==='limit'?'Growth: blue ≤ 1, red ≥ degree. Angle: blue 0, red π. Direction: gray unresolved.':mode==='green'?(basilica&&$j('jfInterior').checked?'Exterior factor: '+(4**(+$j('jfCompose').value)-1)+' · Interior factor: '+(2**(+$j('jfCompose').value)-1):'Intrinsic magnitude factor: '+(p**(+$j('jfCompose').value)-1)):Number.isFinite(total)?total.toLocaleString('en-US')+(mode==='crit'?' charges at the critical points of fⁿ':' charges at the points with fⁿ(z) = a'):'';
+  $j('jfCount').textContent=mode==='limit'?'Strength: estimated asymptotic amplitude, fixed saturating arrow scale. Gray: unresolved. Growth: blue ≤ 1, red ≥ degree. Angle: blue 0, red π.':mode==='green'?(basilica&&$j('jfInterior').checked?'Exterior factor: '+(4**(+$j('jfCompose').value)-1)+' · Interior factor: '+(2**(+$j('jfCompose').value)-1):'Intrinsic magnitude factor: '+(p**(+$j('jfCompose').value)-1)):Number.isFinite(total)?total.toLocaleString('en-US')+(mode==='crit'?' charges at the critical points of fⁿ':' charges at the points with fⁿ(z) = a'):'';
  }
 };
 // Tapping the map while "Tap map" is armed places a or a2 instead of a pin. placePin is the lab's tap handler (overlays.js).
