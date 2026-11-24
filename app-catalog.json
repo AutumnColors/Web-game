@@ -1,6 +1,27 @@
 {
-  "generatedAt": "2026-11-24T14:10:12.879154+00:00",
+  "generatedAt": "2026-11-24T14:29:55.823165+00:00",
   "apps": [
+    {
+      "path": "explore/feigenbaum-constant-lab/dynamics/",
+      "title": "Julia Dynamics Map",
+      "category": "Feigenbaum Constant Lab",
+      "date": "2026-11-24T21:29:46+07:00",
+      "update": "Branch Universal Lab into Feigenbaum Constant Lab"
+    },
+    {
+      "path": "explore/feigenbaum-constant-lab/dynamics-map/",
+      "title": "Julia Dynamics Map",
+      "category": "Feigenbaum Constant Lab",
+      "date": "2026-11-24T21:29:46+07:00",
+      "update": "Branch Universal Lab into Feigenbaum Constant Lab"
+    },
+    {
+      "path": "explore/feigenbaum-constant-lab/",
+      "title": "Feigenbaum Constant Lab",
+      "category": "Explore",
+      "date": "2026-11-24T21:29:46+07:00",
+      "update": "Branch Universal Lab into Feigenbaum Constant Lab"
+    },
     {
       "path": "explore/orbit-stability-lab/",
       "title": "Orbit Stability Lab",
