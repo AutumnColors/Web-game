@@ -33,8 +33,8 @@ const FRACTALS=[
   {v:'multibrot',  t:'Multibrot',  s:'z → zⁿ + c'}
 ];
 const MODES=[
-{v:'normphase',t:'Normalized phase',s:'Local Basilica Böttcher angle after basin entry',tag:'Normalized phase'},
-{v:'stablephase',t:'Stable phase',s:'Basilica log-polar phase, no convergence stopping',tag:'Stable phase'},
+{v:'normphase',t:'Normalized phase',s:'Böttcher angle of the superattracting cycle (any centre c)',tag:'Normalized phase'},
+{v:'stablephase',t:'Stable phase',s:'arg of the derivative without convergence stopping (any centre c)',tag:'Stable phase'},
 {v:'jointmag',t:'Combined magnitude',s:'Hypot of divergence and curl',tag:'Joint magnitude'},
 {v:'jointphase',t:'Combined phase',s:'Angle of divergence + i curl',tag:'Joint phase'},
 {v:'phase',t:'Rotation phase',s:'arg D at stopping point',tag:'Rotation'},
@@ -63,12 +63,34 @@ let cfg=clone(DEFAULTS), started=false;
 const SUP={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
 const sup=n=>String(n).split('').map(ch=>SUP[ch]).join('');
 
+// Is c a centre (0 on a superattracting p-cycle)? Smallest p with f^p(0) = 0, refined by Newton; null otherwise.
+// Returns the refined centre, the cycle w_0 = 0, w_1 = c, …, w_{p-1}, and a = (f^{p-1})'(c) = Π_{j=1}^{p-1} 2 w_j, so f^p(z) = a z² + … near 0.
+function centreOf(cr,ci){
+  let zr=0,zi=0,low=Infinity; const cand=[];
+  for(let k=1;k<=4096;k++){ const t=zr*zr-zi*zi+cr; zi=2*zr*zi+ci; zr=t; const r=Math.hypot(zr,zi); if(!(r<=4)) return null; if(r<low){ low=r; if(r<1e-6) cand.push(k); } }
+  for(const p of cand){
+    let a=cr,b=ci,good=false;
+    for(let i=0;i<60;i++){
+      let x=0,y=0,vr=0,vi=0;
+      for(let k=0;k<p;k++){ const nv=2*(x*vr-y*vi)+1; vi=2*(x*vi+y*vr); vr=nv; const t=x*x-y*y+a; y=2*x*y+b; x=t; }
+      const d=vr*vr+vi*vi; if(!(d>0)) break;
+      const sr=(x*vr+y*vi)/d, si=(y*vr-x*vi)/d; a-=sr; b-=si;
+      if(Math.hypot(sr,si)<1e-14*Math.max(1,Math.hypot(a,b))){ good=true; break; }
+    }
+    if(!good||Math.hypot(a-cr,b-ci)>1e-9*Math.max(1,Math.hypot(cr,ci))) continue;
+    const w=new Float64Array(2*p); let x=0,y=0,lnA=0,argA=0,early=false;
+    for(let k=1;k<p;k++){ const t=x*x-y*y+a; y=2*x*y+b; x=t; w[2*k]=x; w[2*k+1]=y; const r=Math.hypot(x,y); if(r<1e-9){ early=true; break; } lnA+=Math.log(2*r); argA+=Math.atan2(y,x); }
+    if(early||lnA>600) continue;
+    return {p,cr:a,ci:b,w,lnA,argA:Math.atan2(Math.sin(argA),Math.cos(argA)),rho:Math.min(0.125,0.25*Math.exp(-lnA)),cap:Math.min(40000,20*p)};
+  }
+  return null;
+}
 // the mathematical universe: what the worker needs, the home frame and how far the camera may wander
 function engineOf(c){
   const R=c.radius;
   if(c.fractal==='julia'){
     const m=Math.hypot(c.seed.re,c.seed.im), rad=(1+Math.sqrt(1+4*m))/2;   // the filled Julia set lies within this radius
-    return {kind:1,pw:c.juliaPower,kr:c.seed.re,ki:c.seed.im,R2:R*R,name:'Julia set',rule:'z → z^'+Number(c.juliaPower.toPrecision(7))+' + c',hx:0,hy:0,span:2*rad*1.04,bx:rad+0.8,by:rad+0.8};
+    return {kind:1,pw:c.juliaPower,kr:c.seed.re,ki:c.seed.im,centre:c.juliaPower===2?centreOf(c.seed.re,c.seed.im):null,R2:R*R,name:'Julia set',rule:'z → z^'+Number(c.juliaPower.toPrecision(7))+' + c',hx:0,hy:0,span:2*rad*1.04,bx:rad+0.8,by:rad+0.8};
   }
   if(c.fractal==='multibrot')
     return {kind:0,pw:c.power,kr:0,ki:0,R2:R*R,name:'Multibrot '+c.power,rule:'z → z'+sup(c.power)+' + c',hx:0,hy:0,span:3,bx:2,by:2};
@@ -158,41 +180,58 @@ function parameterInverse(u,theta){
  return [NaN,NaN];
 }
 
-function normalizedBasilica(x,y,N,R2){
- let n=0;
- while(Math.hypot(x,y)>=.125 && n<N){
-  if(x*x+y*y>R2)return [NaN,0,n];
-  const u=x*x-y*y-1;y=2*x*y;x=u;n++;
- }
- if(Math.hypot(x,y)>=.125 || (x===0&&y===0))return [NaN,0,n];
- let a=Math.atan2(-y,-x), t=a, lr=Math.log(Math.hypot(x,y)), weight=.5;
- for(let k=0;n+2<=N;k++,n+=2){
-  const r2=Math.exp(2*lr),u=r2*Math.cos(2*t),v=r2*Math.sin(2*t);
-  const correction=Math.atan2(-v,2-u);
-  a+=weight*correction;weight*=.5;
-  t=Math.atan2(Math.sin(2*t+correction),Math.cos(2*t+correction));
-  lr=2*lr+Math.log(Math.hypot(2-u,v));
- }
- return [Math.atan2(Math.sin(a),Math.cos(a)),1,n];
-}
-function stableBasilica(x,y,N,R2){
- let n=0, phase=0, logD=0, logR=Math.log(Math.hypot(x,y)), a=Math.atan2(y,x);
- const wrap=t=>Math.atan2(Math.sin(t),Math.cos(t));
- if(!Number.isFinite(logR))return [NaN,-Infinity,0];
- while(n<N){
-  if(logR>Math.log(Math.sqrt(R2)))break;
-  // Use the exact factored two-step return near zero; retain orbit in log-polar.
-  if(logR<Math.log(.125)&&n+2<=N){
-   const r2=Math.exp(2*logR), u=r2*Math.cos(2*a),v=r2*Math.sin(2*a);
-   phase=wrap(phase+a+Math.atan2(v,u-1));
-   logD+=Math.log(4)+logR+Math.log(Math.hypot(u-1,v));
-   a=wrap(2*a+Math.atan2(v,u-2));
-   logR=2*logR+Math.log(Math.hypot(u-2,v));n+=2;continue;
+// One whole period from a point z near 0, given in log-polar form (lr = ln|z|, t = arg z), computed without cancellation:
+// z_j = w_j + s·η_j with s = z², η_1 = 1, η_{j+1} = 2 w_j η_j + s η_j²  (exact rearrangement of z_{j+1} = z_j² + c).
+// Returns f^p(z) = s·η_p in log-polar form and (f^p)'(z) = 2z·Π_{j≥1} 2 z_j as ln|·| and arg.
+function periodFromZero(lr,t,C){
+  const w=C.w, p=C.p, e=Math.exp(2*lr), sr=e*Math.cos(2*t), si=e*Math.sin(2*t);   // s underflows to 0 when z² is below 1e-308: then η is linear, exactly
+  let er=1,ei=0,lP=0,aP=0;
+  for(let j=1;j<p;j++){
+    const zr=w[2*j]+sr*er-si*ei, zi=w[2*j+1]+sr*ei+si*er;                       // z_j = w_j + s η_j
+    lP+=Math.log(2*Math.hypot(zr,zi)); aP+=Math.atan2(zi,zr);
+    const qr=er*er-ei*ei, qi=2*er*ei, nr=2*(w[2*j]*er-w[2*j+1]*ei)+sr*qr-si*qi, ni=2*(w[2*j]*ei+w[2*j+1]*er)+sr*qi+si*qr;
+    er=nr; ei=ni; if(!Number.isFinite(er)||!Number.isFinite(ei)) return null;
   }
-  phase=wrap(phase+a);logD+=Math.LN2+logR;
-  const r2=Math.exp(2*logR),u=r2*Math.cos(2*a)-1,v=r2*Math.sin(2*a);
-  if(v===0&&u===0)return [NaN,-Infinity,n+1];
-  logR=Math.log(Math.hypot(u,v));a=Math.atan2(v,u);n++;
+  const lE=Math.log(Math.hypot(er,ei)), aE=Math.atan2(ei,er);
+  return {lr:2*lr+lE, t:2*t+aE, lD:Math.LN2+lr+lP, aD:t+aP, aEta:aE};
+}
+const wrapA=t=>Math.atan2(Math.sin(t),Math.cos(t));
+// Normalized phase: the Böttcher angle of the superattracting cycle, φ(f^p z) = φ(z)²:
+// arg φ(z) = arg(a z) + Σ_k 2^-(k+1) arg(η_p(z_k)/a), taken at the first entry into |z| < ρ.
+function normalizedCentre(x,y,N,R2,C){
+ let n=0;
+ while(Math.hypot(x,y)>=C.rho && n<N){ if(x*x+y*y>R2)return [NaN,0,n]; const t=x*x-y*y+C.cr; y=2*x*y+C.ci; x=t; n++; }
+ if(Math.hypot(x,y)>=C.rho || (x===0&&y===0))return [NaN,0,n];
+ let lr=Math.log(Math.hypot(x,y)), t=Math.atan2(y,x), res=C.argA+t, weight=.5;
+ while(n+C.p<=N && 2*lr>-80){                         // below |z|² = 1e-35 the remaining corrections vanish in double precision
+  const q=periodFromZero(lr,t,C); if(!q) return [NaN,0,n];
+  res+=weight*wrapA(q.aEta-C.argA); weight*=.5; lr=q.lr; t=wrapA(q.t); n+=C.p;
+ }
+ n+=C.p*Math.floor((N-n)/C.p);
+ return [wrapA(res),1,n];
+}
+// Stable phase: arg (f^N)'(z0) and ln|(f^N)'(z0)| with no convergence stopping. Ordinary steps until the orbit is within ρ of 0;
+// from there whole periods by periodFromZero (nothing cancels or underflows), and the last partial period the same way.
+function stableCentre(x,y,N,R2,C){
+ let n=0, phase=0, logD=0; const top=0.5*Math.log(R2);
+ while(n<N){
+  const r=Math.hypot(x,y);
+  if(r===0) return [NaN,-Infinity,n+1];
+  if(Math.log(r)>top) break;
+  if(r<C.rho){
+   let lr=Math.log(r), t=Math.atan2(y,x);
+   while(n+C.p<=N){ const q=periodFromZero(lr,t,C); if(!q) return [NaN,-Infinity,n]; phase=wrapA(phase+q.aD); logD+=q.lD; lr=q.lr; t=wrapA(q.t); n+=C.p; }
+   if(n<N){                                                // partial period: steps 0 … N−n−1 from z near 0
+    const w=C.w, e=Math.exp(2*lr), sr=e*Math.cos(2*t), si=e*Math.sin(2*t); let er=1,ei=0;
+    phase=wrapA(phase+t); logD+=Math.LN2+lr; n++;
+    for(let j=1;n<N;j++,n++){ const zr=w[2*j]+sr*er-si*ei, zi=w[2*j+1]+sr*ei+si*er;   // j = steps since the point near 0
+      phase=wrapA(phase+Math.atan2(zi,zr)); logD+=Math.LN2+Math.log(Math.hypot(zr,zi));
+      const qr=er*er-ei*ei, qi=2*er*ei, nr=2*(w[2*j]*er-w[2*j+1]*ei)+sr*qr-si*qi, ni=2*(w[2*j]*ei+w[2*j+1]*er)+sr*qi+si*qr; er=nr; ei=ni; }
+   }
+   return [phase,logD,n];
+  }
+  phase=wrapA(phase+Math.atan2(y,x)); logD+=Math.LN2+Math.log(r);
+  const t=x*x-y*y+C.cr; y=2*x*y+C.ci; x=t; n++;
  }
  return [phase,logD,n];
 }
@@ -212,8 +251,8 @@ onmessage=e=>{
         [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki):pw===2?parameterInverse(u,theta):[NaN,NaN];
       } else if(polar){ const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
       if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;if(A)A[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
-      if(m.normalizedPhase){const q=normalizedBasilica(pr,pq,Math.min(maxIt,40),Math.max(4,R2));A[i]=q[0];S[i]=q[1];T[i]=q[2];continue;}
-      if(m.stablePhase){const q=stableBasilica(pr,pq,Math.min(maxIt,40),Math.max(4,R2));A[i]=q[0];S[i]=Math.max(0,q[1]);T[i]=q[2];continue;}
+      if(m.normalizedPhase){const q=normalizedCentre(pr,pq,Math.min(maxIt,m.centre.cap),Math.max(4,R2),m.centre);A[i]=q[0];S[i]=q[1];T[i]=q[2];continue;}
+      if(m.stablePhase){const q=stableCentre(pr,pq,Math.min(maxIt,m.centre.cap),Math.max(4,R2),m.centre);A[i]=q[0];S[i]=Math.max(0,q[1]);T[i]=q[2];continue;}
       let zr,zi,cr,ci,dr,di;
       if(julia){ zr=pr; zi=pq; cr=kr; ci=ki; dr=1; di=0; }
       else {
@@ -285,7 +324,7 @@ const idle=[]; let queue=[];
 for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.onmessage=onStrip; idle.push(w); }
 function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
 // Green potential always uses its own outward escape calculation, independent of the experimental stop mode.
-const engMsg=e=>({normalizedPhase:cfg.mode==='normphase'&&e.kind===1&&e.pw===2&&e.kr===-1&&e.ki===0,stablePhase:cfg.mode==='stablephase'&&e.kind===1&&e.pw===2&&e.kr===-1&&e.ki===0,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
+const engMsg=e=>({normalizedPhase:cfg.mode==='normphase'&&!!e.centre,stablePhase:cfg.mode==='stablephase'&&!!e.centre,centre:(cfg.mode==='normphase'||cfg.mode==='stablephase')&&e.centre?e.centre:null,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
 
 // the same orbit on the main thread, for single points (pin, cross-sections)
 function orbit(pr,pq,maxIt,e){
