@@ -34,17 +34,29 @@ const juliaFields={
   this.qCache={key,list}; return list;
  },
  src(){ return document.getElementById('jfSrc').value; },
- F(mode,s,wx,wy,a,c,n,p){ return mode==='crit'?this.field(wx,wy,a,c,n,p):this.sourceField(wx,wy,a,c,n,p,s[0],s[1]); },
+ green(x,y,a,b,p,k,quality){
+ let u=1,v=0; const limit=quality*24, R=Math.max(64,Math.hypot(a,b)+2);
+ for(let i=0;i<=limit;i++){
+  const r=Math.hypot(x,y);
+  if(r>R){const co=x/r,si=y/r,m=p**k-1;return [m*(u*co+v*si)/r,m*(u*si-v*co)/r];}
+  if(i===limit)return null;
+  const th=Math.atan2(y,x),rad=r**p,amp=r**(p-1),co=Math.cos((p-1)*th),si=Math.sin((p-1)*th);
+  const U=amp*(co*u-si*v);v=amp*(si*u+co*v);u=U;
+  x=rad*Math.cos(p*th)+a;y=rad*Math.sin(p*th)+b;
+  if(![x,y,u,v].every(Number.isFinite))return null;
+ }return null;
+ },
+ F(mode,s,wx,wy,a,c,n,p){ if(mode==='green')return this.green(wx,wy,a,c,p,+document.getElementById('jfCompose').value,+document.getElementById('jfN').value); return mode==='crit'?this.field(wx,wy,a,c,n,p):this.sourceField(wx,wy,a,c,n,p,s[0],s[1]); },
  draw(){const panel=document.getElementById('juliaFieldControls');const active=cfg.fractal==='julia';panel.hidden=!active;if(!active||cfg.polar||cfg.bottcher||cmp()||cfg.clean||!Number.isInteger(cfg.juliaPower)||cfg.juliaPower<2)return;
  const $j=id=>document.getElementById(id);
  const sk=[cfg.juliaPower,$j('jfN').value,$j('jfCompose').value,this.src()].join(); if(this.syncKey!==sk){ this.syncKey=sk; this.sync(); }
- const e=$j('jfE').checked,b=$j('jfB').checked,j=$j('jfJ').checked,showQ=$j('jfQ').checked,diff=$j('jfDiff').checked,n=+$j('jfN').value * +$j('jfCompose').value,mode=this.src();
+ const e=$j('jfE').checked,b=$j('jfB').checked,j=$j('jfJ').checked,showQ=$j('jfQ').checked&&this.src()!=='green',diff=$j('jfDiff').checked&&this.src()!=='green',n=+$j('jfN').value * +$j('jfCompose').value,mode=this.src();
  const w=Wd/DPR,h=Hd/DPR,spacing=w/(+$j("jfDensity").value),arrowScale=+$j("jfSize").value,p=cfg.juliaPower,a=cfg.seed.re,c=cfg.seed.im,co=Math.cos(view.a),si=Math.sin(view.a);
  const showA=mode==='a', showA2=diff;
  if(!e&&!b&&!j&&!showQ&&!showA&&!showA2)return;
  ctx.save();ctx.scale(DPR,DPR);
  if(j){const step=2,cols=Math.ceil(w/step),rows=Math.ceil(h/step),mask=new Uint8Array(cols*rows);for(let iy=0;iy<rows;iy++)for(let ix=0;ix<cols;ix++){let [x,y]=toWorld(ix*step*DPR,iy*step*DPR),k=0;for(;k<100;k++){if(Math.hypot(x,y)>Math.max(2,Math.hypot(a,c)+1))break;let r=Math.hypot(x,y)**p,ang=p*Math.atan2(y,x);x=r*Math.cos(ang)+a;y=r*Math.sin(ang)+c;}mask[iy*cols+ix]=k===100?1:0;}ctx.fillStyle='#f0f0f0';for(let iy=1;iy<rows-1;iy++)for(let ix=1;ix<cols-1;ix++){let i=iy*cols+ix;if(mask[i]&&(!mask[i-1]||!mask[i+1]||!mask[i-cols]||!mask[i+cols]))ctx.fillRect(ix*step,iy*step,step,step);}}
- const N1=mode==='crit'?p**n-1:p**n;
+ const N1=mode==='green'?1:mode==='crit'?p**n-1:p**n;
  function arrow(x,y,u,v,col,len){let mag=Math.hypot(u,v);if(!mag||!Number.isFinite(mag)||len<0.6)return;let dx=(u*co+v*si)/mag*len,dy=-(-u*si+v*co)/mag*len;ctx.strokeStyle=col;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(x-dx/2,y-dy/2);ctx.lineTo(x+dx/2,y+dy/2);ctx.lineTo(x+dx*.18-dy*.2,y+dy*.18+dx*.2);ctx.moveTo(x+dx/2,y+dy/2);ctx.lineTo(x+dx*.18+dy*.2,y+dy*.18-dx*.2);ctx.stroke();}
  const k0=Math.min(spacing/21,1.6)*arrowScale;
  if(e||b) for(let y=spacing*13/21;y<h;y+=spacing)for(let x=spacing*13/21;x<w;x+=spacing){
@@ -52,10 +64,10 @@ const juliaFields={
   if(diff){ // difference of two sources: same Julia set, so whatever is left is how the two fields disagree
    const g=this.sourceField(wx,wy,a,c,n,p,this.a2[0],this.a2[1]); if(!g) continue;
    const u=f[0]/N1-g[0]/p**n, v=f[1]/N1-g[1]/p**n, len=18*Math.tanh(4*Math.hypot(u,v))*k0;
-   if(e)arrow(x,y,u,v,'#ff7fb6',len * +$j('jfElectric').value); if(b)arrow(x,y,-v,u,'#7ff0c4',len * +$j('jfMagnetic').value);
+   if(e)arrow(x,y,u,v,'#ff7fb6',len * (mode==='green'?1:+$j('jfElectric').value)); if(b)arrow(x,y,-v,u,'#7ff0c4',len * (mode==='green'?1:+$j('jfMagnetic').value));
   } else {
-   let [u,v]=f,len=(5+13*Math.tanh(Math.hypot(u,v)/N1))*k0;
-   if(e)arrow(x,y,u,v,'#eac16c',len * +$j('jfElectric').value); if(b)arrow(x,y,-v,u,'#63c9ee',len * +$j('jfMagnetic').value);
+   let [u,v]=f,len=(mode==='green'?22*Math.tanh(Math.hypot(u,v)):5+13*Math.tanh(Math.hypot(u,v)/N1))*k0;
+   if(e)arrow(x,y,u,v,'#eac16c',len * (mode==='green'?1:+$j('jfElectric').value)); if(b)arrow(x,y,-v,u,'#63c9ee',len * (mode==='green'?1:+$j('jfMagnetic').value));
   }
  }
  const dot=(wx,wy,r,col)=>{const [sx,sy]=toScreen(wx,wy);ctx.beginPath();ctx.arc(sx/DPR,sy/DPR,r,0,TAU);ctx.fillStyle=col;ctx.fill();};
@@ -67,10 +79,10 @@ const juliaFields={
  },
  fmt(s){ const r=x=>String(+x.toFixed(6)); return r(s[0])+(s[1]<0?' − ':' + ')+r(Math.abs(s[1]))+'i'; },
  sync(){ const $j=id=>document.getElementById(id), mode=this.src(), n=+$j('jfN').value * +$j('jfCompose').value, p=typeof cfg!=='undefined'?cfg.juliaPower:2;
-  $j('jfARow').hidden=mode!=='a'; $j('jfA2Row').hidden=!$j('jfDiff').checked;
+  $j('jfSourceSliders').hidden=mode!=='a'; $j('jfLegacyStrength').hidden=mode==='green'; $j('jfQ').disabled=mode==='green'; $j('jfDiff').disabled=mode==='green'; $j('jfARow').hidden=mode!=='a'; $j('jfA2Row').hidden=!$j('jfDiff').checked;
   $j('jfOut').textContent=$j('jfN').value; for(const id of ['jfCompose','jfElectric','jfMagnetic']) $j(id+'Out').textContent=$j(id).value; $j('jfDensityOut').textContent=$j('jfDensity').value; $j('jfSizeOut').textContent=$j('jfSize').value+'×';
   const total=Number.isInteger(p)&&p>=2?(mode==='crit'?p**n-1:p**n):NaN;
-  $j('jfCount').textContent=Number.isFinite(total)?total.toLocaleString('en-US')+(mode==='crit'?' charges at the critical points of fⁿ':' charges at the points with fⁿ(z) = a'):'';
+  $j('jfCount').textContent=mode==='green'?'Intrinsic magnitude factor: '+(p**(+$j('jfCompose').value)-1):Number.isFinite(total)?total.toLocaleString('en-US')+(mode==='crit'?' charges at the critical points of fⁿ':' charges at the points with fⁿ(z) = a'):'';
  }
 };
 // Tapping the map while "Tap map" is armed places a or a2 instead of a pin. placePin is the lab's tap handler (overlays.js).
