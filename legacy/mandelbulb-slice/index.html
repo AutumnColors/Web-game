@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mandelbulb Slice Lab</title><style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;background:#0b101a;color:#e8edf7}
+header{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid #27344b}
+h1{font-size:18px;margin:0}small{color:#aab9d1}main{display:grid;grid-template-columns:minmax(0,1fr) 260px;height:calc(100dvh - 62px)}
+#stage{position:relative;overflow:hidden;touch-action:none;min-height:300px}canvas{display:block;width:100%;height:100%;touch-action:none}
+#status{position:absolute;bottom:12px;left:12px;background:#111b2bdc;border-radius:8px;padding:7px 10px;font-size:12px;pointer-events:none}
+aside{padding:16px;background:#111a2a;border-left:1px solid #293850;overflow:auto}
+label{display:flex;justify-content:space-between;margin:15px 0 6px;font-size:13px}input[type=range]{width:100%}
+button{background:#283c59;color:white;border:1px solid #455c7b;border-radius:8px;padding:9px 12px;cursor:pointer}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.hint{font-size:12px;color:#aab9d1;line-height:1.6}
+@media(max-width:720px){main{grid-template-columns:1fr;grid-template-rows:minmax(280px,1fr) auto;height:calc(100dvh - 60px)}aside{max-height:245px;border-left:0;border-top:1px solid #293850;padding:10px 16px}label{margin-top:8px}}
+</style></head><body>
+<header><h1>Mandelbulb · Slice Lab</h1><small>Independent 3D parameter-space experiment · power 8</small></header>
+<main><div id="stage"><canvas id="view"></canvas><div id="status">Preparing…</div></div>
+<aside><label for="slice">Z slice <output id="sliceValue">0.00</output></label><input id="slice" type="range" min="-1.5" max="1.5" step=".01" value="0">
+<label for="power">Power <output id="powerValue">8</output></label><input id="power" type="range" min="2" max="12" step="1" value="8">
+<label for="iterations">Max iterations <output id="iterationsValue">64</output></label><input id="iterations" type="range" min="16" max="128" step="16" value="64">
+<div class="actions"><button id="reset">Reset view</button><button id="minus">− Zoom</button><button id="plus">+ Zoom</button></div>
+<p class="hint">Drag to pan · wheel or pinch to zoom · adjust Z to scan the 3D set. Progressive rendering uses coarse previews, then full resolution. Dark regions have not escaped within the iteration limit.</p>
+</aside></main>
+<script>
+'use strict';
+const canvas=document.getElementById('view'),ctx=canvas.getContext('2d',{alpha:false});
+const stage=document.getElementById('stage'),status=document.getElementById('status');
+const controls=['slice','power','iterations'].map(id=>document.getElementById(id));
+let centerX=0,centerY=0,span=3.4,renderToken=0,timer=0;
+let W=1,H=1, dpr=1;
+function resize(){const r=stage.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,1.5);W=Math.max(1,Math.round(r.width*dpr));H=Math.max(1,Math.round(r.height*dpr));canvas.width=W;canvas.height=H;schedule()}
+new ResizeObserver(resize).observe(stage);
+function state(){return {z:+controls[0].value,p:+controls[1].value,max:+controls[2].value}}
+function escape(cx,cy,cz,p,max){
+ let x=0,y=0,z=0;
+ for(let n=0;n<max;n++){
+  const r2=x*x+y*y+z*z;
+  if(r2>4)return n+1-Math.log2(Math.max(1,Math.log2(Math.sqrt(r2))));
+  const r=Math.sqrt(r2);
+  if(r===0){x=cx;y=cy;z=cz;continue}
+  const theta=Math.atan2(Math.hypot(x,y),z);
+  const phi=Math.atan2(y,x);
+  const rp=Math.pow(r,p),t=theta*p,f=phi*p,s=rp*Math.sin(t);
+  x=s*Math.cos(f)+cx;y=s*Math.sin(f)+cy;z=rp*Math.cos(t)+cz;
+  if(!Number.isFinite(x+y+z))return n;
+ }
+ return -1;
+}
+function color(v,max,out,i){
+ if(v<0){out[i]=5;out[i+1]=10;out[i+2]=19;return}
+ const t=Math.max(0,Math.min(1,v/max));
+ const a=6.283185307*(t*.82+.05);
+ out[i]=Math.round(120+110*Math.cos(a));
+ out[i+1]=Math.round(125+110*Math.cos(a-2.1));
+ out[i+2]=Math.round(140+110*Math.cos(a-4.2));
+}
+function render(scale,token){
+ if(token!==renderToken)return;
+ const {z,p,max}=state(),rw=Math.max(1,Math.ceil(W/scale)),rh=Math.max(1,Math.ceil(H/scale));
+ const off=document.createElement('canvas');off.width=rw;off.height=rh;
+ const c=off.getContext('2d'),img=c.createImageData(rw,rh),data=img.data;
+ let row=0;const started=performance.now();
+ function batch(){
+  if(token!==renderToken)return;
+  const deadline=performance.now()+12;
+  while(row<rh&&performance.now()<deadline){
+   const cy=centerY+(row+.5-rh/2)*span/rh;
+   for(let col=0;col<rw;col++){
+    const cx=centerX+(col+.5-rw/2)*span/rh;
+    const v=escape(cx,cy,z,p,max),i=(row*rw+col)*4;
+    color(v,max,data,i);data[i+3]=255;
+   }
+   row++;
+  }
+  if(row<rh){status.textContent='Rendering '+Math.round(row/rh*100)+'%';requestAnimationFrame(batch)}
+  else{
+   if(token!==renderToken)return;
+   c.putImageData(img,0,0);ctx.imageSmoothingEnabled=scale>1;ctx.drawImage(off,0,0,W,H);
+   status.textContent='Z '+z.toFixed(2)+' · '+rw+'×'+rh+' · '+Math.round(performance.now()-started)+' ms'+(scale>1?' · preview':'');
+   if(scale>1)requestAnimationFrame(()=>render(1,token));
+  }
+ }
+ requestAnimationFrame(batch);
+}
+function schedule(){const token=++renderToken;clearTimeout(timer);timer=setTimeout(()=>render(4,token),35)}
+controls.forEach(el=>el.addEventListener('input',()=>{document.getElementById(el.id+'Value').textContent=el.id==='slice'?(+el.value).toFixed(2):el.value;schedule()}));
+function zoom(f,px=W/2,py=H/2){const old=span;span=Math.max(1e-8,Math.min(10,span*f));const s=old-span;centerX+=(px-W/2)*s/H;centerY+=(py-H/2)*s/H;schedule()}
+stage.addEventListener('wheel',e=>{e.preventDefault();const r=canvas.getBoundingClientRect();zoom(Math.exp(Math.sign(e.deltaY)*.18),(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height)},{passive:false});
+const touches=new Map();let lastDistance=null;
+stage.addEventListener('pointerdown',e=>{stage.setPointerCapture(e.pointerId);touches.set(e.pointerId,{x:e.clientX,y:e.clientY})});
+stage.addEventListener('pointermove',e=>{
+ if(!touches.has(e.pointerId))return;
+ const prev=touches.get(e.pointerId);touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(touches.size===1){centerX-=(e.clientX-prev.x)*dpr*span/H;centerY-=(e.clientY-prev.y)*dpr*span/H;schedule()}
+ else if(touches.size===2){const a=[...touches.values()],dist=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);if(lastDistance)zoom(lastDistance/dist);lastDistance=dist}
+});
+function end(e){touches.delete(e.pointerId);lastDistance=null}
+stage.addEventListener('pointerup',end);stage.addEventListener('pointercancel',end);
+document.getElementById('reset').onclick=()=>{centerX=centerY=0;span=3.4;schedule()};
+document.getElementById('minus').onclick=()=>zoom(1.5);
+document.getElementById('plus').onclick=()=>zoom(1/1.5);
+</script><script src="../../site-chrome.js" defer></script></body></html>

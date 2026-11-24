@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Basilica · Böttcher coordinates</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080b1b;color:#eef0ff;font:14px system-ui,Arial}header{padding:14px 16px;background:#11162a;border-bottom:1px solid #303a59}h1{font-size:18px;margin:0 0 6px}p{margin:4px 0;color:#b6c1d9;line-height:1.4}main{max-width:980px;margin:auto;padding:12px}section{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px;background:#151c32;border-radius:12px;margin-bottom:10px}label{display:flex;gap:6px;align-items:center}select,input,button{font:inherit;background:#222e4c;color:white;border:1px solid #56627d;border-radius:8px;padding:7px}button{cursor:pointer}input[type=range]{padding:0;width:110px}.panel{position:relative;border:1px solid #3e4a68;border-radius:12px;overflow:hidden;background:#060a18}canvas{display:block;width:100%;height:auto;image-rendering:auto}#status{font-size:12px;color:#b8c7e5;padding:8px}small{color:#b8c7e5}a{color:#9ccaff}.legend{display:flex;justify-content:space-between;font-size:12px;color:#b8c7e5;margin:5px 3px}
+</style></head><body><header><h1>Basilica · Green-potential / external-angle coordinates</h1><p>Exterior of f(z)=z²−1. Horizontal: external angle θ; vertical: Green potential G. In these coordinates f doubles both G and θ (mod 2π).</p></header>
+<main><section>
+<label>Field <select id="field"><option value="s">Orbit sensitivity at escape (R=2)</option><option value="fixed">Fixed-iteration sensitivity</option><option value="g">Green potential</option><option value="n">Escape iteration N</option><option value="dist">Coordinate distortion |dψ/dw|</option></select></label>
+<label>Fixed N <select id="fixedN"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
+<label>Near boundary G min <select id="gmin"><option value="0.001">0.001</option><option value="0.005">0.005</option><option value="0.02" selected>0.02</option><option value="0.1">0.1</option></select></label>
+<label>G max <select id="gmax"><option value="0.25">0.25</option><option value="0.6" selected>0.6</option><option value="1">1</option></select></label>
+<label><input type="checkbox" id="logG" checked> Logarithmic G axis</label>
+<button id="run">Render</button>
+<a href="../../explore/stopping-lab/">Cartesian lab</a>
+</section>
+<div class="legend"><span>θ = 0</span><span>θ = π</span><span>θ = 2π</span></div>
+<div class="panel"><canvas id="canvas" width="500" height="550"></canvas></div>
+<div class="legend"><span>Top: larger G</span><span>Bottom: nearer Julia boundary</span></div>
+<div id="status">Ready.</div>
+<p><small>Numerical inverse Böttcher map ψ(w), with w=exp(G+iθ), reconstructed by inverse iteration from large |w|. Root signs are chosen by external angle continuation. The approximation becomes less reliable very close to G=0; no interior points are represented. Colors are normalized per image. Use the Cartesian lab to compare the original geometry. This is a coordinate transformation, not a claim that Euclidean distances are preserved.</small></p>
+</main>
+<script>
+const $=id=>document.getElementById(id),cv=$('canvas'),ctx=cv.getContext('2d');let ticket=0;
+function invBottcher(u,theta){
+ // For large potential, ψ(w)≈w. Pull back along the angle-doubling itinerary.
+ let k=0,v=u;while(v<9&&k<22){v*=2;k++}
+ let a=v*Math.cos(0),ang=theta*Math.pow(2,k);
+ let zr=Math.exp(v)*Math.cos(ang),zi=Math.exp(v)*Math.sin(ang);
+ for(let j=k-1;j>=0;j--){
+   // sqrt(z+1), select sign closest to e^(2^j u + i 2^j θ)
+   const xr=zr+1,xi=zi,mag=Math.hypot(xr,xi),rr=Math.sqrt(Math.max(0,(mag+xr)/2)),ii=Math.sign(xi||1)*Math.sqrt(Math.max(0,(mag-xr)/2));
+   const phase=theta*Math.pow(2,j),tr=Math.cos(phase),ti=Math.sin(phase);
+   const sign=rr*tr+ii*ti>=0?1:-1;
+   zr=sign*rr;zi=sign*ii;
+ }
+ return [zr,zi];
+}
+function iterate(zr,zi,mode,nFixed){
+ let dr=1,di=0,n=0;
+ const stop=mode==='fixed'?nFixed:100;
+ while(n<stop){
+   if(mode!=='fixed'&&zr*zr+zi*zi>4)break;
+   const dtr=2*(zr*dr-zi*di),dti=2*(zr*di+zi*dr);
+   const nr=zr*zr-zi*zi-1,ni=2*zr*zi;
+   zr=nr;zi=ni;dr=dtr;di=dti;n++;
+   if(!Number.isFinite(zr)||!Number.isFinite(dr))break;
+ }
+ if(mode==='n')return n;
+ return Math.log1p(Math.hypot(dr,di));
+}
+function mapVal(u,theta,mode,fixedN){
+ const [zr,zi]=invBottcher(u,theta);
+ if(mode==='g')return u;
+ if(mode==='s'||mode==='n')return iterate(zr,zi,mode,0);
+ if(mode==='fixed')return iterate(zr,zi,'fixed',fixedN);
+ if(mode==='dist'){
+   const h=1e-4, [a,b]=invBottcher(u+h,theta),[c,d]=invBottcher(u-h,theta);
+   // |dψ/dw| = |dψ/du|/|w|, because dw/du=w.
+   return Math.log(Math.max(1e-20,Math.hypot(a-c,b-d)/(2*h*Math.exp(u))));
+ }
+}
+function color(t){
+ t=Math.min(1,Math.max(0,t));
+ const h=255-220*t,s=0.78,l=0.12+0.69*Math.pow(t,.75);
+ const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1))))};
+ return [f(0),f(8),f(4)];
+}
+async function render(){
+ const id=++ticket,mode=$('field').value,fix=+$('fixedN').value,g0=+$('gmin').value,g1=+$('gmax').value,lg=$('logG').checked;
+ if(g0>=g1){$('status').textContent='G min must be less than G max';return}
+ const W=500,H=550,values=new Float64Array(W*H);let low=Infinity,high=-Infinity;
+ $('status').textContent='Calculating inverse Böttcher coordinates…';
+ for(let y=0;y<H;y++){
+   const t=(y+.5)/H,u=lg?Math.exp(Math.log(g1)*(1-t)+Math.log(g0)*t):g1*(1-t)+g0*t;
+   for(let x=0;x<W;x++){
+     const v=mapVal(u,2*Math.PI*(x+.5)/W,mode,fix);values[y*W+x]=v;
+     if(Number.isFinite(v)){if(v<low)low=v;if(v>high)high=v;}
+   }
+   if(y%10===9){if(id!==ticket)return;await new Promise(resolve=>requestAnimationFrame(resolve));}
+ }
+ if(id!==ticket)return;
+ const im=ctx.createImageData(W,H),a=im.data,span=Math.max(1e-10,high-low);
+ for(let i=0;i<values.length;i++){
+   const v=values[i],rgb=Number.isFinite(v)?color((v-low)/span):[0,0,0],j=4*i;
+   a[j]=rgb[0];a[j+1]=rgb[1];a[j+2]=rgb[2];a[j+3]=255;
+ }
+ ctx.putImageData(im,0,0);
+ ctx.strokeStyle='rgba(255,255,255,.28)';ctx.lineWidth=1;
+ for(let k=1;k<8;k++){ctx.beginPath();ctx.moveTo(k*W/8,0);ctx.lineTo(k*W/8,H);ctx.stroke()}
+ $('status').textContent='Rendered '+W+'×'+H+' · '+mode+' · value range '+low.toFixed(3)+' to '+high.toFixed(3)+' · θ periodic at left/right edges';
+}
+$('run').onclick=render;for(const name of ['field','fixedN','gmin','gmax','logG'])$(name).onchange=render;
+render();
+</script><script src="../../site-chrome.js" defer></script></body></html>
