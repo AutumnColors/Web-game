@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-11-24T07:54:15.489157+00:00",
+  "generatedAt": "2026-11-24T08:02:17.138187+00:00",
   "apps": [
+    {
+      "path": "explore/orbit-stability-lab/",
+      "title": "Orbit Stability Lab",
+      "category": "Explore",
+      "date": "2026-11-24T15:02:07+07:00",
+      "update": "Guided orbit stability differential experiment with numerical control"
+    },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
       "date": "2026-11-24T14:54:06+07:00",
       "update": "Add Hide Set stability measurement to pinned Fractal Universe Lab viewer"
-    },
-    {
-      "path": "explore/orbit-stability-lab/",
-      "title": "Orbit Stability Lab",
-      "category": "Explore",
-      "date": "2026-11-24T14:52:54+07:00",
-      "update": "Fork Universal Lab into Orbit Stability Lab with unmasked sensitivity view"
     },
     {
       "path": "explore/orbit-stability-lab/dynamics/",
