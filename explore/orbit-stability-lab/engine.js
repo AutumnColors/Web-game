@@ -180,7 +180,7 @@ function stableBasilica(x,y,N,R2){
 }
 onmessage=e=>{
   const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,needDLD,dldIterations,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
-  const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float32Array(N):null, DLD=needDLD?new Float32Array(N):null, A=needD?new Float32Array(N):null;
+  const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float64Array(N):null, DLD=needDLD?new Float32Array(N):null, A=needD?new Float64Array(N):null;
   const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=pw>1?1/Math.log(pw):0;
   let minN=1e9;
   for(let r=0;r<rows;r++){
@@ -402,7 +402,7 @@ function gridFor(v,W,H,sx){
 
 /* ---------- layers of numbers ---------- */
 function newLayer(v,W,H,maxIt,withS){
-  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float32Array(W*H):null,A:withS?new Float32Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
+  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float64Array(W*H):null,A:withS?new Float64Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
 }
 function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.A&&m.A)L.A.set(m.A,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
@@ -506,13 +506,14 @@ function stabilityDifferentials(L,mode){
  return out;
 }
 function complexDifferential(L,mode){const {W,H,S,A,sx}=L,V=new Float64Array(W*H);V.fill(NaN);if(L.ring)return V;const angle=L.a||0;const u=i=>S[i]===0?0:S[i]*Math.cos(A[i]-angle),v=i=>S[i]===0?0:S[i]*Math.sin(A[i]-angle);for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x,a=i-1,b=i+1,c=i-W,d=i+W;V[i]=mode==='vdiv'?(u(b)-u(a)+v(c)-v(d))/(2*sx):(v(b)-v(a)-u(c)+u(d))/(2*sx);}return V;}
+function complexFieldStats(L,mode){const V=complexDifferential(L,mode);let n=0,sum=0,max=0;for(let i=0;i<V.length;i++){const v=V[i];if(!Number.isFinite(v))continue;const x=i%L.W,y=Math.floor(i/L.W);if(x===0||y===0||x===L.W-1||y===L.H-1)continue;if(L.T[i]!==L.T[i-1]||L.T[i]!==L.T[i+1]||L.T[i]!==L.T[i-L.W]||L.T[i]!==L.T[i+L.W])continue;n++;sum+=v*v;max=Math.max(max,Math.abs(v));}return {n,rms:n?Math.sqrt(sum/n):NaN,max:n?max:NaN};}
 function paint(L,mode){
   const {W,H,T,F,S,DLD}=L, N=W*H;
   if((diffMode(mode)||mode==='maskdiff')&&!S)return null;
   if((mode==='waves'||mode==='sens'||mode==='flat') && !S) return null;
   if(mode==='dld'&&!DLD)return null;
   const img=new ImageData(W,H), o=new Uint32Array(img.data.buffer), P=PALETTES[cfg.palette], C=P.cyc, Q=P.seq;
-  if(complexMode(mode)){if(!L.A||!S)return null;const A=L.A; if(mode==='phase'||mode==='stablephase'){for(let i=0;i<N;i++)o[i]=Number.isFinite(A[i])&&(mode==='stablephase'||S[i]>0)?PALETTES.hue.cyc[Math.floor((A[i]+Math.PI)/(2*Math.PI)*1023)]:BLACK;}else if(mode==='jointmag'||mode==='jointphase'){const D=complexDifferential(L,'vdiv'),C=complexDifferential(L,'vcurl');const V=Float64Array.from(D,(d,i)=>Math.hypot(d,C[i]));const max=Math.max(1e-12,rangeOf(N,i=>V[i],0,.99)[1]);for(let i=0;i<N;i++){const r=V[i];o[i]=!Number.isFinite(r)||r===0?BLACK:mode==='jointmag'?Q[Math.round(1023*Math.min(1,r/max))]:PALETTES.hue.cyc[Math.min(1023,Math.floor((Math.atan2(C[i],D[i])+Math.PI)/(2*Math.PI)*1023))];}L.rng[mode]=mode==='jointmag'?[0,max]:[-Math.PI,Math.PI];}else{const V=complexDifferential(L,mode);const max=Math.max(1e-12,rangeOf(N,i=>Math.abs(V[i]),0,.99)[1]);const lut=ramp([[35,85,200],[30,30,35],[245,125,45]],false);for(let i=0;i<N;i++)o[i]=Number.isFinite(V[i])?lut[Math.round(511.5*(1+Math.max(-1,Math.min(1,V[i]/max))))]:BLACK;L.rng[mode]=[-max,max];}}else if(mode==='maskdiff'){for(let i=0;i<N;i++){const v=T[i]===NO?S[i]:0;o[i]=Number.isFinite(v)?Q[Math.round(1023*Math.min(1,Math.max(0,v)/10))]:BLACK;}L.rng[mode]=[0,10];} else if(diffMode(mode)){
+  if(complexMode(mode)){if(!L.A||!S)return null;const A=L.A; if(mode==='phase'||mode==='stablephase'){for(let i=0;i<N;i++)o[i]=Number.isFinite(A[i])&&(mode==='stablephase'||S[i]>0)?PALETTES.hue.cyc[Math.floor((A[i]+Math.PI)/(2*Math.PI)*1023)]:BLACK;}else if(mode==='jointmag'||mode==='jointphase'){const D=complexDifferential(L,'vdiv'),C=complexDifferential(L,'vcurl');const V=Float64Array.from(D,(d,i)=>Math.hypot(d,C[i]));const max=Math.max(1e-12,rangeOf(N,i=>V[i],0,.99)[1]);for(let i=0;i<N;i++){const r=V[i];o[i]=!Number.isFinite(r)||r===0?BLACK:mode==='jointmag'?Q[Math.round(1023*Math.min(1,r/max))]:PALETTES.hue.cyc[Math.min(1023,Math.floor((Math.atan2(C[i],D[i])+Math.PI)/(2*Math.PI)*1023))];}L.rng[mode]=mode==='jointmag'?[0,max]:[-Math.PI,Math.PI];}else{const V=complexDifferential(L,mode);const other=complexDifferential(L,mode==='vcurl'?'vdiv':'vcurl');const max=Math.max(1e-12,rangeOf(N,i=>Math.hypot(V[i],other[i]),0,.99)[1]);const lut=ramp([[35,85,200],[30,30,35],[245,125,45]],false);for(let i=0;i<N;i++)o[i]=Number.isFinite(V[i])?lut[Math.round(511.5*(1+Math.max(-1,Math.min(1,V[i]/max))))]:BLACK;L.rng[mode]=[-max,max];}}else if(mode==='maskdiff'){for(let i=0;i<N;i++){const v=T[i]===NO?S[i]:0;o[i]=Number.isFinite(v)?Q[Math.round(1023*Math.min(1,Math.max(0,v)/10))]:BLACK;}L.rng[mode]=[0,10];} else if(diffMode(mode)){
  const V=stabilityDifferentials(L,mode), signed=mode==='sdiv'||mode==='scurl';
  const range=rangeOf(N,i=>Math.abs(V[i]),0,.99), max=mode==='scurl'?1e-8:Math.max(1e-12,range[1]);
  const diverge=ramp([[35,85,200],[30,30,35],[245,125,45]],false);
