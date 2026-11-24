@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T13:17:51.703617+00:00",
+  "generatedAt": "2026-11-24T13:25:09.696945+00:00",
   "apps": [
     {
       "path": "explore/orbit-stability-lab/",
       "title": "Orbit Stability Lab",
       "category": "Explore",
-      "date": "2026-11-24T20:17:43+07:00",
-      "update": "Allow one iteration in orbit stability experiment"
+      "date": "2026-11-24T20:25:02+07:00",
+      "update": "Show measured curl and divergence RMS and maximum"
     },
     {
       "path": "explore/stopping-lab/",
