@@ -33,6 +33,8 @@ const FRACTALS=[
   {v:'multibrot',  t:'Multibrot',  s:'z → zⁿ + c'}
 ];
 const MODES=[
+{v:'jointmag',t:'Combined magnitude',s:'Hypot of divergence and curl',tag:'Joint magnitude'},
+{v:'jointphase',t:'Combined phase',s:'Angle of divergence + i curl',tag:'Joint phase'},
 {v:'phase',t:'Rotation phase',s:'arg D at stopping point',tag:'Rotation'},
 {v:'vdiv',t:'Complex field divergence',s:'Divergence of log-compressed complex derivative',tag:'Vector divergence'},
 {v:'vcurl',t:'Complex field curl',s:'Curl of log-compressed complex derivative',tag:'Vector curl'},
@@ -73,7 +75,7 @@ function engineOf(c){
 let eng=engineOf(cfg);
 const asciiRule=()=>'z -> z^'+eng.pw+' + c';
 const diffMode=m=>['sgrad','sdiv','scurl','shess'].includes(m);
-const complexMode=m=>['phase','vdiv','vcurl'].includes(m);
+const complexMode=m=>['phase','vdiv','vcurl','jointmag','jointphase'].includes(m);
 const needD=()=>complexMode(cfg.mode)||cfg.mode==='maskdiff'||diffMode(cfg.mode)||cfg.mode==='waves'||cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
 const cmp=()=>cfg.mode==='compare';
 
@@ -487,7 +489,7 @@ function paint(L,mode){
   if((mode==='waves'||mode==='sens'||mode==='flat') && !S) return null;
   if(mode==='dld'&&!DLD)return null;
   const img=new ImageData(W,H), o=new Uint32Array(img.data.buffer), P=PALETTES[cfg.palette], C=P.cyc, Q=P.seq;
-  if(complexMode(mode)){if(!L.A||!S)return null;const A=L.A; if(mode==='phase'){for(let i=0;i<N;i++)o[i]=Number.isFinite(A[i])&&S[i]>0?PALETTES.hue.cyc[Math.floor((A[i]+Math.PI)/(2*Math.PI)*1023)]:BLACK;}else{const V=complexDifferential(L,mode);const max=Math.max(1e-12,rangeOf(N,i=>Math.abs(V[i]),0,.99)[1]);const lut=ramp([[35,85,200],[30,30,35],[245,125,45]],false);for(let i=0;i<N;i++)o[i]=Number.isFinite(V[i])?lut[Math.round(511.5*(1+Math.max(-1,Math.min(1,V[i]/max))))]:BLACK;L.rng[mode]=[-max,max];}}else if(mode==='maskdiff'){for(let i=0;i<N;i++){const v=T[i]===NO?S[i]:0;o[i]=Number.isFinite(v)?Q[Math.round(1023*Math.min(1,Math.max(0,v)/10))]:BLACK;}L.rng[mode]=[0,10];} else if(diffMode(mode)){
+  if(complexMode(mode)){if(!L.A||!S)return null;const A=L.A; if(mode==='phase'){for(let i=0;i<N;i++)o[i]=Number.isFinite(A[i])&&S[i]>0?PALETTES.hue.cyc[Math.floor((A[i]+Math.PI)/(2*Math.PI)*1023)]:BLACK;}else if(mode==='jointmag'||mode==='jointphase'){const D=complexDifferential(L,'vdiv'),C=complexDifferential(L,'vcurl');const V=Float64Array.from(D,(d,i)=>Math.hypot(d,C[i]));const max=Math.max(1e-12,rangeOf(N,i=>V[i],0,.99)[1]);for(let i=0;i<N;i++){const r=V[i];o[i]=!Number.isFinite(r)||r===0?BLACK:mode==='jointmag'?Q[Math.round(1023*Math.min(1,r/max))]:PALETTES.hue.cyc[Math.min(1023,Math.floor((Math.atan2(C[i],D[i])+Math.PI)/(2*Math.PI)*1023))];}L.rng[mode]=mode==='jointmag'?[0,max]:[-Math.PI,Math.PI];}else{const V=complexDifferential(L,mode);const max=Math.max(1e-12,rangeOf(N,i=>Math.abs(V[i]),0,.99)[1]);const lut=ramp([[35,85,200],[30,30,35],[245,125,45]],false);for(let i=0;i<N;i++)o[i]=Number.isFinite(V[i])?lut[Math.round(511.5*(1+Math.max(-1,Math.min(1,V[i]/max))))]:BLACK;L.rng[mode]=[-max,max];}}else if(mode==='maskdiff'){for(let i=0;i<N;i++){const v=T[i]===NO?S[i]:0;o[i]=Number.isFinite(v)?Q[Math.round(1023*Math.min(1,Math.max(0,v)/10))]:BLACK;}L.rng[mode]=[0,10];} else if(diffMode(mode)){
  const V=stabilityDifferentials(L,mode), signed=mode==='sdiv'||mode==='scurl';
  const range=rangeOf(N,i=>Math.abs(V[i]),0,.99), max=mode==='scurl'?1e-8:Math.max(1e-12,range[1]);
  const diverge=ramp([[35,85,200],[30,30,35],[245,125,45]],false);
