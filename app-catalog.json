@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T08:15:06.023660+00:00",
+  "generatedAt": "2026-11-24T08:20:09.014382+00:00",
   "apps": [
     {
       "path": "explore/orbit-stability-lab/",
       "title": "Orbit Stability Lab",
       "category": "Explore",
-      "date": "2026-11-24T15:14:56+07:00",
-      "update": "Preserve derivative phase and visualize complex field divergence and curl"
+      "date": "2026-11-24T15:20:00+07:00",
+      "update": "Add joint divergence curl magnitude and phase views"
     },
     {
       "path": "explore/stopping-lab/",
