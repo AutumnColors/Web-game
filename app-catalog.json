@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T14:44:20.054640+00:00",
+  "generatedAt": "2026-11-24T14:49:12.561783+00:00",
   "apps": [
     {
       "path": "explore/feigenbaum-constant-lab/",
       "title": "Feigenbaum Constant Lab",
       "category": "Explore",
-      "date": "2026-11-24T21:44:04+07:00",
-      "update": "Fix Feigenbaum mobile controls and copy parameter"
+      "date": "2026-11-24T21:49:03+07:00",
+      "update": "Make Feigenbaum cycle search independent of lazy addon loading"
     },
     {
       "path": "explore/stopping-lab/",
