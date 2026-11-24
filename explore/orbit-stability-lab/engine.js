@@ -33,6 +33,7 @@ const FRACTALS=[
   {v:'multibrot',  t:'Multibrot',  s:'z → zⁿ + c'}
 ];
 const MODES=[
+{v:'normphase',t:'Normalized phase',s:'Local Basilica Böttcher angle after basin entry',tag:'Normalized phase'},
 {v:'stablephase',t:'Stable phase',s:'Basilica log-polar phase, no convergence stopping',tag:'Stable phase'},
 {v:'jointmag',t:'Combined magnitude',s:'Hypot of divergence and curl',tag:'Joint magnitude'},
 {v:'jointphase',t:'Combined phase',s:'Angle of divergence + i curl',tag:'Joint phase'},
@@ -76,7 +77,7 @@ function engineOf(c){
 let eng=engineOf(cfg);
 const asciiRule=()=>'z -> z^'+eng.pw+' + c';
 const diffMode=m=>['sgrad','sdiv','scurl','shess'].includes(m);
-const complexMode=m=>['stablephase','phase','vdiv','vcurl','jointmag','jointphase'].includes(m);
+const complexMode=m=>['normphase','stablephase','phase','vdiv','vcurl','jointmag','jointphase'].includes(m);
 const needD=()=>complexMode(cfg.mode)||cfg.mode==='maskdiff'||diffMode(cfg.mode)||cfg.mode==='waves'||cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
 const cmp=()=>cfg.mode==='compare';
 
@@ -157,6 +158,23 @@ function parameterInverse(u,theta){
  return [NaN,NaN];
 }
 
+function normalizedBasilica(x,y,N,R2){
+ let n=0;
+ while(Math.hypot(x,y)>=.125 && n<N){
+  if(x*x+y*y>R2)return [NaN,0,n];
+  const u=x*x-y*y-1;y=2*x*y;x=u;n++;
+ }
+ if(Math.hypot(x,y)>=.125 || (x===0&&y===0))return [NaN,0,n];
+ let a=Math.atan2(-y,-x), t=a, lr=Math.log(Math.hypot(x,y)), weight=.5;
+ for(let k=0;n+2<=N;k++,n+=2){
+  const r2=Math.exp(2*lr),u=r2*Math.cos(2*t),v=r2*Math.sin(2*t);
+  const correction=Math.atan2(-v,2-u);
+  a+=weight*correction;weight*=.5;
+  t=Math.atan2(Math.sin(2*t+correction),Math.cos(2*t+correction));
+  lr=2*lr+Math.log(Math.hypot(2-u,v));
+ }
+ return [Math.atan2(Math.sin(a),Math.cos(a)),1,n];
+}
 function stableBasilica(x,y,N,R2){
  let n=0, phase=0, logD=0, logR=Math.log(Math.hypot(x,y)), a=Math.atan2(y,x);
  const wrap=t=>Math.atan2(Math.sin(t),Math.cos(t));
@@ -194,6 +212,7 @@ onmessage=e=>{
         [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki):pw===2?parameterInverse(u,theta):[NaN,NaN];
       } else if(polar){ const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
       if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;if(A)A[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
+      if(m.normalizedPhase){const q=normalizedBasilica(pr,pq,Math.min(maxIt,40),Math.max(4,R2));A[i]=q[0];S[i]=q[1];T[i]=q[2];continue;}
       if(m.stablePhase){const q=stableBasilica(pr,pq,Math.min(maxIt,40),Math.max(4,R2));A[i]=q[0];S[i]=Math.max(0,q[1]);T[i]=q[2];continue;}
       let zr,zi,cr,ci,dr,di;
       if(julia){ zr=pr; zi=pq; cr=kr; ci=ki; dr=1; di=0; }
@@ -266,7 +285,7 @@ const idle=[]; let queue=[];
 for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.onmessage=onStrip; idle.push(w); }
 function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
 // Green potential always uses its own outward escape calculation, independent of the experimental stop mode.
-const engMsg=e=>({stablePhase:cfg.mode==='stablephase'&&e.kind===1&&e.pw===2&&e.kr===-1&&e.ki===0,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
+const engMsg=e=>({normalizedPhase:cfg.mode==='normphase'&&e.kind===1&&e.pw===2&&e.kr===-1&&e.ki===0,stablePhase:cfg.mode==='stablephase'&&e.kind===1&&e.pw===2&&e.kr===-1&&e.ki===0,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
 
 // the same orbit on the main thread, for single points (pin, cross-sections)
 function orbit(pr,pq,maxIt,e){
@@ -513,7 +532,7 @@ function paint(L,mode){
   if((mode==='waves'||mode==='sens'||mode==='flat') && !S) return null;
   if(mode==='dld'&&!DLD)return null;
   const img=new ImageData(W,H), o=new Uint32Array(img.data.buffer), P=PALETTES[cfg.palette], C=P.cyc, Q=P.seq;
-  if(complexMode(mode)){if(!L.A||!S)return null;const A=L.A; if(mode==='phase'||mode==='stablephase'){for(let i=0;i<N;i++)o[i]=Number.isFinite(A[i])&&(mode==='stablephase'||S[i]>0)?PALETTES.hue.cyc[Math.floor((A[i]+Math.PI)/(2*Math.PI)*1023)]:BLACK;}else if(mode==='jointmag'||mode==='jointphase'){const D=complexDifferential(L,'vdiv'),C=complexDifferential(L,'vcurl');const V=Float64Array.from(D,(d,i)=>Math.hypot(d,C[i]));const max=Math.max(1e-12,rangeOf(N,i=>V[i],0,.99)[1]);for(let i=0;i<N;i++){const r=V[i];o[i]=!Number.isFinite(r)||r===0?BLACK:mode==='jointmag'?Q[Math.round(1023*Math.min(1,r/max))]:PALETTES.hue.cyc[Math.min(1023,Math.floor((Math.atan2(C[i],D[i])+Math.PI)/(2*Math.PI)*1023))];}L.rng[mode]=mode==='jointmag'?[0,max]:[-Math.PI,Math.PI];}else{const V=complexDifferential(L,mode);const other=complexDifferential(L,mode==='vcurl'?'vdiv':'vcurl');const max=Math.max(1e-12,rangeOf(N,i=>Math.hypot(V[i],other[i]),0,.99)[1]);const lut=ramp([[35,85,200],[30,30,35],[245,125,45]],false);for(let i=0;i<N;i++)o[i]=Number.isFinite(V[i])?lut[Math.round(511.5*(1+Math.max(-1,Math.min(1,V[i]/max))))]:BLACK;L.rng[mode]=[-max,max];}}else if(mode==='maskdiff'){for(let i=0;i<N;i++){const v=T[i]===NO?S[i]:0;o[i]=Number.isFinite(v)?Q[Math.round(1023*Math.min(1,Math.max(0,v)/10))]:BLACK;}L.rng[mode]=[0,10];} else if(diffMode(mode)){
+  if(complexMode(mode)){if(!L.A||!S)return null;const A=L.A; if(mode==='phase'||mode==='stablephase'||mode==='normphase'){for(let i=0;i<N;i++)o[i]=Number.isFinite(A[i])&&(mode==='stablephase'||S[i]>0)?PALETTES.hue.cyc[Math.floor((A[i]+Math.PI)/(2*Math.PI)*1023)]:BLACK;}else if(mode==='jointmag'||mode==='jointphase'){const D=complexDifferential(L,'vdiv'),C=complexDifferential(L,'vcurl');const V=Float64Array.from(D,(d,i)=>Math.hypot(d,C[i]));const max=Math.max(1e-12,rangeOf(N,i=>V[i],0,.99)[1]);for(let i=0;i<N;i++){const r=V[i];o[i]=!Number.isFinite(r)||r===0?BLACK:mode==='jointmag'?Q[Math.round(1023*Math.min(1,r/max))]:PALETTES.hue.cyc[Math.min(1023,Math.floor((Math.atan2(C[i],D[i])+Math.PI)/(2*Math.PI)*1023))];}L.rng[mode]=mode==='jointmag'?[0,max]:[-Math.PI,Math.PI];}else{const V=complexDifferential(L,mode);const other=complexDifferential(L,mode==='vcurl'?'vdiv':'vcurl');const max=Math.max(1e-12,rangeOf(N,i=>Math.hypot(V[i],other[i]),0,.99)[1]);const lut=ramp([[35,85,200],[30,30,35],[245,125,45]],false);for(let i=0;i<N;i++)o[i]=Number.isFinite(V[i])?lut[Math.round(511.5*(1+Math.max(-1,Math.min(1,V[i]/max))))]:BLACK;L.rng[mode]=[-max,max];}}else if(mode==='maskdiff'){for(let i=0;i<N;i++){const v=T[i]===NO?S[i]:0;o[i]=Number.isFinite(v)?Q[Math.round(1023*Math.min(1,Math.max(0,v)/10))]:BLACK;}L.rng[mode]=[0,10];} else if(diffMode(mode)){
  const V=stabilityDifferentials(L,mode), signed=mode==='sdiv'||mode==='scurl';
  const range=rangeOf(N,i=>Math.abs(V[i]),0,.99), max=mode==='scurl'?1e-8:Math.max(1e-12,range[1]);
  const diverge=ramp([[35,85,200],[30,30,35],[245,125,45]],false);
