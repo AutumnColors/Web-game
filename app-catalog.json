@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T05:32:16.902749+00:00",
+  "generatedAt": "2026-11-24T05:32:57.234895+00:00",
   "apps": [
     {
       "path": "explore/prime-number-boundary-test/",
       "title": "Julie Cycle Lab → Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-24T12:31:28+07:00",
-      "update": "Bring Julie Cycle Lab into the Fractal Universe Lab as an on-demand add-on"
+      "date": "2026-11-24T12:32:50+07:00",
+      "update": "Remove old Cycle Lab copy (now cycle-addon.js in the Fractal Universe Lab)"
     },
     {
       "path": "explore/stopping-lab/",
