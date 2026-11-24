@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-24T07:08:58.972333+00:00",
+  "generatedAt": "2026-11-24T07:09:34.374921+00:00",
   "apps": [
     {
       "path": "explore/stopping-lab/",
@@ -86,13 +86,6 @@
       "update": "Add full elevation-grid CSV export with measured DEM and modeled bathymetry columns"
     },
     {
-      "path": "explore/starting-point-mandelbrot-3d/",
-      "title": "3D Starting-Point Mandelbrot Lab",
-      "category": "Explore",
-      "date": "2026-11-19T21:27:05+07:00",
-      "update": "Add solid voxel surface rendering and opacity controls to 3D Mandelbrot lab"
-    },
-    {
       "path": "levels/06-cayley-catch/",
       "title": "Cayley Catch",
       "category": "Levels",
@@ -135,13 +128,6 @@
       "update": "Finish shared site chrome across games, music and research"
     },
     {
-      "path": "research/six-routes/",
-      "title": "Six routes through the Mandelbrot set",
-      "category": "Research",
-      "date": "2026-11-16T23:36:29+07:00",
-      "update": "Finish shared site chrome across games, music and research"
-    },
-    {
       "path": "sketches/pineapple-umbrella/",
       "title": "Pineapple Umbrella",
       "category": "Sketches",
@@ -152,13 +138,6 @@
       "path": "levels/05-minesweeper/",
       "title": "Minesweeper",
       "category": "Levels",
-      "date": "2026-11-16T23:36:29+07:00",
-      "update": "Finish shared site chrome across games, music and research"
-    },
-    {
-      "path": "research/spiral-dive/",
-      "title": "Dive into the spiral seed",
-      "category": "Research",
       "date": "2026-11-16T23:36:29+07:00",
       "update": "Finish shared site chrome across games, music and research"
     },
@@ -226,13 +205,6 @@
       "update": "Apply shared minimal navigation and author credit to additional apps"
     },
     {
-      "path": "explore/seed-lab/",
-      "title": "Seed → Structure Lab",
-      "category": "Explore",
-      "date": "2026-11-16T23:35:52+07:00",
-      "update": "Apply shared minimal navigation and author credit to additional apps"
-    },
-    {
       "path": "explore/riemann-explorer/",
       "title": "Riemann Explorer",
       "category": "Explore",
@@ -249,13 +221,6 @@
     {
       "path": "explore/nonsimple/",
       "title": "Non-Simple Group Explorer",
-      "category": "Explore",
-      "date": "2026-11-16T23:35:52+07:00",
-      "update": "Apply shared minimal navigation and author credit to additional apps"
-    },
-    {
-      "path": "explore/mandelbulb-slice/",
-      "title": "Mandelbulb Slice Lab",
       "category": "Explore",
       "date": "2026-11-16T23:35:52+07:00",
       "update": "Apply shared minimal navigation and author credit to additional apps"
@@ -291,13 +256,6 @@
     {
       "path": "explore/fractal-map-survey/",
       "title": "Mandelbrot Survey Map",
-      "category": "Explore",
-      "date": "2026-11-16T23:33:49+07:00",
-      "update": "Add common navigation to map and Julia labs"
-    },
-    {
-      "path": "explore/fractal-map/",
-      "title": "Mandelbrot Map",
       "category": "Explore",
       "date": "2026-11-16T23:33:49+07:00",
       "update": "Add common navigation to map and Julia labs"
@@ -368,13 +326,6 @@
     {
       "path": "explore/boundary-lab/",
       "title": "Boundary Release Lab",
-      "category": "Explore",
-      "date": "2026-11-16T23:32:53+07:00",
-      "update": "Apply shared navigation to site and first lab pages"
-    },
-    {
-      "path": "explore/bottcher-lab/",
-      "title": "Basilica · Böttcher coordinates",
       "category": "Explore",
       "date": "2026-11-16T23:32:53+07:00",
       "update": "Apply shared navigation to site and first lab pages"
