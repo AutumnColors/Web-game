@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-24T07:05:37.333393+00:00",
+  "generatedAt": "2026-11-24T07:07:40.494273+00:00",
   "apps": [
+    {
+      "path": "explore/mandelbulb-3d/",
+      "title": "Mandelbulb 3D",
+      "category": "Explore",
+      "date": "2026-11-24T14:07:33+07:00",
+      "update": "Point registries, links and archive list at the newly archived pages"
+    },
     {
       "path": "explore/fractal-atlas/",
       "title": "Terrain Fractal → Fractal Universe Lab",
@@ -249,13 +256,6 @@
     {
       "path": "explore/mandelbulb-slice/",
       "title": "Mandelbulb Slice Lab",
-      "category": "Explore",
-      "date": "2026-11-16T23:35:52+07:00",
-      "update": "Apply shared minimal navigation and author credit to additional apps"
-    },
-    {
-      "path": "explore/mandelbulb-3d/",
-      "title": "Mandelbulb 3D",
       "category": "Explore",
       "date": "2026-11-16T23:35:52+07:00",
       "update": "Apply shared minimal navigation and author credit to additional apps"
