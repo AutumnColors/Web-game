@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-24T07:53:04.157120+00:00",
+  "generatedAt": "2026-11-24T07:54:15.489157+00:00",
   "apps": [
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-24T14:54:06+07:00",
+      "update": "Add Hide Set stability measurement to pinned Fractal Universe Lab viewer"
+    },
     {
       "path": "explore/orbit-stability-lab/",
       "title": "Orbit Stability Lab",
@@ -21,13 +28,6 @@
       "category": "Orbit Stability Lab",
       "date": "2026-11-24T14:52:54+07:00",
       "update": "Fork Universal Lab into Orbit Stability Lab with unmasked sensitivity view"
-    },
-    {
-      "path": "explore/stopping-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
-      "date": "2026-11-24T14:08:50+07:00",
-      "update": "Fractal Universe Lab: remove link to the archived Böttcher page"
     },
     {
       "path": "explore/mandelbulb-3d/",
