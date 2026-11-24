@@ -33,6 +33,7 @@ const FRACTALS=[
   {v:'multibrot',  t:'Multibrot',  s:'z → zⁿ + c'}
 ];
 const MODES=[
+{v:'maskdiff',t:'Mask difference',s:'Absolute raw sensitivity removed by masking',tag:'Mask difference'},
 {"v":"sgrad","t":"2 · Gradient","s":"Magnitude of ∇S; arrows optional","tag":"2 · Gradient"},
 {"v":"sdiv","t":"3 · Divergence","s":"Laplacian of S; signed expansion/compression","tag":"3 · Divergence"},
 {"v":"scurl","t":"4 · Curl control","s":"Mixed partial difference; expected zero","tag":"4 · Curl control"},
@@ -69,7 +70,7 @@ function engineOf(c){
 let eng=engineOf(cfg);
 const asciiRule=()=>'z -> z^'+eng.pw+' + c';
 const diffMode=m=>['sgrad','sdiv','scurl','shess'].includes(m);
-const needD=()=>diffMode(cfg.mode)||cfg.mode==='waves'||cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
+const needD=()=>cfg.mode==='maskdiff'||diffMode(cfg.mode)||cfg.mode==='waves'||cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
 const cmp=()=>cfg.mode==='compare';
 
 /* ---------- worker: one strip of rows on a rotated grid. kind 0: the pixel is c and z₀ = 0 (parameter plane);
@@ -477,11 +478,11 @@ function stabilityDifferentials(L,mode){
 }
 function paint(L,mode){
   const {W,H,T,F,S,DLD}=L, N=W*H;
-  if(diffMode(mode)&&!S)return null;
+  if((diffMode(mode)||mode==='maskdiff')&&!S)return null;
   if((mode==='waves'||mode==='sens'||mode==='flat') && !S) return null;
   if(mode==='dld'&&!DLD)return null;
   const img=new ImageData(W,H), o=new Uint32Array(img.data.buffer), P=PALETTES[cfg.palette], C=P.cyc, Q=P.seq;
-  if(diffMode(mode)){
+  if(mode==='maskdiff'){for(let i=0;i<N;i++){const v=T[i]===NO?S[i]:0;o[i]=Number.isFinite(v)?Q[Math.round(1023*Math.min(1,Math.max(0,v)/10))]:BLACK;}L.rng[mode]=[0,10];} else if(diffMode(mode)){
  const V=stabilityDifferentials(L,mode), signed=mode==='sdiv'||mode==='scurl';
  const range=rangeOf(N,i=>Math.abs(V[i]),0,.99), max=mode==='scurl'?1e-8:Math.max(1e-12,range[1]);
  const diverge=ramp([[35,85,200],[30,30,35],[245,125,45]],false);
@@ -528,9 +529,9 @@ function paint(L,mode){
       const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
       canvas.getContext('2d').putImageData(img,0,0);return canvas;
     }
-    const rng=rangeOf(N,get,lo,hi); if(mode==='gradt') rng[0]=0;
+    const rng=(mode==='waves'||mode==='sens')?rangeOf(N,i=>T[i]!==NO?S[i]:NaN,lo,hi):rangeOf(N,get,lo,hi); if(mode==='waves'||mode==='sens')rng[0]=0; if(mode==='gradt') rng[0]=0;
     const k=1023/(rng[1]-rng[0]), floor=Q[0];
-    for(let i=0;i<N;i++){ const v=get(i); if(v!==v){ o[i]=mode==='waves'?floor:T[i]===NO?BLACK:floor; continue; } const t=(v-rng[0])*k; o[i]=Q[t<0?0:t>1023?1023:t|0]; }
+    for(let i=0;i<N;i++){ const v=get(i); if(v!==v){ o[i]=(mode==='waves'||mode==='sens')?floor:T[i]===NO?BLACK:floor; continue; } const t=(v-rng[0])*k; o[i]=Q[t<0?0:t>1023?1023:t|0]; }
     L.rng[mode]=rng;
   }
   const c=document.createElement('canvas'); c.width=W; c.height=H; c.getContext('2d').putImageData(img,0,0); if(mode==='potential')drawGreenContours(c,L); return c;
