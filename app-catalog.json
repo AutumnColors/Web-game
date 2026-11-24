@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-24T14:29:55.823165+00:00",
+  "generatedAt": "2026-11-24T14:31:20.156178+00:00",
   "apps": [
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-24T21:30:34+07:00",
+      "update": "Universal Lab: orbit stability experiment controls in lab.js"
+    },
     {
       "path": "explore/feigenbaum-constant-lab/dynamics/",
       "title": "Julia Dynamics Map",
@@ -28,13 +35,6 @@
       "category": "Explore",
       "date": "2026-11-24T21:10:05+07:00",
       "update": "Expose normalized phase and capped render resolution controls"
-    },
-    {
-      "path": "explore/stopping-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
-      "date": "2026-11-24T18:30:03+07:00",
-      "update": "Julia Fields panel: source point, second source, difference and charge dots"
     },
     {
       "path": "explore/julia-field-viewer/",
