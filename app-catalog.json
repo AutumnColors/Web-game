@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T08:04:31.792179+00:00",
+  "generatedAt": "2026-11-24T08:11:19.315155+00:00",
   "apps": [
     {
       "path": "explore/orbit-stability-lab/",
       "title": "Orbit Stability Lab",
       "category": "Explore",
-      "date": "2026-11-24T15:04:23+07:00",
-      "update": "Make all six experiment controls visible on mobile"
+      "date": "2026-11-24T15:11:10+07:00",
+      "update": "Add mask invariance difference map and iteration sweep controls"
     },
     {
       "path": "explore/stopping-lab/",
