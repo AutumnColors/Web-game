@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-24T09:12:34.697154+00:00",
+  "generatedAt": "2026-11-24T09:27:01.648776+00:00",
   "apps": [
+    {
+      "path": "explore/stopping-lab/",
+      "title": "Fractal Universe Lab",
+      "category": "Explore",
+      "date": "2026-11-24T16:26:23+07:00",
+      "update": "Universal Lab: draw Julia Fields from the frame renderer"
+    },
     {
       "path": "explore/julia-field-viewer/",
       "title": "Julia Field Viewer",
@@ -14,13 +21,6 @@
       "category": "Explore",
       "date": "2026-11-24T15:24:00+07:00",
       "update": "Add independent period doubling scaling analysis with derivative and spatial ratios"
-    },
-    {
-      "path": "explore/stopping-lab/",
-      "title": "Fractal Universe Lab",
-      "category": "Explore",
-      "date": "2026-11-24T14:54:06+07:00",
-      "update": "Add Hide Set stability measurement to pinned Fractal Universe Lab viewer"
     },
     {
       "path": "explore/orbit-stability-lab/dynamics/",
