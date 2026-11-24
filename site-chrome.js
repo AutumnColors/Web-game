@@ -23,7 +23,11 @@ document.addEventListener('fullscreenchange',sync);sync();
 const rel=decodeURIComponent(location.pathname).slice(decodeURIComponent(new URL(home).pathname).length);
 if(/^legacy(\/|$)/.test(rel)&&!document.getElementById('legacy-ribbon')){
   const NEXT={'fractal-lab':['explore/stopping-lab/','Fractal Universe Lab'],'dual-reconstruction-lab':['explore/stopping-lab/','Fractal Universe Lab'],
-    'fractal-atlas-terrain':['explore/fractal-atlas/','Terrain Fractal'],'fractal-geography':['explore/fractal-atlas/','Terrain Fractal']};
+    'fractal-atlas-terrain':['explore/stopping-lab/','Fractal Universe Lab'],'fractal-geography':['explore/stopping-lab/','Fractal Universe Lab'],
+    'fractal-map':['explore/fractal-map-survey/','Mandelbrot Survey Map'],'bottcher-lab':['explore/stopping-lab/','Fractal Universe Lab'],
+    'starting-point-mandelbrot-3d':['explore/stopping-lab/','Fractal Universe Lab'],'seed-lab':['explore/stopping-lab/','Fractal Universe Lab'],
+    'mandelbulb-slice':['explore/mandelbulb-3d/','Mandelbulb 3D'],'six-routes':['explore/fractal-map-survey/','Mandelbrot Survey Map'],
+    'spiral-dive':['explore/fractal-map-survey/','Mandelbrot Survey Map']};
   const n=NEXT[rel.split('/')[1]]||['','apps'];
   const bar=document.createElement('div');bar.id='legacy-ribbon';bar.setAttribute('role','alert');
   bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483647;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 12px;padding:calc(7px + env(safe-area-inset-top,0px)) 12px 7px;background:#b3261e;color:#fff;font:600 13px/1.3 system-ui,-apple-system,sans-serif;text-align:center;box-shadow:0 2px 10px #0008;pointer-events:auto';

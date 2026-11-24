@@ -9,12 +9,9 @@ window.APP_TAGS = [
 ];
 
 window.TAG_OVERRIDES = {
-  'explore/fractal-map/': 'map-viewer',
   'explore/fractal-map-survey/': 'map-viewer',
   'explore/zeta-map/': 'map-viewer',
   'world/': 'map-viewer',
-  'research/six-routes/': 'map-viewer',
-  'research/spiral-dive/': 'map-viewer',
   'explore/mandelbulb-3d/': 'graphics'
 };
 
