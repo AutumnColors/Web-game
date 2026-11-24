@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T13:50:49.049908+00:00",
+  "generatedAt": "2026-11-24T13:51:05.332733+00:00",
   "apps": [
     {
       "path": "explore/orbit-stability-lab/",
       "title": "Orbit Stability Lab",
       "category": "Explore",
-      "date": "2026-11-24T20:50:40+07:00",
-      "update": "Toggle orbit experiment overlay from bottom toolbar and preserve dynamics map access"
+      "date": "2026-11-24T20:50:58+07:00",
+      "update": "Keep experiment collapse state during rendering"
     },
     {
       "path": "explore/stopping-lab/",
