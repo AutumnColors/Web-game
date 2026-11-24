@@ -33,6 +33,10 @@ const FRACTALS=[
   {v:'multibrot',  t:'Multibrot',  s:'z → zⁿ + c'}
 ];
 const MODES=[
+{"v":"sgrad","t":"2 · Gradient","s":"Magnitude of ∇S; arrows optional","tag":"2 · Gradient"},
+{"v":"sdiv","t":"3 · Divergence","s":"Laplacian of S; signed expansion/compression","tag":"3 · Divergence"},
+{"v":"scurl","t":"4 · Curl control","s":"Mixed partial difference; expected zero","tag":"4 · Curl control"},
+{"v":"shess","t":"5 · Hessian","s":"Frobenius norm of second derivative matrix","tag":"5 · Hessian"},
   {v:'waves',t:'Hide Set · stability field',s:'Log derivative magnitude at orbit stopping point; no membership mask',tag:'Unmasked sensitivity'},
   {v:'escape', t:'Escape time',       s:'smooth μ = n + 1 − log₂ log₂|zₙ|',          tag:'Escape time μ'},
   {v:'binary', t:'Black / white',     s:'white: escaped · black: no escape detected', tag:'Escape / no escape'},
@@ -64,7 +68,8 @@ function engineOf(c){
 }
 let eng=engineOf(cfg);
 const asciiRule=()=>'z -> z^'+eng.pw+' + c';
-const needD=()=>cfg.mode==='waves'||cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
+const diffMode=m=>['sgrad','sdiv','scurl','shess'].includes(m);
+const needD=()=>diffMode(cfg.mode)||cfg.mode==='waves'||cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
 const cmp=()=>cfg.mode==='compare';
 
 /* ---------- worker: one strip of rows on a rotated grid. kind 0: the pixel is c and z₀ = 0 (parameter plane);
@@ -457,12 +462,31 @@ function rangeOf(N,get,lo,hi){ // percentiles of a sample, so a few extreme pixe
   const a=buf.subarray(0,n).sort(), r=[a[Math.min(n-1,Math.floor(n*lo))], a[Math.min(n-1,Math.floor(n*hi))]];
   if(!(r[1]>r[0])) r[1]=r[0]+1e-9; return r;
 }
+function stabilityDifferentials(L,mode){
+ const {W,H,S,sx}=L, out=new Float64Array(W*H);out.fill(NaN);
+ if(!S||L.ring||!(sx>0))return out;
+ const d=sx, d2=d*d;
+ for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){
+  const i=y*W+x,c=S[i],a=S[i-1],b=S[i+1],u=S[i-W],v=S[i+W],ul=S[i-W-1],ur=S[i-W+1],dl=S[i+W-1],dr=S[i+W+1];
+  if(![c,a,b,u,v,ul,ur,dl,dr].every(Number.isFinite))continue;
+  const gx=(b-a)/(2*d),gy=(u-v)/(2*d),xx=(a+b-2*c)/d2,yy=(u+v-2*c)/d2;
+  const xy=((ur-ul)-(dr-dl))/(4*d2),yx=((ur-dr)-(ul-dl))/(4*d2);
+  out[i]=mode==='sgrad'?Math.hypot(gx,gy):mode==='sdiv'?xx+yy:mode==='scurl'?yx-xy:Math.hypot(xx,yy,Math.SQRT2*xy);
+ }
+ return out;
+}
 function paint(L,mode){
   const {W,H,T,F,S,DLD}=L, N=W*H;
+  if(diffMode(mode)&&!S)return null;
   if((mode==='waves'||mode==='sens'||mode==='flat') && !S) return null;
   if(mode==='dld'&&!DLD)return null;
   const img=new ImageData(W,H), o=new Uint32Array(img.data.buffer), P=PALETTES[cfg.palette], C=P.cyc, Q=P.seq;
-  if(mode==='binary'){ for(let i=0;i<N;i++) o[i]=T[i]===NO?BLACK:WHITE; }
+  if(diffMode(mode)){
+ const V=stabilityDifferentials(L,mode), signed=mode==='sdiv'||mode==='scurl';
+ const range=rangeOf(N,i=>Math.abs(V[i]),0,.99), max=mode==='scurl'?1e-8:Math.max(1e-12,range[1]);
+ const diverge=ramp([[35,85,200],[30,30,35],[245,125,45]],false);
+ for(let i=0;i<N;i++){const v=V[i];if(!Number.isFinite(v)){o[i]=BLACK;continue;}const t=signed?.5+.5*Math.max(-1,Math.min(1,v/max)):Math.min(1,v/max);o[i]=(signed?diverge:Q)[Math.round(t*1023)];}L.rng[mode]=signed?[-max,max]:[0,max];
+ } else if(mode==='binary'){ for(let i=0;i<N;i++) o[i]=T[i]===NO?BLACK:WHITE; }
   else if(mode==='escape'){
     // 0.5288 = −log₂ ln 2: keeps the colours of the existing maps, which use ln instead of log₂ inside μ
     for(let i=0;i<N;i++){ if(T[i]===NO){ o[i]=BLACK; continue; } const mu=T[i]+F[i]+0.5288; o[i]=C[((Math.sqrt(mu>0?mu:0)*90)|0)&1023]; }

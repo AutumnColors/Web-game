@@ -141,6 +141,7 @@ addEventListener('keydown',e=>{
 /* ---------- quick switches (same camera, same numbers) ---------- */
 function setMode(m){
   // Coordinate choice remains independent of measurement.
+  if(diffMode(m)&&(cfg.polar||cfg.bottcher)){toast('Differential tests require Cartesian coordinates');return;}
   const was=cmp(), wasWaves=cfg.mode==='waves'; cfg.mode=m; document.body.classList.toggle('cmp',cmp());
   if(wasWaves!==(m==='waves') || cmp()!==was || (needD() && base && !base.S) || (m==='dld' && base && !base.DLD)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
   repaint(); updateChip(); syncQuick(); writeHash();
@@ -504,3 +505,5 @@ addEventListener('resize',resize);
 resize(); updateChip(); syncQuick(); syncCfg(); thumbs();
 (function(){ const h=readHash(); if(h){ $('cfg').classList.remove('on'); applyConfig(h.c,h.cam); } })();   // a link opens straight into its simulation
 requestAnimationFrame(frame);
+
+(function(){const items=[['sens','1 Sensitivity'],['sgrad','2 Gradient'],['sdiv','3 Divergence'],['scurl','4 Curl'],['shess','5 Hessian'],['waves','Hide Set']];const notes={sens:'Original escape sensitivity',sgrad:'Gradient magnitude; arrows show direction',sdiv:'Blue negative · orange positive · dark zero',scurl:'Expected zero (discrete mixed partials commute); fixed ±1e−8 scale',shess:'Magnitude of Hessian, including escape-band discontinuities',waves:'Unmasked sensitivity at orbit stopping point'};const bar=$('experimentButtons');for(const [m,t] of items){const b=document.createElement('button');b.className='opt';b.style.cssText='flex:none;padding:8px;color:white;background:#263044;border-radius:7px';b.textContent=t;b.onclick=()=>{if(cfg.polar||cfg.bottcher){setCoord(cfg,'cartesian');dirty=true;}setMode(m);if(m==='sgrad'){vectorOverlay.enabled=true;vectorOverlay.source='sens';vectorOverlay.sign=1;}else vectorOverlay.enabled=false;needDraw=true;syncQuick();};bar.append(b);}const refresh=()=>{$('experimentNote').textContent=notes[cfg.mode]||'Choose a test';$('experiment').style.display=cfg.clean?'none':'block';[...bar.children].forEach((b,i)=>b.style.background=items[i][0]===cfg.mode?'#526b9c':'#263044');requestAnimationFrame(refresh);};if(!started){$('cfg').classList.remove('on');applyConfig({...clone(DEFAULTS),fractal:'julia',seed:{re:-1,im:0},mode:'sens',iter:400,radius:2});}refresh();})();
