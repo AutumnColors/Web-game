@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T14:07:31.900284+00:00",
+  "generatedAt": "2026-11-24T14:10:12.879154+00:00",
   "apps": [
     {
       "path": "explore/orbit-stability-lab/",
       "title": "Orbit Stability Lab",
       "category": "Explore",
-      "date": "2026-11-24T21:07:19+07:00",
-      "update": "Replace experiment iteration presets with integer slider"
+      "date": "2026-11-24T21:10:05+07:00",
+      "update": "Expose normalized phase and capped render resolution controls"
     },
     {
       "path": "explore/stopping-lab/",
