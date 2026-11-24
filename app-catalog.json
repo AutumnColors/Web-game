@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T16:11:51.464937+00:00",
+  "generatedAt": "2026-11-24T16:18:59.554911+00:00",
   "apps": [
     {
       "path": "explore/julia-field-invariance-lab/",
       "title": "Julia Field Invariance Lab",
       "category": "Explore",
-      "date": "2026-11-24T23:11:43+07:00",
-      "update": "Expose complex source target controls in invariance lab"
+      "date": "2026-11-24T23:18:51+07:00",
+      "update": "Use Green potential for invariant field strength"
     },
     {
       "path": "explore/stopping-lab/",
