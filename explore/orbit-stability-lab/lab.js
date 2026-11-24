@@ -142,7 +142,7 @@ addEventListener('keydown',e=>{
 function setMode(m){
   // Coordinate choice remains independent of measurement.
   if(diffMode(m)&&(cfg.polar||cfg.bottcher)){toast('Differential tests require Cartesian coordinates');return;}
-  const wasStable=cfg.mode==='stablephase'; if(m==='stablephase'&&!(eng.kind===1&&eng.pw===2&&eng.kr===-1&&eng.ki===0)){toast('Stable phase currently requires the quadratic Basilica c=-1');return;} if(m==='stablephase'&&cfg.iter>40)cfg.iter=10;
+  const wasStable=cfg.mode==='stablephase'; if(m==='stablephase'&&!(eng.kind===1&&eng.pw===2&&eng.kr===-1&&eng.ki===0)){toast('Stable phase currently requires the quadratic Basilica c=-1');return;} if(m==='stablephase'&&cfg.iter>40)cfg.iter=40;
   const was=cmp(), wasWaves=cfg.mode==='waves'; cfg.mode=m; document.body.classList.toggle('cmp',cmp());
   if(wasStable!==(m==='stablephase')||wasWaves!==(m==='waves') || cmp()!==was || (needD() && base && !base.S) || (m==='dld' && base && !base.DLD)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
   repaint(); updateChip(); syncQuick(); writeHash();
@@ -519,4 +519,8 @@ const A=new Float32Array(W*H);if(mode==='jointphase'){const D=complexDifferentia
 const wrap=x=>Math.atan2(Math.sin(x),Math.cos(x));let sum=0,count=0,warn=0,valid=0;const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;canvas.style.cssText='width:100%;height:auto';const ctx=canvas.getContext('2d'),img=ctx.createImageData(W,H),pixels=new Uint32Array(img.data.buffer);for(let i=0;i<A.length;i++){const a=A[i];if(!Number.isFinite(a)){pixels[i]=BLACK;continue;}valid++;const bad=(i%W<W-1&&Math.abs(wrap(a-A[i+1]))>Math.PI/2)||(i+W<A.length&&Math.abs(wrap(a-A[i+W]))>Math.PI/2);if(bad)warn++;pixels[i]=PALETTES.hue.cyc[Math.max(0,Math.min(1023,Math.floor((a+Math.PI)/(2*Math.PI)*1023)))];}ctx.putImageData(img,0,0);
 if(prev){for(let y=0;y<prev.H;y++)for(let x=0;x<prev.W;x++){const a=prev.A[y*prev.W+x],j=2*y*W+2*x,b=[A[j],A[j+1],A[j+W],A[j+W+1]];if(!Number.isFinite(a)||!b.every(Number.isFinite))continue;const c=b.reduce((s,t)=>s+Math.cos(t),0),d=b.reduce((s,t)=>s+Math.sin(t),0);if(Math.hypot(c,d)<1e-6)continue;sum+=wrap(a-Math.atan2(d,c))**2;count++;}}
 const cell=document.createElement('div'),label=document.createElement('p');label.style.fontSize='12px';label.textContent=W+' × '+H+' · rapid '+(valid?100*warn/valid:0).toFixed(1)+'%'+(prev?' · RMS '+(count?Math.sqrt(sum/count).toFixed(3)+' rad':'N/A')+' ('+count+' samples)':'');cell.append(canvas,label);grid.append(cell);prev={A,W,H};await new Promise(r=>setTimeout(r,20));}panel.querySelector('#resLive').textContent='Complete';};
+})();
+
+;(()=>{
+const old=$('maskIterations'),slider=document.createElement('input'),out=document.createElement('output');slider.type='range';slider.id=old.id;slider.min='1';slider.max='1000';slider.step='1';slider.style.cssText='width:100%;min-width:0;accent-color:#809bd0';out.style.minWidth='32px';const row=old.parentElement;row.style.flexWrap='wrap';old.replaceWith(slider,out);$('maskStats').style.flexBasis='100%';let dragging=false;slider.oninput=()=>{dragging=true;out.textContent=slider.value;};slider.onchange=()=>{dragging=false;cfg.iter=+slider.value;dirty=true;needDraw=true;writeHash();};function sync(){slider.max=cfg.mode==='stablephase'?'40':'1000';if(!dragging){slider.value=String(cfg.iter||itFor(view.w));out.textContent=slider.value;}requestAnimationFrame(sync);}sync();
 })();
