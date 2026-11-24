@@ -33,6 +33,18 @@ const FRACTALS=[
   {v:'multibrot',  t:'Multibrot',  s:'z → zⁿ + c'}
 ];
 const MODES=[
+{v:'normphase',t:'Normalized phase',s:'Local Basilica Böttcher angle after basin entry',tag:'Normalized phase'},
+{v:'stablephase',t:'Stable phase',s:'Basilica log-polar phase, no convergence stopping',tag:'Stable phase'},
+{v:'jointmag',t:'Combined magnitude',s:'Hypot of divergence and curl',tag:'Joint magnitude'},
+{v:'jointphase',t:'Combined phase',s:'Angle of divergence + i curl',tag:'Joint phase'},
+{v:'phase',t:'Rotation phase',s:'arg D at stopping point',tag:'Rotation'},
+{v:'vdiv',t:'Complex field divergence',s:'Divergence of log-compressed complex derivative',tag:'Vector divergence'},
+{v:'vcurl',t:'Complex field curl',s:'Curl of log-compressed complex derivative',tag:'Vector curl'},
+{v:'maskdiff',t:'Mask difference',s:'Absolute raw sensitivity removed by masking',tag:'Mask difference'},
+{"v":"sgrad","t":"2 · Gradient","s":"Magnitude of ∇S; arrows optional","tag":"2 · Gradient"},
+{"v":"sdiv","t":"3 · Divergence","s":"Laplacian of S; signed expansion/compression","tag":"3 · Divergence"},
+{"v":"scurl","t":"4 · Curl control","s":"Mixed partial difference; expected zero","tag":"4 · Curl control"},
+{"v":"shess","t":"5 · Hessian","s":"Frobenius norm of second derivative matrix","tag":"5 · Hessian"},
   {v:'waves',t:'Hide Set · stability field',s:'Log derivative magnitude at orbit stopping point; no membership mask',tag:'Unmasked sensitivity'},
   {v:'escape', t:'Escape time',       s:'smooth μ = n + 1 − log₂ log₂|zₙ|',          tag:'Escape time μ'},
   {v:'binary', t:'Black / white',     s:'white: escaped · black: no escape detected', tag:'Escape / no escape'},
@@ -64,7 +76,9 @@ function engineOf(c){
 }
 let eng=engineOf(cfg);
 const asciiRule=()=>'z -> z^'+eng.pw+' + c';
-const needD=()=>cfg.mode==='waves'||cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
+const diffMode=m=>['sgrad','sdiv','scurl','shess'].includes(m);
+const complexMode=m=>['normphase','stablephase','phase','vdiv','vcurl','jointmag','jointphase'].includes(m);
+const needD=()=>complexMode(cfg.mode)||cfg.mode==='maskdiff'||diffMode(cfg.mode)||cfg.mode==='waves'||cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
 const cmp=()=>cfg.mode==='compare';
 
 /* ---------- worker: one strip of rows on a rotated grid. kind 0: the pixel is c and z₀ = 0 (parameter plane);
@@ -144,9 +158,47 @@ function parameterInverse(u,theta){
  return [NaN,NaN];
 }
 
+function normalizedBasilica(x,y,N,R2){
+ let n=0;
+ while(Math.hypot(x,y)>=.125 && n<N){
+  if(x*x+y*y>R2)return [NaN,0,n];
+  const u=x*x-y*y-1;y=2*x*y;x=u;n++;
+ }
+ if(Math.hypot(x,y)>=.125 || (x===0&&y===0))return [NaN,0,n];
+ let a=Math.atan2(-y,-x), t=a, lr=Math.log(Math.hypot(x,y)), weight=.5;
+ for(let k=0;n+2<=N;k++,n+=2){
+  const r2=Math.exp(2*lr),u=r2*Math.cos(2*t),v=r2*Math.sin(2*t);
+  const correction=Math.atan2(-v,2-u);
+  a+=weight*correction;weight*=.5;
+  t=Math.atan2(Math.sin(2*t+correction),Math.cos(2*t+correction));
+  lr=2*lr+Math.log(Math.hypot(2-u,v));
+ }
+ return [Math.atan2(Math.sin(a),Math.cos(a)),1,n];
+}
+function stableBasilica(x,y,N,R2){
+ let n=0, phase=0, logD=0, logR=Math.log(Math.hypot(x,y)), a=Math.atan2(y,x);
+ const wrap=t=>Math.atan2(Math.sin(t),Math.cos(t));
+ if(!Number.isFinite(logR))return [NaN,-Infinity,0];
+ while(n<N){
+  if(logR>Math.log(Math.sqrt(R2)))break;
+  // Use the exact factored two-step return near zero; retain orbit in log-polar.
+  if(logR<Math.log(.125)&&n+2<=N){
+   const r2=Math.exp(2*logR), u=r2*Math.cos(2*a),v=r2*Math.sin(2*a);
+   phase=wrap(phase+a+Math.atan2(v,u-1));
+   logD+=Math.log(4)+logR+Math.log(Math.hypot(u-1,v));
+   a=wrap(2*a+Math.atan2(v,u-2));
+   logR=2*logR+Math.log(Math.hypot(u-2,v));n+=2;continue;
+  }
+  phase=wrap(phase+a);logD+=Math.LN2+logR;
+  const r2=Math.exp(2*logR),u=r2*Math.cos(2*a)-1,v=r2*Math.sin(2*a);
+  if(v===0&&u===0)return [NaN,-Infinity,n+1];
+  logR=Math.log(Math.hypot(u,v));a=Math.atan2(v,u);n++;
+ }
+ return [phase,logD,n];
+}
 onmessage=e=>{
   const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,needDLD,dldIterations,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
-  const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float32Array(N):null, DLD=needDLD?new Float32Array(N):null;
+  const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float64Array(N):null, DLD=needDLD?new Float32Array(N):null, A=needD?new Float64Array(N):null;
   const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=pw>1?1/Math.log(pw):0;
   let minN=1e9;
   for(let r=0;r<rows;r++){
@@ -159,7 +211,9 @@ onmessage=e=>{
         const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5);
         [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki):pw===2?parameterInverse(u,theta):[NaN,NaN];
       } else if(polar){ const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
-      if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
+      if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;if(A)A[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
+      if(m.normalizedPhase){const q=normalizedBasilica(pr,pq,Math.min(maxIt,40),Math.max(4,R2));A[i]=q[0];S[i]=q[1];T[i]=q[2];continue;}
+      if(m.stablePhase){const q=stableBasilica(pr,pq,Math.min(maxIt,40),Math.max(4,R2));A[i]=q[0];S[i]=Math.max(0,q[1]);T[i]=q[2];continue;}
       let zr,zi,cr,ci,dr,di;
       if(julia){ zr=pr; zi=pq; cr=kr; ci=ki; dr=1; di=0; }
       else {
@@ -208,14 +262,14 @@ onmessage=e=>{
         if(stopMode==='outward' && Math.abs(zr-qr)+Math.abs(zi-qi)<=eps){ inside=true; break; }
         if(++cnt===lim){ cnt=0; lim<<=1; qr=zr; qi=zi; }
       }
-      if(needD) S[i]=Math.log1p(Math.hypot(dr,di));
+      if(needD){S[i]=Math.log1p(Math.hypot(dr,di));A[i]=(dr===0&&di===0)?NaN:Math.atan2(di,dr);}
       if(inside){ T[i]=65535; continue; }
       if(n<minN) minN=n;
       T[i]=n; F[i]=stopMode==='outward' && pw>1 ? 1-Math.log(Math.max(1e-300,Math.log2(Math.max(1.000001,zr2+zi2))*0.5))*ilp : 0;
-      if(needD) S[i]=Math.log1p(Math.hypot(dr,di));
+      if(needD){S[i]=Math.log1p(Math.hypot(dr,di));A[i]=(dr===0&&di===0)?NaN:Math.atan2(di,dr);}
     }
   }
-  postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,DLD,minN},[T.buffer,F.buffer,...(S?[S.buffer]:[]),...(DLD?[DLD.buffer]:[])]);
+  postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,A,DLD,minN},[T.buffer,F.buffer,...(S?[S.buffer,A.buffer]:[]),...(DLD?[DLD.buffer]:[])]);
 };`;
 // Principal branch: z^p = exp(p (ln|z| + i Arg(z))), Arg in (-pi,pi].
 // For noninteger p this map is discontinuous across the negative real axis.
@@ -231,7 +285,7 @@ const idle=[]; let queue=[];
 for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.onmessage=onStrip; idle.push(w); }
 function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
 // Green potential always uses its own outward escape calculation, independent of the experimental stop mode.
-const engMsg=e=>({kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
+const engMsg=e=>({normalizedPhase:cfg.mode==='normphase'&&e.kind===1&&e.pw===2&&e.kr===-1&&e.ki===0,stablePhase:cfg.mode==='stablephase'&&e.kind===1&&e.pw===2&&e.kr===-1&&e.ki===0,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
 
 // the same orbit on the main thread, for single points (pin, cross-sections)
 function orbit(pr,pq,maxIt,e){
@@ -367,9 +421,9 @@ function gridFor(v,W,H,sx){
 
 /* ---------- layers of numbers ---------- */
 function newLayer(v,W,H,maxIt,withS){
-  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float32Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
+  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float64Array(W*H):null,A:withS?new Float64Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
 }
-function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
+function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.A&&m.A)L.A.set(m.A,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
   const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;
   for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,needDLD:!!L.DLD,dldIterations:cfg.dldIterations,...engMsg(e),...extra});
@@ -457,12 +511,33 @@ function rangeOf(N,get,lo,hi){ // percentiles of a sample, so a few extreme pixe
   const a=buf.subarray(0,n).sort(), r=[a[Math.min(n-1,Math.floor(n*lo))], a[Math.min(n-1,Math.floor(n*hi))]];
   if(!(r[1]>r[0])) r[1]=r[0]+1e-9; return r;
 }
+function stabilityDifferentials(L,mode){
+ const {W,H,S,sx}=L, out=new Float64Array(W*H);out.fill(NaN);
+ if(!S||L.ring||!(sx>0))return out;
+ const d=sx, d2=d*d;
+ for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){
+  const i=y*W+x,c=S[i],a=S[i-1],b=S[i+1],u=S[i-W],v=S[i+W],ul=S[i-W-1],ur=S[i-W+1],dl=S[i+W-1],dr=S[i+W+1];
+  if(![c,a,b,u,v,ul,ur,dl,dr].every(Number.isFinite))continue;
+  const gx=(b-a)/(2*d),gy=(u-v)/(2*d),xx=(a+b-2*c)/d2,yy=(u+v-2*c)/d2;
+  const xy=((ur-ul)-(dr-dl))/(4*d2),yx=((ur-dr)-(ul-dl))/(4*d2);
+  out[i]=mode==='sgrad'?Math.hypot(gx,gy):mode==='sdiv'?xx+yy:mode==='scurl'?yx-xy:Math.hypot(xx,yy,Math.SQRT2*xy);
+ }
+ return out;
+}
+function complexDifferential(L,mode){const {W,H,S,A,sx}=L,V=new Float64Array(W*H);V.fill(NaN);if(L.ring)return V;const angle=L.a||0;const u=i=>S[i]===0?0:S[i]*Math.cos(A[i]-angle),v=i=>S[i]===0?0:S[i]*Math.sin(A[i]-angle);for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x,a=i-1,b=i+1,c=i-W,d=i+W;V[i]=mode==='vdiv'?(u(b)-u(a)+v(c)-v(d))/(2*sx):(v(b)-v(a)-u(c)+u(d))/(2*sx);}return V;}
+function complexFieldStats(L,mode){const V=complexDifferential(L,mode);let n=0,sum=0,max=0;for(let i=0;i<V.length;i++){const v=V[i];if(!Number.isFinite(v))continue;const x=i%L.W,y=Math.floor(i/L.W);if(x===0||y===0||x===L.W-1||y===L.H-1)continue;if(L.T[i]!==L.T[i-1]||L.T[i]!==L.T[i+1]||L.T[i]!==L.T[i-L.W]||L.T[i]!==L.T[i+L.W])continue;n++;sum+=v*v;max=Math.max(max,Math.abs(v));}return {n,rms:n?Math.sqrt(sum/n):NaN,max:n?max:NaN};}
 function paint(L,mode){
   const {W,H,T,F,S,DLD}=L, N=W*H;
+  if((diffMode(mode)||mode==='maskdiff')&&!S)return null;
   if((mode==='waves'||mode==='sens'||mode==='flat') && !S) return null;
   if(mode==='dld'&&!DLD)return null;
   const img=new ImageData(W,H), o=new Uint32Array(img.data.buffer), P=PALETTES[cfg.palette], C=P.cyc, Q=P.seq;
-  if(mode==='binary'){ for(let i=0;i<N;i++) o[i]=T[i]===NO?BLACK:WHITE; }
+  if(complexMode(mode)){if(!L.A||!S)return null;const A=L.A; if(mode==='phase'||mode==='stablephase'||mode==='normphase'){for(let i=0;i<N;i++)o[i]=Number.isFinite(A[i])&&(mode==='stablephase'||S[i]>0)?PALETTES.hue.cyc[Math.floor((A[i]+Math.PI)/(2*Math.PI)*1023)]:BLACK;}else if(mode==='jointmag'||mode==='jointphase'){const D=complexDifferential(L,'vdiv'),C=complexDifferential(L,'vcurl');const V=Float64Array.from(D,(d,i)=>Math.hypot(d,C[i]));const max=Math.max(1e-12,rangeOf(N,i=>V[i],0,.99)[1]);for(let i=0;i<N;i++){const r=V[i];o[i]=!Number.isFinite(r)||r===0?BLACK:mode==='jointmag'?Q[Math.round(1023*Math.min(1,r/max))]:PALETTES.hue.cyc[Math.min(1023,Math.floor((Math.atan2(C[i],D[i])+Math.PI)/(2*Math.PI)*1023))];}L.rng[mode]=mode==='jointmag'?[0,max]:[-Math.PI,Math.PI];}else{const V=complexDifferential(L,mode);const other=complexDifferential(L,mode==='vcurl'?'vdiv':'vcurl');const max=Math.max(1e-12,rangeOf(N,i=>Math.hypot(V[i],other[i]),0,.99)[1]);const lut=ramp([[35,85,200],[30,30,35],[245,125,45]],false);for(let i=0;i<N;i++)o[i]=Number.isFinite(V[i])?lut[Math.round(511.5*(1+Math.max(-1,Math.min(1,V[i]/max))))]:BLACK;L.rng[mode]=[-max,max];}}else if(mode==='maskdiff'){for(let i=0;i<N;i++){const v=T[i]===NO?S[i]:0;o[i]=Number.isFinite(v)?Q[Math.round(1023*Math.min(1,Math.max(0,v)/10))]:BLACK;}L.rng[mode]=[0,10];} else if(diffMode(mode)){
+ const V=stabilityDifferentials(L,mode), signed=mode==='sdiv'||mode==='scurl';
+ const range=rangeOf(N,i=>Math.abs(V[i]),0,.99), max=mode==='scurl'?1e-8:Math.max(1e-12,range[1]);
+ const diverge=ramp([[35,85,200],[30,30,35],[245,125,45]],false);
+ for(let i=0;i<N;i++){const v=V[i];if(!Number.isFinite(v)){o[i]=BLACK;continue;}const t=signed?.5+.5*Math.max(-1,Math.min(1,v/max)):Math.min(1,v/max);o[i]=(signed?diverge:Q)[Math.round(t*1023)];}L.rng[mode]=signed?[-max,max]:[0,max];
+ } else if(mode==='binary'){ for(let i=0;i<N;i++) o[i]=T[i]===NO?BLACK:WHITE; }
   else if(mode==='escape'){
     // 0.5288 = −log₂ ln 2: keeps the colours of the existing maps, which use ln instead of log₂ inside μ
     for(let i=0;i<N;i++){ if(T[i]===NO){ o[i]=BLACK; continue; } const mu=T[i]+F[i]+0.5288; o[i]=C[((Math.sqrt(mu>0?mu:0)*90)|0)&1023]; }
@@ -504,9 +579,9 @@ function paint(L,mode){
       const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
       canvas.getContext('2d').putImageData(img,0,0);return canvas;
     }
-    const rng=rangeOf(N,get,lo,hi); if(mode==='gradt') rng[0]=0;
+    const rng=(mode==='waves'||mode==='sens')?rangeOf(N,i=>T[i]!==NO?S[i]:NaN,lo,hi):rangeOf(N,get,lo,hi); if(mode==='waves'||mode==='sens')rng[0]=0; if(mode==='gradt') rng[0]=0;
     const k=1023/(rng[1]-rng[0]), floor=Q[0];
-    for(let i=0;i<N;i++){ const v=get(i); if(v!==v){ o[i]=mode==='waves'?floor:T[i]===NO?BLACK:floor; continue; } const t=(v-rng[0])*k; o[i]=Q[t<0?0:t>1023?1023:t|0]; }
+    for(let i=0;i<N;i++){ const v=get(i); if(v!==v){ o[i]=(mode==='waves'||mode==='sens')?floor:T[i]===NO?BLACK:floor; continue; } const t=(v-rng[0])*k; o[i]=Q[t<0?0:t>1023?1023:t|0]; }
     L.rng[mode]=rng;
   }
   const c=document.createElement('canvas'); c.width=W; c.height=H; c.getContext('2d').putImageData(img,0,0); if(mode==='potential')drawGreenContours(c,L); return c;
