@@ -1,0 +1,12 @@
+'use strict';
+const juliaFields={
+ field(x,y,a,b,n){let u=1,v=0,s=0,t=0;for(let k=0;k<n;k++){let r=x*x+y*y;if(r<1e-18)return null;s+=(u*x+v*y)/r;t+=(v*x-u*y)/r;let U=2*(x*u-y*v);v=2*(x*v+y*u);u=U;let X=x*x-y*y+a;y=2*x*y+b;x=X;if(!Number.isFinite(u))return null;}return [s,-t]},
+ draw(){const panel=document.getElementById('juliaFieldControls');const active=cfg.fractal==='julia';panel.hidden=!active;if(!active||cfg.polar||cfg.bottcher||cmp()||cfg.clean||Number(cfg.juliaPower)!==2)return;
+ const e=document.getElementById('jfE').checked,b=document.getElementById('jfB').checked,j=document.getElementById('jfJ').checked,n=+document.getElementById('jfN').value;if(!e&&!b&&!j)return;
+ const w=Wd/DPR,h=Hd/DPR,spacing=w/31,a=cfg.seed.re,c=cfg.seed.im,co=Math.cos(view.a),si=Math.sin(view.a);
+ ctx.save();ctx.scale(DPR,DPR);
+ if(j){const step=2,cols=Math.ceil(w/step),rows=Math.ceil(h/step),mask=new Uint8Array(cols*rows);for(let iy=0;iy<rows;iy++)for(let ix=0;ix<cols;ix++){let [x,y]=toWorld(ix*step*DPR,iy*step*DPR),k=0;for(;k<100;k++){if(x*x+y*y>16)break;let X=x*x-y*y+a;y=2*x*y+c;x=X;}mask[iy*cols+ix]=k===100?1:0;}ctx.fillStyle='#f0f0f0';for(let iy=1;iy<rows-1;iy++)for(let ix=1;ix<cols-1;ix++){let i=iy*cols+ix;if(mask[i]&&(!mask[i-1]||!mask[i+1]||!mask[i-cols]||!mask[i+cols]))ctx.fillRect(ix*step,iy*step,step,step);}}
+ function arrow(x,y,u,v,col){let mag=Math.hypot(u,v);if(!mag||!Number.isFinite(mag))return;let len=(5+13*Math.tanh(mag/(2**n-1)))*spacing/21,dx=(u*co+v*si)/mag*len,dy=-(-u*si+v*co)/mag*len;ctx.strokeStyle=col;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(x-dx/2,y-dy/2);ctx.lineTo(x+dx/2,y+dy/2);ctx.lineTo(x+dx*.18-dy*.2,y+dy*.18+dx*.2);ctx.moveTo(x+dx/2,y+dy/2);ctx.lineTo(x+dx*.18+dy*.2,y+dy*.18-dx*.2);ctx.stroke();}
+ for(let y=spacing*13/21;y<h;y+=spacing)for(let x=spacing*13/21;x<w;x+=spacing){let [wx,wy]=toWorld(x*DPR,y*DPR),f=this.field(wx,wy,a,c,n);if(!f)continue;let [u,v]=f;if(e)arrow(x,y,u,v,'#eac16c');if(b)arrow(x,y,-v,u,'#63c9ee');}ctx.restore();
+ }};
+for(const id of ['jfE','jfB','jfJ','jfN'])document.getElementById(id).addEventListener('input',()=>{document.getElementById('jfOut').textContent=document.getElementById('jfN').value;needDraw=true;});
