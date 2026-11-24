@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T06:48:39.133575+00:00",
+  "generatedAt": "2026-11-24T06:49:36.080982+00:00",
   "apps": [
     {
       "path": "explore/fractal-atlas/",
       "title": "Terrain Fractal → Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-24T13:48:31+07:00",
-      "update": "Bring Terrain Fractal into the Fractal Universe Lab as an on-demand 3D terrain add-on"
+      "date": "2026-11-24T13:49:29+07:00",
+      "update": "Remove old Terrain Fractal copy (now terrain-addon.js in the Fractal Universe Lab)"
     },
     {
       "path": "explore/stopping-lab/",
