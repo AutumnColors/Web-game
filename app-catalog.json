@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T16:24:48.676669+00:00",
+  "generatedAt": "2026-11-24T16:39:50.755043+00:00",
   "apps": [
     {
       "path": "explore/julia-field-invariance-lab/",
       "title": "Julia Field Invariance Lab",
       "category": "Explore",
-      "date": "2026-11-24T23:24:41+07:00",
-      "update": "Add Basilica interior Bottcher return field"
+      "date": "2026-11-24T23:39:43+07:00",
+      "update": "Add orbit sensitivity asymptotic convergence diagnostics"
     },
     {
       "path": "explore/stopping-lab/",
