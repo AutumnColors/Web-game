@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T16:18:59.554911+00:00",
+  "generatedAt": "2026-11-24T16:24:48.676669+00:00",
   "apps": [
     {
       "path": "explore/julia-field-invariance-lab/",
       "title": "Julia Field Invariance Lab",
       "category": "Explore",
-      "date": "2026-11-24T23:18:51+07:00",
-      "update": "Use Green potential for invariant field strength"
+      "date": "2026-11-24T23:24:41+07:00",
+      "update": "Add Basilica interior Bottcher return field"
     },
     {
       "path": "explore/stopping-lab/",
