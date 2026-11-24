@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T13:51:05.332733+00:00",
+  "generatedAt": "2026-11-24T14:00:53.264077+00:00",
   "apps": [
     {
       "path": "explore/orbit-stability-lab/",
       "title": "Orbit Stability Lab",
       "category": "Explore",
-      "date": "2026-11-24T20:50:58+07:00",
-      "update": "Keep experiment collapse state during rendering"
+      "date": "2026-11-24T21:00:46+07:00",
+      "update": "Add four-resolution phase comparison and reset stale mode statistics"
     },
     {
       "path": "explore/stopping-lab/",
