@@ -1,24 +1,24 @@
 {
-  "generatedAt": "2026-11-23T17:23:12.759605+00:00",
+  "generatedAt": "2026-11-24T05:31:35.577621+00:00",
   "apps": [
     {
       "path": "explore/prime-number-boundary-test/",
-      "title": "Julie Cycle Lab",
+      "title": "Julie Cycle Lab → Fractal Universe Lab",
       "category": "Explore",
-      "date": "2026-11-24T00:23:05+07:00",
-      "update": "Connect log-polar sector unfolding to existing Julia viewer with reversible camera state"
-    },
-    {
-      "path": "explore/stopping-lab/dynamics-map/",
-      "title": "Julia Dynamics Map",
-      "category": "Stopping Lab",
-      "date": "2026-11-23T21:46:27+07:00",
-      "update": "Make dynamics map mobile panel scrollable and add unlimited interactive forward/backward orbit walk"
+      "date": "2026-11-24T12:31:28+07:00",
+      "update": "Bring Julie Cycle Lab into the Fractal Universe Lab as an on-demand add-on"
     },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
       "category": "Explore",
+      "date": "2026-11-24T12:31:28+07:00",
+      "update": "Bring Julie Cycle Lab into the Fractal Universe Lab as an on-demand add-on"
+    },
+    {
+      "path": "explore/stopping-lab/dynamics-map/",
+      "title": "Julia Dynamics Map",
+      "category": "Stopping Lab",
       "date": "2026-11-23T21:46:27+07:00",
       "update": "Make dynamics map mobile panel scrollable and add unlimited interactive forward/backward orbit walk"
     },
