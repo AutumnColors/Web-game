@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T09:08:16.837544+00:00",
+  "generatedAt": "2026-11-24T09:12:34.697154+00:00",
   "apps": [
     {
       "path": "explore/julia-field-viewer/",
       "title": "Julia Field Viewer",
       "category": "Explore",
-      "date": "2026-11-24T16:08:09+07:00",
-      "update": "Add adjustable Julia field arrow density and size"
+      "date": "2026-11-24T16:12:27+07:00",
+      "update": "Support higher-degree Julia fields"
     },
     {
       "path": "explore/orbit-stability-lab/",
