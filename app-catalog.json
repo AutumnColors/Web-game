@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-11-24T14:31:20.156178+00:00",
+  "generatedAt": "2026-11-24T14:41:50.805725+00:00",
   "apps": [
+    {
+      "path": "explore/feigenbaum-constant-lab/",
+      "title": "Feigenbaum Constant Lab",
+      "category": "Explore",
+      "date": "2026-11-24T21:41:39+07:00",
+      "update": "Add configurable quadratic complex cascade search"
+    },
     {
       "path": "explore/stopping-lab/",
       "title": "Fractal Universe Lab",
@@ -19,13 +26,6 @@
       "path": "explore/feigenbaum-constant-lab/dynamics-map/",
       "title": "Julia Dynamics Map",
       "category": "Feigenbaum Constant Lab",
-      "date": "2026-11-24T21:29:46+07:00",
-      "update": "Branch Universal Lab into Feigenbaum Constant Lab"
-    },
-    {
-      "path": "explore/feigenbaum-constant-lab/",
-      "title": "Feigenbaum Constant Lab",
-      "category": "Explore",
       "date": "2026-11-24T21:29:46+07:00",
       "update": "Branch Universal Lab into Feigenbaum Constant Lab"
     },
