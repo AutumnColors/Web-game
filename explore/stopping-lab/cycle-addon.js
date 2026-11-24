@@ -181,7 +181,7 @@ function clip(poly,nx,ny){ const out=[],eps=1e-12; for(let i=0;i<poly.length;i++
 })();
 
 /* ---------- keep everything in step with the lab ---------- */
-FL.hooks.config=()=>{ if(cfg().fractal!=='julia'){ setOpen(false); sectorOff(); } else if(open) refresh(); syncLink(); };
+FL.onConfig.push(()=>{ if(cfg().fractal!=='julia'){ setOpen(false); sectorOff(); } else if(open) refresh(); syncLink(); });
 
 window.FractalCycle={
   mountSetup,

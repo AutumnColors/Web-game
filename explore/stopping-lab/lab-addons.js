@@ -9,6 +9,7 @@ const initialCy=(location.hash.match(/(?:^#|&)cy=([^&]*)/)||[])[1]||'';
 
 const FL=window.FractalLab={
   hooks:{},            // paint(layer): after a layer is coloured · view(): {zoom, turn, overlays} for one frame
+  onConfig:[],         // functions called after every configuration change (any number of add-ons)
   hashExtra:'',        // kept at the end of the link (e.g. mu=… for the music)
   hashParts:{},        // more add-on parts of the link, by key (e.g. {cy:'13,13'} for the cycle tools)
   initialCy,
@@ -50,7 +51,7 @@ writeHash=function(){ writeHash0(); clearTimeout(extraT); extraT=setTimeout(()=>
 
 // 4. after every configuration change (new fractal, seed, degree, coordinates…)
 const applyConfig0=applyConfig;
-applyConfig=function(next,cam){ applyConfig0(next,cam); const h=FL.hooks.config; if(h) try{ h(); }catch(e){ warn('config',e); } updateCycleButton(); };
+applyConfig=function(next,cam){ applyConfig0(next,cam); for(const h of FL.onConfig) try{ h(); }catch(e){ warn('config',e); } updateButtons(); };
 
 // ♫ button and the on-demand loader
 const btn=document.createElement('button');
@@ -77,8 +78,23 @@ cBtn.id='bCycle'; cBtn.className='glass'; cBtn.type='button'; cBtn.title='Julia 
 cBtn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12a7 7 0 1 1-2.05-4.95"/><path d="M19 4.5V8h-3.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>';
 const view0=document.getElementById('bView');
 if(tools) tools.insertBefore(cBtn,view0&&view0.parentNode===tools?view0.nextSibling:null);
-function updateCycleButton(){ cBtn.style.display=cfg.fractal==='julia'?'':'none'; }
-updateCycleButton();
+
+// 3D terrain: a button that appears with the Mandelbrot set or a Julia set; terrain-addon.js loads when it is tapped.
+const tBtn=document.createElement('button');
+tBtn.id='bTerrain'; tBtn.className='glass'; tBtn.type='button'; tBtn.title='3D terrain from this view'; tBtn.setAttribute('aria-label','3D terrain');
+tBtn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19l6-9 4 6 3-4 5 7z"/><path d="M7.5 12.3l1.5 1.2 1.6-1.1"/></svg>';
+if(tools) tools.insertBefore(tBtn,cBtn.nextSibling);
+function updateButtons(){ cBtn.style.display=cfg.fractal==='julia'?'':'none'; tBtn.style.display=cfg.fractal==='julia'||cfg.fractal==='mandelbrot'?'':'none'; }
+updateButtons();
+let terrainLoading=null;
+function loadTerrain(){
+  if(terrainLoading) return terrainLoading;
+  return terrainLoading=new Promise(res=>{
+    const s=document.createElement('script'); s.src='terrain-addon.js';
+    s.onload=()=>res(window.FractalTerrain||null); s.onerror=()=>res(null); document.head.append(s);
+  }).then(m=>{ if(!m){ terrainLoading=null; toast('3D terrain could not load. The lab works as usual.',2600); } return m; });
+}
+tBtn.onclick=()=>loadTerrain().then(m=>m&&m.toggle());
 let cycleLoading=null;
 function loadCycle(){
   if(cycleLoading) return cycleLoading;
