@@ -66,6 +66,34 @@ const juliaFields={
  }
  return null;
  },
+ convergence(x,y,a,b,p,N,L){
+ // Track E/d^i and D/d^i to avoid overflow; rescale together to avoid underflow.
+ let u=1,v=0,s=0,t=0,logScale=0, samples=[];
+ for(let i=1;i<=N;i++){
+  const r=Math.hypot(x,y);if(!r||!Number.isFinite(r))return null;
+  const co=x/r,si=y/r,qr=(u*co+v*si)/r,qi=(v*co-u*si)/r;
+  s=(s+(p-1)*qr)/p;t=(t+(p-1)*qi)/p;
+  if(i===N||i===N-L||i===N-2*L){
+   const m=Math.hypot(s,t);if(!m||!Number.isFinite(m))return null;
+   samples.push({x:s/m,y:-t/m,log:Math.log(m)+logScale+i*Math.log(p)});
+  }
+  if(i===N)break;
+  if(r>64){ // asymptotic exterior recurrence: normalized D/z remains constant
+   const m=Math.hypot(qr,qi);if(!m)return null;
+   // keep orbit at a fixed radius, preserving normalized logarithmic derivative
+   x=128;y=0;u=128*qr;v=128*qi;
+  }else{
+   const th=Math.atan2(y,x),amp=r**(p-1),rad=r**p,C=Math.cos((p-1)*th),S=Math.sin((p-1)*th);
+   const U=amp*(C*u-S*v);v=amp*(S*u+C*v);u=U;
+   x=rad*Math.cos(p*th)+a;y=rad*Math.sin(p*th)+b;
+  }
+  const m=Math.max(Math.abs(u),Math.abs(v),Math.abs(s),Math.abs(t));
+  if(m>1e100||(m>0&&m<1e-100)){u/=m;v/=m;s/=m;t/=m;logScale+=Math.log(m);}
+ }
+ if(samples.length!==3)return null;
+ const [A,B,C]=samples,angle=(a,b)=>Math.abs(Math.atan2(a.x*b.y-a.y*b.x,a.x*b.x+a.y*b.y));
+ return {x:C.x,y:C.y,growth:Math.exp((C.log-B.log)/L),angle:angle(B,C),stable:Math.max(angle(A,B),angle(B,C))<0.05&&Math.abs((C.log-B.log)-(B.log-A.log))/L<0.05};
+ },
  F(mode,s,wx,wy,a,c,n,p){ if(mode==='green'){
  const k=+document.getElementById('jfCompose').value,q=+document.getElementById('jfN').value;
  const basilica=p===2&&Math.abs(a+1)<1e-12&&Math.abs(c)<1e-12;
@@ -75,7 +103,7 @@ const juliaFields={
  draw(){const panel=document.getElementById('juliaFieldControls');const active=cfg.fractal==='julia';panel.hidden=!active;if(!active||cfg.polar||cfg.bottcher||cmp()||cfg.clean||!Number.isInteger(cfg.juliaPower)||cfg.juliaPower<2)return;
  const $j=id=>document.getElementById(id);
  const sk=[cfg.juliaPower,$j('jfN').value,$j('jfCompose').value,this.src(),cfg.seed.re,cfg.seed.im,$j('jfInterior').checked].join(); if(this.syncKey!==sk){ this.syncKey=sk; this.sync(); }
- const e=$j('jfE').checked,b=$j('jfB').checked,j=$j('jfJ').checked,showQ=$j('jfQ').checked&&this.src()!=='green',diff=$j('jfDiff').checked&&this.src()!=='green',n=+$j('jfN').value * +$j('jfCompose').value,mode=this.src();
+ const e=$j('jfE').checked,b=$j('jfB').checked,j=$j('jfJ').checked,showQ=$j('jfQ').checked&&!['green','limit'].includes(this.src()),diff=$j('jfDiff').checked&&!['green','limit'].includes(this.src()),n=+$j('jfN').value * +$j('jfCompose').value,mode=this.src();
  const w=Wd/DPR,h=Hd/DPR,spacing=w/(+$j("jfDensity").value),arrowScale=+$j("jfSize").value,p=cfg.juliaPower,a=cfg.seed.re,c=cfg.seed.im,co=Math.cos(view.a),si=Math.sin(view.a);
  const showA=mode==='a', showA2=diff;
  if(!e&&!b&&!j&&!showQ&&!showA&&!showA2)return;
@@ -85,7 +113,17 @@ const juliaFields={
  function arrow(x,y,u,v,col,len){let mag=Math.hypot(u,v);if(!mag||!Number.isFinite(mag)||len<0.6)return;let dx=(u*co+v*si)/mag*len,dy=-(-u*si+v*co)/mag*len;ctx.strokeStyle=col;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(x-dx/2,y-dy/2);ctx.lineTo(x+dx/2,y+dy/2);ctx.lineTo(x+dx*.18-dy*.2,y+dy*.18+dx*.2);ctx.moveTo(x+dx/2,y+dy/2);ctx.lineTo(x+dx*.18+dy*.2,y+dy*.18-dx*.2);ctx.stroke();}
  const k0=Math.min(spacing/21,1.6)*arrowScale;
  if(e||b) for(let y=spacing*13/21;y<h;y+=spacing)for(let x=spacing*13/21;x<w;x+=spacing){
-  let [wx,wy]=toWorld(x*DPR,y*DPR),f=this.F(mode,this.a,wx,wy,a,c,n,p);if(!f)continue;
+  let [wx,wy]=toWorld(x*DPR,y*DPR);
+  if(mode==='limit'){
+   const N=+$j('jfDepth').value,L=Math.max(1,Math.min(12,Math.floor(+$j('jfLag').value)||1));
+   if(N<=2*L)continue;
+   const q=this.convergence(wx,wy,a,c,p,N,L);if(!q)continue;
+   const kind=$j('jfLimitView').value;
+   if(kind==='direction'){if(q.stable){if(e)arrow(x,y,q.x,q.y,'#eac16c',16*k0);if(b)arrow(x,y,-q.y,q.x,'#63c9ee',16*k0);}else{ctx.fillStyle='#888';ctx.fillRect(x-1,y-1,2,2);}}
+   else {const t=kind==='growth'?Math.max(0,Math.min(1,Math.log(Math.max(q.growth,1e-12))/Math.log(p))):Math.min(1,q.angle/Math.PI);ctx.fillStyle='hsl('+ (240-240*t)+' 85% 55%)';ctx.fillRect(x-spacing*.43,y-spacing*.43,spacing*.86,spacing*.86);}
+   continue;
+  }
+  let f=this.F(mode,this.a,wx,wy,a,c,n,p);if(!f)continue;
   if(diff){ // difference of two sources: same Julia set, so whatever is left is how the two fields disagree
    const g=this.sourceField(wx,wy,a,c,n,p,this.a2[0],this.a2[1]); if(!g) continue;
    const u=f[0]/N1-g[0]/p**n, v=f[1]/N1-g[1]/p**n, len=18*Math.tanh(4*Math.hypot(u,v))*k0;
@@ -105,11 +143,12 @@ const juliaFields={
  fmt(s){ const r=x=>String(+x.toFixed(6)); return r(s[0])+(s[1]<0?' − ':' + ')+r(Math.abs(s[1]))+'i'; },
  sync(){ const $j=id=>document.getElementById(id), mode=this.src(), n=+$j('jfN').value * +$j('jfCompose').value, p=typeof cfg!=='undefined'?cfg.juliaPower:2;
   const basilica=typeof cfg!=='undefined'&&p===2&&Math.abs(cfg.seed.re+1)<1e-12&&Math.abs(cfg.seed.im)<1e-12;
+  $j('jfLimitRow').hidden=mode!=='limit'; $j('jfDepthOut').textContent=$j('jfDepth').value;
   $j('jfInteriorRow').hidden=mode!=='green'||!basilica;
-  $j('jfSourceSliders').hidden=mode!=='a'; $j('jfLegacyStrength').hidden=mode==='green'; $j('jfQ').disabled=mode==='green'; $j('jfDiff').disabled=mode==='green'; $j('jfARow').hidden=mode!=='a'; $j('jfA2Row').hidden=!$j('jfDiff').checked;
+  $j('jfSourceSliders').hidden=mode!=='a'; $j('jfLegacyStrength').hidden=mode==='green'||mode==='limit'; $j('jfQ').disabled=mode==='green'; $j('jfDiff').disabled=mode==='green'; $j('jfARow').hidden=mode!=='a'; $j('jfA2Row').hidden=!$j('jfDiff').checked;
   $j('jfOut').textContent=$j('jfN').value; for(const id of ['jfCompose','jfElectric','jfMagnetic']) $j(id+'Out').textContent=$j(id).value; $j('jfDensityOut').textContent=$j('jfDensity').value; $j('jfSizeOut').textContent=$j('jfSize').value+'×';
   const total=Number.isInteger(p)&&p>=2?(mode==='crit'?p**n-1:p**n):NaN;
-  $j('jfCount').textContent=mode==='green'?(basilica&&$j('jfInterior').checked?'Exterior factor: '+(4**(+$j('jfCompose').value)-1)+' · Interior factor: '+(2**(+$j('jfCompose').value)-1):'Intrinsic magnitude factor: '+(p**(+$j('jfCompose').value)-1)):Number.isFinite(total)?total.toLocaleString('en-US')+(mode==='crit'?' charges at the critical points of fⁿ':' charges at the points with fⁿ(z) = a'):'';
+  $j('jfCount').textContent=mode==='limit'?'Growth: blue ≤ 1, red ≥ degree. Angle: blue 0, red π. Direction: gray unresolved.':mode==='green'?(basilica&&$j('jfInterior').checked?'Exterior factor: '+(4**(+$j('jfCompose').value)-1)+' · Interior factor: '+(2**(+$j('jfCompose').value)-1):'Intrinsic magnitude factor: '+(p**(+$j('jfCompose').value)-1)):Number.isFinite(total)?total.toLocaleString('en-US')+(mode==='crit'?' charges at the critical points of fⁿ':' charges at the points with fⁿ(z) = a'):'';
  }
 };
 // Tapping the map while "Tap map" is armed places a or a2 instead of a pin. placePin is the lab's tap handler (overlays.js).
@@ -123,7 +162,7 @@ const juliaFields={
    toast((k===1?'a':'a₂')+' = '+juliaFields.fmt(s)); needDraw=true;
   };
 }
-for(const id of ['jfInterior','jfE','jfB','jfJ','jfQ','jfDiff','jfN','jfDensity','jfSize','jfSrc','jfCompose','jfElectric','jfMagnetic'])document.getElementById(id).addEventListener('input',()=>{juliaFields.sync();needDraw=true;});
+for(const id of ['jfLimitView','jfLag','jfDepth','jfInterior','jfE','jfB','jfJ','jfQ','jfDiff','jfN','jfDensity','jfSize','jfSrc','jfCompose','jfElectric','jfMagnetic'])document.getElementById(id).addEventListener('input',()=>{juliaFields.sync();needDraw=true;});
 for(const [id,key] of [['jfA','a'],['jfA2','a2']]) document.getElementById(id).addEventListener('input',e=>{const v=parseC(e.target.value);e.target.classList.toggle('bad',!v);if(v){juliaFields[key]=[v.re,v.im];needDraw=true;}});
 for(const [id,k] of [['jfPickA',1],['jfPickA2',2]]) document.getElementById(id).addEventListener('click',()=>{
  const on=juliaFields.placing!==k; juliaFields.placing=on?k:0;
