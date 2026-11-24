@@ -184,6 +184,7 @@ function clip(poly,nx,ny){ const out=[],eps=1e-12; for(let i=0;i<poly.length;i++
 FL.onConfig.push(()=>{ if(cfg().fractal!=='julia'){ setOpen(false); sectorOff(); } else if(open) refresh(); syncLink(); });
 
 window.FractalCycle={
+  search, newton, verified,
   mountSetup,
   toggle:()=>setOpen(!open),
   restore(text){   // from a link: cy=d,p — trust it only if the orbit really closes
