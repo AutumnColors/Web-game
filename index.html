@@ -97,6 +97,7 @@ function fallbackItems(){
   add(window.LEVELS,'Games');add(window.EXPLORE,'Explore');add(window.GROUPS,'Groups');
   (window.WORLD_LAYERS||[]).forEach(x=>out.push({path:'world/#layer='+x.id,title:x.title,badge:x.badge,category:'World'}));
   add(window.SKETCHES,'Sketches');add(window.RESEARCH,'Research');add(window.MUSIC,'Music');
+  out.push({path:'explore/feigenbaum-constant-lab/',title:'Feigenbaum Constant Lab',badge:'δ',category:'Explore'});
   out.push({path:'explore/boundary-lab/',title:'Boundary Lab',badge:'≈',category:'Explore'});
   out.push({path:'boundary-wave-lab.html',title:'Circular Boundary Wave Lab',badge:'◯',category:'Explore'});
   return out;
