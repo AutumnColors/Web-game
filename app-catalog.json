@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-11-24T08:11:19.315155+00:00",
+  "generatedAt": "2026-11-24T08:15:06.023660+00:00",
   "apps": [
     {
       "path": "explore/orbit-stability-lab/",
       "title": "Orbit Stability Lab",
       "category": "Explore",
-      "date": "2026-11-24T15:11:10+07:00",
-      "update": "Add mask invariance difference map and iteration sweep controls"
+      "date": "2026-11-24T15:14:56+07:00",
+      "update": "Preserve derivative phase and visualize complex field divergence and curl"
     },
     {
       "path": "explore/stopping-lab/",
