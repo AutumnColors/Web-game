@@ -111,7 +111,15 @@ function accumulation(stages){const c=stages.map(s=>[s.initialization.seed.re,s.
 
 function branches(init,{steps=128,maxBranches=32}={}){const count=init.degree-1;if(count>maxBranches)throw Error("Too many branches; select a branch explicitly");const results=[];for(let branch=0;branch<count;branch++){const tr=trace(init,{steps,branch});const endpoint=tr.points.at(-1).c;const duplicate=tr.complete&&results.some(r=>r.complete&&abs(sub(r.endpoint,endpoint))<1e-8);results.push({branch,complete:tr.complete,endpoint,duplicate,reason:tr.reason||null});}return results;}
 
-function followAnchor(anchor,from,to,d,p,width,depth=0){const j=jet(anchor,from,d,p);if(j&&abs(j.r)<1e-8){const a=sub(j.A,[1,0]);if(abs(a)>1e-12){const pred=sub(anchor,div(mul(j.B,sub(to,from)),a));if(abs(sub(pred,anchor))<=width*.04){let z=pred;for(let i=0;i<24;i++){const k=jet(z,to,d,p);if(!k)break;if(abs(k.r)<1e-12){if(abs(sub(z,pred))<=Math.max(width*.002,1e-12)&&abs(sub(z,anchor))<=width*.06&&abs(k.A)>1+1e-8)return z;break;}const den=sub(k.A,[1,0]);if(abs(den)<1e-12)break;z=sub(z,div(k.r,den));}}}}if(depth>=16)return null;const mid=scale(add(from,to),.5);if(abs(sub(mid,from))===0||abs(sub(mid,to))===0)return null;const m=followAnchor(anchor,from,mid,d,p,width,depth+1);return m?followAnchor(m,mid,to,d,p,width,depth+1):null;}
+function followAnchor(anchor,from,to,d,p,width,depth=0,budget={left:2048}){
+ if(--budget.left<0)return null;const j=jet(anchor,from,d,p);
+ if(j){const a=sub(j.A,[1,0]);if(abs(a)>1e-12&&abs(div(j.r,a))<=Math.max(width*.01,64*Number.EPSILON*(1+abs(anchor)))){
+ const pred=sub(anchor,div(mul(j.B,sub(to,from)),a)),motion=abs(sub(pred,anchor));let z=pred;
+ for(let i=0;i<24;i++){const k=jet(z,to,d,p);if(!k)break;const den=sub(k.A,[1,0]);if(abs(den)<1e-12)break;const dz=div(k.r,den),floor=64*Number.EPSILON*(1+abs(z));
+ if(abs(dz)<=Math.max(floor,Math.min(width*1e-5,1e-11))){if(abs(sub(z,pred))<=Math.max(width*.002,motion*.25,floor*4)&&abs(k.A)>1+1e-8)return z;break;}z=sub(z,dz);}
+ }}
+ if(depth>=16)return null;const mid=scale(add(from,to),.5);if(abs(sub(mid,from))===0||abs(sub(mid,to))===0)return null;const m=followAnchor(anchor,from,mid,d,p,width,depth+1,budget);return m?followAnchor(m,mid,to,d,p,width,depth+1,budget):null;
+}
 function trackCamera(camera,anchor,next){return {...camera,cx:camera.cx+next[0]-anchor[0],cy:camera.cy+next[1]-anchor[1]};}
 return {prepareEvolution,hybridTrajectory,recursiveCascade,recoverChild,pairReturn,pairSolve,jet,solve,trace,cascade,accumulation,branches,followAnchor,trackCamera,birthBridge,localPeriodMap,mapContinuation};
 })();if(typeof module!=='undefined'&&module.exports)module.exports=api;else globalThis.CycleEvolution=api;})();
