@@ -4,7 +4,7 @@
 const add=(a,b)=>[a[0]+b[0],a[1]+b[1]],sub=(a,b)=>[a[0]-b[0],a[1]-b[1]],mul=(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]],scale=(a,s)=>[a[0]*s,a[1]*s],abs=a=>Math.hypot(...a),div=(a,b)=>scale(mul(a,[b[0],-b[1]]),1/(abs(b)**2));
 function pow(z,n){let r=[1,0];while(n){if(n%2)r=mul(r,z);z=mul(z,z);n=Math.floor(n/2);}return r;}
 function jet(z,c,d,p){let w=z,A=[1,0],B=[0,0],U=[0,0],V=[0,0];for(let i=0;i<p;i++){const q=scale(pow(w,d-1),d),h=scale(pow(w,d-2),d*(d-1));U=add(mul(q,U),mul(h,mul(A,A)));V=add(mul(q,V),mul(h,mul(A,B)));A=mul(q,A);B=add(mul(q,B),[1,0]);w=add(pow(w,d),c);if(![w,A,B,U,V].every(a=>Number.isFinite(abs(a))))return null;}return {r:sub(w,z),A,B,U,V};}
-function solve(z,c,d,p,m){for(let i=0;i<40;i++){const j=jet(z,c,d,p);if(!j)return null;const r=j.r,s=sub(j.A,m),err=Math.max(abs(r),abs(s));if(err<1e-10)return {z,c,multiplier:j.A};const a=sub(j.A,[1,0]),det=sub(mul(a,j.V),mul(j.B,j.U));if(abs(det)<1e-20)return null;const dz=div(sub(mul(r,j.V),mul(j.B,s)),det),dc=div(sub(mul(a,s),mul(r,j.U)),det);let ok=false;for(let k=1;k>=1/4096;k/=2){const nz=sub(z,scale(dz,k)),nc=sub(c,scale(dc,k)),n=jet(nz,nc,d,p);if(n&&Math.max(abs(n.r),abs(sub(n.A,m)))<err){z=nz;c=nc;ok=true;break;}}if(!ok)return null;}return null;}
+function solve(z,c,d,p,m){for(let i=0;i<40;i++){const j=jet(z,c,d,p);if(!j)return null;const r=j.r,s=sub(j.A,m),err=Math.max(abs(r),abs(s));if(abs(r)<=residualTolerance(sub(j.A,[1,0]),j.B,z,c)&&abs(s)<=residualTolerance(j.U,j.V,z,c))return {z,c,multiplier:j.A};const a=sub(j.A,[1,0]),det=sub(mul(a,j.V),mul(j.B,j.U));if(abs(det)<1e-20)return null;const dz=div(sub(mul(r,j.V),mul(j.B,s)),det),dc=div(sub(mul(a,s),mul(r,j.U)),det);let ok=false;for(let k=1;k>=1/4096;k/=2){const nz=sub(z,scale(dz,k)),nc=sub(c,scale(dc,k)),n=jet(nz,nc,d,p);if(n&&Math.max(abs(n.r),abs(sub(n.A,m)))<err){z=nz;c=nc;ok=true;break;}}if(!ok)return null;}return null;}
 function trace(init,{steps=128,branch=0,target=-1}={}){const {degree:d,period:p,seed}=init;if(!Number.isSafeInteger(d)||d<2||!Number.isSafeInteger(p)||p<1||d*p>12000||!Number.isInteger(steps)||steps<2||steps>2048||!Number.isInteger(branch)||branch<0||branch>=d-1)throw Error("Invalid continuation input");const c0=[seed.re,seed.im],j=jet([0,0],c0,d,p);if(!j||abs(j.r)>1e-8||abs(j.A)>1e-8)throw Error("Unverified center");let z=[0,0],c=c0;const points=[{z,c,multiplier:[0,0]}];let K=[d,0],w=[0,0];for(let i=1;i<p;i++){w=add(pow(w,d),c0);if(abs(w)<1e-8)throw Error("Nonprimitive cycle");K=mul(K,scale(pow(w,d-1),d));}K=mul(K,pow(j.B,d-1));for(let i=1;i<=steps;i++){const m=[target*i/steps,0];if(i===1){const q=div(m,K),theta=(Math.atan2(q[1],q[0])+2*Math.PI*branch)/(d-1),r=abs(q)**(1/(d-1));const dc=[r*Math.cos(theta),r*Math.sin(theta)];c=add(c0,dc);z=mul(j.B,dc);}const n=solve(z,c,d,p,m);if(!n)return {points,complete:false,reason:"Continuation failed at step "+i};z=n.z;c=n.c;points.push(n);}return {points,complete:true};}
 
 function critical(c,d,p){let z=[0,0],v=[0,0];for(let i=0;i<p;i++){v=add(mul(scale(pow(z,d-1),d),v),[1,0]);z=add(pow(z,d),c);if(!Number.isFinite(abs(z))||abs(z)>1e6)return null;}return {z,v};}
@@ -21,10 +21,20 @@ function pairReturn(m,h,c,d,p){
  M=add(E,c);Q=O;if(!Number.isFinite(abs(M)+abs(Q)))return null;
  }return [sub(M,m),add(Q,[1,0])];
 }
+function pairJet(m,h,c,d,p){
+ const zero=[0,0],one=[1,0],h2=mul(h,h);
+ const plus=(a,b)=>a.map((v,i)=>add(v,b[i]));
+ const times=(a,b)=>[mul(a[0],b[0]),add(mul(a[1],b[0]),mul(a[0],b[1])),add(mul(a[2],b[0]),mul(a[0],b[2]))];
+ const H=[h2,zero,zero];let M=[m,one,zero],Q=[one,zero,zero];
+ for(let i=0;i<p;i++){let E=[one,zero,zero],O=[zero,zero,zero];
+ for(let k=0;k<d;k++){const e=plus(times(E,M),times(H,times(O,Q))),o=plus(times(E,Q),times(O,M));E=e;O=o;}
+ M=plus(E,[c,zero,one]);Q=O;if(![...M,...Q].every(v=>Number.isFinite(abs(v))))return null;}
+ return {r:[sub(M[0],m),add(Q[0],one)],A:[sub(M[1],one),Q[1]],B:[M[2],Q[2]]};
+}
+function residualTolerance(a,b,x,y){return Math.max(1e-10,16*Number.EPSILON*(1+abs(a)*Math.max(1,abs(x))+abs(b)*Math.max(1,abs(y))));}
 function pairSolve(m,c,h,d,p){
- for(let i=0;i<40;i++){const r=pairReturn(m,h,c,d,p);if(!r)return null;const e=Math.max(...r.map(abs));if(e<1e-10)return {m,c,h,error:e};
- const eps=1e-7;const deriv=(which)=>{const v=[eps,0],l=pairReturn(which?m:add(m,v),h,which?add(c,v):c,d,p),r=pairReturn(which?m:sub(m,v),h,which?sub(c,v):c,d,p);return l&&r?l.map((x,k)=>scale(sub(x,r[k]),.5/eps)):null;};
- const A=deriv(0),B=deriv(1);if(!A||!B)return null;const det=sub(mul(A[0],B[1]),mul(A[1],B[0]));if(abs(det)<1e-20)return null;
+ for(let i=0;i<40;i++){const j=pairJet(m,h,c,d,p);if(!j)return null;const {r,A,B}=j,e=Math.max(...r.map(abs));if(r.every((v,k)=>abs(v)<=residualTolerance(A[k],B[k],m,c)))return {m,c,h,error:e};
+ const det=sub(mul(A[0],B[1]),mul(A[1],B[0]));if(abs(det)<1e-20)return null;
  const dm=div(sub(mul(r[0],B[1]),mul(r[1],B[0])),det),dc=div(sub(mul(A[0],r[1]),mul(A[1],r[0])),det);let ok=false;
  for(let k=1;k>=1/4096;k/=2){const nm=sub(m,scale(dm,k)),nc=sub(c,scale(dc,k)),v=pairReturn(nm,h,nc,d,p);if(v&&Math.max(...v.map(abs))<e){m=nm;c=nc;ok=true;break;}}if(!ok)return null;
  }return null;
