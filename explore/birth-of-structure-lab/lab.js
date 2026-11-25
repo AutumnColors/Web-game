@@ -55,7 +55,7 @@ const panelOf=(x,y)=>cmp()?[x>=Wd/2?Wd/2:0, y>=Hd/2?Hd/2:0]:[0,0];
 const mapPt=(x,y,o)=>cmp()?[(x-o[0])*2,(y-o[1])*2]:[x,y];
 const ptrs=new Map(); let blocked=false;
 const vel={x:0,y:0}; let lastMove=0, tapT=0, tapX=0, tapY=0, moved=0, glide=null, twist=0, twisting=false, pinTimer=0, holdT=0;
-const P=e=>mapPt(e.clientX*DPR,e.clientY*DPR,gOrigin);
+const P=e=>mapPt((e.clientX-cv.getBoundingClientRect().left)*DPR,(e.clientY-cv.getBoundingClientRect().top)*DPR,gOrigin);
 function endGesture(){ ptrs.clear(); cv.classList.remove('drag'); blocked=true; }
 cv.addEventListener('pointerdown',e=>{
   e.preventDefault(); closePop();
@@ -63,7 +63,7 @@ cv.addEventListener('pointerdown',e=>{
   if(blocked && ptrs.size===0) blocked=false;
   if(blocked) return;
   cv.setPointerCapture(e.pointerId);
-  if(ptrs.size===0) gOrigin=panelOf(e.clientX*DPR,e.clientY*DPR);
+  if(ptrs.size===0) gOrigin=panelOf((e.clientX-cv.getBoundingClientRect().left)*DPR,(e.clientY-cv.getBoundingClientRect().top)*DPR);
   ptrs.set(e.pointerId,P(e)); cv.classList.add('drag');
   glide=null; rotAnim=null; vel.x=vel.y=0; lastMove=performance.now();
   if(ptrs.size===1){ moved=0; twist=0; twisting=false;
@@ -102,7 +102,7 @@ function up(e){
     cv.classList.remove('drag');
     if(twisting){ twisting=false; if(!cfg.polar)snapNorth(); }
     if(moved<12){
-      const rx=e.clientX*DPR, ry=e.clientY*DPR, [x,y]=mapPt(rx,ry,gOrigin);
+      const rx=(e.clientX-cv.getBoundingClientRect().left)*DPR, ry=(e.clientY-cv.getBoundingClientRect().top)*DPR, [x,y]=mapPt(rx,ry,gOrigin);
       if(!cfg.clean){
         if(hitCompass(rx,ry)){if(cfg.polar){view.a=0;dirty=true;needDraw=true;}else northUp();tapT=0;return;}
         if(hit(labelBox,rx,ry)){ copyPin(); tapT=0; return; }
@@ -118,7 +118,7 @@ function up(e){
 cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
 cv.addEventListener('wheel',e=>{
   e.preventDefault(); if(back) return;
-  const d=e.deltaMode===1?16:1, rx=e.clientX*DPR, ry=e.clientY*DPR, [x,y]=mapPt(rx,ry,panelOf(rx,ry));
+  const d=e.deltaMode===1?16:1, rx=(e.clientX-cv.getBoundingClientRect().left)*DPR, ry=(e.clientY-cv.getBoundingClientRect().top)*DPR, [x,y]=mapPt(rx,ry,panelOf(rx,ry));
   if(e.shiftKey || e.altKey){ rotateAt(x,y,(e.deltaY||e.deltaX)*d*0.0025); clearTimeout(cv._snap); cv._snap=setTimeout(snapNorth,250); return; }
   zoomAt(x,y,Math.exp(-e.deltaY*d*0.0018));
 },{passive:false});
@@ -536,4 +536,4 @@ const cell=document.createElement('div'),label=document.createElement('p');label
 const old=$('maskIterations'),slider=document.createElement('input'),out=document.createElement('output');slider.type='range';slider.id=old.id;slider.min='1';slider.max='1000';slider.step='1';slider.style.cssText='width:100%;min-width:0;accent-color:#809bd0';out.style.minWidth='32px';const row=old.parentElement;row.style.flexWrap='wrap';old.replaceWith(slider,out);$('maskStats').style.flexBasis='100%';let dragging=false;slider.oninput=()=>{dragging=true;out.textContent=slider.value;};slider.onchange=()=>{dragging=false;cfg.iter=+slider.value;dirty=true;needDraw=true;writeHash();};function sync(){slider.max=['stablephase','normphase'].includes(cfg.mode)?String(phaseCap()):'1000';if(!dragging){slider.value=String(cfg.iter||itFor(view.w));out.textContent=slider.value;}requestAnimationFrame(sync);}sync();
 })();
 
-;(()=>{const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;align-items:center;margin-top:6px;font-size:12px';row.innerHTML='<span>Render resolution</span><select style="background:#263044;color:white"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select><span></span>'; $('experiment').append(row);const sel=row.querySelector('select');sel.onchange=()=>{const scale=+sel.value;const cap=Math.sqrt(8000000/(innerWidth*innerHeight));DPR=Math.min(Math.min(devicePixelRatio||1,2)*scale,cap);Wd=Math.round(innerWidth*DPR);Hd=Math.round(innerHeight*DPR);cv.width=Wd;cv.height=Hd;dirty=true;needDraw=true;};function report(){row.lastElementChild.textContent=Wd+' × '+Hd;requestAnimationFrame(report);}report();})();
+;(()=>{const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;align-items:center;margin-top:6px;font-size:12px';row.innerHTML='<span>Render resolution</span><select style="background:#263044;color:white"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select><span></span>'; $('experiment').append(row);const sel=row.querySelector('select');sel.onchange=()=>{const scale=+sel.value;const cap=Math.sqrt(8000000/(cv.clientWidth*cv.clientHeight));DPR=Math.min(Math.min(devicePixelRatio||1,2)*scale,cap);Wd=Math.round(cv.clientWidth*DPR);Hd=Math.round(cv.clientHeight*DPR);cv.width=Wd;cv.height=Hd;dirty=true;needDraw=true;};function report(){row.lastElementChild.textContent=Wd+' × '+Hd;requestAnimationFrame(report);}report();})();
