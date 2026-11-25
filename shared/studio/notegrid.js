@@ -2,9 +2,9 @@
    Pure functions, no audio, no DOM. Global: NoteGrid.  Score grammar: see music/studio/ (Score tab). */
 (function(global){
 'use strict';
-const INSTRUMENTS=['piano','guitar','cleanguitar','bass','pad','lead','strings','violin','flute','voice','bell','gamelan','pluck','organ','sine','saw','tom','drums'];
-const LEGATO_OK=['sine','saw','pad','lead','strings','violin','flute','voice','guitar'];
-const DRUMS=['kick','snare','hat','openhat','clap','tom','rim'];
+const INSTRUMENTS=['piano','guitar','cleanguitar','bass','pad','lead','strings','violin','flute','voice','bell','gamelan','pluck','organ','sine','saw','tom','supersaw','acid','synthbass','stab','drums'];
+const LEGATO_OK=['sine','saw','pad','lead','strings','violin','flute','voice','guitar','supersaw'];
+const DRUMS=['kick','snare','hat','openhat','clap','tom','rim','riser','impact','zap'];
 const NOTE_IDX={c:0,d:2,e:4,f:5,g:7,a:9,b:11};
 const NAMES=['C','C#','D','E♭','E','F','F#','G','G#','A','B♭','B'];
 function noteToMidi(s){const m=String(s).trim().match(/^([A-Ga-g])([#b]?)(-?\d+)$/);if(!m)return null;return NOTE_IDX[m[1].toLowerCase()]+(m[2]==='#'?1:m[2]==='b'?-1:0)+12*(parseInt(m[3],10)+1);}
@@ -27,13 +27,15 @@ function parseScore(text){
     if(m){
       const inst=m[2].toLowerCase();
       if(!INSTRUMENTS.includes(inst))errors.push(`line ${ln}: unknown instrument "${m[2]}" (use: ${INSTRUMENTS.join(', ')})`);
-      cur={name:m[1],inst:INSTRUMENTS.includes(inst)?inst:'sine',vol:0.8,oct:0,legato:false,pedal:0,notes:[],idx:song.tracks.length,muted:false};
+      cur={name:m[1],inst:INSTRUMENTS.includes(inst)?inst:'sine',vol:0.8,oct:0,legato:false,pedal:0,kit:'',duck:0,notes:[],idx:song.tracks.length,muted:false};
       (m[3]||'').split(/\s+/).filter(Boolean).forEach(kv=>{const [k,v]=kv.split('=');
         if(k==='vol'&&!isNaN(parseFloat(v)))cur.vol=parseFloat(v);
         else if(k==='oct'&&/^[+-]?\d+$/.test(v))cur.oct=parseInt(v,10);
         else if(k==='pedal'&&parseFloat(v)>0)cur.pedal=parseFloat(v);
+        else if(k==='kit'&&/^(e|acoustic)$/i.test(v||''))cur.kit=v.toLowerCase()==='e'?'e':'';
+        else if(k==='duck'&&parseFloat(v)>=0&&parseFloat(v)<=1)cur.duck=parseFloat(v);
         else if(k==='legato'&&v===undefined){if(LEGATO_OK.includes(cur.inst))cur.legato=true;else errors.push(`line ${ln}: legato works with ${LEGATO_OK.join(', ')}`);}
-        else errors.push(`line ${ln}: unknown track option "${kv}" (use vol=0.8, oct=-1, pedal=12 or legato)`);});
+        else errors.push(`line ${ln}: unknown track option "${kv}" (use vol=0.8, oct=-1, pedal=12, legato, kit=e for drums, duck=0.6)`);});
       song.tracks.push(cur);return;
     }
     if(!cur){
@@ -125,7 +127,7 @@ function serialize(song,note){
   song.tempos.slice(1).forEach(t=>L.push('tempo '+num(t.step)+' '+num(t.bpm)));
   song.marks.forEach(m=>L.push('mark '+num(m.step)+' '+m.text));
   song.tracks.forEach(t=>{
-    const opts=['vol='+num(t.vol)];if(t.oct)opts.push('oct='+t.oct);if(t.legato)opts.push('legato');
+    const opts=['vol='+num(t.vol)];if(t.oct)opts.push('oct='+t.oct);if(t.legato)opts.push('legato');if(t.kit)opts.push('kit='+t.kit);if(t.duck)opts.push('duck='+num(t.duck));
     L.push('','track '+t.name+' '+t.inst+' '+opts.join(' '));
     [...t.notes].sort((a,b)=>a.step-b.step||a.p-b.p).forEach(n=>L.push(num(n.step)+' '+(t.inst==='drums'?DRUMS[n.p]:num(n.p))+' '+num(n.len)+' '+num(n.vel)));
   });
