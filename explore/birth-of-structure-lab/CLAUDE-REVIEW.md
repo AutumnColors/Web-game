@@ -55,3 +55,63 @@ Previous numerical recoveries: d7 P224, d11 P88, d12 P96, d13 P52; primitive cri
 
 ## Visual acceptance
 Open dev build, generate a cycle, Preview with anchor on/off, Stop and restore yes/no, Record independently, inspect samples and compare same trajectory. Confirm no drift, no silent radial fallback, partial status visible. Browser testing and deployment not performed by this handoff.
+
+## Latest regression update (supersedes earlier status)
+15 configurations and 120 ordered checkpoints pass numerical residual <1e-8. Run `node explore/birth-of-structure-lab/cycle-evolution.test.cjs`. Generalized Basilica independently reaches period 256. Prepared trajectory cached; recording includes eight computed checkpoint images and metadata. Latest simulated playback results:
+```json
+[
+  {
+    "d": 3,
+    "anchored": false,
+    "restored": true,
+    "sameEndpoint": true,
+    "samples": 14,
+    "checkpoints": 8,
+    "metadata": true,
+    "alerts": [
+      [],
+      []
+    ]
+  },
+  {
+    "d": 3,
+    "anchored": true,
+    "restored": true,
+    "sameEndpoint": true,
+    "samples": 14,
+    "checkpoints": 8,
+    "metadata": true,
+    "alerts": [
+      [],
+      []
+    ]
+  },
+  {
+    "d": 5,
+    "anchored": false,
+    "restored": true,
+    "sameEndpoint": true,
+    "samples": 14,
+    "checkpoints": 8,
+    "metadata": true,
+    "alerts": [
+      [],
+      []
+    ]
+  },
+  {
+    "d": 5,
+    "anchored": true,
+    "restored": true,
+    "sameEndpoint": true,
+    "samples": 14,
+    "checkpoints": 8,
+    "metadata": true,
+    "alerts": [
+      [],
+      []
+    ]
+  }
+]
+```
+Actual canvas export/replay and browser UI not tested. Review synchronous preparation, approximate fractional coordinates, branch connectivity, recording timing (extra checkpoint slots can extend duration), and specialized Basilica metadata. Do not merge or deploy automatically.
