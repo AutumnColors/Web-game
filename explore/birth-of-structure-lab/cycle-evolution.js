@@ -37,9 +37,9 @@ function recoverChild(stage,d,p){
  for(let i=0;i<100;i++){const h0=1e-6*1.15**i,h=[h0*Math.cos(k*Math.PI/12),h0*Math.sin(k*Math.PI/12)];
  const q=pairSolve(cur.m,cur.c,h,d,p);if(!q||abs(sub(q.c,b.c))>span*1.5)break;cur=q;
  const z=add(q.m,h),j=jet(z,q.c,d,2*p);if(!j)break;const mu=abs(j.A);points.push({z,c:q.c,multiplier:j.A,h,error:q.error});
- if(mu<.01){let n=q.c;for(let it=0;it<30;it++){const v=critical(n,d,2*p);if(!v)break;const err=abs(v.z);
+ if(mu<.25){let n=q.c;for(let it=0;it<30;it++){const v=critical(n,d,2*p);if(!v)break;const err=abs(v.z);
  if(err<1e-8){let primitive=true;for(let i=1;i<2*p;i++)if(2*p%i===0&&abs(critical(n,d,i)?.z||[Infinity,0])<=1e-7)primitive=false;
- if(primitive&&abs(sub(n,q.c))<span*.1)return {c:n,error:err,points,certified:false};}
+ if(primitive&&abs(sub(n,q.c))<span*.1){const tr=trace({degree:d,period:2*p,seed:{re:n[0],im:n[1]}},{steps:128,target:.9999});if(d===2&&(!tr.complete||abs(sub(tr.points.at(-1).c,b.c))>span*.001))break;return {c:n,error:err,points,certified:false};}}
  const nn=sub(n,div(v.z,v.v));if(abs(sub(nn,n))===0)break;n=nn;}}
  if(mu>1.1)break;}}
  return null;
