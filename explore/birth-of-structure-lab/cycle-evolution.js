@@ -30,6 +30,35 @@ function pairSolve(m,c,h,d,p){
  }return null;
 }
 
+
+function recoverChild(stage,d,p){
+ const b=stage.points.at(-1),span=abs(sub(b.c,stage.points[0].c));
+ for(let k=0;k<12;k++){let cur={m:b.z,c:b.c},points=[];
+ for(let i=0;i<100;i++){const h0=1e-6*1.15**i,h=[h0*Math.cos(k*Math.PI/12),h0*Math.sin(k*Math.PI/12)];
+ const q=pairSolve(cur.m,cur.c,h,d,p);if(!q||abs(sub(q.c,b.c))>span*1.5)break;cur=q;
+ const z=add(q.m,h),j=jet(z,q.c,d,2*p);if(!j)break;const mu=abs(j.A);points.push({z,c:q.c,multiplier:j.A,h,error:q.error});
+ if(mu<.01){let n=q.c;for(let it=0;it<30;it++){const v=critical(n,d,2*p);if(!v)break;const err=abs(v.z);
+ if(err<1e-8){let primitive=true;for(let i=1;i<2*p;i++)if(2*p%i===0&&abs(critical(n,d,i)?.z||[Infinity,0])<=1e-7)primitive=false;
+ if(primitive&&abs(sub(n,q.c))<span*.1)return {c:n,error:err,points,certified:false};}
+ const nn=sub(n,div(v.z,v.v));if(abs(sub(nn,n))===0)break;n=nn;}}
+ if(mu>1.1)break;}}
+ return null;
+}
+function recursiveCascade(init,{levels=8,steps=64}={}){
+ if(!Number.isInteger(levels)||levels<1||levels>12)throw Error("Invalid levels");
+ let cur=init;const centers=[],stages=[];
+ for(let i=0;i<levels;i++){const d=cur.degree,p=cur.period,c=[cur.seed.re,cur.seed.im],v=critical(c,d,p);
+ if(!v||abs(v.z)>=1e-8)return {centers,stages,complete:false,reason:"Center residual"};
+ centers.push({initialization:cur,error:abs(v.z)});
+ if(i===levels-1)return {centers,stages,complete:true};
+ let tr=null;for(const n of [steps,steps*2,steps*4]){try{tr=trace(cur,{steps:n});}catch(e){return {centers,stages,complete:false,reason:String(e)};}if(tr.complete)break;}
+ if(!tr.complete)return {centers,stages,complete:false,reason:tr.reason};
+ const stage={initialization:cur,bifurcation:tr.points.at(-1).c,points:tr.points};stages.push(stage);
+ const child=recoverChild(stage,d,p);if(!child)return {centers,stages,complete:false,reason:"Child recovery failed"};
+ stage.bridge=child;cur={degree:d,period:2*p,seed:{re:child.c[0],im:child.c[1]}};
+ }return {centers,stages,complete:true};
+}
+
 function birthBridge(stage,d,p){const end=stage.points.at(-1),b=end.c,z=end.z;const scale0=abs(sub(b,stage.points[0].c));for(const eps of [.001,.003,.01,.03]){for(let k=0;k<16;k++){const angle=k*Math.PI/8;const dz=scale([Math.cos(angle),Math.sin(angle)],eps*Math.max(abs(z),.01));const n=solve(add(z,dz),b,d,2*p,[.999,0]);if(!n||abs(sub(n.c,b))>scale0*.1||abs(jet(n.z,n.c,d,p).r)<1e-7)continue;let cur=n,points=[n],ok=true;for(let i=1;i<=256;i++){const target=.999*(1-i/256);if(i===256)break;const q=solve(cur.z,cur.c,d,2*p,[target,0]);if(!q||abs(jet(q.z,q.c,d,p).r)<1e-7){ok=false;break;}cur=q;points.push(q);}if(!ok)continue;const c=center(cur.c,d,2*p);if(c&&abs(sub(c,cur.c))<scale0*.5){points.push({z:[0,0],c,multiplier:[0,0]});return {c,points};}}}return null;}
 function cascade(init,{levels=5,steps=128,branch=0}={}){if(!Number.isInteger(levels)||levels<1||levels>12)throw Error("Invalid levels");let cur=init;const stages=[];for(let l=0;l<levels;l++){const tr=trace(cur,{steps,branch});if(!tr.complete)return {stages,complete:false,reason:tr.reason};const b=tr.points.at(-1).c,prev=tr.points.at(-2).c,dir=sub(b,prev),origin=[cur.seed.re,cur.seed.im];stages.push({initialization:cur,bifurcation:b,points:tr.points});if(l===levels-1)return {stages,complete:true};let next=null;const candidates=[];for(const k of [.5,1,2,4,8,16,32,64]){const n=center(add(b,scale(dir,k)),cur.degree,cur.period*2);if(n&&abs(sub(n,b))<abs(sub(b,origin))*1.5&&mul(sub(n,b),[dir[0],-dir[1]])[0]>0)candidates.push(n);}candidates.sort((a,b1)=>abs(sub(a,b))-abs(sub(b1,b)));next=candidates[0];if(!next)return {stages,complete:false,reason:"Doubled center not located"};cur={degree:cur.degree,period:cur.period*2,seed:{re:next[0],im:next[1]}};}return {stages,complete:true};}
 
@@ -39,5 +68,5 @@ function branches(init,{steps=128,maxBranches=32}={}){const count=init.degree-1;
 
 function followAnchor(anchor,from,to,d,p,width,depth=0){const j=jet(anchor,from,d,p);if(j&&abs(j.r)<1e-8){const a=sub(j.A,[1,0]);if(abs(a)>1e-12){const pred=sub(anchor,div(mul(j.B,sub(to,from)),a));if(abs(sub(pred,anchor))<=width*.04){let z=pred;for(let i=0;i<24;i++){const k=jet(z,to,d,p);if(!k)break;if(abs(k.r)<1e-12){if(abs(sub(z,pred))<=Math.max(width*.002,1e-12)&&abs(sub(z,anchor))<=width*.06&&abs(k.A)>1+1e-8)return z;break;}const den=sub(k.A,[1,0]);if(abs(den)<1e-12)break;z=sub(z,div(k.r,den));}}}}if(depth>=16)return null;const mid=scale(add(from,to),.5);if(abs(sub(mid,from))===0||abs(sub(mid,to))===0)return null;const m=followAnchor(anchor,from,mid,d,p,width,depth+1);return m?followAnchor(m,mid,to,d,p,width,depth+1):null;}
 function trackCamera(camera,anchor,next){return {...camera,cx:camera.cx+next[0]-anchor[0],cy:camera.cy+next[1]-anchor[1]};}
-return {pairReturn,pairSolve,jet,solve,trace,cascade,accumulation,branches,followAnchor,trackCamera,birthBridge,localPeriodMap,mapContinuation};
+return {recursiveCascade,recoverChild,pairReturn,pairSolve,jet,solve,trace,cascade,accumulation,branches,followAnchor,trackCamera,birthBridge,localPeriodMap,mapContinuation};
 })();if(typeof module!=='undefined'&&module.exports)module.exports=api;else globalThis.CycleEvolution=api;})();
