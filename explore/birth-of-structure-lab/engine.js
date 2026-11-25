@@ -485,9 +485,9 @@ let job=0, cur=null, dirty=true, lastStart=0, roughMs=150, base=null, under=null
 const OVERSCAN=1.3;
 function startJob(){
   job++; queue=queue.filter(q=>q.tag!=='main'); dirty=false; lastStart=performance.now();
-  const v= back ? backView(performance.now()+Math.min(500,Math.max(50,roughMs*1.15))) : {...view}, maxIt=itFor(v.w), div=cmp()?2:1, d=needD();
+  const v= back ? backView(performance.now()+Math.min(500,Math.max(50,roughMs*1.15))) : {...view}, maxIt=window.birthPreviewQuality?Math.min(itFor(v.w),window.birthPreviewQuality.iterations):itFor(v.w), div=cmp()?2:1, d=needD();
   cur={id:job,v,maxIt,passes:[]};
-  const passes=back?[6]:PASSES, ring=cfg.polar||cfg.bottcher;
+  const passes=window.birthPreviewQuality?[window.birthPreviewQuality.divisor]:back?[6]:PASSES, ring=cfg.polar||cfg.bottcher;
   passes.forEach((ds,p)=>{
     const overscan=ring?1:(back||p<passes.length-1)?OVERSCAN:1;
     const tw=Math.ceil(Wd*overscan/(ds*div)), th=Math.ceil(Hd*overscan/(ds*div));
@@ -509,7 +509,7 @@ function mainStrip(m){
   const L=cur.passes[m.pass]; fill(L,m);
   if(L.left>0) return;
   if(m.pass===0) roughMs=0.6*roughMs+0.4*(performance.now()-lastStart);
-  if(!cfg.iter){
+  if(!cfg.iter&&!window.birthPreviewQuality){
     if(L.minN<1e9){ lastMin=L.minN; boost=1; }
     else if(!back){
       if(cur.maxIt<CAP){ boost*=3; dirty=true; }
@@ -522,7 +522,7 @@ function mainStrip(m){
     if(m.pass===cur.passes.length-1 && !back){ stats=measure(L); writeHash(); if(infoOpen) fillInfo(); }
   }
 }
-function renderHome(){ // the whole universe as a backdrop, wide enough to fill the corners of a turned, zoomed-out view
+function renderHome(){ if(window.birthPreviewQuality)return; // the whole universe as a backdrop, wide enough to fill the corners of a turned, zoomed-out view
   cancel(homeId); home=null;
   const w=3*HOME.w*Math.max(1,Hd/Wd), v={cx:eng.cxm===undefined?HOME.cx:eng.cxm,cy:HOME.cy,w,a:0};
   homeId=render('home',v,440,440,cfg.iter||300,eng,true,L=>{ L.ring=false; home=L; paintLayer(L); needDraw=true; });   // always a flat (Cartesian) picture
