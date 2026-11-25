@@ -42,6 +42,8 @@ class StudioEngine extends EventTarget{
       bars:s.length/(s.steps*s.beats),marks:s.marks.map(m=>({text:m.text,time:this.timeOfStep(m.step)})),
       tracks:this.tracks.map(t=>({name:t.name,inst:t.inst,notes:t.count,low:t.low,high:t.high}))};
   }
+  // seconds from an event's start to any step, at tempo factor k (for the sidechain pump)
+  _rel(ev,k){const s=this.song,N=NG();ev.e.beatSteps=s.steps;return st=>(N.songTime(s,st)-ev.t0)/k;}
   // Precompute timing (at tempo 1) and per-track onset lists for features().
   _index(){
     const s=this.song,N=NG();
@@ -117,7 +119,7 @@ class StudioEngine extends EventTarget{
     const pump=()=>{
       if(this.session!==s)return;const until=ctx.currentTime+0.35;
       while(s.cursor<this.events.length){const ev=this.events[s.cursor],at=t0+ev.t0/k;if(at>until)break;
-        if(at>=ctx.currentTime-0.02){const e=ev.e,midi=e.track.inst==='drums'?0:e.midi+tr;try{this.synth.play(e,at,(ev.t1-ev.t0)/k,midi,gains.get(e.track.name));}catch(err){}}
+        if(at>=ctx.currentTime-0.02){const e=ev.e,midi=e.track.inst==='drums'?0:e.midi+tr;try{this.synth.play(e,at,(ev.t1-ev.t0)/k,midi,gains.get(e.track.name),e.track.duck?this._rel(ev,k):null);}catch(err){}}
         s.cursor++;}
     };
     pump();s.timer=setInterval(pump,60);
@@ -181,7 +183,7 @@ class StudioEngine extends EventTarget{
     const synth=global.NoteGridSynth(off),out=off.createGain();out.gain.value=1;out.connect(off.destination);const master=synth.chain(out);
     const gains=new Map();for(const t of this.song.tracks){const g=off.createGain();g.gain.value=this.audible(t.name)?1:0;g.connect(master);gains.set(t.name,g);}
     const lead=0.02,W=1;let cur=0;const evs=this.events;
-    const sched=until=>{while(cur<evs.length&&lead+evs[cur].t0/k<until){const ev=evs[cur++],e=ev.e;synth.play(e,lead+ev.t0/k,(ev.t1-ev.t0)/k,e.track.inst==='drums'?0:e.midi+tr,gains.get(e.track.name));}};
+    const sched=until=>{while(cur<evs.length&&lead+evs[cur].t0/k<until){const ev=evs[cur++],e=ev.e;synth.play(e,lead+ev.t0/k,(ev.t1-ev.t0)/k,e.track.inst==='drums'?0:e.midi+tr,gains.get(e.track.name),e.track.duck?this._rel(ev,k):null);}};
     sched(W+0.5);
     for(let w=W;w<dur-0.5;w+=W){const at=w;off.suspend(at).then(()=>{sched(at+W+0.5);onProgress&&onProgress(at/dur);off.resume();});}
     const buf=await off.startRendering();
