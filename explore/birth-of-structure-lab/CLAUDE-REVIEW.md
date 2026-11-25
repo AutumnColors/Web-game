@@ -115,3 +115,7 @@ Open dev build, generate a cycle, Preview with anchor on/off, Stop and restore y
 ]
 ```
 Actual canvas export/replay and browser UI not tested. Review synchronous preparation, approximate fractional coordinates, branch connectivity, recording timing (extra checkpoint slots can extend duration), and specialized Basilica metadata. Do not merge or deploy automatically.
+
+
+## Prototype follow-up after review
+Analytic paired Jacobian, center polishing, conditioning-aware tolerances, 29/29 numerical child root landings, reversed positive real multiplier child paths, independent pacing coordinate, precomputed anchor path, full generalized trajectory export, completion status and bounded WebP images implemented. Fifteen fixture tests pass. Branch choice remains automatic; browser rendering, automatic anchor selection, export/replay and interaction need live verification. No production merge requested. Architectural cleanup deferred intentionally.
