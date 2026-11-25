@@ -70,6 +70,17 @@ function recursiveCascade(init,{levels=8,steps=64}={}){
 }
 
 
+function connectedChild(stage,child,d,p,steps){
+ const b=stage.points.at(-1),span=abs(sub(child.c,b.c));if(!(span>0))return null;
+ const init={degree:d,period:2*p,seed:{re:child.c[0],im:child.c[1]}};
+ let best=null;
+ for(let branch=0;branch<d-1;branch++){
+ const tr=trace(init,{steps,target:.99999,branch});if(!tr.complete)continue;
+ const end=tr.points.at(-1),gap=abs(sub(end.c,b.c))/span;
+ if(gap<.001&&(!best||gap<best.gap))best={branch,gap,points:tr.points.slice().reverse()};
+ }
+ return best;
+}
 function hybridTrajectory(init,{levels=3,steps=64}={}){
  const centers=[init],points=[],diagnostics=[];let cur=init;
  for(let i=0;i<levels-1;i++){
@@ -77,7 +88,8 @@ function hybridTrajectory(init,{levels=3,steps=64}={}){
  const stage={initialization:cur,bifurcation:tr.points.at(-1).c,points:tr.points};
  const child=recoverChild(stage,cur.degree,cur.period);
  if(!child){diagnostics.push("Continuous child bridge unavailable at period "+cur.period);break;}
- points.push(...tr.points.map((q,j)=>({...q,period:cur.period,s:i+.5*j/(tr.points.length-1)})),...child.points.map(q=>({...q,period:2*cur.period,s:i+.5+.5*(1-Math.min(1,abs(q.multiplier)))})),{z:[0,0],c:child.c,multiplier:[0,0],period:2*cur.period,s:i+1});
+ const connected=connectedChild(stage,child,cur.degree,cur.period,steps);if(!connected){diagnostics.push("Child connectivity unverified at period "+cur.period);break;}
+ points.push(...tr.points.map((q,j)=>({...q,period:cur.period,s:i+.5*j/(tr.points.length-1)})),...connected.points.map(q=>({...q,period:2*cur.period,s:i+.5+.5*(1-Math.min(1,Math.max(0,q.multiplier[0]))),connectivity:"numerically-verified",branch:connected.branch,rootGap:connected.gap})));
  cur={degree:cur.degree,period:cur.period*2,seed:{re:child.c[0],im:child.c[1]}};centers.push(cur);
  }
  return {centers,points,diagnostics,complete:centers.length===levels};
