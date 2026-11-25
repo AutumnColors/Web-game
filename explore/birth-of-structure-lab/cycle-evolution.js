@@ -98,7 +98,7 @@ function hybridTrajectory(init,{levels=3,steps=64}={}){
 
 function prepareEvolution(init,{levels=3,steps=128,count=8}={}){
  const r=hybridTrajectory(init,{levels,steps});if(!r.points.length)return {...r,checkpoints:[]};
- const end=r.centers.length-1,checkpoints=[];
+ const end=r.centers.length-1,checkpoints=[];let distance=0;for(let i=0;i<r.points.length;i++){const q=r.points[i];if(i){const prev=r.points[i-1],stage=Math.min(end-1,Math.floor((q.s+prev.s)/2)),a=r.centers[stage].seed,b=r.centers[stage+1].seed;distance+=abs(sub(q.c,prev.c))/Math.max(Number.MIN_VALUE,Math.hypot(b.re-a.re,b.im-a.im));}q.pacingDistance=distance;}for(const q of r.points)q.pacing=.8*q.pacingDistance/distance+.2*q.s/end;
  for(let i=0;i<count;i++){const target=end*i/(count-1);let best=r.points[0];for(const q of r.points)if(Math.abs(q.s-target)<Math.abs(best.s-target))best=q;
  checkpoints.push({...best,requestedS:target,index:i});}
  return {...r,checkpoints,range:end};
