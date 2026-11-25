@@ -1,0 +1,125 @@
+'use strict';
+// Standalone complex multiplier continuation. No rendering or deployment dependencies.
+(function(){const api=(function core(){
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1]],sub=(a,b)=>[a[0]-b[0],a[1]-b[1]],mul=(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]],scale=(a,s)=>[a[0]*s,a[1]*s],abs=a=>Math.hypot(...a),div=(a,b)=>scale(mul(a,[b[0],-b[1]]),1/(abs(b)**2));
+function pow(z,n){let r=[1,0];while(n){if(n%2)r=mul(r,z);z=mul(z,z);n=Math.floor(n/2);}return r;}
+function jet(z,c,d,p){let w=z,A=[1,0],B=[0,0],U=[0,0],V=[0,0];for(let i=0;i<p;i++){const q=scale(pow(w,d-1),d),h=scale(pow(w,d-2),d*(d-1));U=add(mul(q,U),mul(h,mul(A,A)));V=add(mul(q,V),mul(h,mul(A,B)));A=mul(q,A);B=add(mul(q,B),[1,0]);w=add(pow(w,d),c);if(![w,A,B,U,V].every(a=>Number.isFinite(abs(a))))return null;}return {r:sub(w,z),A,B,U,V};}
+function solve(z,c,d,p,m){for(let i=0;i<40;i++){const j=jet(z,c,d,p);if(!j)return null;const r=j.r,s=sub(j.A,m),err=Math.max(abs(r),abs(s));if(abs(r)<=residualTolerance(sub(j.A,[1,0]),j.B,z,c)&&abs(s)<=residualTolerance(j.U,j.V,z,c))return {z,c,multiplier:j.A};const a=sub(j.A,[1,0]),det=sub(mul(a,j.V),mul(j.B,j.U));if(abs(det)<1e-20)return null;const dz=div(sub(mul(r,j.V),mul(j.B,s)),det),dc=div(sub(mul(a,s),mul(r,j.U)),det);let ok=false;for(let k=1;k>=1/4096;k/=2){const nz=sub(z,scale(dz,k)),nc=sub(c,scale(dc,k)),n=jet(nz,nc,d,p);if(n&&Math.max(abs(n.r),abs(sub(n.A,m)))<err){z=nz;c=nc;ok=true;break;}}if(!ok)return null;}return null;}
+function trace(init,{steps=128,branch=0,target=-1}={}){const {degree:d,period:p,seed}=init;if(!Number.isSafeInteger(d)||d<2||!Number.isSafeInteger(p)||p<1||d*p>12000||!Number.isInteger(steps)||steps<2||steps>2048||!Number.isInteger(branch)||branch<0||branch>=d-1)throw Error("Invalid continuation input");const c0=[seed.re,seed.im],j=jet([0,0],c0,d,p);if(!j||abs(j.r)>1e-8)throw Error("Unverified center");let z=[0,0],c=c0;const points=[{z,c,multiplier:[0,0]}];let K=[d,0],w=[0,0];for(let i=1;i<p;i++){w=add(pow(w,d),c0);if(abs(w)<1e-8)throw Error("Nonprimitive cycle");K=mul(K,scale(pow(w,d-1),d));}K=mul(K,pow(j.B,d-1));for(let i=1;i<=steps;i++){const m=[target*i/steps,0];if(i===1){const q=div(m,K),theta=(Math.atan2(q[1],q[0])+2*Math.PI*branch)/(d-1),r=abs(q)**(1/(d-1));const dc=[r*Math.cos(theta),r*Math.sin(theta)];c=add(c0,dc);z=mul(j.B,dc);}const n=solve(z,c,d,p,m);if(!n)return {points,complete:false,reason:"Continuation failed at step "+i};z=n.z;c=n.c;points.push(n);}return {points,complete:true};}
+
+function critical(c,d,p){let z=[0,0],v=[0,0];for(let i=0;i<p;i++){v=add(mul(scale(pow(z,d-1),d),v),[1,0]);z=add(pow(z,d),c);if(!Number.isFinite(abs(z))||abs(z)>1e6)return null;}return {z,v};}
+function center(c,d,p){for(let i=0;i<60;i++){const o=critical(c,d,p);if(!o)return null;if(abs(o.z)<1e-11){for(let q=1;q<p;q++)if(p%q===0&&abs(critical(c,d,q)?.z||[Infinity,0])<1e-7)return null;return c;}if(abs(o.v)<1e-15)return null;const dc=div(o.z,o.v);let ok=false;for(let k=1;k>=1/4096;k/=2){const n=sub(c,scale(dc,k)),v=critical(n,d,p);if(v&&abs(v.z)<abs(o.z)){c=n;ok=true;break;}}if(!ok)return null;}return null;}
+function localPeriodMap(stage,d,p,{size=41,iterations=160}={}){const b=stage.points.at(-1).c,r=abs(sub(b,stage.points[0].c))*.35,cells=[],candidates=[];for(let y=0;y<size;y++)for(let x=0;x<size;x++){const c=add(b,[r*(2*x/(size-1)-1),r*(2*y/(size-1)-1)]);let z=[0,0],escaped=false;for(let i=0;i<iterations*2*p;i++){z=add(pow(z,d),c);if(abs(z)>2||!Number.isFinite(abs(z))){escaped=true;break;}}if(escaped){cells.push({x,y,kind:"escape"});continue;}const j=jet(z,c,d,p),k=jet(z,c,d,2*p);const e=j?abs(j.r):Infinity,e2=k?abs(k.r):Infinity,mu=k?abs(k.A):Infinity;const kind=e<1e-7?"parent":e2<1e-7&&mu<1?"child":"unresolved";cells.push({x,y,kind,recurrence:e2,multiplier:mu,sensitivity:k?abs(k.B):null});if(kind==="child"){const n=center(c,d,2*p);if(n&&!candidates.some(q=>abs(sub(q,n))<1e-10))candidates.push(n);}}return {b,r,size,cells,candidates};}
+function mapContinuation(stage,d,p,{size=31,iterations=80}={}){const map=localPeriodMap(stage,d,p,{size,iterations}),b=map.b,r=map.r;const ranked=map.cells.filter(q=>q.kind==="child").sort((a,b)=>a.multiplier-b.multiplier);const parent=stage.points.at(-1);let best=null,attempts=0;for(const cell of ranked.slice(0,16)){const c=add(b,[r*(2*cell.x/(size-1)-1),r*(2*cell.y/(size-1)-1)]);let z=[0,0];for(let i=0;i<iterations*2*p;i++)z=add(pow(z,d),c);const j=jet(z,c,d,2*p);if(!j)continue;attempts++;let cur={z,c,multiplier:j.A},points=[cur],ok=true;for(let i=1;i<128;i++){const target=scale(j.A,1-i/128),n=solve(cur.z,cur.c,d,2*p,target);if(!n||abs(jet(n.z,n.c,d,p).r)<1e-7){ok=false;break;}cur=n;points.push(n);}if(!ok)continue;const n=center(cur.c,d,2*p);if(!n)continue;const init={degree:d,period:2*p,seed:{re:n[0],im:n[1]}};for(let branch=0;branch<d-1;branch++){const tr=trace(init,{steps:128,branch,target:.9999});if(!tr.complete)continue;const end=tr.points.at(-1),distance=abs(sub(end.c,b));if(!best||distance<best.distance)best={c:n,distance,branch};if(distance<r*.005&&abs(jet(end.z,end.c,d,p).r)<.01)return {complete:true,c:n,points:tr.points.slice().reverse(),attempts,distance};}}return {complete:false,attempts,best,childCount:ranked.length};}
+
+function pairReturn(m,h,c,d,p){
+ // Propagate midpoint and divided difference without subtracting close orbit values.
+ let M=m,Q=[1,0],h2=mul(h,h);
+ for(let i=0;i<p;i++){
+ let E=[1,0],O=[0,0];
+ for(let k=0;k<d;k++){const e=add(mul(E,M),mul(h2,mul(O,Q))),o=add(mul(E,Q),mul(O,M));E=e;O=o;}
+ M=add(E,c);Q=O;if(!Number.isFinite(abs(M)+abs(Q)))return null;
+ }return [sub(M,m),add(Q,[1,0])];
+}
+function pairJet(m,h,c,d,p){
+ const zero=[0,0],one=[1,0],h2=mul(h,h);
+ const plus=(a,b)=>a.map((v,i)=>add(v,b[i]));
+ const times=(a,b)=>[mul(a[0],b[0]),add(mul(a[1],b[0]),mul(a[0],b[1])),add(mul(a[2],b[0]),mul(a[0],b[2]))];
+ const H=[h2,zero,zero];let M=[m,one,zero],Q=[one,zero,zero];
+ for(let i=0;i<p;i++){let E=[one,zero,zero],O=[zero,zero,zero];
+ for(let k=0;k<d;k++){const e=plus(times(E,M),times(H,times(O,Q))),o=plus(times(E,Q),times(O,M));E=e;O=o;}
+ M=plus(E,[c,zero,one]);Q=O;if(![...M,...Q].every(v=>Number.isFinite(abs(v))))return null;}
+ return {r:[sub(M[0],m),add(Q[0],one)],A:[sub(M[1],one),Q[1]],B:[M[2],Q[2]]};
+}
+function residualTolerance(a,b,x,y){return Math.max(1e-10,16*Number.EPSILON*(1+abs(a)*Math.max(1,abs(x))+abs(b)*Math.max(1,abs(y))));}
+function pairSolve(m,c,h,d,p){
+ for(let i=0;i<40;i++){const j=pairJet(m,h,c,d,p);if(!j)return null;const {r,A,B}=j,e=Math.max(...r.map(abs));if(r.every((v,k)=>abs(v)<=residualTolerance(A[k],B[k],m,c)))return {m,c,h,error:e};
+ const det=sub(mul(A[0],B[1]),mul(A[1],B[0]));if(abs(det)<1e-20)return null;
+ const dm=div(sub(mul(r[0],B[1]),mul(r[1],B[0])),det),dc=div(sub(mul(A[0],r[1]),mul(A[1],r[0])),det);let ok=false;
+ for(let k=1;k>=1/4096;k/=2){const nm=sub(m,scale(dm,k)),nc=sub(c,scale(dc,k)),v=pairReturn(nm,h,nc,d,p);if(v&&Math.max(...v.map(abs))<e){m=nm;c=nc;ok=true;break;}}if(!ok)return null;
+ }return null;
+}
+
+
+function recoverChild(stage,d,p){
+ const b=stage.points.at(-1),span=abs(sub(b.c,stage.points[0].c));
+ for(let k=0;k<12;k++){let cur={m:b.z,c:b.c},points=[];
+ for(let i=0;i<100;i++){const h0=1e-6*1.15**i,h=[h0*Math.cos(k*Math.PI/12),h0*Math.sin(k*Math.PI/12)];
+ const q=pairSolve(cur.m,cur.c,h,d,p);if(!q||abs(sub(q.c,b.c))>span*1.5)break;cur=q;
+ const z=add(q.m,h),j=jet(z,q.c,d,2*p);if(!j)break;const mu=abs(j.A);points.push({z,c:q.c,multiplier:j.A,h,error:q.error});
+ if(mu<.25){let n=q.c;for(let it=0;it<30;it++){const v=critical(n,d,2*p);if(!v)break;const err=abs(v.z);
+ if(err<1e-8){let primitive=true;for(let i=1;i<2*p;i++)if(2*p%i===0&&abs(critical(n,d,i)?.z||[Infinity,0])<=1e-7)primitive=false;
+ if(primitive&&abs(sub(n,q.c))<span*.1){for(let polish=0;polish<3;polish++){const v=critical(n,d,2*p);if(!v||abs(v.v)<1e-15)break;const nn=sub(n,div(v.z,v.v)),w=critical(nn,d,2*p);if(!w||abs(w.z)>=abs(v.z))break;n=nn;}const tr=trace({degree:d,period:2*p,seed:{re:n[0],im:n[1]}},{steps:128,target:.9999});if(d===2&&(!tr.complete||abs(sub(tr.points.at(-1).c,b.c))>span*.001))break;return {c:n,error:abs(critical(n,d,2*p).z),points,certified:false};}}
+ const nn=sub(n,div(v.z,v.v));if(abs(sub(nn,n))===0)break;n=nn;}}
+ if(mu>1.1)break;}}
+ return null;
+}
+function recursiveCascade(init,{levels=8,steps=64}={}){
+ if(!Number.isInteger(levels)||levels<1||levels>12)throw Error("Invalid levels");
+ let cur=init;const centers=[],stages=[];
+ for(let i=0;i<levels;i++){const d=cur.degree,p=cur.period,c=[cur.seed.re,cur.seed.im],v=critical(c,d,p);
+ if(!v||abs(v.z)>=1e-8)return {centers,stages,complete:false,reason:"Center residual"};
+ centers.push({initialization:cur,error:abs(v.z)});
+ if(i===levels-1)return {centers,stages,complete:true};
+ let tr=null;for(const n of [steps,steps*2,steps*4]){try{tr=trace(cur,{steps:n});}catch(e){return {centers,stages,complete:false,reason:String(e)};}if(tr.complete)break;}
+ if(!tr.complete)return {centers,stages,complete:false,reason:tr.reason};
+ const stage={initialization:cur,bifurcation:tr.points.at(-1).c,points:tr.points};stages.push(stage);
+ const child=recoverChild(stage,d,p);if(!child)return {centers,stages,complete:false,reason:"Child recovery failed"};
+ stage.bridge=child;cur={degree:d,period:2*p,seed:{re:child.c[0],im:child.c[1]}};
+ }return {centers,stages,complete:true};
+}
+
+
+function connectedChild(stage,child,d,p,steps){
+ const b=stage.points.at(-1),span=abs(sub(child.c,b.c));if(!(span>0))return null;
+ const init={degree:d,period:2*p,seed:{re:child.c[0],im:child.c[1]}};
+ let best=null;
+ for(let branch=0;branch<d-1;branch++){
+ const tr=trace(init,{steps,target:.99999,branch});if(!tr.complete)continue;
+ const end=tr.points.at(-1),gap=abs(sub(end.c,b.c))/span;
+ if(gap<.001&&(!best||gap<best.gap))best={branch,gap,points:tr.points.slice().reverse()};
+ }
+ return best;
+}
+function hybridTrajectory(init,{levels=3,steps=64}={}){
+ const centers=[init],points=[],diagnostics=[];let cur=init;
+ for(let i=0;i<levels-1;i++){
+ let tr=trace(cur,{steps});if(!tr.complete){diagnostics.push(tr.reason);break;}
+ const stage={initialization:cur,bifurcation:tr.points.at(-1).c,points:tr.points};
+ const child=recoverChild(stage,cur.degree,cur.period);
+ if(!child){diagnostics.push("Continuous child bridge unavailable at period "+cur.period);break;}
+ const connected=connectedChild(stage,child,cur.degree,cur.period,steps);if(!connected){diagnostics.push("Child connectivity unverified at period "+cur.period);break;}
+ points.push(...tr.points.map((q,j)=>({...q,period:cur.period,s:i+.5*j/(tr.points.length-1)})),...connected.points.map(q=>({...q,period:2*cur.period,s:i+.5+.5*(1-Math.min(1,Math.max(0,q.multiplier[0]))),connectivity:"numerically-verified",branch:connected.branch,rootGap:connected.gap})));
+ cur={degree:cur.degree,period:cur.period*2,seed:{re:child.c[0],im:child.c[1]}};centers.push(cur);
+ }
+ return {centers,points,diagnostics,complete:centers.length===levels};
+}
+
+
+function prepareEvolution(init,{levels=3,steps=128,count=8}={}){
+ const r=hybridTrajectory(init,{levels,steps});if(!r.points.length)return {...r,checkpoints:[]};
+ const end=r.centers.length-1,checkpoints=[];let distance=0;for(let i=0;i<r.points.length;i++){const q=r.points[i];if(i){const prev=r.points[i-1],stage=Math.min(end-1,Math.floor((q.s+prev.s)/2)),a=r.centers[stage].seed,b=r.centers[stage+1].seed;distance+=abs(sub(q.c,prev.c))/Math.max(Number.MIN_VALUE,Math.hypot(b.re-a.re,b.im-a.im));}q.pacingDistance=distance;}for(const q of r.points)q.pacing=.8*q.pacingDistance/distance+.2*q.s/end;
+ for(let i=0;i<count;i++){const target=end*i/(count-1);let best=r.points[0];for(const q of r.points)if(Math.abs(q.s-target)<Math.abs(best.s-target))best=q;
+ checkpoints.push({...best,requestedS:target,index:i});}
+ return {...r,checkpoints,range:end};
+}
+
+function birthBridge(stage,d,p){const end=stage.points.at(-1),b=end.c,z=end.z;const scale0=abs(sub(b,stage.points[0].c));for(const eps of [.001,.003,.01,.03]){for(let k=0;k<16;k++){const angle=k*Math.PI/8;const dz=scale([Math.cos(angle),Math.sin(angle)],eps*Math.max(abs(z),.01));const n=solve(add(z,dz),b,d,2*p,[.999,0]);if(!n||abs(sub(n.c,b))>scale0*.1||abs(jet(n.z,n.c,d,p).r)<1e-7)continue;let cur=n,points=[n],ok=true;for(let i=1;i<=256;i++){const target=.999*(1-i/256);if(i===256)break;const q=solve(cur.z,cur.c,d,2*p,[target,0]);if(!q||abs(jet(q.z,q.c,d,p).r)<1e-7){ok=false;break;}cur=q;points.push(q);}if(!ok)continue;const c=center(cur.c,d,2*p);if(c&&abs(sub(c,cur.c))<scale0*.5){points.push({z:[0,0],c,multiplier:[0,0]});return {c,points};}}}return null;}
+function cascade(init,{levels=5,steps=128,branch=0}={}){if(!Number.isInteger(levels)||levels<1||levels>12)throw Error("Invalid levels");let cur=init;const stages=[];for(let l=0;l<levels;l++){const tr=trace(cur,{steps,branch});if(!tr.complete)return {stages,complete:false,reason:tr.reason};const b=tr.points.at(-1).c,prev=tr.points.at(-2).c,dir=sub(b,prev),origin=[cur.seed.re,cur.seed.im];stages.push({initialization:cur,bifurcation:b,points:tr.points});if(l===levels-1)return {stages,complete:true};let next=null;const candidates=[];for(const k of [.5,1,2,4,8,16,32,64]){const n=center(add(b,scale(dir,k)),cur.degree,cur.period*2);if(n&&abs(sub(n,b))<abs(sub(b,origin))*1.5&&mul(sub(n,b),[dir[0],-dir[1]])[0]>0)candidates.push(n);}candidates.sort((a,b1)=>abs(sub(a,b))-abs(sub(b1,b)));next=candidates[0];if(!next)return {stages,complete:false,reason:"Doubled center not located"};cur={degree:cur.degree,period:cur.period*2,seed:{re:next[0],im:next[1]}};}return {stages,complete:true};}
+
+function accumulation(stages){const c=stages.map(s=>[s.initialization.seed.re,s.initialization.seed.im]),estimates=[];for(let i=2;i<c.length;i++){const a=sub(c[i-1],c[i-2]),b=sub(c[i],c[i-1]);if(abs(a)<1e-14||abs(b)<1e-14)continue;const ratio=div(b,a);if(abs(ratio)>=1||abs(sub([1,0],ratio))<1e-10)continue;const point=add(c[i],div(mul(b,ratio),sub([1,0],ratio)));estimates.push({period:stages[i].initialization.period,point,ratio,delta:div(a,b)});}const last=estimates.at(-1),prev=estimates.at(-2);return last?{...last,change:prev?abs(sub(last.point,prev.point)):null,estimates,certified:false}:null;}
+
+function branches(init,{steps=128,maxBranches=32}={}){const count=init.degree-1;if(count>maxBranches)throw Error("Too many branches; select a branch explicitly");const results=[];for(let branch=0;branch<count;branch++){const tr=trace(init,{steps,branch});const endpoint=tr.points.at(-1).c;const duplicate=tr.complete&&results.some(r=>r.complete&&abs(sub(r.endpoint,endpoint))<1e-8);results.push({branch,complete:tr.complete,endpoint,duplicate,reason:tr.reason||null});}return results;}
+
+function followAnchor(anchor,from,to,d,p,width,depth=0,budget={left:2048}){
+ if(--budget.left<0)return null;const j=jet(anchor,from,d,p);
+ if(j){const a=sub(j.A,[1,0]);if(abs(a)>1e-12&&abs(div(j.r,a))<=Math.max(width*.01,64*Number.EPSILON*(1+abs(anchor)))){
+ const pred=sub(anchor,div(mul(j.B,sub(to,from)),a)),motion=abs(sub(pred,anchor));let z=pred;
+ for(let i=0;i<24;i++){const k=jet(z,to,d,p);if(!k)break;const den=sub(k.A,[1,0]);if(abs(den)<1e-12)break;const dz=div(k.r,den),floor=64*Number.EPSILON*(1+abs(z));
+ if(abs(dz)<=Math.max(floor,Math.min(width*1e-5,1e-11))){if(abs(sub(z,pred))<=Math.max(width*.002,motion*.25,floor*4)&&abs(k.A)>1+1e-8)return z;break;}z=sub(z,dz);}
+ }}
+ if(depth>=16)return null;const mid=scale(add(from,to),.5);if(abs(sub(mid,from))===0||abs(sub(mid,to))===0)return null;const m=followAnchor(anchor,from,mid,d,p,width,depth+1,budget);return m?followAnchor(m,mid,to,d,p,width,depth+1,budget):null;
+}
+function trackCamera(camera,anchor,next){return {...camera,cx:camera.cx+next[0]-anchor[0],cy:camera.cy+next[1]-anchor[1]};}
+return {prepareEvolution,hybridTrajectory,recursiveCascade,recoverChild,pairReturn,pairSolve,jet,solve,trace,cascade,accumulation,branches,followAnchor,trackCamera,birthBridge,localPeriodMap,mapContinuation};
+})();if(typeof module!=='undefined'&&module.exports)module.exports=api;else globalThis.CycleEvolution=api;})();
