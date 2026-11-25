@@ -425,7 +425,7 @@ function fitHome(){
 function readSafe(){ const s=getComputedStyle($('sa')); SA={t:parseFloat(s.paddingTop)||0,r:parseFloat(s.paddingRight)||0,b:parseFloat(s.paddingBottom)||0,l:parseFloat(s.paddingLeft)||0}; }
 function resize(){
   DPR=Math.min(window.devicePixelRatio||1,2);
-  Wd=Math.max(2,Math.round(innerWidth*DPR)); Hd=Math.max(2,Math.round(innerHeight*DPR));
+  Wd=Math.max(2,Math.round(cv.clientWidth*DPR)); Hd=Math.max(2,Math.round(cv.clientHeight*DPR));
   cv.width=Wd; cv.height=Hd; readSafe();
   const first=!resize.done; resize.done=true;
   fitHome(); if(first){ Object.assign(view,HOME); renderHome(); }
