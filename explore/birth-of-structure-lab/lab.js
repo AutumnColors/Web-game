@@ -508,7 +508,7 @@ function frame(now){
   }
   const roughDone=cur && cur.passes[0].left<=0;
   if(dirty && (!cur || roughDone || (!back && now-lastStart>140))) startJob();
-  if(needDraw) draw();
+  if(needDraw){ draw(); window.birthRecordFrame?.(now); }
   if(shotWanted && (settled() || now-shotWanted>20000)) takeShot();
   else if(shotWanted && back){ shotWanted=0; $('shot').classList.remove('busy'); }
   requestAnimationFrame(frame);
