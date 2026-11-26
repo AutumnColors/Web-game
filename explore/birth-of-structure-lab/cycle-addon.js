@@ -159,6 +159,7 @@ function mountSetup(){
     }catch(e){status.textContent='Calculation failed: '+String(e.message||e);}
     finally{setupBusy=false;$('cyAcc').disabled=$('cyFind').disabled=$('cyAgain').disabled=false;}
   };
+
 }
 
 /* ---------- 2 · viewer: the panel next to the cycle button ---------- */
