@@ -493,6 +493,14 @@ $('cap').addEventListener('click',e=>{ if(e.target.id==='cap') e.currentTarget.c
 
 /* ---------- loop ---------- */
 let lastT=performance.now();
+// Spatial preview: reproject the last computed layer at display cadence.
+let spatialKeyframeAt=-Infinity;
+window.birthSpatialCamera=(cam,first=false)=>{
+  Object.assign(view,cam); view.a=wrap(cam.a||0); needDraw=true;
+  const now=performance.now();
+  if(first){spatialKeyframeAt=-Infinity;dirty=true;return;}
+  if(now-spatialKeyframeAt>=200 && (!cur||cur.passes.every(p=>p.left<=0))){spatialKeyframeAt=now;dirty=true;}
+};
 function frame(now){
   const dt=Math.min(50,now-lastT); lastT=now;
   if(back) stepBack(now,dt);
@@ -508,7 +516,7 @@ function frame(now){
   }
   const roughDone=cur && cur.passes[0].left<=0;
   if(dirty && (!cur || roughDone || (!back && now-lastStart>140))) startJob();
-  if(needDraw && (!window.birthPreviewQuality || settled())){ draw(); } window.birthRecordFrame?.(now);
+  if(needDraw && (!window.birthPreviewQuality || window.birthPreviewQuality.spatial || settled())){ draw(); } window.birthRecordFrame?.(now);
   if(shotWanted && (settled() || now-shotWanted>20000)) takeShot();
   else if(shotWanted && back){ shotWanted=0; $('shot').classList.remove('busy'); }
   requestAnimationFrame(frame);
