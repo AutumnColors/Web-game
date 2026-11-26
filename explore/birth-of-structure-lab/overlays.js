@@ -55,7 +55,7 @@ function draw(overlays=!cfg.clean){
   tagBoxes=[]; labelBox=null;
   if(!overlays) return;
   ctx.save(); ctx.scale(DPR,DPR);
-  drawSections(); drawPin(); if(four) drawTags(); drawCompass(); drawScale();
+  drawSections(); drawPin(); if(four) drawTags(); if(!window.birthHideCompass) drawCompass(); if(!window.birthHideScale) drawScale();
   ctx.restore();
 }
 // where a point of the plane appears, in CSS pixels: once, or once per panel in the comparison
