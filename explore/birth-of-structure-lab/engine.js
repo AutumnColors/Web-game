@@ -519,7 +519,7 @@ function mainStrip(m){
   if(!base || base.job!==cur.id || base.pass<m.pass){
     if(m.pass===cur.passes.length-1 && base && base.job===cur.id && !back) under=base;   // keep the overscanned rough pass beneath the sharp one
     L.job=cur.id; L.pass=m.pass; paintLayer(L); base=L; needDraw=true;
-    if(m.pass===cur.passes.length-1 && !back){ stats=measure(L); writeHash(); if(infoOpen) fillInfo(); }
+    if(m.pass===cur.passes.length-1 && !back && !window.birthPreviewQuality?.spatial){ stats=measure(L); writeHash(); if(infoOpen) fillInfo(); }
   }
 }
 function renderHome(){ if(window.birthPreviewQuality)return; // the whole universe as a backdrop, wide enough to fill the corners of a turned, zoomed-out view
