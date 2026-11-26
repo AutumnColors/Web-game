@@ -494,12 +494,13 @@ $('cap').addEventListener('click',e=>{ if(e.target.id==='cap') e.currentTarget.c
 /* ---------- loop ---------- */
 let lastT=performance.now();
 // Spatial preview: reproject the last computed layer at display cadence.
-let spatialKeyframeAt=-Infinity;
+let spatialKeyframeAt=-Infinity,spatialKeyframeWidth=null;
 window.birthSpatialCamera=(cam,first=false)=>{
   Object.assign(view,cam); view.a=wrap(cam.a||0); needDraw=true;
   const now=performance.now();
-  if(first){spatialKeyframeAt=-Infinity;dirty=true;return;}
-  if(now-spatialKeyframeAt>=200 && (!cur||cur.passes.every(p=>p.left<=0))){spatialKeyframeAt=now;dirty=true;}
+  if(first||spatialKeyframeWidth===null){spatialKeyframeAt=now;spatialKeyframeWidth=cam.w;return;}
+  const scaleChange=Math.abs(Math.log(cam.w/spatialKeyframeWidth));
+  if(scaleChange>=Math.log(1.25)&&now-spatialKeyframeAt>=250&&!dirty&&cur&&cur.passes.every(p=>p.left<=0)){spatialKeyframeAt=now;spatialKeyframeWidth=cam.w;dirty=true;}
 };
 function frame(now){
   const dt=Math.min(50,now-lastT); lastT=now;
@@ -516,6 +517,7 @@ function frame(now){
   }
   const roughDone=cur && cur.passes[0].left<=0;
   if(dirty && (!cur || roughDone || (!back && now-lastStart>140))) startJob();
+  if(!window.birthPreviewQuality?.spatial)spatialKeyframeWidth=null;
   if(needDraw && (!window.birthPreviewQuality || window.birthPreviewQuality.spatial || settled())){ draw(); } window.birthRecordFrame?.(now);
   if(shotWanted && (settled() || now-shotWanted>20000)) takeShot();
   else if(shotWanted && back){ shotWanted=0; $('shot').classList.remove('busy'); }

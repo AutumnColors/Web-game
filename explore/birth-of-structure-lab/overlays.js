@@ -34,6 +34,7 @@ function draw(overlays=!cfg.clean){
   ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
   if(!base){ under=null; hasFallback=false; }   // a new universe: nothing of the old one may show through
   const four=cmp(), n=four?4:1;
+  const spatial=!!window.birthPreviewQuality?.spatial && !!base && !ringView();
   // The whole-universe backdrop only while it is still reasonably sharp: magnified far, its square edges showed as strips.
   const backdrop=home && !ringView() && home.sx/(view.w/Wd)<40;
   for(let k=0;k<n;k++){
@@ -46,9 +47,11 @@ function draw(overlays=!cfg.clean){
     ctx.restore();
   }
   // Keep the composited map for the next frame, before annotations so the compass and labels never ghost.
+  if(!spatial || frameFallback.width!==Wd || frameFallback.height!==Hd || !hasFallback){
   if(frameFallback.width!==Wd || frameFallback.height!==Hd){ frameFallback.width=Wd; frameFallback.height=Hd; }
   frameFallbackCtx.globalCompositeOperation='copy'; frameFallbackCtx.drawImage(cv,0,0); frameFallbackCtx.globalCompositeOperation='source-over';
   hasFallback=true; fbView={cx:view.cx,cy:view.cy,w:view.w,a:view.a}; fbRing=ringView();
+  }
   if(four){ ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(Wd/2-DPR/2,0,DPR,Hd); ctx.fillRect(0,Hd/2-DPR/2,Wd,DPR); }
   if(typeof juliaFields!=='undefined') juliaFields.draw(); // hides its panel outside Julia; draws nothing in four-panel mode
   if(!four && typeof vectorOverlay!=='undefined' && vectorOverlay.enabled) vectorOverlay.draw();
