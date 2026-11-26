@@ -110,6 +110,55 @@ function mountSetup(){
     say('Verified: degree '+d+', cycle length '+p+'. c = '+cStr(r.c)+'. Press “Use this configuration”.');
   }
   $('cyFind').onclick=()=>run(false); $('cyAgain').onclick=()=>run(true);
+  const acc=document.createElement('div');
+  acc.innerHTML='<div class="lbl" style="margin-top:14px">Accumulation points</div><div class="cyBtns"><button id="cyAcc" type="button">Calculate</button></div><div class="cyStatus" id="cyAccStatus"></div><div id="cyAccResults"></div>';
+  host.append(acc);
+  $('cyAcc').onclick=async()=>{
+    if(setupBusy)return;
+    const d=num('cyD'),p=num('cyP'),bad=checkInput(d,p);
+    const status=$('cyAccStatus'),out=$('cyAccResults');
+    if(bad||d>12||p>64){status.textContent=bad||'Accumulation prototype supports degree ≤ 12 and starting period ≤ 64.';return;}
+    const engine=window.CycleEvolution;
+    if(!engine){status.textContent='Continuation engine unavailable.';return;}
+    setupBusy=true; $('cyAcc').disabled=$('cyFind').disabled=$('cyAgain').disabled=true;
+    out.replaceChildren();
+    const seeds=[],results=[];let failures=0;
+    const pause=()=>new Promise(resolve=>setTimeout(resolve,0));
+    try{
+      status.textContent='Finding starting cycles…';
+      for(let i=0;i<4;i++){
+        const r=await search(d,p,seeds,t=>{status.textContent=t;});
+        if(!r||!r.c)break;
+        seeds.push(r.c);
+        if(p===1||p===2)break;
+      }
+      const levels=Math.min(8,1+Math.floor(Math.log2(12000/(d*p))));
+      for(let i=0;i<seeds.length;i++){
+        for(let branch=0;branch<d-1;branch++){
+          status.textContent='Tracing cycle '+(i+1)+'/'+seeds.length+', branch '+(branch+1)+'/'+(d-1)+'…';
+          await pause();
+          try{
+            const c=seeds[i],init={degree:d,period:p,seed:{re:c[0],im:c[1]}};
+            const run=engine.cascade(init,{levels,steps:128,branch});
+            const est=engine.accumulation(run.stages);
+            if(!est||est.change===null||!Number.isFinite(est.change)||!est.point.every(Number.isFinite)){failures++;continue;}
+            const tolerance=Math.max(1e-10,est.change*2);
+            if(results.some(q=>Math.hypot(q.point[0]-est.point[0],q.point[1]-est.point[1])<Math.min(tolerance,Math.max(1e-10,q.change*2))))continue;
+            results.push(est);
+            const row=document.createElement('div');row.className='cyC';
+            row.textContent='c ≈ '+est.point.map(x=>x.toPrecision(15)).join(', ')+' · period '+est.period+' · estimate change '+est.change.toExponential(2)+(run.complete?'':' · partial cascade');
+            const b=document.createElement('button');b.type='button';b.textContent='Observe';b.onclick=()=>{
+              FL.draft.juliaPower=d;FL.chooseSeed(est.point[0],est.point[1]);FL.syncCfg();
+              status.textContent='Selected accumulation estimate. Press “Use this configuration”.';
+            };
+            const wrap=document.createElement('div');wrap.className='cyBtns';wrap.append(b);out.append(row,wrap);
+          }catch(e){failures++;}
+        }
+      }
+      status.textContent=results.length+' numerical estimate(s), '+failures+' unresolved branch(es). Sampled search, not exhaustive; endpoints and branch connections are not certified.';
+    }catch(e){status.textContent='Calculation failed: '+String(e.message||e);}
+    finally{setupBusy=false;$('cyAcc').disabled=$('cyFind').disabled=$('cyAgain').disabled=false;}
+  };
 }
 
 /* ---------- 2 · viewer: the panel next to the cycle button ---------- */
