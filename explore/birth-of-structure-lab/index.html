@@ -221,7 +221,8 @@ body.clean #birth-record-toolbar{display:none!important}
 <option value="cartesian">Cartesian (x, y)</option><option value="polar">Radial / Polar (r, θ)</option><option value="logpolar">Log-radial (ln r, θ)</option><option value="bottcher">Böttcher (G, θB) — Julia exterior</option></select>
 <div id="coordHelp" class="note">Select how the mathematical plane is displayed.</div>
 
-    <h2>2 · Measurement</h2>
+    <h2>2 · Starting observation layer</h2>
+    <div class="note">Choose the first measurement. You can switch layers in the viewer without changing the fractal.</div>
     <div class="grid2 grp" id="gMode"></div>
     <div class="params" id="greenContourSettings">
       <div class="lbl">Green potential contour lines</div>
@@ -239,10 +240,10 @@ body.clean #birth-record-toolbar{display:none!important}
     <div class="seg grp" id="gDepth"></div>
     <div class="note">Depth D = log₂(W₀ / W): each level halves the visible width. A limit stops zooming in only; panning and zooming out stay free.</div>
 
-    <h2>4 · Colour scheme</h2>
+    <h2>4 · Global default palette</h2>
     <div class="seg grp" id="gPal"></div>
     <canvas id="palPrev" width="600" height="18"></canvas>
-    <div class="note">Colour is applied after the computation, so switching scheme never changes the numbers.</div>
+    <div class="note">Layers inherit this palette where applicable unless you choose a local override in the viewer. Existing phase and signed-field defaults are preserved. Colour changes do not alter orbit calculations.</div>
 
 
     <div class="note">Böttcher view: external angle is horizontal, Green potential vertical. For Mandelbrot this uses parameter-plane uniformization, distinct from Julia's dynamical-plane map. Drag horizontally to shift angle, vertically to shift potential; pinch adjusts potential range. Exterior only. This mapping is numerical and less reliable close to the boundary.</div><h2>5 · Numerics</h2>
