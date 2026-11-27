@@ -27,11 +27,26 @@ test('mobile toolbar shell and panel lifecycle',async()=>{
  const bounds=await buttons.evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};}));
  for(const b of bounds)assert.ok(b.top>=0&&b.bottom<=844&&b.left>=0&&b.right<=390);
  for(let i=1;i<bounds.length;i++)assert.ok(bounds[i].top>=bounds[i-1].bottom);
- await page.evaluate(()=>{window.birthSelectExpedition('accumulation');if(!window.birthSaveInitialCheckpoint({zoom:6.264548,interval:12}))throw Error('checkpoint save failed');});
+ await page.evaluate(()=>{const F=window.FractalLab;F.apply({...F.clone(F.cfg),fractal:'julia',juliaPower:2,seed:{re:-1.4011551890920506,im:0}},{...F.view});window.birthSelectExpedition('accumulation');if(!window.birthSaveInitialCheckpoint({zoom:6.264548,interval:12}))throw Error('checkpoint save failed');});
+ const cp=await page.evaluate(()=>window.birthGetInitialCheckpoint());
+ await page.evaluate(()=>{const F=window.FractalLab;F.apply(F.clone(F.cfg),{...F.view,w:F.view.w*.7});});
+ assert.deepEqual(await page.evaluate(()=>window.birthGetInitialCheckpoint()),cp);
  await buttons.nth(1).click();
  await page.getByRole('button',{name:'Preview expedition',exact:true}).click();
  await page.waitForFunction(()=>{const s=window.birthExpeditionStatus?.();return s?.stage==='running'&&s.step>2;},{},{timeout:60000});
- assert.equal(await page.getByRole('button',{name:'Resume expedition ▶',exact:true}).isVisible(),false);
+ const current=()=>page.evaluate(()=>({seed:window.FractalLab.cfg.seed,w:window.FractalLab.view.w}));
+ let v=await current();assert.deepEqual(v.seed,cp.mathematics.c);assert.ok(v.w<cp.viewer.camera.w);
+ const pause=async()=>{await page.evaluate(()=>{const c=window.FractalLab.canvas;for(let i=0;i<2;i++)c.dispatchEvent(new PointerEvent('pointerdown',{isPrimary:true,bubbles:true,cancelable:true}));});await page.getByRole('button',{name:'Continue',exact:true}).waitFor({state:'visible'});};
+ await pause();let step=await page.evaluate(()=>window.birthExpeditionStatus().step);await page.waitForTimeout(300);assert.equal(await page.evaluate(()=>window.birthExpeditionStatus().step),step);
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.waitForFunction(n=>window.birthExpeditionStatus().step>n,step);
+ await pause();await page.getByRole('button',{name:'Restart expedition',exact:true}).click();
+ await page.waitForFunction(()=>window.birthExpeditionStatus().stage==='running');
+ assert.deepEqual((await current()).seed,cp.mathematics.c);
+ assert.deepEqual(await page.evaluate(()=>window.birthGetInitialCheckpoint()),cp);
+ await pause();await page.getByRole('button',{name:'Stop expedition',exact:true}).click();
+ await page.waitForFunction(()=>window.birthExpeditionStatus().stage==='idle');
+ assert.deepEqual(await page.evaluate(()=>window.birthGetInitialCheckpoint()),cp);
  assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });
