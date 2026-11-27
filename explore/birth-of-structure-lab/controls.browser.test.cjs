@@ -33,7 +33,8 @@ test('mobile toolbar shell and panel lifecycle',async()=>{
  await page.getByRole('button',{name:'Start expedition',exact:true}).click();
  await page.getByRole('button',{name:'Preview expedition',exact:true}).waitFor({state:'visible'});
  await page.getByRole('button',{name:'Preview expedition',exact:true}).click();
- await page.waitForFunction(()=>window.birthExpeditionActive?.()===true);
+ await page.waitForFunction(()=>{const s=window.birthExpeditionStatus?.();return s?.stage==='running'&&s.step>2;},{},{timeout:60000});
+ assert.equal(await page.getByRole('button',{name:'Resume expedition ▶',exact:true}).isVisible(),false);
  assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });
