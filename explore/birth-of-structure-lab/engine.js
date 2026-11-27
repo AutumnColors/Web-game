@@ -238,7 +238,7 @@ function stableCentre(x,y,N,R2,C){
 }
 onmessage=e=>{
   const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,needDLD,dldIterations,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
-  const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float64Array(N):null, DLD=needDLD?new Float32Array(N):null, A=needD?new Float64Array(N):null;
+  const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float64Array(N):null, DLD=needDLD?new Float32Array(N):null, A=needD?new Float64Array(N):null, C=m.coherence?new Float64Array(N):null;
   const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=pw>1?1/Math.log(pw):0;
   let minN=1e9;
   for(let r=0;r<rows;r++){
@@ -304,14 +304,14 @@ onmessage=e=>{
         if(!m.coherence && stopMode==='outward' && Math.abs(zr-qr)+Math.abs(zi-qi)<=eps){ inside=true; break; }
         if(++cnt===lim){ cnt=0; lim<<=1; qr=zr; qi=zi; }
       }
-      if(needD){S[i]=Math.log1p(Math.hypot(dr,di));A[i]=m.coherence?(phaseCount>=2?Math.min(1,Math.hypot(sumCos,sumSin)/phaseCount):NaN):(dr===0&&di===0)?NaN:Math.atan2(di,dr);}
+      if(needD){S[i]=Math.log1p(Math.hypot(dr,di));A[i]=(dr===0&&di===0)?NaN:Math.atan2(di,dr);if(C)C[i]=phaseCount>=2?Math.min(1,Math.hypot(sumCos,sumSin)/phaseCount):NaN;}
       if(inside){ T[i]=65535; continue; }
       if(n<minN) minN=n;
       T[i]=n; F[i]=stopMode==='outward' && pw>1 ? 1-Math.log(Math.max(1e-300,Math.log2(Math.max(1.000001,zr2+zi2))*0.5))*ilp : 0;
-      if(needD){S[i]=Math.log1p(Math.hypot(dr,di));A[i]=m.coherence?(phaseCount>=2?Math.min(1,Math.hypot(sumCos,sumSin)/phaseCount):NaN):(dr===0&&di===0)?NaN:Math.atan2(di,dr);}
+      if(needD){S[i]=Math.log1p(Math.hypot(dr,di));A[i]=(dr===0&&di===0)?NaN:Math.atan2(di,dr);if(C)C[i]=phaseCount>=2?Math.min(1,Math.hypot(sumCos,sumSin)/phaseCount):NaN;}
     }
   }
-  postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,A,DLD,minN},[T.buffer,F.buffer,...(S?[S.buffer,A.buffer]:[]),...(DLD?[DLD.buffer]:[])]);
+  postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,A,C,DLD,minN},[T.buffer,F.buffer,...(S?[S.buffer,A.buffer]:[]),...(C?[C.buffer]:[]),...(DLD?[DLD.buffer]:[])]);
 };`;
 // Principal branch: z^p = exp(p (ln|z| + i Arg(z))), Arg in (-pi,pi].
 // For noninteger p this map is discontinuous across the negative real axis.
@@ -327,7 +327,7 @@ const idle=[]; let queue=[];
 for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.onmessage=onStrip; idle.push(w); }
 function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
 // Green potential always uses its own outward escape calculation, independent of the experimental stop mode.
-const engMsg=e=>({coherence:cfg.mode==='coherence',normalizedPhase:cfg.mode==='normphase'&&!!e.centre,stablePhase:cfg.mode==='stablephase'&&!!e.centre,centre:(cfg.mode==='normphase'||cfg.mode==='stablephase')&&e.centre?e.centre:null,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
+const engMsg=e=>({coherence:cfg.mode==='coherence'||cfg.mode==='compare',normalizedPhase:cfg.mode==='normphase'&&!!e.centre,stablePhase:cfg.mode==='stablephase'&&!!e.centre,centre:(cfg.mode==='normphase'||cfg.mode==='stablephase')&&e.centre?e.centre:null,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
 
 // the same orbit on the main thread, for single points (pin, cross-sections)
 function orbit(pr,pq,maxIt,e){
@@ -463,9 +463,9 @@ function gridFor(v,W,H,sx){
 
 /* ---------- layers of numbers ---------- */
 function newLayer(v,W,H,maxIt,withS){
-  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float64Array(W*H):null,A:withS?new Float64Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
+  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float64Array(W*H):null,A:withS?new Float64Array(W*H):null,C:(cfg.mode==='coherence'||cfg.mode==='compare')?new Float64Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
 }
-function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.A&&m.A)L.A.set(m.A,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
+function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.A&&m.A)L.A.set(m.A,m.y0row*L.W);if(L.C&&m.C)L.C.set(m.C,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
   const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;
   for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,needDLD:!!L.DLD,dldIterations:cfg.dldIterations,...engMsg(e),...extra});
@@ -574,7 +574,7 @@ function paint(L,mode){
   if((mode==='waves'||mode==='sens'||mode==='flat') && !S) return null;
   if(mode==='dld'&&!DLD)return null;
   const img=new ImageData(W,H), o=new Uint32Array(img.data.buffer), override=globalThis.birthLayerPalette?.(mode), P=override||PALETTES[cfg.palette], C=P.cyc, Q=P.seq;
-  if(mode==='coherence'){if(!L.A)return null;const lut=override?Q:PALETTES.gray.seq;for(let i=0;i<N;i++)o[i]=Number.isFinite(L.A[i])?lut[Math.round(1023*Math.max(0,Math.min(1,L.A[i])))]:BLACK;L.rng[mode]=[0,1];}else if(complexMode(mode)){if(!L.A||!S)return null;const A=L.A; if(mode==='phase'||mode==='stablephase'||mode==='normphase'){for(let i=0;i<N;i++)o[i]=Number.isFinite(A[i])&&(mode==='stablephase'||S[i]>0)?(override?C:PALETTES.hue.cyc)[Math.floor((A[i]+Math.PI)/(2*Math.PI)*1023)]:BLACK;}else if(mode==='jointmag'||mode==='jointphase'){const D=complexDifferential(L,'vdiv'),C=complexDifferential(L,'vcurl');const V=Float64Array.from(D,(d,i)=>Math.hypot(d,C[i]));const max=Math.max(1e-12,rangeOf(N,i=>V[i],0,.99)[1]);for(let i=0;i<N;i++){const r=V[i];o[i]=!Number.isFinite(r)||r===0?BLACK:mode==='jointmag'?Q[Math.round(1023*Math.min(1,r/max))]:(override?C:PALETTES.hue.cyc)[Math.min(1023,Math.floor((Math.atan2(C[i],D[i])+Math.PI)/(2*Math.PI)*1023))];}L.rng[mode]=mode==='jointmag'?[0,max]:[-Math.PI,Math.PI];}else{const V=complexDifferential(L,mode);const other=complexDifferential(L,mode==='vcurl'?'vdiv':'vcurl');const max=Math.max(1e-12,rangeOf(N,i=>Math.hypot(V[i],other[i]),0,.99)[1]);const lut=override?Q:ramp([[35,85,200],[30,30,35],[245,125,45]],false);for(let i=0;i<N;i++)o[i]=Number.isFinite(V[i])?lut[Math.round(511.5*(1+Math.max(-1,Math.min(1,V[i]/max))))]:BLACK;L.rng[mode]=[-max,max];}}else if(mode==='maskdiff'){for(let i=0;i<N;i++){const v=T[i]===NO?S[i]:0;o[i]=Number.isFinite(v)?Q[Math.round(1023*Math.min(1,Math.max(0,v)/10))]:BLACK;}L.rng[mode]=[0,10];} else if(diffMode(mode)){
+  if(mode==='coherence'){if(!L.C)return null;const lut=override?Q:PALETTES.gray.seq;for(let i=0;i<N;i++)o[i]=Number.isFinite(L.C[i])?lut[Math.round(1023*Math.max(0,Math.min(1,L.C[i])))]:BLACK;L.rng[mode]=[0,1];}else if(complexMode(mode)){if(!L.A||!S)return null;const A=L.A; if(mode==='phase'||mode==='stablephase'||mode==='normphase'){for(let i=0;i<N;i++)o[i]=Number.isFinite(A[i])&&(mode==='stablephase'||S[i]>0)?(override?C:PALETTES.hue.cyc)[Math.floor((A[i]+Math.PI)/(2*Math.PI)*1023)]:BLACK;}else if(mode==='jointmag'||mode==='jointphase'){const D=complexDifferential(L,'vdiv'),C=complexDifferential(L,'vcurl');const V=Float64Array.from(D,(d,i)=>Math.hypot(d,C[i]));const max=Math.max(1e-12,rangeOf(N,i=>V[i],0,.99)[1]);for(let i=0;i<N;i++){const r=V[i];o[i]=!Number.isFinite(r)||r===0?BLACK:mode==='jointmag'?Q[Math.round(1023*Math.min(1,r/max))]:(override?C:PALETTES.hue.cyc)[Math.min(1023,Math.floor((Math.atan2(C[i],D[i])+Math.PI)/(2*Math.PI)*1023))];}L.rng[mode]=mode==='jointmag'?[0,max]:[-Math.PI,Math.PI];}else{const V=complexDifferential(L,mode);const other=complexDifferential(L,mode==='vcurl'?'vdiv':'vcurl');const max=Math.max(1e-12,rangeOf(N,i=>Math.hypot(V[i],other[i]),0,.99)[1]);const lut=override?Q:ramp([[35,85,200],[30,30,35],[245,125,45]],false);for(let i=0;i<N;i++)o[i]=Number.isFinite(V[i])?lut[Math.round(511.5*(1+Math.max(-1,Math.min(1,V[i]/max))))]:BLACK;L.rng[mode]=[-max,max];}}else if(mode==='maskdiff'){for(let i=0;i<N;i++){const v=T[i]===NO?S[i]:0;o[i]=Number.isFinite(v)?Q[Math.round(1023*Math.min(1,Math.max(0,v)/10))]:BLACK;}L.rng[mode]=[0,10];} else if(diffMode(mode)){
  const V=stabilityDifferentials(L,mode), signed=mode==='sdiv'||mode==='scurl';
  const range=rangeOf(N,i=>Math.abs(V[i]),0,.99), max=mode==='scurl'?1e-8:Math.max(1e-12,range[1]);
  const diverge=ramp([[35,85,200],[30,30,35],[245,125,45]],false);
