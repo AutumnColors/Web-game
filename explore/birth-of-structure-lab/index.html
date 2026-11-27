@@ -107,6 +107,7 @@ td i{font-style:normal;color:#8d8d95;font-family:system-ui,sans-serif;font-size:
 #birthPlayer{top:calc(var(--viewer-top,0px) + 8px)}
 #chip{top:calc(var(--viewer-top,0px) + 12px)}
 #toast{top:calc(var(--viewer-top,0px) + 16px)}
+body:has(#cfg.on) #tools.unified-tools,body:has(#cfg.on) #unified-panel{display:none!important}
 </style>
 <style>
 #experiment,#chip{display:none!important}
@@ -192,7 +193,7 @@ body.clean #birth-record-toolbar{display:none!important}
   <div class="box">
     <div class="top"><h1>Prepare expedition</h1></div><h2>Expedition type</h2><div id="entryChoices" style="display:grid;gap:8px;margin:10px 0"><button class="opt on" type="button" data-expedition="complete" aria-pressed="true"><b>Complete Journey</b><small>Birth to accumulation, then spatial zoom</small></button><button class="opt" type="button" data-expedition="lifetime" aria-pressed="false"><b>Birth to Accumulation</b><small>Follow the cycle's structural evolution</small></button><button class="opt" type="button" data-expedition="accumulation" aria-pressed="false"><b>Accumulation Zoom</b><small>Explore spatial scaling at fixed parameter</small></button><button class="opt" type="button" data-expedition="coherence" aria-pressed="false"><b>Coherence Expedition</b><small>Fixed accumulation parameter · zoom into zero</small></button><button class="opt" type="button" data-expedition="birth" aria-pressed="false"><b>Explore</b><small>Free map / Studio · prepare a future expedition</small></button></div><div class="note" id="entryNote">Requires a verified starting cycle. Reuse or generate one during preparation.</div><p class="sub">Choose the universe, how it is measured, and how far the camera may go. Every fractal then uses the same camera, capture and information tools.</p>
 
-    <h2>1 · Fractal library</h2>
+    <h2>Fractal library</h2>
     <div class="grid3 grp" id="gFractal"></div>
     <div class="params" id="pJulia">
       <div class="lbl">Julia exponent p (default 2)</div><div class="seg grp" id="gJuliaPower"></div><div class="note" id="juliaPowerNote">Polynomial Julia set (degree 2).</div>
@@ -224,7 +225,7 @@ body.clean #birth-record-toolbar{display:none!important}
 <option value="cartesian">Cartesian (x, y)</option><option value="polar">Radial / Polar (r, θ)</option><option value="logpolar">Log-radial (ln r, θ)</option><option value="bottcher">Böttcher (G, θB) — Julia exterior</option></select>
 <div id="coordHelp" class="note">Select how the mathematical plane is displayed.</div>
 
-    <h2>2 · Starting observation layer</h2>
+    <h2>Starting observation layer</h2>
     <div class="note">Choose the first measurement. You can switch layers in the viewer without changing the fractal.</div>
     <div class="grid2 grp" id="gMode"></div>
     <div class="params" id="greenContourSettings">
@@ -239,23 +240,13 @@ body.clean #birth-record-toolbar{display:none!important}
       <div class="note">Logarithmically spaced estimated Green-potential contours, calculated with marching squares.</div>
     </div>
 
-    <h2>3 · Maximum zoom depth</h2>
-    <div class="seg grp" id="gDepth"></div>
-    <div class="note">Depth D = log₂(W₀ / W): each level halves the visible width. A limit stops zooming in only; panning and zooming out stay free.</div>
-
-    <h2>4 · Global default palette</h2>
+    <h2>Global default palette</h2>
     <div class="seg grp" id="gPal"></div>
     <canvas id="palPrev" width="600" height="18"></canvas>
     <div class="note">Layers inherit this palette where applicable unless you choose a local override in the viewer. Existing phase and signed-field defaults are preserved. Colour changes do not alter orbit calculations.</div>
 
 
-    <div class="note">Böttcher view: external angle is horizontal, Green potential vertical. For Mandelbrot this uses parameter-plane uniformization, distinct from Julia's dynamical-plane map. Drag horizontally to shift angle, vertically to shift potential; pinch adjusts potential range. Exterior only. This mapping is numerical and less reliable close to the boundary.</div><h2>5 · Numerics</h2>
-    <div class="lbl">Iteration limit</div>
-    <div class="seg grp" id="gIter"></div>
-    <details id="advancedStopping" style="margin-top:12px"><summary style="cursor:pointer;padding:10px 4px;color:#bbb;font-size:13px">Advanced · stopping threshold and mode (default R = 2)</summary><div class="lbl">Threshold R</div><input id="radiusCustom" type="number" min="0.01" max="1000000" step="any" value="2" style="width:100%;padding:10px;background:#161616;color:white;border:1px solid #777;border-radius:10px;font-size:17px"><div class="seg grp" id="gRad"></div><div class="lbl">Stopping mode</div><div class="seg grp" id="gStop"></div>
-    <div class="note">Auto raises the limit with depth, as the Mandelbrot Map does. Outward: |z| > R. Inward: |z| < R. Fixed: exactly N iterations. Inward and fixed are experimental measurements, not escape-time Green potential.</div></details>
-
-    <h2>6 · Display</h2>
+    <div class="note">Böttcher view: external angle is horizontal, Green potential vertical. For Mandelbrot this uses parameter-plane uniformization, distinct from Julia's dynamical-plane map. Drag horizontally to shift angle, vertically to shift potential; pinch adjusts potential range. Exterior only. This mapping is numerical and less reliable close to the boundary.</div>    <h2>Display</h2>
     <button class="opt" id="gClean" type="button"><b>Clean view</b><small>Show only the fractal: no buttons, labels or overlays.</small></button>
 
     <h2>Shortcuts</h2>
@@ -334,7 +325,7 @@ function invoke(b){if(!b)return;close();b.click();}
 function open(k,label){if(active===k){close();return;}close();active=k;document.body.dataset.unifiedPanel=k;buttons.get(k).setAttribute('aria-expanded','true');
 panel.replaceChildren();const title=document.createElement('strong');title.textContent=label;const x=document.createElement('button');x.textContent='×';x.type='button';x.style.float='right';x.setAttribute('aria-label','Close panel');x.onclick=close;const actions=document.createElement('div');actions.className='unified-actions';panel.append(x,title,actions);panel.hidden=false;
 if(k==='video'){action('Configure expedition',()=>{if(window.birthExpeditionActive?.())return;close();openCfg();});const orientation=window.birthCameraOrientation?.();if(orientation&&!window.birthExpeditionActive?.())action('Camera: '+(orientation==='landscape'?'Horizontal':'Vertical')+' · switch',()=>{window.birthSetCameraOrientation?.(orientation==='landscape'?'portrait':'landscape');close();open('video','Expedition');});action('Preview expedition',()=>{close();if(!window.birthLaunchCheckpoint?.(false))window.FractalLab.toast('Prepare an expedition in configuration first');});action('Record expedition',()=>{close();if(!window.birthLaunchCheckpoint?.(true))window.FractalLab.toast('Prepare an expedition in configuration first');});action('Generate / select cycle',()=>{if(window.birthExpeditionActive?.()){window.FractalLab.toast('Stop the expedition before changing its structure');return;}invoke(document.getElementById('bCycle'));});action('Starting point / evolution map',()=>invoke(originals.find(b=>b.title==='Evolution navigation')));}
-if(k==='layers'){for(const [m,label] of [['escape','Escape time'],['potential','Green potential'],['sens','Sensitivity'],['sgrad','Gradient'],['vdiv','Divergence'],['vcurl','Curl'],['phase','Rotation phase'],['coherence','Rotation coherence'] ]){action(label+(cfg.mode===m?' ✓':''),()=>{setMode(m);if(cfg.mode===m)close();});}}
+if(k==='layers'){for(const [m,label] of CONTROL_LAYERS.map(m=>[m.v,m.t])){action(label+(cfg.mode===m?' ✓':''),()=>{setMode(m);if(cfg.mode===m)close();});}}
 if(k==='settings'){panel.hidden=true;document.getElementById('pop').classList.add('on');syncQuick();}
 if(k==='navigation'){const nav=originals.find(b=>b.title==='Evolution navigation');if(nav&&!nav.hidden)action('Evolution minimap',()=>{if(window.birthRecordingActive?.()||window.birthExpeditionActive?.()){window.FractalLab.toast('Finish or stop the journey before opening evolution navigation');return;}invoke(nav);});action('Reset camera',()=>invoke(document.getElementById('bHome')));}
 if(k==='tools'){for(const b of originals){if(['shot','bView','bHome','bInfo','birthDynamicsMap'].includes(b.id)||b.title==='Evolution navigation'||/experiment controls/i.test(b.title))continue;action(b.id==='bCycle'?'Structure settings · Julia cycle':b.getAttribute('aria-label')||b.title||b.textContent,()=>{if(['bSetup','bCycle'].includes(b.id)&&(window.birthExpeditionActive?.()||window.birthRecordingActive?.())){window.FractalLab.toast('Finish or stop the expedition before changing configuration');return;}invoke(b);});}}
