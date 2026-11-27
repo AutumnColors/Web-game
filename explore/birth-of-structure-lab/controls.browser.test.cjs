@@ -10,7 +10,12 @@ test('mobile toolbar shell and panel lifecycle',async()=>{
  await page.waitForSelector('#tools.unified-tools',{state:'attached'});
  const buttons=page.locator('#tools.unified-tools > button');
  assert.equal(await buttons.count(),6);
- assert.deepEqual(await buttons.evaluateAll(bs=>bs.map(b=>b.getAttribute('aria-label'))),['Picture','Video','Layers','Current layer','Navigation','Tools']);
+ assert.deepEqual(await buttons.evaluateAll(bs=>bs.map(b=>b.getAttribute('aria-label'))),['Picture','Expedition','Layers','Current layer','Navigation','Tools']);
+ assert.equal(await page.locator('[data-expedition]').count(),4);
+ await page.locator('[data-expedition=birth]').click();
+ assert.equal(await page.getByRole('button',{name:'Choose / generate starting cycle'}).isVisible(),false);
+ await page.locator('[data-expedition=complete]').click();
+ assert.equal(await page.getByRole('button',{name:'Choose / generate starting cycle'}).isVisible(),true);
  await page.evaluate(()=>{document.querySelector('#cfg')?.classList.remove('on');document.body.classList.remove('clean');});
  await buttons.nth(2).click();
  assert.equal(await page.locator('#unified-panel').isVisible(),true);
