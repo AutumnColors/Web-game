@@ -120,6 +120,19 @@ td i{font-style:normal;color:#8d8d95;font-family:system-ui,sans-serif;font-size:
 #birthExtra{display:grid;gap:10px;padding:10px;max-height:42dvh;overflow:auto;border-top:1px solid #ffffff20}
 #birthExtra label{display:block}#birthExtra select{background:#202b38;color:white;border:1px solid #ffffff30;border-radius:5px}
 #birthAnchors,.birthActions{display:flex;gap:5px}#birthExtra img{width:100%;height:auto}#birthPlayer a{color:#a8d5ff}#birthPlayer button:disabled{opacity:.4}body.clean #birthPlayer{display:none}
+</style><style>
+#tools.unified-tools{bottom:calc(12px + env(safe-area-inset-bottom));gap:8px;max-height:calc(100dvh - var(--viewer-top,60px) - 24px - env(safe-area-inset-bottom));overflow-y:auto;z-index:12}
+#tools.unified-tools > button{width:44px;height:44px;min-height:44px;border-radius:50%;display:grid;place-items:center;padding:0}
+#tools.unified-tools > button svg{width:23px;height:23px}
+#tools.unified-tools > button[aria-expanded=true]{background:#345b55;border-color:#a0c9bd}
+#unified-panel{position:fixed;left:calc(64px + env(safe-area-inset-left));bottom:calc(12px + env(safe-area-inset-bottom));width:min(300px,calc(100vw - 80px - env(safe-area-inset-left)));max-height:calc(100dvh - var(--viewer-top,60px) - 24px);overflow:auto;box-sizing:border-box;background:#101624f5;color:white;border:1px solid #ffffff35;border-radius:14px;padding:12px;z-index:13}
+#unified-panel[hidden],body.clean #unified-panel,body.clean #tools.unified-tools{display:none}
+#unified-panel .unified-actions{display:grid;gap:8px}
+#unified-panel button{min-height:36px}
+#legacy-toolbar[hidden]{display:none}
+body.unified-ready #birth-record-toolbar{display:none!important}
+body.unified-ready[data-unified-panel=video] #birth-record-toolbar{display:flex!important;left:calc(64px + env(safe-area-inset-left))!important;transform:none!important;width:min(440px,calc(100vw - 80px))!important;z-index:13}
+body.clean #birth-record-toolbar{display:none!important}
 </style></head>
 <body>
 <canvas id="c"></canvas><div id="experiment" style="position:fixed;bottom:70px;left:54px;right:10px;z-index:5;background:#111e;padding:8px;border-radius:10px;color:white"><div style="font-size:12px">Orbit stability experiment · Cartesian</div><div id="experimentButtons" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px"></div><small id="experimentNote"></small><div style="display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12px">Iterations <select id="maskIterations" style="background:#263044;color:white;padding:5px;border-radius:5px"><option>1</option><option>2</option><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option><option>16</option><option>20</option><option>30</option><option>40</option><option>50</option><option>100</option><option selected>400</option><option>1000</option></select><span id="maskStats"></span></div></div>
@@ -297,5 +310,25 @@ td i{font-style:normal;color:#8d8d95;font-family:system-ui,sans-serif;font-size:
 <script src="lab-addons.js"></script>
 <script src="dynamics-atlas.js"></script>
 <script src="feigenbaum.js"></script>
-<script src="../../site-chrome.js" defer></script><script src="cycle-evolution.js"></script><script src="birth.js"></script><script src="light-recorder.js"></script><script>addEventListener('DOMContentLoaded',()=>{const chrome=document.getElementById('site-common-chrome');if(!chrome)return;let previous=-1;function fit(){const h=chrome.getBoundingClientRect().height;if(h===previous)return;previous=h;document.documentElement.style.setProperty('--viewer-top',h+'px');resize();}new ResizeObserver(fit).observe(chrome);fit();});</script></body>
+<script src="../../site-chrome.js" defer></script><script src="cycle-evolution.js"></script><script src="birth.js"></script><script src="light-recorder.js"></script><script>addEventListener('DOMContentLoaded',()=>{const chrome=document.getElementById('site-common-chrome');if(!chrome)return;let previous=-1;function fit(){const h=chrome.getBoundingClientRect().height;if(h===previous)return;previous=h;document.documentElement.style.setProperty('--viewer-top',h+'px');resize();}new ResizeObserver(fit).observe(chrome);fit();});</script><script>
+(()=>{
+const old=document.getElementById('tools'), legacy=document.createElement('div');
+legacy.id='legacy-toolbar';legacy.hidden=true;old.after(legacy);
+const originals=[...old.children];originals.forEach(b=>legacy.append(b));
+const panel=document.createElement('section');panel.id='unified-panel';panel.hidden=true;panel.setAttribute('aria-label','Viewer controls');document.body.append(panel);
+const icons={picture:'<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M7 7l2-3h6l2 3"/><circle cx="12" cy="14" r="4"/>',video:'<rect x="3" y="6" width="12" height="12" rx="2"/><path d="m15 10 6-4v12l-6-4"/>',layers:'<path d="m12 3 9 5-9 5-9-5zM3 12l9 5 9-5M3 16l9 5 9-5"/>',settings:'<path d="M3 6h18M3 12h18M3 18h18"/><circle cx="8" cy="6" r="2" fill="#18252b"/><circle cx="16" cy="12" r="2" fill="#18252b"/><circle cx="10" cy="18" r="2" fill="#18252b"/>',navigation:'<circle cx="12" cy="12" r="9"/><path d="m15 8-2 6-5 2 2-6z"/>',tools:'<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V3h8v4M3 13h18"/>'};
+const buttons=new Map();let active='';
+function close(){active='';panel.hidden=true;document.body.dataset.unifiedPanel='';for(const b of buttons.values())b.setAttribute('aria-expanded','false');document.getElementById('pop').classList.remove('on');}
+function action(label,fn){const b=document.createElement('button');b.type='button';b.className='opt';b.textContent=label;b.onclick=fn;panel.querySelector('.unified-actions').append(b);}
+function invoke(b){if(!b)return;close();b.click();}
+function open(k,label){if(active===k){close();return;}close();active=k;document.body.dataset.unifiedPanel=k;buttons.get(k).setAttribute('aria-expanded','true');if(k==='video')return;
+panel.replaceChildren();const title=document.createElement('strong');title.textContent=label;const x=document.createElement('button');x.textContent='×';x.type='button';x.style.float='right';x.setAttribute('aria-label','Close panel');x.onclick=close;const actions=document.createElement('div');actions.className='unified-actions';panel.append(x,title,actions);panel.hidden=false;
+if(k==='layers'||k==='settings'){action(k==='layers'?'Select measurement':'Measurement and colour settings',()=>invoke(document.getElementById('bView')));if(k==='layers')action('Experiment layers',()=>{close();const e=document.getElementById('experiment');e.style.display='block';});}
+if(k==='navigation'){const nav=originals.find(b=>b.title==='Evolution navigation');if(nav&&!nav.hidden)action('Evolution minimap',()=>{const stop=document.querySelector('#birth-record-toolbar button:nth-of-type(3)');if(stop&&!stop.disabled){F.toast('Finish or stop the journey before opening evolution navigation');return;}invoke(nav);});action('Reset camera',()=>invoke(document.getElementById('bHome')));}
+if(k==='tools'){for(const b of originals){if(['shot','bView','bHome','bInfo'].includes(b.id)||b.title==='Evolution navigation')continue;action(b.getAttribute('aria-label')||b.title||b.textContent,()=>invoke(b));}}
+}
+old.classList.add('unified-tools');for(const [k,label] of [['picture','Picture'],['video','Video'],['layers','Layers'],['settings','Current layer'],['navigation','Navigation'],['tools','Tools']]){const b=document.createElement('button');b.type='button';b.className='glass';b.title=label;b.setAttribute('aria-label',label);if(k!=='picture')b.setAttribute('aria-expanded','false');b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+icons[k]+'</svg>';b.onclick=()=>k==='picture'?document.getElementById('shot').click():open(k,label);buttons.set(k,b);old.append(b);}
+document.body.classList.add('unified-ready');document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+})();
+</script></body>
 </html>
