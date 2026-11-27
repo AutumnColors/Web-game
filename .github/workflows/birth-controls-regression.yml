@@ -1,7 +1,7 @@
 name: Birth controls regression
 on:
   push:
-    branches: [rotation-coherence-control-design, rotation-coherence, expedition-coherence]
+    branches: [rotation-coherence-control-design, rotation-coherence, expedition-coherence, expedition-checkpoint]
   workflow_dispatch:
 permissions:
   contents: read
