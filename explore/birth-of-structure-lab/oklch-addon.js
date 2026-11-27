@@ -62,14 +62,11 @@
  const cache=new Map();
  function palette(h){if(!cache.has(h)){if(cache.size>=24)cache.clear();cache.set(h,build(h));}return cache.get(h);}
  PALETTES.huescale=palette(145);
- const oldPaint=paint;
- paint=function(L,m){
-   const previous=cfg.palette, previousHue=PALETTES.huescale;
-   const override=settings.get(m);const selected=override&&PALETTES[override]?override:defaults[m]||previous;
-   cfg.palette=selected;
-   if(selected==='huescale')PALETTES.huescale=palette(hueValues.get(m)??145);
-   try{return oldPaint(L,m);}finally{cfg.palette=previous;PALETTES.huescale=previousHue;}
+ globalThis.birthLayerPalette=mode=>{
+   const selected=settings.get(mode)||defaults[mode];
+   return selected==='huescale'?palette(hueValues.get(mode)??145):PALETTES[selected]||null;
  };
+ globalThis.birthLayerSettings=()=>({palettes:Object.fromEntries(settings),hues:Object.fromEntries(hueValues)});
  function mount(id,getConfig){
    const groupEl=$(id);if(!groupEl)return;
    const wrap=document.createElement('div');wrap.style.cssText='margin:8px 0;display:grid;gap:6px';
