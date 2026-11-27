@@ -1,0 +1,29 @@
+name: Birth controls regression
+on:
+  push:
+    branches: [rotation-coherence-control-design]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: |
+          find explore/birth-of-structure-lab -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Inline JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          import re, pathlib, subprocess
+          html=pathlib.Path('explore/birth-of-structure-lab/index.html').read_text()
+          for script in re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,re.S):
+              if script.strip():
+                  subprocess.run(['node','--check','-'],input=script,text=True,check=True)
+          PY
+      - name: Cycle evolution regression
+        run: node --test explore/birth-of-structure-lab/cycle-evolution.test.cjs
