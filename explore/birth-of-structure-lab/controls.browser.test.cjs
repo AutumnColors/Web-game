@@ -27,7 +27,7 @@ test('mobile toolbar shell and panel lifecycle',async()=>{
  const bounds=await buttons.evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};}));
  for(const b of bounds)assert.ok(b.top>=0&&b.bottom<=844&&b.left>=0&&b.right<=390);
  for(let i=1;i<bounds.length;i++)assert.ok(bounds[i].top>=bounds[i-1].bottom);
- await page.evaluate(()=>{window.birthSelectExpedition('accumulation');if(!window.birthSaveInitialCheckpoint({zoom:6.264548,interval:12}))throw Error('checkpoint save failed');});
+ await page.evaluate(()=>{const F=window.FractalLab;F.apply({...F.clone(F.cfg),fractal:'julia',juliaPower:2,seed:{re:-1.4011551890920506,im:0}},{...F.view});window.birthSelectExpedition('accumulation');if(!window.birthSaveInitialCheckpoint({zoom:6.264548,interval:12}))throw Error('checkpoint save failed');});
  const cp=await page.evaluate(()=>window.birthGetInitialCheckpoint());
  await page.evaluate(()=>{const F=window.FractalLab;F.apply(F.clone(F.cfg),{...F.view,w:F.view.w*.7});});
  assert.deepEqual(await page.evaluate(()=>window.birthGetInitialCheckpoint()),cp);
