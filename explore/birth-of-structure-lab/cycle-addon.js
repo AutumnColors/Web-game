@@ -235,7 +235,7 @@ FL.onConfig.push(()=>{ if(cfg().fractal!=='julia'){ setOpen(false); sectorOff();
 
 window.FractalCycle={
   // Immutable initialization snapshot; consumers retain it across parameter evolution.
-  getInitialization:()=>{const f=current();return f?Object.freeze({degree:f.d,period:f.p,seed:Object.freeze({re:f.c[0],im:f.c[1]})}):null;},
+  getInitialization:(k=cfg())=>{if(k.fractal!=='julia')return null;const d=k.juliaPower,c=[k.seed.re,k.seed.im];let f=found.find(f=>f.d===d&&Math.hypot(f.c[0]-c[0],f.c[1]-c[1])<1e-12);if(!f&&Number.isSafeInteger(d)&&d>=2&&d<=1000){for(let p=1;p<=Math.min(256,Math.floor(12000/d));p++){if(verified(c,d,p)){f=remember(d,p,c);break;}}}return f?Object.freeze({degree:f.d,period:f.p,seed:Object.freeze({re:c[0],im:c[1]})}):null;},
 
   mountSetup,
   show:()=>setOpen(true),
