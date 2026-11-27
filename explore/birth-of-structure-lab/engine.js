@@ -327,7 +327,7 @@ const idle=[]; let queue=[];
 for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.onmessage=onStrip; idle.push(w); }
 function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
 // Green potential always uses its own outward escape calculation, independent of the experimental stop mode.
-const engMsg=e=>({coherence:cfg.mode==='coherence'||cfg.mode==='compare',normalizedPhase:cfg.mode==='normphase'&&!!e.centre,stablePhase:cfg.mode==='stablephase'&&!!e.centre,centre:(cfg.mode==='normphase'||cfg.mode==='stablephase')&&e.centre?e.centre:null,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
+const engMsg=e=>({coherence:cfg.mode==='coherence'||(cfg.mode==='compare'&&cfg.panels.includes('coherence')),normalizedPhase:cfg.mode==='normphase'&&!!e.centre,stablePhase:cfg.mode==='stablephase'&&!!e.centre,centre:(cfg.mode==='normphase'||cfg.mode==='stablephase')&&e.centre?e.centre:null,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
 
 // the same orbit on the main thread, for single points (pin, cross-sections)
 function orbit(pr,pq,maxIt,e){
@@ -463,7 +463,7 @@ function gridFor(v,W,H,sx){
 
 /* ---------- layers of numbers ---------- */
 function newLayer(v,W,H,maxIt,withS){
-  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float64Array(W*H):null,A:withS?new Float64Array(W*H):null,C:(cfg.mode==='coherence'||cfg.mode==='compare')?new Float64Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
+  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float64Array(W*H):null,A:withS?new Float64Array(W*H):null,C:(cfg.mode==='coherence'||(cfg.mode==='compare'&&cfg.panels.includes('coherence')))?new Float64Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
 }
 function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.A&&m.A)L.A.set(m.A,m.y0row*L.W);if(L.C&&m.C)L.C.set(m.C,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
