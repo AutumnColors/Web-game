@@ -8,7 +8,7 @@ function close(){wrap?.remove();wrap=null;frame=null;document.body.style.overflo
 const panel=document.getElementById('experiment');
 btn.setAttribute('aria-controls','experiment');btn.setAttribute('aria-expanded','true');
 btn.onclick=()=>{if(!panel)return;const open=panel.dataset.collapsed==='true';panel.dataset.collapsed=String(!open);panel.style.display=open?'block':'none';btn.setAttribute('aria-expanded',String(open));btn.title=open?'Collapse experiment controls':'Expand experiment controls';btn.setAttribute('aria-label',btn.title);};
-const mapBtn=document.createElement('button');mapBtn.type='button';mapBtn.textContent='Julia Dynamics Map';mapBtn.className='opt';mapBtn.style.cssText='width:100%;margin-top:5px;font-size:12px;padding:5px;color:white;background:#263044;border-radius:7px';panel?.append(mapBtn);
+const mapBtn=document.createElement('button');mapBtn.id='birthDynamicsMap';mapBtn.type='button';mapBtn.textContent='Julia Dynamics Map';mapBtn.className='opt';mapBtn.style.cssText='width:100%;margin-top:5px;font-size:12px;padding:5px;color:white;background:#263044;border-radius:7px';panel?.append(mapBtn);
 mapBtn.onclick=()=>{
  if(wrap){close();return;}
  const c=window.FractalLab?.cfg||window.cfg;

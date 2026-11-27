@@ -107,7 +107,7 @@ function up(e){
         if(hitCompass(rx,ry)){if(cfg.polar){view.a=0;dirty=true;needDraw=true;}else northUp();tapT=0;return;}
         if(hit(labelBox,rx,ry)){ copyPin(); tapT=0; return; }
         const tg=tagBoxes.find(b=>hit(b,rx,ry));
-        if(tg){ const order=MODES.filter(m=>m.v!=='compare').map(m=>m.v); cfg.panels[tg.k]=order[(order.indexOf(cfg.panels[tg.k])+1)%order.length]; repaint(); writeHash(); tapT=0; return; }
+        if(tg){ const order=MODES.filter(m=>m.v!=='compare').map(m=>m.v); const next=clone(cfg); next.panels[tg.k]=order[(order.indexOf(cfg.panels[tg.k])+1)%order.length]; applyConfig(next,{...view}); tapT=0; return; }
       }
       if(now-tapT<320 && Math.hypot(x-tapX,y-tapY)<40*DPR*(cmp()?2:1)){ clearTimeout(pinTimer); glide={px:tapX,py:tapY,f:2.5,t0:now,dur:280,done:1}; tapT=0; }
       else { tapT=now; tapX=x; tapY=y; clearTimeout(pinTimer);
@@ -151,9 +151,9 @@ function notify(t,ms=5000){
 function setMode(m){
   // Coordinate choice remains independent of measurement.
   if(diffMode(m)&&(cfg.polar||cfg.bottcher)){notify('Differential tests require Cartesian coordinates');return;}
-  const wasStable=cfg.mode; if(['stablephase','normphase'].includes(m)&&!eng.centre){notify(PHASE_NEEDS);return;} if(['stablephase','normphase'].includes(m)&&(cfg.iter===0||cfg.iter>phaseCap()))cfg.iter=phaseCap();   // phase views report no escape step, so Auto iterations would keep restarting
+  const wasStable=cfg.mode; if(m==='coherence'&&cfg.fractal!=='julia'){notify('Rotation coherence is defined here for Julia orbits.');return;} if(['stablephase','normphase'].includes(m)&&!eng.centre){notify(PHASE_NEEDS);return;} if(['stablephase','normphase'].includes(m)&&(cfg.iter===0||cfg.iter>phaseCap()))cfg.iter=phaseCap();   // phase views report no escape step, so Auto iterations would keep restarting
   const was=cmp(), wasWaves=cfg.mode==='waves'; cfg.mode=m; document.body.classList.toggle('cmp',cmp());
-  if((wasStable!==m&&(['stablephase','normphase'].includes(wasStable)||['stablephase','normphase'].includes(m)))||wasWaves!==(m==='waves') || cmp()!==was || (needD() && base && !base.S) || (m==='dld' && base && !base.DLD)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
+  if((wasStable!==m&&(wasStable==='coherence'||m==='coherence'))||(wasStable!==m&&(['stablephase','normphase'].includes(wasStable)||['stablephase','normphase'].includes(m)))||wasWaves!==(m==='waves') || cmp()!==was || (needD() && base && !base.S) || (m==='dld' && base && !base.DLD)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
   repaint(); updateChip(); syncQuick(); writeHash();
 }
 const coordOf=c=>c.bottcher?'bottcher':c.polar?(c.logPolar?'logpolar':'polar'):'cartesian';
@@ -219,6 +219,7 @@ function applyConfig(next,cam){
   const world=!started || next.fractal!==cfg.fractal || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im || next.juliaPower!==cfg.juliaPower));
   const numeric=next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode || next.bottcher!==cfg.bottcher || next.bottcherGMin!==cfg.bottcherGMin || next.bottcherGMax!==cfg.bottcherGMax || next.polar!==cfg.polar || next.logPolar!==cfg.logPolar;
   cfg=clone(next); eng=engineOf(cfg); started=true; syncContourSettings(cfg); syncCoordPickers();
+  if(cfg.mode==='coherence'&&cfg.fractal!=='julia')cfg.mode='escape';
   if(['stablephase','normphase'].includes(cfg.mode)&&!eng.centre){ cfg.mode='phase'; setTimeout(()=>notify(PHASE_NEEDS+' Showing Rotation phase instead.'),0); }
   if(['stablephase','normphase'].includes(cfg.mode)&&(cfg.iter===0||cfg.iter>phaseCap())) cfg.iter=phaseCap();
   document.body.classList.toggle('cmp',cmp()); document.body.classList.toggle('clean',cfg.clean);
@@ -323,7 +324,7 @@ function snapshot(){ // everything needed to reproduce this frame
   const a=view.a*180/Math.PI;
   return {viewer:'Fractal Universe Lab', version:1,
     config:{fractal:cfg.fractal, rule:asciiRule(), power:eng.pw, seed:cfg.fractal==='julia'?{...cfg.seed}:null, measurement:cfg.mode, panels:cmp()?[...cfg.panels]:null,
-      palette:cfg.palette, contours:{show:cfg.contours,levels:cfg.contourLevels,opacity:cfg.contourOpacity,color:cfg.contourColor}, iterations:{mode:cfg.iter?'fixed':'auto', limit:itFor(view.w)}, escapeRadius:Math.sqrt(eng.R2), stopMode:cfg.stopMode, maxDepth:cfg.depth||null, cleanView:cfg.clean},
+      palette:cfg.palette, layerSettings:globalThis.birthLayerSettings?.(), contours:{show:cfg.contours,levels:cfg.contourLevels,opacity:cfg.contourOpacity,color:cfg.contourColor}, iterations:{mode:cfg.iter?'fixed':'auto', limit:itFor(view.w)}, escapeRadius:Math.sqrt(eng.R2), stopMode:cfg.stopMode, maxDepth:cfg.depth||null, cleanView:cfg.clean},
     camera:{centre:{re:view.cx, im:view.cy}, width:view.w, cameraAngleDeg:a, planeTurnDeg:-a, depth:depthOf(view.w), homeWidth:HOME.w},
     render: stats ? {width:stats.W, height:stats.H, pixelSize:stats.pix, escaped:stats.esc, pixels:stats.N, Tmin:stats.esc?stats.tmin:null, Tmax:stats.esc?stats.tmax:null,
       r_T_S:isFinite(stats.rTS)?stats.rTS:null, r_T_stretchRate:isFinite(stats.rTR)?stats.rTR:null, neighboursSkippingABand:stats.multi} : null,
@@ -399,9 +400,10 @@ function readHash(){
 }
 
 /* ---------- capture: the picture with labels, the picture alone, and the configuration inside both files ---------- */
-let shotWanted=0, shots=null, shotLabels=true, shotURL='', shotName='';
+let shotWanted=0, shotTaking=false, shots=null, shotLabels=true, shotURL='', shotName='';
 $('shot').onclick=()=>{ closePop(); requestShot(); };
-function requestShot(){ if(back||shotWanted) return; shotWanted=performance.now(); $('shot').classList.add('busy'); }
+function shotBusy(on){for(const b of [$('shot'),document.querySelector('#tools.unified-tools button[aria-label="Picture"]')]){if(b){b.classList.toggle('busy',on);b.setAttribute('aria-busy',String(on));}}}
+function requestShot(){if(shotWanted||shotTaking){toast('Picture capture in progress');return;}shotWanted=performance.now();shotBusy(true);toast('Capturing picture…',2000);}
 function settled(){ return !dirty && cur && cur.passes.every(p=>p.left<=0) && !glide && !rotAnim && !back && ptrs.size===0; }
 function grab(overlays){
   draw(overlays);
@@ -425,13 +427,11 @@ function grab(overlays){
 }
 const toBlob=c=>new Promise(res=>c.toBlob(res,'image/png'));
 async function takeShot(){
-  shotWanted=0; $('shot').classList.remove('busy');
-  const meta=JSON.stringify(snapshot()), full=grab(true), clean=grab(false); needDraw=true;
-  const [a,b]=await Promise.all([toBlob(full),toBlob(clean)]);
-  if(!a||!b){ toast('Could not make the image'); return; }
-  shots={full:await withText(a,'Comment',meta), clean:await withText(b,'Comment',meta)};
-  shotName=`${cfg.fractal}-${cfg.mode}-${stamp()}.png`; shotLabels=!cfg.clean; showShot();
-  $('cap').classList.add('on');
+  shotWanted=0;shotTaking=true;
+  try{const renderedCamera=base?{cx:base.cx,cy:base.cy,w:base.w,a:base.a||0}:null,displayCamera={cx:view.cx,cy:view.cy,w:view.w,a:view.a||0},reprojected=!!renderedCamera&&Object.keys(displayCamera).some(k=>displayCamera[k]!==renderedCamera[k]),ready=!!settled()&&!window.birthPreviewQuality&&!reprojected,meta=JSON.stringify({...snapshot(),captureQuality:ready?'settled':'current-preview',renderedCamera,displayCamera,reprojected,renderedResolution:base?{width:base.W,height:base.H}:null,outputResolution:{width:Wd,height:Hd},previewDivisor:window.birthPreviewQuality?.divisor??null}),name=`${cfg.fractal}-${cfg.mode}-${stamp()}.png`,labels=!cfg.clean,full=grab(true),clean=grab(false);needDraw=true;
+  const [a,b]=await Promise.all([toBlob(full),toBlob(clean)]);if(!a||!b)throw Error('Could not make the image');
+  shots={full:await withText(a,'Comment',meta),clean:await withText(b,'Comment',meta)};shotName=name;shotLabels=labels;showShot();$('cap').classList.add('on');if(!ready)toast('Captured current preview frame');
+  }catch(e){toast('Picture capture failed: '+e.message,5000);}finally{shotTaking=false;shotBusy(false);needDraw=true;}
 }
 function showShot(){
   if(shotURL) URL.revokeObjectURL(shotURL);
@@ -473,7 +473,7 @@ function fromMeta(m){
     if(k.contours){c.contours=!!k.contours.show;c.contourLevels=Math.max(1,Math.min(20,+k.contours.levels||8));c.contourOpacity=Math.max(0,Math.min(100,+k.contours.opacity));if(['white','black','colored'].includes(k.contours.color))c.contourColor=k.contours.color;}
     if(PALETTES[k.palette]) c.palette=k.palette; if(k.iterations&&k.iterations.mode==='fixed') c.iter=k.iterations.limit; if(['outward','inward','fixed'].includes(k.stopMode))c.stopMode=k.stopMode;
     c.radius=Number.isFinite(+k.escapeRadius)&&+k.escapeRadius>=0.01?+k.escapeRadius:2; c.depth=k.maxDepth||0;
-    return {c,cam:{cx:m.camera.centre.re, cy:m.camera.centre.im, w:m.camera.width, a:m.camera.cameraAngleDeg*Math.PI/180}};
+    return {c,layerSettings:k.layerSettings,cam:{cx:m.camera.centre.re, cy:m.camera.centre.im, w:m.camera.width, a:m.camera.cameraAngleDeg*Math.PI/180}};
   }
   if(m.seed){ c.fractal='julia'; c.seed={re:+m.seed.re,im:+m.seed.im}; }
   return {c,cam:{cx:m.centre.re, cy:m.centre.im, w:m.width, a:-(m.rotationDeg||0)*Math.PI/180}};
@@ -483,7 +483,7 @@ $('capFile').onchange=async e=>{
   const f=e.target.files[0]; e.target.value=''; if(!f) return;
   const got=fromMeta(readText(await f.arrayBuffer()));
   if(!got){ toast('No stored configuration in this image',2600); return; }
-  $('cfg').classList.remove('on'); applyConfig(got.c,got.cam); toast('Capture restored');
+  $('cfg').classList.remove('on'); if(got.layerSettings)globalThis.birthRestoreLayerSettings?.(got.layerSettings); applyConfig(got.c,got.cam); toast('Capture restored');
 };
 $('capSave').onclick=()=>{ const a=document.createElement('a'); a.href=shotURL; a.download=shotName; document.body.append(a); a.click(); a.remove(); };
 $('capShare').onclick=()=>{ const f=new File([shotLabels?shots.full:shots.clean],shotName,{type:'image/png'}); navigator.share({files:[f],title:eng.name}).catch(()=>{}); };
@@ -519,8 +519,7 @@ function frame(now){
   if(dirty && (!cur || roughDone || (!back && now-lastStart>140))) startJob();
   if(!window.birthPreviewQuality?.spatial)spatialKeyframeWidth=null;
   if(needDraw && (!window.birthPreviewQuality || window.birthPreviewQuality.spatial || settled())){ draw(); } window.birthRecordFrame?.(now);
-  if(shotWanted && (settled() || now-shotWanted>20000)) takeShot();
-  else if(shotWanted && back){ shotWanted=0; $('shot').classList.remove('busy'); }
+  if(shotWanted && (settled() || (window.birthExpeditionActive?.() && base) || now-shotWanted>3000)){if(base)takeShot();else{shotWanted=0;shotBusy(false);toast('Picture unavailable: wait for the first rendered frame and try again',4000);}}
   requestAnimationFrame(frame);
 }
 addEventListener('resize',resize);
