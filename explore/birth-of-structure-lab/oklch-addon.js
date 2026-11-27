@@ -67,6 +67,14 @@
    return selected==='huescale'?palette(hueValues.get(mode)??145):PALETTES[selected]||null;
  };
  globalThis.birthLayerSettings=()=>({palettes:Object.fromEntries(settings),hues:Object.fromEntries(hueValues)});
+ globalThis.birthRestoreLayerSettings=data=>{
+   if(!data||typeof data!=='object')return;
+   settings.clear();hueValues.clear();
+   for(const [m,p] of Object.entries(data.palettes||{}))if(MODES.some(x=>x.v===m)&&typeof p==='string'&&Object.hasOwn(PALETTES,p))settings.set(m,p);
+   for(const [m,h] of Object.entries(data.hues||{}))if(MODES.some(x=>x.v===m)&&Number.isFinite(h)&&h>=0&&h<360)hueValues.set(m,h);
+   persist();
+ };
+
  function mount(id,getConfig){
    const groupEl=$(id);if(!groupEl)return;
    const wrap=document.createElement('div');wrap.style.cssText='margin:8px 0;display:grid;gap:6px';
