@@ -107,7 +107,7 @@ function up(e){
         if(hitCompass(rx,ry)){if(cfg.polar){view.a=0;dirty=true;needDraw=true;}else northUp();tapT=0;return;}
         if(hit(labelBox,rx,ry)){ copyPin(); tapT=0; return; }
         const tg=tagBoxes.find(b=>hit(b,rx,ry));
-        if(tg){ const order=MODES.filter(m=>m.v!=='compare').map(m=>m.v); cfg.panels[tg.k]=order[(order.indexOf(cfg.panels[tg.k])+1)%order.length]; repaint(); writeHash(); tapT=0; return; }
+        if(tg){ const order=MODES.filter(m=>m.v!=='compare').map(m=>m.v); const next=clone(cfg); next.panels[tg.k]=order[(order.indexOf(cfg.panels[tg.k])+1)%order.length]; applyConfig(next,{...view}); tapT=0; return; }
       }
       if(now-tapT<320 && Math.hypot(x-tapX,y-tapY)<40*DPR*(cmp()?2:1)){ clearTimeout(pinTimer); glide={px:tapX,py:tapY,f:2.5,t0:now,dur:280,done:1}; tapT=0; }
       else { tapT=now; tapX=x; tapY=y; clearTimeout(pinTimer);
