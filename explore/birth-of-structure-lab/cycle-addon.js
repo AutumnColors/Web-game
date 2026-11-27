@@ -52,7 +52,7 @@ function search(d,p,avoid,onStatus){
 }
 
 /* ---------- results: every c found in this visit, newest last ---------- */
-const found=[]; let at=-1;
+const found=[]; const accumulationSelections=[]; let at=-1;
 function remember(d,p,c){
   let i=found.findIndex(f=>f.d===d&&f.p===p&&Math.hypot(f.c[0]-c[0],f.c[1]-c[1])<1e-12);
   if(i<0){ found.push({d,p,c}); i=found.length-1; }
@@ -148,7 +148,7 @@ function mountSetup(){
             const row=document.createElement('div');row.className='cyC';
             row.textContent='c ≈ '+est.point.map(x=>x.toPrecision(15)).join(', ')+' · period '+est.period+' · estimate change '+est.change.toExponential(2)+(run.complete?'':' · partial cascade');
             const b=document.createElement('button');b.type='button';b.textContent='Observe';b.onclick=()=>{
-              FL.draft.juliaPower=d;FL.chooseSeed(est.point[0],est.point[1]);FL.syncCfg();
+              accumulationSelections.push({degree:d,point:est.point.slice(),change:est.change});FL.draft.juliaPower=d;FL.chooseSeed(est.point[0],est.point[1]);FL.syncCfg();
               status.textContent='Selected accumulation estimate. Press “Use this configuration”.';
             };
             const wrap=document.createElement('div');wrap.className='cyBtns';wrap.append(b);out.append(row,wrap);
@@ -235,6 +235,7 @@ FL.onConfig.push(()=>{ if(cfg().fractal!=='julia'){ setOpen(false); sectorOff();
 
 window.FractalCycle={
   // Immutable initialization snapshot; consumers retain it across parameter evolution.
+  getAccumulation:(k=cfg())=>accumulationSelections.find(a=>a.degree===k.juliaPower&&Math.hypot(a.point[0]-k.seed.re,a.point[1]-k.seed.im)<1e-12)||null,
   getInitialization:(k=cfg())=>{if(k.fractal!=='julia')return null;const d=k.juliaPower,c=[k.seed.re,k.seed.im];let f=found.find(f=>f.d===d&&Math.hypot(f.c[0]-c[0],f.c[1]-c[1])<1e-12);if(!f&&Number.isSafeInteger(d)&&d>=2&&d<=1000){for(let p=1;p<=Math.min(256,Math.floor(12000/d));p++){if(verified(c,d,p)){f=remember(d,p,c);break;}}}return f?Object.freeze({degree:f.d,period:f.p,seed:Object.freeze({re:c[0],im:c[1]})}):null;},
 
   mountSetup,
