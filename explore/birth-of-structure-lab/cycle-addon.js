@@ -238,6 +238,7 @@ window.FractalCycle={
   getInitialization:()=>{const f=current();return f?Object.freeze({degree:f.d,period:f.p,seed:Object.freeze({re:f.c[0],im:f.c[1]})}):null;},
 
   mountSetup,
+  show:()=>setOpen(true),
   toggle:()=>setOpen(!open),
   restore(text){   // from a link: cy=d,p — trust it only if the orbit really closes
     const [d,p]=String(text).split(',').map(Number), k=cfg(), c=[k.seed.re,k.seed.im];
