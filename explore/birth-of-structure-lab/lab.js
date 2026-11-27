@@ -323,7 +323,7 @@ function snapshot(){ // everything needed to reproduce this frame
   const a=view.a*180/Math.PI;
   return {viewer:'Fractal Universe Lab', version:1,
     config:{fractal:cfg.fractal, rule:asciiRule(), power:eng.pw, seed:cfg.fractal==='julia'?{...cfg.seed}:null, measurement:cfg.mode, panels:cmp()?[...cfg.panels]:null,
-      palette:cfg.palette, contours:{show:cfg.contours,levels:cfg.contourLevels,opacity:cfg.contourOpacity,color:cfg.contourColor}, iterations:{mode:cfg.iter?'fixed':'auto', limit:itFor(view.w)}, escapeRadius:Math.sqrt(eng.R2), stopMode:cfg.stopMode, maxDepth:cfg.depth||null, cleanView:cfg.clean},
+      palette:cfg.palette, layerSettings:globalThis.birthLayerSettings?.(), contours:{show:cfg.contours,levels:cfg.contourLevels,opacity:cfg.contourOpacity,color:cfg.contourColor}, iterations:{mode:cfg.iter?'fixed':'auto', limit:itFor(view.w)}, escapeRadius:Math.sqrt(eng.R2), stopMode:cfg.stopMode, maxDepth:cfg.depth||null, cleanView:cfg.clean},
     camera:{centre:{re:view.cx, im:view.cy}, width:view.w, cameraAngleDeg:a, planeTurnDeg:-a, depth:depthOf(view.w), homeWidth:HOME.w},
     render: stats ? {width:stats.W, height:stats.H, pixelSize:stats.pix, escaped:stats.esc, pixels:stats.N, Tmin:stats.esc?stats.tmin:null, Tmax:stats.esc?stats.tmax:null,
       r_T_S:isFinite(stats.rTS)?stats.rTS:null, r_T_stretchRate:isFinite(stats.rTR)?stats.rTR:null, neighboursSkippingABand:stats.multi} : null,
@@ -473,7 +473,7 @@ function fromMeta(m){
     if(k.contours){c.contours=!!k.contours.show;c.contourLevels=Math.max(1,Math.min(20,+k.contours.levels||8));c.contourOpacity=Math.max(0,Math.min(100,+k.contours.opacity));if(['white','black','colored'].includes(k.contours.color))c.contourColor=k.contours.color;}
     if(PALETTES[k.palette]) c.palette=k.palette; if(k.iterations&&k.iterations.mode==='fixed') c.iter=k.iterations.limit; if(['outward','inward','fixed'].includes(k.stopMode))c.stopMode=k.stopMode;
     c.radius=Number.isFinite(+k.escapeRadius)&&+k.escapeRadius>=0.01?+k.escapeRadius:2; c.depth=k.maxDepth||0;
-    return {c,cam:{cx:m.camera.centre.re, cy:m.camera.centre.im, w:m.camera.width, a:m.camera.cameraAngleDeg*Math.PI/180}};
+    return {c,layerSettings:k.layerSettings,cam:{cx:m.camera.centre.re, cy:m.camera.centre.im, w:m.camera.width, a:m.camera.cameraAngleDeg*Math.PI/180}};
   }
   if(m.seed){ c.fractal='julia'; c.seed={re:+m.seed.re,im:+m.seed.im}; }
   return {c,cam:{cx:m.centre.re, cy:m.centre.im, w:m.width, a:-(m.rotationDeg||0)*Math.PI/180}};
@@ -483,7 +483,7 @@ $('capFile').onchange=async e=>{
   const f=e.target.files[0]; e.target.value=''; if(!f) return;
   const got=fromMeta(readText(await f.arrayBuffer()));
   if(!got){ toast('No stored configuration in this image',2600); return; }
-  $('cfg').classList.remove('on'); applyConfig(got.c,got.cam); toast('Capture restored');
+  $('cfg').classList.remove('on'); if(got.layerSettings)globalThis.birthRestoreLayerSettings?.(got.layerSettings); applyConfig(got.c,got.cam); toast('Capture restored');
 };
 $('capSave').onclick=()=>{ const a=document.createElement('a'); a.href=shotURL; a.download=shotName; document.body.append(a); a.click(); a.remove(); };
 $('capShare').onclick=()=>{ const f=new File([shotLabels?shots.full:shots.clean],shotName,{type:'image/png'}); navigator.share({files:[f],title:eng.name}).catch(()=>{}); };

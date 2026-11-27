@@ -40,3 +40,61 @@
  // Refresh selected state when this palette is active.
  if(cfg.palette==='oklch')syncQuick();
 })();
+
+/* Layer-local palette controls. Palette changes only repaint cached fields. */
+(()=>{
+ const defaults={coherence:'gray'};
+ const storageKey='birth-layer-settings-v1';
+ let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
+ const settings=new Map(Object.entries(saved.palettes||{}).filter(([m,p])=>typeof p==='string'));
+ const hueValues=new Map(Object.entries(saved.hues||{}).filter(([m,h])=>Number.isFinite(h)&&h>=0&&h<360));
+ function persist(){try{localStorage.setItem(storageKey,JSON.stringify({palettes:Object.fromEntries(settings),hues:Object.fromEntries(hueValues)}));}catch{}}
+ const key=c=>c.mode;
+ const choice=c=>settings.get(key(c))||'inherit';
+ const hue=c=>hueValues.get(key(c))??145;
+ function build(h){
+   const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=1;
+   const ctx=canvas.getContext('2d',{willReadFrequently:true});
+   for(let i=0;i<1024;i++){const t=i/1023;ctx.fillStyle='oklch('+t+' '+(.13*Math.sin(Math.PI*t))+' '+h+')';ctx.fillRect(i,0,1,1);}
+   const seq=new Uint32Array(ctx.getImageData(0,0,1024,1).data.buffer);
+   return {t:'Hue Scale',seq,cyc:seq};
+ }
+ const cache=new Map();
+ function palette(h){if(!cache.has(h)){if(cache.size>=24)cache.clear();cache.set(h,build(h));}return cache.get(h);}
+ PALETTES.huescale=palette(145);
+ globalThis.birthLayerPalette=mode=>{
+   const selected=settings.get(mode)||defaults[mode];
+   return selected==='huescale'?palette(hueValues.get(mode)??145):PALETTES[selected]||null;
+ };
+ globalThis.birthLayerSettings=()=>({palettes:Object.fromEntries(settings),hues:Object.fromEntries(hueValues)});
+ globalThis.birthRestoreLayerSettings=data=>{
+   if(!data||typeof data!=='object')return;
+   settings.clear();hueValues.clear();
+   for(const [m,p] of Object.entries(data.palettes||{}))if(MODES.some(x=>x.v===m)&&typeof p==='string'&&Object.hasOwn(PALETTES,p))settings.set(m,p);
+   for(const [m,h] of Object.entries(data.hues||{}))if(MODES.some(x=>x.v===m)&&Number.isFinite(h)&&h>=0&&h<360)hueValues.set(m,h);
+   persist();
+ };
+
+ function mount(id,getConfig){
+   const groupEl=$(id);if(!groupEl)return;
+   const wrap=document.createElement('div');wrap.style.cssText='margin:8px 0;display:grid;gap:6px';
+   const label=document.createElement('label'), slider=document.createElement('input'), preview=document.createElement('canvas');
+   slider.type='range';slider.min=0;slider.max=359;slider.step=1;slider.style.width='100%';preview.width=256;preview.height=16;preview.style.width='100%';
+   label.append(slider);wrap.append(label,preview);groupEl.after(wrap);
+   const title=document.createElement('div');groupEl.before(title);
+   function refresh(){
+     const c=getConfig(), p=choice(c), h=hue(c);title.textContent='Palette · '+modeOf(c.mode).t;
+     wrap.hidden=p!=='huescale';wrap.style.display=wrap.hidden?'none':'grid';
+     if(document.activeElement!==slider)slider.value=h;
+     slider.setAttribute('aria-label','Hue for '+modeOf(c.mode).t);
+     const lut=palette(h).seq,ctx=preview.getContext('2d'),img=ctx.createImageData(256,16),out=new Uint32Array(img.data.buffer);
+     for(let i=0;i<out.length;i++)out[i]=lut[(i%256)*4];ctx.putImageData(img,0,0);
+     syncGroups(groupEl.parentElement);
+   }
+   group(groupEl,[{v:'inherit',t:'Inherit default'},...Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t}))],()=>choice(getConfig()),v=>{if(v==='inherit')settings.delete(key(getConfig()));else settings.set(key(getConfig()),v);persist();repaint();refresh();});
+   slider.oninput=()=>{hueValues.set(key(getConfig()),+slider.value);persist();repaint();refresh();};
+   let last='';function tick(){const c=getConfig(),s=c.mode+':'+choice(c)+':'+hue(c);if(s!==last){last=s;refresh();}requestAnimationFrame(tick);}tick();
+ }
+ mount('qPal',()=>cfg);
+ repaint();
+})();
