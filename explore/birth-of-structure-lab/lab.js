@@ -400,9 +400,10 @@ function readHash(){
 }
 
 /* ---------- capture: the picture with labels, the picture alone, and the configuration inside both files ---------- */
-let shotWanted=0, shots=null, shotLabels=true, shotURL='', shotName='';
+let shotWanted=0, shotTaking=false, shots=null, shotLabels=true, shotURL='', shotName='';
 $('shot').onclick=()=>{ closePop(); requestShot(); };
-function requestShot(){ if(back||shotWanted) return; shotWanted=performance.now(); $('shot').classList.add('busy'); }
+function shotBusy(on){for(const b of [$('shot'),document.querySelector('#tools.unified-tools button[aria-label="Picture"]')]){if(b){b.classList.toggle('busy',on);b.setAttribute('aria-busy',String(on));}}}
+function requestShot(){if(shotWanted||shotTaking){toast('Picture capture in progress');return;}shotWanted=performance.now();shotBusy(true);toast('Capturing picture…',2000);}
 function settled(){ return !dirty && cur && cur.passes.every(p=>p.left<=0) && !glide && !rotAnim && !back && ptrs.size===0; }
 function grab(overlays){
   draw(overlays);
@@ -426,13 +427,11 @@ function grab(overlays){
 }
 const toBlob=c=>new Promise(res=>c.toBlob(res,'image/png'));
 async function takeShot(){
-  shotWanted=0; $('shot').classList.remove('busy');
-  const meta=JSON.stringify(snapshot()), full=grab(true), clean=grab(false); needDraw=true;
-  const [a,b]=await Promise.all([toBlob(full),toBlob(clean)]);
-  if(!a||!b){ toast('Could not make the image'); return; }
-  shots={full:await withText(a,'Comment',meta), clean:await withText(b,'Comment',meta)};
-  shotName=`${cfg.fractal}-${cfg.mode}-${stamp()}.png`; shotLabels=!cfg.clean; showShot();
-  $('cap').classList.add('on');
+  shotWanted=0;shotTaking=true;
+  try{const ready=settled(),meta=JSON.stringify({...snapshot(),captureQuality:ready?'settled':'current-preview'}),name=`${cfg.fractal}-${cfg.mode}-${stamp()}.png`,labels=!cfg.clean,full=grab(true),clean=grab(false);needDraw=true;
+  const [a,b]=await Promise.all([toBlob(full),toBlob(clean)]);if(!a||!b)throw Error('Could not make the image');
+  shots={full:await withText(a,'Comment',meta),clean:await withText(b,'Comment',meta)};shotName=name;shotLabels=labels;showShot();$('cap').classList.add('on');if(!ready)toast('Captured current preview frame');
+  }catch(e){toast('Picture capture failed: '+e.message,5000);}finally{shotTaking=false;shotBusy(false);needDraw=true;}
 }
 function showShot(){
   if(shotURL) URL.revokeObjectURL(shotURL);
@@ -520,8 +519,7 @@ function frame(now){
   if(dirty && (!cur || roughDone || (!back && now-lastStart>140))) startJob();
   if(!window.birthPreviewQuality?.spatial)spatialKeyframeWidth=null;
   if(needDraw && (!window.birthPreviewQuality || window.birthPreviewQuality.spatial || settled())){ draw(); } window.birthRecordFrame?.(now);
-  if(shotWanted && (settled() || now-shotWanted>20000)) takeShot();
-  else if(shotWanted && back){ shotWanted=0; $('shot').classList.remove('busy'); }
+  if(shotWanted && (settled() || (window.birthExpeditionActive?.() && base) || now-shotWanted>3000)){if(base)takeShot();else{shotWanted=0;shotBusy(false);toast('Picture unavailable: wait for the first rendered frame and try again',4000);}}
   requestAnimationFrame(frame);
 }
 addEventListener('resize',resize);
