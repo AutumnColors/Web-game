@@ -10,6 +10,7 @@ test('mobile toolbar shell and panel lifecycle',async()=>{
  await page.waitForSelector('#tools.unified-tools',{state:'attached'});
  const buttons=page.locator('#tools.unified-tools > button');
  assert.equal(await buttons.count(),6);
+ assert.equal(await page.evaluate(()=>window.birthCameraOrientation()),'portrait');
  assert.deepEqual(await buttons.evaluateAll(bs=>bs.map(b=>b.getAttribute('aria-label'))),['Picture','Expedition','Layers','Current layer','Navigation','Tools']);
  assert.equal(await page.locator('[data-expedition]').count(),5);
  await page.locator('[data-expedition=birth]').click();
@@ -92,6 +93,20 @@ test('desktop camera orientation, live layer, capture and return',async()=>{
  await page.waitForFunction(()=>document.querySelector('#cfg').classList.contains('on'));
  assert.equal(await page.evaluate(()=>window.birthHasInitialCheckpoint()),false);
  assert.equal(await page.evaluate(()=>window.birthExpeditionStatus().stage),'idle');
+ await page.locator('[data-expedition=birth]').click();
+ await page.locator('#useCfg').click();
+ await page.waitForFunction(()=>!document.querySelector('#cfg').classList.contains('on'));
+ await page.evaluate(()=>{const F=window.FractalLab;F.apply({...F.clone(F.cfg),fractal:'julia',juliaPower:2,seed:{re:-1.4011551890920506,im:0},mode:'escape',iter:128},{cx:0,cy:0,w:3.6,a:0});window.birthSelectExpedition('accumulation');if(!window.birthSaveInitialCheckpoint({zoom:6.264548,interval:12}))throw Error('checkpoint save failed');});
+ await page.getByRole('button',{name:'Expedition',exact:true}).click();
+ await page.getByRole('button',{name:'Record expedition',exact:true}).click();
+ await page.waitForFunction(()=>window.birthRecordingActive()&&/Recording · [1-9]/.test(document.querySelector('#birth-record-dock').textContent),{},{timeout:60000});
+ await controls.getByRole('button',{name:'Stop',exact:true}).click();
+ await page.waitForFunction(()=>!window.birthRecordingActive()&&window.birthExpeditionStatus().stage==='idle');
+ const json=page.waitForEvent('download');await page.getByRole('link',{name:'Download JSON',exact:true}).click();
+ const downloaded=await json;const record=JSON.parse(require('node:fs').readFileSync(await downloaded.path(),'utf8'));
+ assert.ok(record.samples.length>0);
+ const dimensions=await page.evaluate(async src=>{const im=new Image();im.src=src;await im.decode();return [im.naturalWidth,im.naturalHeight];},record.samples[0].image);
+ assert.ok(dimensions[0]>dimensions[1]);
  assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });
