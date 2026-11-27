@@ -428,7 +428,7 @@ function grab(overlays){
 const toBlob=c=>new Promise(res=>c.toBlob(res,'image/png'));
 async function takeShot(){
   shotWanted=0;shotTaking=true;
-  try{const ready=settled(),meta=JSON.stringify({...snapshot(),captureQuality:ready?'settled':'current-preview'}),name=`${cfg.fractal}-${cfg.mode}-${stamp()}.png`,labels=!cfg.clean,full=grab(true),clean=grab(false);needDraw=true;
+  try{const renderedCamera=base?{cx:base.cx,cy:base.cy,w:base.w,a:base.a||0}:null,displayCamera={cx:view.cx,cy:view.cy,w:view.w,a:view.a||0},reprojected=!!renderedCamera&&Object.keys(displayCamera).some(k=>displayCamera[k]!==renderedCamera[k]),ready=!!settled()&&!window.birthPreviewQuality&&!reprojected,meta=JSON.stringify({...snapshot(),captureQuality:ready?'settled':'current-preview',renderedCamera,displayCamera,reprojected,renderedResolution:base?{width:base.W,height:base.H}:null,outputResolution:{width:Wd,height:Hd},previewDivisor:window.birthPreviewQuality?.divisor??null}),name=`${cfg.fractal}-${cfg.mode}-${stamp()}.png`,labels=!cfg.clean,full=grab(true),clean=grab(false);needDraw=true;
   const [a,b]=await Promise.all([toBlob(full),toBlob(clean)]);if(!a||!b)throw Error('Could not make the image');
   shots={full:await withText(a,'Comment',meta),clean:await withText(b,'Comment',meta)};shotName=name;shotLabels=labels;showShot();$('cap').classList.add('on');if(!ready)toast('Captured current preview frame');
   }catch(e){toast('Picture capture failed: '+e.message,5000);}finally{shotTaking=false;shotBusy(false);needDraw=true;}
