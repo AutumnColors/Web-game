@@ -131,6 +131,11 @@ td i{font-style:normal;color:#8d8d95;font-family:system-ui,sans-serif;font-size:
 #unified-panel button{min-height:36px}
 #legacy-toolbar[hidden]{display:none}
 body.unified-ready #birth-record-toolbar{display:none!important}
+body.unified-ready #experiment{display:none!important}
+body.unified-ready[data-unified-panel=diagnostics] #experiment{display:block!important;left:64px;bottom:12px;max-height:70dvh;overflow:auto;z-index:13}
+body.unified-ready[data-unified-panel=settings] #pop #qMode,body.unified-ready[data-unified-panel=settings] #pop > .lbl:first-child{display:none}
+body.unified-ready[data-unified-panel=settings] #pop{z-index:13}
+body.unified-ready[data-unified-panel=video] #birth-record-toolbar[style*='display: none']{display:none!important}
 body.unified-ready[data-unified-panel=video] #birth-record-toolbar{display:flex!important;left:calc(64px + env(safe-area-inset-left))!important;transform:none!important;width:min(440px,calc(100vw - 80px))!important;z-index:13}
 body.clean #birth-record-toolbar{display:none!important}
 </style></head>
@@ -323,9 +328,10 @@ function action(label,fn){const b=document.createElement('button');b.type='butto
 function invoke(b){if(!b)return;close();b.click();}
 function open(k,label){if(active===k){close();return;}close();active=k;document.body.dataset.unifiedPanel=k;buttons.get(k).setAttribute('aria-expanded','true');if(k==='video')return;
 panel.replaceChildren();const title=document.createElement('strong');title.textContent=label;const x=document.createElement('button');x.textContent='×';x.type='button';x.style.float='right';x.setAttribute('aria-label','Close panel');x.onclick=close;const actions=document.createElement('div');actions.className='unified-actions';panel.append(x,title,actions);panel.hidden=false;
-if(k==='layers'||k==='settings'){action(k==='layers'?'Select measurement':'Measurement and colour settings',()=>invoke(document.getElementById('bView')));if(k==='layers')action('Experiment layers',()=>{close();const e=document.getElementById('experiment');e.style.display='block';});}
+if(k==='layers'){for(const [m,label] of [['sens','Sensitivity'],['sgrad','Gradient'],['vdiv','Divergence'],['vcurl','Curl'],['waves','Hide Set'],['phase','Rotation phase'],['stablephase','Stable phase'],['normphase','Normalized phase']]){action(label+(cfg.mode===m?' ✓':''),()=>{setMode(m);if(cfg.mode===m)close();});}}
+if(k==='settings'){panel.hidden=true;document.getElementById('pop').classList.add('on');syncQuick();}
 if(k==='navigation'){const nav=originals.find(b=>b.title==='Evolution navigation');if(nav&&!nav.hidden)action('Evolution minimap',()=>{const stop=document.querySelector('#birth-record-toolbar button:nth-of-type(3)');if(stop&&!stop.disabled){F.toast('Finish or stop the journey before opening evolution navigation');return;}invoke(nav);});action('Reset camera',()=>invoke(document.getElementById('bHome')));}
-if(k==='tools'){for(const b of originals){if(['shot','bView','bHome','bInfo'].includes(b.id)||b.title==='Evolution navigation')continue;action(b.getAttribute('aria-label')||b.title||b.textContent,()=>invoke(b));}}
+if(k==='tools'){action('Diagnostics and scaling analysis',()=>{close();active='tools';document.body.dataset.unifiedPanel='diagnostics';buttons.get('tools').setAttribute('aria-expanded','true');});for(const b of originals){if(['shot','bView','bHome','bInfo'].includes(b.id)||b.title==='Evolution navigation'||/experiment controls/i.test(b.title))continue;action(b.id==='bCycle'?'Structure settings · Julia cycle':b.getAttribute('aria-label')||b.title||b.textContent,()=>invoke(b));}}
 }
 old.classList.add('unified-tools');for(const [k,label] of [['picture','Picture'],['video','Video'],['layers','Layers'],['settings','Current layer'],['navigation','Navigation'],['tools','Tools']]){const b=document.createElement('button');b.type='button';b.className='glass';b.title=label;b.setAttribute('aria-label',label);if(k!=='picture')b.setAttribute('aria-expanded','false');b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+icons[k]+'</svg>';b.onclick=()=>k==='picture'?document.getElementById('shot').click():open(k,label);buttons.set(k,b);old.append(b);}
 document.body.classList.add('unified-ready');document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
