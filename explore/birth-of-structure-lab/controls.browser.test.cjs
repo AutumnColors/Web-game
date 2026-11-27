@@ -50,3 +50,48 @@ test('mobile toolbar shell and panel lifecycle',async()=>{
  assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });
+
+test('desktop camera orientation, live layer, capture and return',async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+ const page=await browser.newPage({viewport:{width:1280,height:800},acceptDownloads:true});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765/explore/birth-of-structure-lab/',{waitUntil:'load'});
+ await page.waitForSelector('#tools.unified-tools',{state:'attached'});
+ assert.equal(await page.evaluate(()=>window.birthCameraOrientation()),'landscape');
+ await page.locator('[data-expedition=birth]').click();
+ await page.locator('#useCfg').click();
+ await page.waitForFunction(()=>!document.querySelector('#cfg').classList.contains('on'));
+ await page.evaluate(()=>{const F=window.FractalLab;F.apply({...F.clone(F.cfg),fractal:'julia',juliaPower:2,seed:{re:-1.4011551890920506,im:0},mode:'escape'},{cx:0,cy:0,w:3.6,a:0});window.birthSelectExpedition('accumulation');if(!window.birthSaveInitialCheckpoint({zoom:6.264548,interval:12}))throw Error('checkpoint save failed');});
+ await page.getByRole('button',{name:'Layers',exact:true}).click();
+ await page.getByRole('button',{name:'Sensitivity',exact:true}).click();
+ await page.getByRole('button',{name:'Expedition',exact:true}).click();
+ await page.getByRole('button',{name:'Preview expedition',exact:true}).click();
+ await page.waitForFunction(()=>{const s=window.birthExpeditionStatus();return s.stage==='running'&&s.step>2;},{},{timeout:60000});
+ assert.equal(await page.evaluate(()=>window.FractalLab.cfg.mode),'sens');
+ const bounds=await page.locator('#c').boundingBox();
+ assert.ok(bounds.width>bounds.height&&Math.abs(bounds.width/bounds.height-(1+Math.sqrt(5))/2)<.03);
+ assert.ok(bounds.y>=0&&bounds.x>=0&&bounds.x+bounds.width<=1281&&bounds.y+bounds.height<=801);
+ const controls=page.locator('#desktop-expedition-actions');
+ await controls.getByRole('button',{name:'Pause',exact:true}).click();
+ await page.waitForFunction(()=>window.birthExpeditionStatus().stage==='paused');
+ const picture=page.getByRole('button',{name:'Picture',exact:true});
+ await picture.click();
+ await page.waitForFunction(()=>document.querySelector('#cap').classList.contains('on')&&document.querySelector('#capImg').naturalWidth>0,{},{timeout:20000});
+ assert.ok(await page.locator('#capImg').isVisible());
+ assert.equal(await page.locator('#cap').evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),true);
+ await page.locator('#capX').click();
+ await controls.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.waitForFunction(()=>window.birthExpeditionStatus().stage==='running');
+ await page.getByRole('button',{name:'Back to expedition menu'}).click({trial:true});
+ page.once('dialog',d=>d.dismiss());
+ await page.getByRole('button',{name:'Back to expedition menu'}).click();
+ assert.equal(await page.evaluate(()=>window.birthExpeditionStatus().stage),'running');
+ page.once('dialog',d=>d.accept());
+ await page.getByRole('button',{name:'Back to expedition menu'}).click();
+ await page.waitForFunction(()=>document.querySelector('#cfg').classList.contains('on'));
+ assert.equal(await page.evaluate(()=>window.birthHasInitialCheckpoint()),false);
+ assert.equal(await page.evaluate(()=>window.birthExpeditionStatus().stage),'idle');
+ assert.deepEqual(errors,[]);
+ }finally{await browser.close();}
+});
