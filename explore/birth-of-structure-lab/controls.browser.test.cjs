@@ -80,7 +80,7 @@ test('desktop camera orientation, live layer, capture and return',async()=>{
  await page.waitForFunction(()=>document.querySelector('#cap').classList.contains('on')&&document.querySelector('#capImg').naturalWidth>0,{},{timeout:20000});
  assert.ok(await page.locator('#capImg').isVisible());
  assert.equal(await page.locator('#cap').evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),true);
- await page.locator('#capX').click();
+ const png=page.waitForEvent('download');await page.locator('#capSave').click();assert.match((await png).suggestedFilename(),/\.png$/);if(await page.locator('#cap').isVisible())await page.locator('#capClose').click();
  await controls.getByRole('button',{name:'Continue',exact:true}).click();
  await page.waitForFunction(()=>window.birthExpeditionStatus().stage==='running');
  await page.getByRole('button',{name:'Back to expedition menu'}).click({trial:true});
