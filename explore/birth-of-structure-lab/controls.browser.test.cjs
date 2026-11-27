@@ -1,0 +1,27 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {chromium}=require('playwright');
+test('mobile toolbar shell and panel lifecycle',async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+ const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765/explore/birth-of-structure-lab/',{waitUntil:'load'});
+ await page.waitForSelector('#tools.unified-tools',{state:'attached'});
+ const buttons=page.locator('#tools.unified-tools > button');
+ assert.equal(await buttons.count(),6);
+ assert.deepEqual(await buttons.evaluateAll(bs=>bs.map(b=>b.getAttribute('aria-label'))),['Picture','Video','Layers','Current layer','Navigation','Tools']);
+ await page.evaluate(()=>{document.querySelector('#cfg')?.classList.remove('on');document.body.classList.remove('clean');});
+ await buttons.nth(2).click();
+ assert.equal(await page.locator('#unified-panel').isVisible(),true);
+ await buttons.nth(5).click();
+ assert.equal(await page.locator('#unified-panel').isVisible(),true);
+ assert.equal(await page.locator('#unified-panel strong').textContent(),'Tools');
+ await buttons.nth(5).click();
+ assert.equal(await page.locator('#unified-panel').isVisible(),false);
+ const bounds=await buttons.evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};}));
+ for(const b of bounds)assert.ok(b.top>=0&&b.bottom<=844&&b.left>=0&&b.right<=390);
+ for(let i=1;i<bounds.length;i++)assert.ok(bounds[i].top>=bounds[i-1].bottom);
+ assert.deepEqual(errors,[]);
+ }finally{await browser.close();}
+});
