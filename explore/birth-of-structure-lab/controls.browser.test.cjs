@@ -20,6 +20,11 @@ test('mobile toolbar shell and panel lifecycle',async()=>{
  await page.locator('[data-expedition=complete]').click();
  assert.equal(await page.getByRole('button',{name:'Choose / generate starting cycle'}).isVisible(),true);
  await page.evaluate(()=>{document.querySelector('#cfg')?.classList.remove('on');document.body.classList.remove('clean');});
+ await buttons.nth(1).click();
+ assert.equal(await page.getByRole('button',{name:'Configure expedition',exact:true}).count(),1);
+ assert.equal(await page.getByRole('button',{name:'Dynamics map',exact:true}).count(),0);
+ await buttons.nth(4).click();
+ assert.equal(await page.getByRole('button',{name:'Dynamics map',exact:true}).count(),0);
  await buttons.nth(2).click();
  assert.equal(await page.locator('#unified-panel').isVisible(),true);
  await buttons.nth(5).click();
