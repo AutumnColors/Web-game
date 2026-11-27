@@ -238,13 +238,10 @@ const JULIA_EXPONENTS=[2,3,4,5,6,7,8,9,10,-1,-2,-3,-4,-5,-6,-7,-8,0.5,0.75,0.9,1
 const juliaPowerLabel=p=>p===Math.PI?'π':p===Math.E?'e':String(p);
 group($('gJuliaPower'),JULIA_EXPONENTS.map(v=>({v,t:juliaPowerLabel(v)})),()=>draft.juliaPower,v=>{draft.juliaPower=v;syncCfg();thumbs();});
 group($('gPower'),[3,4,5,6,7,8].map(v=>({v,t:'n = '+v})),()=>draft.power,v=>{ draft.power=v; syncCfg(); thumbs(); });
-group($('gMode'),MODES,()=>draft.mode,v=>{ draft.mode=v; syncCfg(); });
-group($('gDepth'),[{v:0,t:'Unlimited'},{v:3,t:'3 levels',s:'× 8'},{v:10,t:'10 levels',s:'× 1,024'},{v:25,t:'25 levels',s:'× 33 million'}],()=>draft.depth,v=>{ draft.depth=v; syncCfg(); });
+const CONTROL_LAYER_IDS=['escape','potential','sens','sgrad','vdiv','vcurl','phase','coherence'];
+const CONTROL_LAYERS=CONTROL_LAYER_IDS.map(v=>MODES.find(m=>m.v===v)).filter(Boolean);
+group($('gMode'),CONTROL_LAYERS,()=>draft.mode,v=>{ draft.mode=v; syncCfg(); });
 group($('gPal'),Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t})),()=>draft.palette,v=>{ draft.palette=v; syncCfg(); thumbs(); });
-group($('gIter'),[{v:0,t:'Auto'},{v:400,t:'400'},{v:1600,t:'1,600'},{v:6400,t:'6,400'},{v:25600,t:'25,600'}],()=>draft.iter,v=>{ draft.iter=v; syncCfg(); });
-group($('gRad'),[0.5,1,2,3,5,7,11,16].map(v=>({v,t:String(v)})),()=>draft.radius,v=>{draft.radius=v;$('radiusCustom').value=v;syncCfg();});
-group($('gStop'),[{v:'outward',t:'Outward escape'},{v:'inward',t:'Inward convergence'},{v:'fixed',t:'Fixed iterations'}],()=>draft.stopMode,v=>{draft.stopMode=v;syncCfg();});
-$('radiusCustom').onchange=()=>{const v=Number($('radiusCustom').value);if(Number.isFinite(v)&&v>=0.01&&v<=1000000){draft.radius=v;syncCfg();}else $('radiusCustom').value=draft.radius;};
 $('gClean').onclick=()=>{ draft.clean=!draft.clean; syncCfg(); };
 function syncContourSettings(c){
   $('contourOn').checked=c.contours;
@@ -298,7 +295,7 @@ function parseC(s){ // "−0.8 + 0.156i", "-0.8, 0.156", "i", "-0.5i", "0.25"
   return null;
 }
 $('cin').addEventListener('input',()=>{ const c=parseC($('cin').value); $('cin').classList.toggle('bad',!c); if(c){ draft.seed=c; syncSeedPicker(); thumbs(); } });
-function syncCfg(){ syncSeedPicker(); $('radiusCustom').value=draft.radius; syncCoordPickers();
+function syncCfg(){ syncSeedPicker(); syncCoordPickers();
   syncGroups($('cfg')); $('gClean').classList.toggle('on',draft.clean);
   $('pJulia').classList.toggle('on',draft.fractal==='julia'); $('juliaPowerNote').textContent=Number.isInteger(draft.juliaPower)&&draft.juliaPower>=2?'Polynomial Julia set (degree '+draft.juliaPower+').':Number.isInteger(draft.juliaPower)&&draft.juliaPower<0?'Rational map with a pole at zero. First-threshold stopping is an experiment, not a reliable Julia membership test.':'Principal-branch complex power; cut on the negative real axis. First-threshold stopping is a finite-orbit diagnostic, not a classical polynomial Julia set.'; $('pMulti').classList.toggle('on',draft.fractal==='multibrot');
   const g=$('palPrev').getContext('2d'), lut=PALETTES[draft.palette].cyc, img=g.createImageData(600,1), o=new Uint32Array(img.data.buffer);
@@ -311,10 +308,10 @@ function thumbs(){ // each library card shows its own universe, computed by the 
   FR.forEach(f=>{ const c={...draft,fractal:f.v,radius:2}, e=engineOf(c), w=e.span?e.span*4/3:3.5, v={cx:e.span?0:-0.65,cy:0,w,a:0};
     thumbIds.push(render('thumb',v,160,120,220,e,false,L=>{ const keep=cfg.palette; cfg.palette=draft.palette; const img=paint(L,'escape'); cfg.palette=keep; f.cv.getContext('2d').drawImage(img,0,0); })); });
 }
-function openCfg(){ draft=clone(cfg); $('cin').value=cText(draft.seed.re,draft.seed.im,15).replace(/−/g,'-'); $('cin').classList.remove('bad'); closePop(); closeSec(); setSecTool(false);
+function openCfg(){ draft=clone(cfg); draft.depth=0; if(!CONTROL_LAYER_IDS.includes(draft.mode))draft.mode='escape'; $('cin').value=cText(draft.seed.re,draft.seed.im,15).replace(/−/g,'-'); $('cin').classList.remove('bad'); closePop(); closeSec(); setSecTool(false);
   $('cfg').classList.add('on'); $('cfg').firstElementChild.scrollTop=0; syncCfg(); thumbs(); }
 $('bSetup').onclick=openCfg;
-$('useCfg').onclick=()=>{ $('cfg').classList.remove('on'); applyConfig(draft); if(cfg.clean) toast('Clean view. Press and hold the map to bring the tools back.',3200); };
+$('useCfg').onclick=()=>{ $('cfg').classList.remove('on'); draft.depth=0; applyConfig(draft); if(cfg.clean) toast('Clean view. Press and hold the map to bring the tools back.',3200); };
 const WAVE={cx:-0.7274552961, cy:0.3586441332, w:0.000000519, a:-70*Math.PI/180};
 $('preWave').onclick=()=>{ $('cfg').classList.remove('on'); applyConfig({...clone(DEFAULTS),mode:'compare',iter:1600,radius:2,palette:draft.palette},WAVE); };
 
