@@ -43,11 +43,14 @@
 
 /* Layer-local palette controls. Palette changes only repaint cached fields. */
 (()=>{
- const defaults={sens:'gray',sgrad:'gray',waves:'gray',phase:'hue',stablephase:'hue',normphase:'hue',coherence:'gray'};
- const settings=new Map();
- const hueValues=new Map();
+ const defaults={coherence:'gray'};
+ const storageKey='birth-layer-settings-v1';
+ let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
+ const settings=new Map(Object.entries(saved.palettes||{}).filter(([m,p])=>typeof p==='string'));
+ const hueValues=new Map(Object.entries(saved.hues||{}).filter(([m,h])=>Number.isFinite(h)&&h>=0&&h<360));
+ function persist(){try{localStorage.setItem(storageKey,JSON.stringify({palettes:Object.fromEntries(settings),hues:Object.fromEntries(hueValues)}));}catch{}}
  const key=c=>c.mode;
- const choice=c=>settings.get(key(c))||defaults[key(c)]||'classic';
+ const choice=c=>settings.get(key(c))||'inherit';
  const hue=c=>hueValues.get(key(c))??145;
  function build(h){
    const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=1;
@@ -62,7 +65,7 @@
  const oldPaint=paint;
  paint=function(L,m){
    const previous=cfg.palette, previousHue=PALETTES.huescale;
-   const selected=settings.get(m)||defaults[m]||'classic';
+   const override=settings.get(m);const selected=override&&PALETTES[override]?override:defaults[m]||previous;
    cfg.palette=selected;
    if(selected==='huescale')PALETTES.huescale=palette(hueValues.get(m)??145);
    try{return oldPaint(L,m);}finally{cfg.palette=previous;PALETTES.huescale=previousHue;}
@@ -83,10 +86,10 @@
      for(let i=0;i<out.length;i++)out[i]=lut[(i%256)*4];ctx.putImageData(img,0,0);
      syncGroups(groupEl.parentElement);
    }
-   group(groupEl,Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t})),()=>choice(getConfig()),v=>{settings.set(key(getConfig()),v);repaint();refresh();});
-   slider.oninput=()=>{hueValues.set(key(getConfig()),+slider.value);repaint();refresh();};
+   group(groupEl,[{v:'inherit',t:'Inherit default'},...Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t}))],()=>choice(getConfig()),v=>{if(v==='inherit')settings.delete(key(getConfig()));else settings.set(key(getConfig()),v);persist();repaint();refresh();});
+   slider.oninput=()=>{hueValues.set(key(getConfig()),+slider.value);persist();repaint();refresh();};
    let last='';function tick(){const c=getConfig(),s=c.mode+':'+choice(c)+':'+hue(c);if(s!==last){last=s;refresh();}requestAnimationFrame(tick);}tick();
  }
- mount('qPal',()=>cfg);mount('gPal',()=>draft);
+ mount('qPal',()=>cfg);
  repaint();
 })();
