@@ -68,7 +68,7 @@ test('desktop camera orientation, live layer, capture and return',async()=>{
  await page.getByRole('button',{name:'Sensitivity',exact:true}).click();
  await page.getByRole('button',{name:'Expedition',exact:true}).click();
  await page.getByRole('button',{name:'Preview expedition',exact:true}).click();
- await page.waitForFunction(()=>{const s=window.birthExpeditionStatus();return s.stage==='running'&&s.step>2;},{},{timeout:60000});
+ try { await page.waitForFunction(()=>{const s=window.birthExpeditionStatus();return s.stage==='running'&&s.step>2;},{},{timeout:60000}); } catch (error) { console.error('Expedition timeout diagnostics:', JSON.stringify(await page.evaluate(()=>({status:window.birthExpeditionStatus(),settled:window.FractalLab.settled(),config:window.FractalLab.cfg,camera:window.FractalLab.view,preview:window.birthPreviewQuality,checkpoint:window.birthGetInitialCheckpoint()}))), 'page errors:', errors); throw error; }
  assert.equal(await page.evaluate(()=>window.FractalLab.cfg.mode),'sens');
  const bounds=await page.locator('#c').boundingBox();
  assert.ok(bounds.width>bounds.height&&Math.abs(bounds.width/bounds.height-(1+Math.sqrt(5))/2)<.03);
