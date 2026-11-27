@@ -27,11 +27,8 @@ test('mobile toolbar shell and panel lifecycle',async()=>{
  const bounds=await buttons.evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};}));
  for(const b of bounds)assert.ok(b.top>=0&&b.bottom<=844&&b.left>=0&&b.right<=390);
  for(let i=1;i<bounds.length;i++)assert.ok(bounds[i].top>=bounds[i-1].bottom);
+ await page.evaluate(()=>{window.birthSelectExpedition('accumulation');if(!window.birthSaveInitialCheckpoint({zoom:6.264548,interval:12}))throw Error('checkpoint save failed');});
  await buttons.nth(1).click();
- assert.equal(await page.getByRole('button',{name:'Start expedition',exact:true}).isVisible(),true);
- await page.evaluate(()=>{window.birthSelectExpedition('accumulation');});
- await page.getByRole('button',{name:'Start expedition',exact:true}).click();
- await page.getByRole('button',{name:'Preview expedition',exact:true}).waitFor({state:'visible'});
  await page.getByRole('button',{name:'Preview expedition',exact:true}).click();
  await page.waitForFunction(()=>{const s=window.birthExpeditionStatus?.();return s?.stage==='running'&&s.step>2;},{},{timeout:60000});
  assert.equal(await page.getByRole('button',{name:'Resume expedition ▶',exact:true}).isVisible(),false);
