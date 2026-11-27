@@ -151,9 +151,9 @@ function notify(t,ms=5000){
 function setMode(m){
   // Coordinate choice remains independent of measurement.
   if(diffMode(m)&&(cfg.polar||cfg.bottcher)){notify('Differential tests require Cartesian coordinates');return;}
-  const wasStable=cfg.mode; if(['stablephase','normphase'].includes(m)&&!eng.centre){notify(PHASE_NEEDS);return;} if(['stablephase','normphase'].includes(m)&&(cfg.iter===0||cfg.iter>phaseCap()))cfg.iter=phaseCap();   // phase views report no escape step, so Auto iterations would keep restarting
+  const wasStable=cfg.mode; if(m==='coherence'&&cfg.fractal!=='julia'){notify('Rotation coherence is defined here for Julia orbits.');return;} if(['stablephase','normphase'].includes(m)&&!eng.centre){notify(PHASE_NEEDS);return;} if(['stablephase','normphase'].includes(m)&&(cfg.iter===0||cfg.iter>phaseCap()))cfg.iter=phaseCap();   // phase views report no escape step, so Auto iterations would keep restarting
   const was=cmp(), wasWaves=cfg.mode==='waves'; cfg.mode=m; document.body.classList.toggle('cmp',cmp());
-  if((wasStable!==m&&(['stablephase','normphase'].includes(wasStable)||['stablephase','normphase'].includes(m)))||wasWaves!==(m==='waves') || cmp()!==was || (needD() && base && !base.S) || (m==='dld' && base && !base.DLD)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
+  if((wasStable!==m&&(wasStable==='coherence'||m==='coherence'))||(wasStable!==m&&(['stablephase','normphase'].includes(wasStable)||['stablephase','normphase'].includes(m)))||wasWaves!==(m==='waves') || cmp()!==was || (needD() && base && !base.S) || (m==='dld' && base && !base.DLD)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
   repaint(); updateChip(); syncQuick(); writeHash();
 }
 const coordOf=c=>c.bottcher?'bottcher':c.polar?(c.logPolar?'logpolar':'polar'):'cartesian';
@@ -219,6 +219,7 @@ function applyConfig(next,cam){
   const world=!started || next.fractal!==cfg.fractal || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im || next.juliaPower!==cfg.juliaPower));
   const numeric=next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode || next.bottcher!==cfg.bottcher || next.bottcherGMin!==cfg.bottcherGMin || next.bottcherGMax!==cfg.bottcherGMax || next.polar!==cfg.polar || next.logPolar!==cfg.logPolar;
   cfg=clone(next); eng=engineOf(cfg); started=true; syncContourSettings(cfg); syncCoordPickers();
+  if(cfg.mode==='coherence'&&cfg.fractal!=='julia')cfg.mode='escape';
   if(['stablephase','normphase'].includes(cfg.mode)&&!eng.centre){ cfg.mode='phase'; setTimeout(()=>notify(PHASE_NEEDS+' Showing Rotation phase instead.'),0); }
   if(['stablephase','normphase'].includes(cfg.mode)&&(cfg.iter===0||cfg.iter>phaseCap())) cfg.iter=phaseCap();
   document.body.classList.toggle('cmp',cmp()); document.body.classList.toggle('clean',cfg.clean);
