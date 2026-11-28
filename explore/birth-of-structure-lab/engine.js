@@ -356,6 +356,7 @@ function monomialCoherence(x,y,d,N,R2,stopMode,sigma){
 onmessage=e=>{
   const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,needDLD,dldIterations,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logAngleSpan,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax,bottcherCritical}=m;
   const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float64Array(N):null, DLD=needDLD?new Float32Array(N):null, A=needD?new Float64Array(N):null, C=m.coherence?new Float64Array(N):null;
+  const G=bottcher?new Float64Array(N).fill(NaN):null;
   const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=pw>1?1/Math.log(pw):0;
   let minN=1e9;
   const monomial=m.coherence&&julia&&!polar&&!bottcher&&kr===0&&ki===0&&Number.isInteger(pw)&&pw>=2;
@@ -370,6 +371,7 @@ onmessage=e=>{
         const u=Math.exp(Math.log(bottcherGMax)*(1-t)+Math.log(bottcherGMin)*t);
         const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5);
         [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki,pw,bottcherCritical||0,rayStates[x]):pw===2?parameterInverse(u,theta,rayStates[x]):[NaN,NaN];
+        if(Number.isFinite(pr)&&Number.isFinite(pq)){const measured=kind===1?bottcherPotential(pr,pq,kr,ki,pw):bottcherPotential(pr,pq,pr,pq,2);if(measured>0&&Number.isFinite(measured))G[i]=Math.log(measured);}
       } else if(polar){ const theta=polarAngle+(logPolar?(logAngleSpan||2*Math.PI):2*Math.PI)*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
       if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;if(A)A[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
       if(m.geometry){const q=geometrySample(m.geometry,pr,pq,m.geometryDepth,m.geometryParams);T[i]=q[0]?q[1]:65535;F[i]=q[1];if(q[0])minN=Math.min(minN,q[1]);if(S)S[i]=NaN;if(A)A[i]=NaN;if(C)C[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
@@ -434,7 +436,7 @@ onmessage=e=>{
       if(needD){S[i]=Math.log1p(Math.hypot(dr,di));A[i]=(dr===0&&di===0)?NaN:Math.atan2(di,dr);if(C)C[i]=monomial?calibrated:phaseCount>=2?Math.min(1,Math.hypot(sumCos,sumSin)/phaseCount):NaN;}
     }
   }
-  postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,A,C,DLD,minN},[T.buffer,F.buffer,...(S?[S.buffer,A.buffer]:[]),...(C?[C.buffer]:[]),...(DLD?[DLD.buffer]:[])]);
+  postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,A,C,DLD,G,minN},[T.buffer,F.buffer,...(G?[G.buffer]:[]),...(S?[S.buffer,A.buffer]:[]),...(C?[C.buffer]:[]),...(DLD?[DLD.buffer]:[])]);
 };`;
 // Principal branch: z^p = exp(p (ln|z| + i Arg(z))), Arg in (-pi,pi].
 // For noninteger p this map is discontinuous across the negative real axis.
@@ -673,9 +675,9 @@ function gridFor(v,W,H,sx){
 
 /* ---------- layers of numbers ---------- */
 function newLayer(v,W,H,maxIt,withS){
-  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,logPolar:!!cfg.logPolar,logAngleSpan:cfg.logAngleSpan||TAU,logOuter:cfg.logOuter,logSpan:cfg.logSpan,left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float64Array(W*H):null,A:withS?new Float64Array(W*H):null,C:(cfg.mode==='coherence'||(cfg.mode==='compare'&&cfg.panels.includes('coherence')))?new Float64Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
+  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,logPolar:!!cfg.logPolar,logAngleSpan:cfg.logAngleSpan||TAU,logOuter:cfg.logOuter,logSpan:cfg.logSpan,left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),G:cfg.bottcher?new Float64Array(W*H).fill(NaN):null,S:withS?new Float64Array(W*H):null,A:withS?new Float64Array(W*H):null,C:(cfg.mode==='coherence'||(cfg.mode==='compare'&&cfg.panels.includes('coherence')))?new Float64Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
 }
-function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.A&&m.A)L.A.set(m.A,m.y0row*L.W);if(L.C&&m.C)L.C.set(m.C,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
+function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W);if(L.G&&m.G)L.G.set(m.G,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.A&&m.A)L.A.set(m.A,m.y0row*L.W);if(L.C&&m.C)L.C.set(m.C,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
   const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,bottcherCritical:cfg.bottcher?bottcherCriticalPotential():0,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logAngleSpan:cfg.logAngleSpan||TAU,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=cfg.bottcher&&tag==='main'?Math.max(8,Math.ceil(L.H/(NW*2))):Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;L.geometry=e.geometry;L.geometryDepth=e.geometryDepth;
   for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,needDLD:!!L.DLD,dldIterations:cfg.dldIterations,...engMsg(e),...extra});
@@ -767,6 +769,8 @@ function rangeOf(N,get,lo,hi){ // percentiles of a sample, so a few extreme pixe
 function stabilityDifferentials(L,mode){return scalarDifferential(L,mode,scalarField(L,activeScalarSource()));}
 function complexDifferential(L,mode){const {W,H,S,A,sx}=L,V=new Float64Array(W*H);V.fill(NaN);if(L.ring)return V;const angle=L.a||0;const u=i=>S[i]===0?0:S[i]*Math.cos(A[i]-angle),v=i=>S[i]===0?0:S[i]*Math.sin(A[i]-angle);for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x,a=i-1,b=i+1,c=i-W,d=i+W;V[i]=mode==='vdiv'?(u(b)-u(a)+v(c)-v(d))/(2*sx):(v(b)-v(a)-u(c)+u(d))/(2*sx);}return V;}
 function complexFieldStats(L,mode){const V=complexDifferential(L,mode);let n=0,sum=0,max=0;for(let i=0;i<V.length;i++){const v=V[i];if(!Number.isFinite(v))continue;const x=i%L.W,y=Math.floor(i/L.W);if(x===0||y===0||x===L.W-1||y===L.H-1)continue;if(L.T[i]!==L.T[i-1]||L.T[i]!==L.T[i+1]||L.T[i]!==L.T[i-L.W]||L.T[i]!==L.T[i+L.W])continue;n++;sum+=v*v;max=Math.max(max,Math.abs(v));}return {n,rms:n?Math.sqrt(sum/n):NaN,max:n?max:NaN};}
+// Use the independently evaluated exterior potential, not the experimental stopping orbit.
+function greenLogAt(L,i){return L.bottcher&&L.G?L.G[i]:L.T[i]===NO?NaN:Math.log(Math.LN2)+(1-L.F[i]-L.T[i])*Math.log(L.pw);}
 function paint(L,mode){
   const {W,H,T,F,S,DLD}=L, N=W*H;
   if(L.geometry&&!scalarMode(mode)){const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d'),img=ctx.createImageData(W,H),o=new Uint32Array(img.data.buffer),lut=(globalThis.birthLayerPalette?.(mode)||PALETTES[cfg.palette]).seq;for(let i=0;i<N;i++){const inside=T[i]!==NO;if(mode==='binary'){o[i]=inside?WHITE:BLACK;continue;}if(inside)o[i]=lut[Math.round(550+473*Math.min(1,(T[i]+1)/(L.geometryDepth+1)))];else if(F[i]>0)o[i]=lut[Math.round(80+280*F[i]/L.geometryDepth)];else o[i]=BLACK;}ctx.putImageData(img,0,0);return c;}
@@ -789,7 +793,7 @@ function paint(L,mode){
       // F = 1 - log_p(log_2|z_T|), hence ln G_T = ln(ln 2) + (1-F-T) ln p.
       // Work in log space to avoid underflow at high iteration counts.
       const lp=Math.log(L.pw);
-      get=i=>T[i]===NO?NaN:Math.log(Math.LN2)+(1-F[i]-T[i])*lp;
+      get=i=>greenLogAt(L,i);
     }
     else if(mode==='waves') get=i=>scalarField(L,'sensitivity')?.[i]??NaN;
     else if(mode==='sens') get=i=>T[i]===NO?NaN:scalarField(L,'sensitivity')?.[i]??NaN;
@@ -826,7 +830,7 @@ function paint(L,mode){
     for(let i=0;i<N;i++){ const v=get(i); if(v!==v){ o[i]=(mode==='waves'||mode==='sens')?floor:T[i]===NO?BLACK:floor; continue; } const t=(v-rng[0])*k; o[i]=Q[t<0?0:t>1023?1023:t|0]; }
     L.rng[mode]=rng;
   }
-  if(L.bottcher)for(let i=0;i<N;i++)if(!Number.isFinite(F[i]))o[i]=BLACK;
+  if(L.bottcher)for(let i=0;i<N;i++)if(!Number.isFinite(mode==='potential'?L.G?.[i]:F[i]))o[i]=BLACK;
   const c=document.createElement('canvas'); c.width=W; c.height=H; c.getContext('2d').putImageData(img,0,0); if(mode==='potential')drawGreenContours(c,L); return c;
 }
 
@@ -835,7 +839,7 @@ function drawGreenContours(canvas,L){
   const {W,H,T,F,pw}=L, N=W*H, v=new Float64Array(N), samples=[];
   const lp=Math.log(pw), offset=Math.log(Math.LN2);
   for(let i=0;i<N;i++){
-    v[i]=T[i]===NO?NaN:offset+(1-F[i]-T[i])*lp;
+    v[i]=greenLogAt(L,i);
     if(Number.isFinite(v[i]))samples.push(v[i]);
   }
   if(samples.length<8)return;
