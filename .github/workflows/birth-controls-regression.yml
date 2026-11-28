@@ -1,7 +1,7 @@
 name: Birth controls regression
 on:
   push:
-    branches: [rotation-coherence-control-design, rotation-coherence, expedition-coherence, expedition-checkpoint, accumulation-first, coherence-render-stability]
+    branches: [rotation-coherence-control-design, rotation-coherence, expedition-coherence, expedition-checkpoint, accumulation-first, coherence-render-stability, coherence-angular-calibration]
   pull_request:
     branches: [main]
     paths: ['explore/birth-of-structure-lab/**', '.github/workflows/birth-controls-regression.yml']
@@ -30,6 +30,8 @@ jobs:
           PY
       - name: Cycle evolution regression
         run: node --test explore/birth-of-structure-lab/cycle-evolution.test.cjs
+      - name: Coherence angular calibration
+        run: node --test explore/birth-of-structure-lab/coherence-calibration.test.cjs
       - name: Install browser test dependency
         run: |
           npm install --no-save --package-lock=false playwright
