@@ -189,7 +189,7 @@ function setCoord(c,type){
   if(type==='bottcher'&&((c.fractal!=='julia'&&c.fractal!=='mandelbrot')||(c.fractal==='julia'&&c.juliaPower!==2))){toast('Böttcher coordinates require a quadratic Julia or Mandelbrot set',2700);return false;}
   const entering=type==='logpolar'&&!zeroLog(c);
   c.bottcher=type==='bottcher';c.polar=type==='polar'||type==='logpolar';c.logPolar=type==='logpolar';
-  if(entering&&zeroLog(c)){c.logOuter=Math.log(Math.max(1e-12,view.w/2));c.logSpan=Math.log(100);}
+  if(entering&&zeroLog(c)){const floor=logInnerFloor(c);c.logOuter=Math.max(floor+.05,Math.log(Math.max(1e-12,view.w/2)));c.logSpan=Math.max(.05,Math.min(Math.log(100),(c.logOuter-floor)/2));}
   if(type==='logpolar'&&!(c.logSpan>0)){c.logOuter=Math.log(Math.max(1e-12,view.w/2));c.logSpan=Math.log(10000);}
   return true;
 }
