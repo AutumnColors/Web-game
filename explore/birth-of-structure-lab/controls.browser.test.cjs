@@ -110,3 +110,22 @@ test('desktop camera orientation, live layer, capture and return',async()=>{
  assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });
+
+test('coherence zoom settles and stays deterministic without escape events',async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+ const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765/explore/birth-of-structure-lab/',{waitUntil:'load'});
+ await page.evaluate(()=>{document.querySelector('#cfg').classList.remove('on');const F=window.FractalLab;F.apply({...F.clone(F.cfg),fractal:'julia',juliaPower:17,seed:{re:0,im:0},mode:'coherence',iter:0,stopMode:'outward'},{cx:0,cy:0,w:.6,a:0});});
+ await page.waitForFunction(()=>window.FractalLab.settled(),{},{timeout:60000});
+ await page.evaluate(()=>{const F=window.FractalLab;F.apply(F.clone(F.cfg),{...F.view,w:F.view.w*.9});});
+ await page.waitForFunction(()=>window.FractalLab.settled(),{},{timeout:60000});
+ const snapshot=()=>page.evaluate(()=>({job:cur.id,iterations:cur.maxIt,budget:itFor(view.w),boost,dirty,queued:queue.filter(q=>q.tag==='main').length,complete:cur.passes.every(p=>p.left<=0),pixels:base.canvas?base.canvas.toDataURL():document.querySelector('#c').toDataURL()}));
+ const first=await snapshot();assert.equal(first.iterations,first.budget);assert.ok(first.iterations<1000);assert.equal(first.dirty,false);assert.equal(first.queued,0);assert.equal(first.complete,true);
+ await page.waitForTimeout(2500);assert.deepEqual(await snapshot(),first);
+ await page.evaluate(()=>{const F=window.FractalLab;F.apply(F.clone(F.cfg),{...F.view});});
+ await page.waitForFunction(()=>window.FractalLab.settled(),{},{timeout:60000});
+ const second=await snapshot();assert.equal(second.iterations,first.iterations);assert.equal(second.pixels,first.pixels);assert.deepEqual(errors,[]);
+ }finally{await browser.close();}
+});
