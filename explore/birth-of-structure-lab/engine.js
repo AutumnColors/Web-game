@@ -33,7 +33,7 @@ const FRACTALS=[
   {v:'multibrot',  t:'Multibrot',  s:'z → zⁿ + c'}
 ];
 const MODES=[
- {v:'coherence',t:'Rotation coherence',s:'Mean resultant length of local derivative rotations; fixed range 0–1. For integer degree and c=0, average the complex resultant over a Gaussian pixel-angle aperture.',tag:'Rotation coherence'},
+ {v:'coherence',t:'Rotation coherence',s:'Mean resultant length of local derivative rotations; fixed range 0–1. For Cartesian integer degree and c=0, average the complex resultant over a Gaussian pixel-angle aperture.',tag:'Rotation coherence'},
 {v:'normphase',t:'Normalized phase',s:'Böttcher angle of the superattracting cycle (any centre c)',tag:'Normalized phase'},
 {v:'stablephase',t:'Stable phase',s:'arg of the derivative without convergence stopping (any centre c)',tag:'Stable phase'},
 {v:'jointmag',t:'Combined magnitude',s:'Hypot of divergence and curl',tag:'Joint magnitude'},
@@ -267,7 +267,7 @@ onmessage=e=>{
   const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float64Array(N):null, DLD=needDLD?new Float32Array(N):null, A=needD?new Float64Array(N):null, C=m.coherence?new Float64Array(N):null;
   const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=pw>1?1/Math.log(pw):0;
   let minN=1e9;
-  const monomial=m.coherence&&julia&&kr===0&&ki===0&&Number.isInteger(pw)&&pw>=2;
+  const monomial=m.coherence&&julia&&!polar&&!bottcher&&kr===0&&ki===0&&Number.isInteger(pw)&&pw>=2;
   const pixelStep=Math.max(Math.hypot(exr,exi),Math.hypot(eyr,eyi));
   for(let r=0;r<rows;r++){
     const Rw=y0row+r, rr=or+Rw*eyr, ri=oi+Rw*eyi;
@@ -289,7 +289,7 @@ onmessage=e=>{
         if(quick && !needD && !needDLD && stopMode==='outward' && R2>=4){ const xr=cr-0.25, q=xr*xr+ci*ci; if(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625){ T[i]=65535; continue; } }
       }
       let sumCos=0,sumSin=0,phaseCount=0;
-      const angularSigma=monomial?Math.max(16*Number.EPSILON,(polar||bottcher?2*Math.PI/W:pixelStep/Math.hypot(pr,pq))/Math.sqrt(12)):0;
+      const angularSigma=monomial?Math.max(16*Number.EPSILON,pixelStep/(Math.sqrt(12)*Math.hypot(pr,pq))):0;
       const calibrated=monomial?monomialCoherence(pr,pq,pw,maxIt,R2,stopMode,angularSigma):NaN;
        let zr2=zr*zr, zi2=zi*zi, n=0, qr=zr, qi=zi, lim=8, cnt=0, inside=false;
       if(needDLD){
