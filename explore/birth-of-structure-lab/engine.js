@@ -211,7 +211,7 @@ function parameterLogPhi(cr,ci){
  }
  return [lr,li,ar,ai];
 }
-function parameterInverse(u,theta){
+function parameterInverseFar(u,theta){
  const wr=Math.exp(u)*Math.cos(theta),wi=Math.exp(u)*Math.sin(theta);
  let cr=wr-.5,ci=wi;
  for(let n=0;n<28;n++){
@@ -225,6 +225,47 @@ function parameterInverse(u,theta){
    cr-=sr;ci-=si;
  }
  return [NaN,NaN];
+}
+
+// Continue a parameter ray using dc/d(log G)=G/(Phi'_M/Phi_M).
+// The logarithmic derivative is single-valued even where an argument branch is not.
+function parameterRaySlope(cr,ci){
+  let x=cr,y=ci,dx=1,dy=0,w=1;
+  const cutoff=Math.log1p(Math.hypot(cr,ci))+40;
+  for(let k=0;k<80;k++){
+    const m=Math.hypot(x,y),l=Math.log(m);
+    if(2*l>=cutoff){
+      const den=dx*dx+dy*dy;if(!(den>0)||!Number.isFinite(den))return null;
+      return [l*(x*dx+y*dy)/den,l*(y*dx-x*dy)/den,w*l];
+    }
+    const nr=x*x-y*y+cr,ni=2*x*y+ci,dr=2*(x*dx-y*dy)+1,di=2*(x*dy+y*dx);
+    x=nr;y=ni;dx=dr;dy=di;w*=.5;
+    if(!Number.isFinite(dx)||!Number.isFinite(dy))return null;
+  }
+  return null;
+}
+function parameterInverse(u,theta){
+  const fail=[NaN,NaN];if(!(u>0)||!Number.isFinite(u))return fail;
+  const start=Math.max(3,u),z=parameterInverseFar(start,theta);
+  if(!Number.isFinite(z[0]))return fail;
+  let x=z[0],y=z[1],g=Math.log(start),end=Math.log(u),h=.18,tries=0;
+  function rk(x,y,h){
+    const a=parameterRaySlope(x,y);if(!a)return null;
+    const b=parameterRaySlope(x+h*a[0]/2,y+h*a[1]/2);if(!b)return null;
+    const c=parameterRaySlope(x+h*b[0]/2,y+h*b[1]/2);if(!c)return null;
+    const d=parameterRaySlope(x+h*c[0],y+h*c[1]);if(!d)return null;
+    return [x+h*(a[0]+2*b[0]+2*c[0]+d[0])/6,y+h*(a[1]+2*b[1]+2*c[1]+d[1])/6];
+  }
+  while(g>end+1e-13&&tries++<3000){
+    const step=-Math.min(h,g-end),a=rk(x,y,step),b=rk(x,y,step/2),c=b&&rk(b[0],b[1],step/2);
+    const err=a&&c?Math.hypot(a[0]-c[0],a[1]-c[1]):Infinity,tol=2e-8*Math.max(1,Math.hypot(x,y));
+    if(err>tol){h/=2;if(h<1e-7)return fail;continue;}
+    const nx=c[0]+(c[0]-a[0])/15,ny=c[1]+(c[1]-a[1])/15,q=parameterRaySlope(nx,ny);
+    const goal=Math.exp(g+step);
+    if(!q||Math.abs(q[2]-goal)>Math.max(2e-7,goal*2e-5)){h/=2;if(h<1e-7)return fail;continue;}
+    x=nx;y=ny;g+=step;h=Math.min(.3,h*(err<tol/16?1.6:1.15));
+  }
+  return g<=end+1e-13?[x,y]:fail;
 }
 
 // One whole period from a point z near 0, given in log-polar form (lr = ln|z|, t = arg z), computed without cancellation:
@@ -515,7 +556,7 @@ function parameterLogPhi(cr,ci){
  }
  return [lr,li,ar,ai];
 }
-function parameterInverse(u,theta){
+function parameterInverseFar(u,theta){
  const wr=Math.exp(u)*Math.cos(theta),wi=Math.exp(u)*Math.sin(theta);
  let cr=wr-.5,ci=wi;
  for(let n=0;n<28;n++){
@@ -529,6 +570,47 @@ function parameterInverse(u,theta){
    cr-=sr;ci-=si;
  }
  return [NaN,NaN];
+}
+
+// Continue a parameter ray using dc/d(log G)=G/(Phi'_M/Phi_M).
+// The logarithmic derivative is single-valued even where an argument branch is not.
+function parameterRaySlope(cr,ci){
+  let x=cr,y=ci,dx=1,dy=0,w=1;
+  const cutoff=Math.log1p(Math.hypot(cr,ci))+40;
+  for(let k=0;k<80;k++){
+    const m=Math.hypot(x,y),l=Math.log(m);
+    if(2*l>=cutoff){
+      const den=dx*dx+dy*dy;if(!(den>0)||!Number.isFinite(den))return null;
+      return [l*(x*dx+y*dy)/den,l*(y*dx-x*dy)/den,w*l];
+    }
+    const nr=x*x-y*y+cr,ni=2*x*y+ci,dr=2*(x*dx-y*dy)+1,di=2*(x*dy+y*dx);
+    x=nr;y=ni;dx=dr;dy=di;w*=.5;
+    if(!Number.isFinite(dx)||!Number.isFinite(dy))return null;
+  }
+  return null;
+}
+function parameterInverse(u,theta){
+  const fail=[NaN,NaN];if(!(u>0)||!Number.isFinite(u))return fail;
+  const start=Math.max(3,u),z=parameterInverseFar(start,theta);
+  if(!Number.isFinite(z[0]))return fail;
+  let x=z[0],y=z[1],g=Math.log(start),end=Math.log(u),h=.18,tries=0;
+  function rk(x,y,h){
+    const a=parameterRaySlope(x,y);if(!a)return null;
+    const b=parameterRaySlope(x+h*a[0]/2,y+h*a[1]/2);if(!b)return null;
+    const c=parameterRaySlope(x+h*b[0]/2,y+h*b[1]/2);if(!c)return null;
+    const d=parameterRaySlope(x+h*c[0],y+h*c[1]);if(!d)return null;
+    return [x+h*(a[0]+2*b[0]+2*c[0]+d[0])/6,y+h*(a[1]+2*b[1]+2*c[1]+d[1])/6];
+  }
+  while(g>end+1e-13&&tries++<3000){
+    const step=-Math.min(h,g-end),a=rk(x,y,step),b=rk(x,y,step/2),c=b&&rk(b[0],b[1],step/2);
+    const err=a&&c?Math.hypot(a[0]-c[0],a[1]-c[1]):Infinity,tol=2e-8*Math.max(1,Math.hypot(x,y));
+    if(err>tol){h/=2;if(h<1e-7)return fail;continue;}
+    const nx=c[0]+(c[0]-a[0])/15,ny=c[1]+(c[1]-a[1])/15,q=parameterRaySlope(nx,ny);
+    const goal=Math.exp(g+step);
+    if(!q||Math.abs(q[2]-goal)>Math.max(2e-7,goal*2e-5)){h/=2;if(h<1e-7)return fail;continue;}
+    x=nx;y=ny;g+=step;h=Math.min(.3,h*(err<tol/16?1.6:1.15));
+  }
+  return g<=end+1e-13?[x,y]:fail;
 }
 
 const wrap=a=>{ a=(a+Math.PI)%TAU; if(a<0) a+=TAU; return a-Math.PI; };
