@@ -6,6 +6,7 @@
 let back=null;
 function release(quick){
   if(back) return;
+  if(zeroLog()){logPlaying=false;cfg.logOuter=Math.log(HOME.w/2);view.a=Math.PI;syncLogCamera();dirty=true;needDraw=true;updateZoomLimit();return;}
   externalZoomLimit='';updateZoomLimit();
   endGesture(); vel.x=vel.y=0; rotAnim=null;
   const from={...view}, to={...HOME}, decades=Math.abs(Math.log10(to.w/from.w));
@@ -26,6 +27,13 @@ function stepBack(now,dt){
 /* ---------- moving the camera ---------- */
 const limitMarker=$('zoomLimitMarker');
 let externalZoomLimit='';
+let logPlaying=false,logLastStep=0;
+function zeroLog(c=cfg){return c.fractal==='julia'&&c.polar&&c.logPolar&&!c.bottcher;}
+function logInnerFloor(c=cfg){const d=c.juliaPower,a=Math.hypot(c.seed.re,c.seed.im);return Math.max(-32,d>0&&a>0?Math.log(8*Number.EPSILON*a)/d:-32);}
+function syncLogCamera(){if(!zeroLog())return;view.cx=0;view.cy=0;cfg.logSpan=Math.max(.05,Math.min(cfg.logSpan,Math.log(HOME.w*1.1)-logInnerFloor()));cfg.logOuter=Math.max(logInnerFloor()+cfg.logSpan,Math.min(Math.log(HOME.w*1.1),cfg.logOuter));view.w=2*Math.exp(cfg.logOuter);}
+function shiftLog(delta){const old=cfg.logOuter;cfg.logOuter-=delta;syncLogCamera();if(cfg.logOuter===old&&delta>0)logPlaying=false;if(cfg.logOuter!==old){lastMin=0;boost=1;dirty=true;needDraw=true;}updateZoomLimit();}
+window.birthToggleLogTravel=()=>{if(!zeroLog())return false;logPlaying=!logPlaying;logLastStep=0;return logPlaying;};
+window.birthLogTravelActive=()=>logPlaying;
 function cameraLimit(v=view){
  const precision=precisionWidth(v),construction=eng.geometry?geometryMinWidth(cfg):0,user=cfg.depth?HOME.w/Math.pow(2,cfg.depth):0;
  const width=Math.max(precision,construction,user);
@@ -33,17 +41,19 @@ function cameraLimit(v=view){
 }
 const minW=()=>cameraLimit().width;
 function updateZoomLimit(){
- const lim=cameraLimit(),reason=externalZoomLimit||(view.w<=lim.width*(1+1e-8)?lim.reason:'');
+ const lim=cameraLimit(),reason=externalZoomLimit||(zeroLog()?(cfg.logOuter-cfg.logSpan<=logInnerFloor()+1e-9?'Numerical orbit resolution limit':''):(view.w<=lim.width*(1+1e-8)?lim.reason:''));
  if(limitMarker.textContent!==reason)limitMarker.textContent=reason;limitMarker.hidden=!reason;
 }
 window.birthMarkZoomLimit=reason=>{externalZoomLimit=reason||'';updateZoomLimit();};
 function clampView(){
+  if(zeroLog()){syncLogCamera();updateZoomLimit();return;}
   view.w=Math.max(minW(),Math.min(view.w,HOME.w*2.2));
   const mx=eng.cxm===undefined?eng.hx:eng.cxm;
   view.cx=Math.max(mx-eng.bx,Math.min(mx+eng.bx,view.cx)); view.cy=Math.max(eng.hy-eng.by,Math.min(eng.hy+eng.by,view.cy));
   view.w=Math.max(view.w,cameraLimit().width); updateZoomLimit();
 }
 function zoomAt(px,py,f){
+  if(zeroLog()){logPlaying=false;shiftLog(Math.log(f));return;}
   if(cfg.bottcher){const mid=Math.sqrt(cfg.bottcherGMin*cfg.bottcherGMax),half=Math.log(cfg.bottcherGMax/cfg.bottcherGMin)/(2*f);cfg.bottcherGMin=Math.max(1e-5,mid*Math.exp(-half));cfg.bottcherGMax=Math.min(8,mid*Math.exp(half));dirty=true;needDraw=true;return;}
   if(cfg.polar){if(cfg.logPolar)cfg.logSpan=Math.max(.05,Math.min(36,cfg.logSpan/f));else view.w=Math.max(1e-12,Math.min(HOME.w*2.2,view.w/f));dirty=true;needDraw=true;return;}
   if(f<1)externalZoomLimit='';
@@ -53,6 +63,7 @@ function zoomAt(px,py,f){
 }
 function rotateAt(px,py,dA){if(cfg.bottcher){view.a=wrap(view.a+dA);dirty=true;needDraw=true;return;}if(cfg.polar){view.a=wrap(view.a+dA);dirty=true;needDraw=true;return;} const [wx,wy]=toWorld(px,py); view.a=wrap(view.a+dA); pinTo(px,py,wx,wy); clampView(); dirty=true; needDraw=true; }
 function panBy(dx,dy){
+  if(zeroLog()){logPlaying=false;view.a=wrap(view.a-TAU*dx/Wd);shiftLog(-dy/Hd*cfg.logSpan);dirty=true;needDraw=true;return;}
   if(cfg.bottcher){view.a=wrap(view.a-TAU*dx/Wd);const factor=Math.exp(dy/Hd*Math.log(cfg.bottcherGMax/cfg.bottcherGMin));cfg.bottcherGMin=Math.max(1e-5,Math.min(8,cfg.bottcherGMin*factor));cfg.bottcherGMax=Math.max(cfg.bottcherGMin*1.01,Math.min(8,cfg.bottcherGMax*factor));dirty=true;needDraw=true;return;}
   if(cfg.polar){view.a=wrap(view.a-TAU*dx/Wd);if(cfg.logPolar)cfg.logOuter=Math.max(-32,Math.min(32,cfg.logOuter+dy/Hd*cfg.logSpan));else view.w=Math.max(1e-12,Math.min(HOME.w*2.2,view.w*(1+dy/Hd*2)));dirty=true;needDraw=true;return;}
   const s=view.w/Wd, c=Math.cos(view.a), n=Math.sin(view.a);
@@ -176,7 +187,9 @@ const coordOf=c=>c.bottcher?'bottcher':c.polar?(c.logPolar?'logpolar':'polar'):'
 function setCoord(c,type){
   if(type!=='cartesian'&&(diffMode(c.mode)||c.mode==='distance'||c.mode==='scalar'&&scalarSourceFor(c.fractal,c.scalarSource)==='distance')){toast('Scalar distance and derivatives require Cartesian coordinates',2700);return false;}
   if(type==='bottcher'&&((c.fractal!=='julia'&&c.fractal!=='mandelbrot')||(c.fractal==='julia'&&c.juliaPower!==2))){toast('Böttcher coordinates require a quadratic Julia or Mandelbrot set',2700);return false;}
+  const entering=type==='logpolar'&&!zeroLog(c);
   c.bottcher=type==='bottcher';c.polar=type==='polar'||type==='logpolar';c.logPolar=type==='logpolar';
+  if(entering&&zeroLog(c)){const floor=logInnerFloor(c);c.logOuter=Math.max(floor+.05,Math.log(Math.max(1e-12,view.w/2)));c.logSpan=Math.max(.05,Math.min(Math.log(100),(c.logOuter-floor)/2));}
   if(type==='logpolar'&&!(c.logSpan>0)){c.logOuter=Math.log(Math.max(1e-12,view.w/2));c.logSpan=Math.log(10000);}
   return true;
 }
@@ -188,13 +201,15 @@ function syncCoordPickers(){
     el.value=coordOf(c);
     el.querySelector('option[value="bottcher"]').disabled=c.fractal!=='julia'&&c.fractal!=='mandelbrot';
   }
-  $('coordHelp').textContent=draft.bottcher?'Exterior only: Julia dynamical plane or Mandelbrot parameter plane. The interior is not represented.':draft.polar?'Angle runs horizontally; radius vertically.':'Original complex-plane view.';
-  $('coordHelpQuick').textContent=cfg.bottcher?'Exterior only; drag to shift angle/potential.':cfg.polar?'Drag to change angle and radial range.':'Original complex-plane view.';
+  $('coordHelp').textContent=draft.bottcher?'Exterior only: Julia dynamical plane or Mandelbrot parameter plane. The interior is not represented.':zeroLog(draft)?'Full angle horizontally; logarithmic depth downward, centered at zero.':draft.polar?'Angle runs horizontally; radius vertically.':'Original complex-plane view.';
+  $('coordHelpQuick').textContent=cfg.bottcher?'Exterior only; drag to shift angle/potential.':zeroLog()?'Pinch / wheel to travel toward zero. Drag horizontally to rotate; vertically to change depth.':cfg.polar?'Drag to change angle and radial range.':'Original complex-plane view.';
 }
 function syncPolarButton(){syncCoordPickers();}
 $('coordPicker').onchange=e=>{if(setCoord(draft,e.target.value))syncCfg();else syncCoordPickers();};
 $('coordPickerQuick').onchange=e=>{
+  const previous=coordOf(cfg);
   if(!setCoord(cfg,e.target.value)){syncCoordPickers();return;}
+  logPlaying=false;if(zeroLog()){if(previous!=='logpolar')view.a=Math.PI;syncLogCamera();}if(previous!==coordOf(cfg)){base=null;under=null;cur=null;lastMin=0;boost=1;}
   if(cfg.bottcher)view.a=0;
   syncCoordPickers();updateChip();dirty=true;needDraw=true;closePop();writeHash();
 };
@@ -238,7 +253,7 @@ function applyConfig(next,cam){
   if(next.bottcher&&next.fractal!=='julia'&&next.fractal!=='mandelbrot')next.bottcher=false;
   const oldDistance=distanceActive();
   const world=!started || next.fractal!==cfg.fractal || (isGeometry(next.fractal)&&(next.geometryDepth!==cfg.geometryDepth||JSON.stringify(geometryParameters(next))!==JSON.stringify(geometryParameters(cfg)))) || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im || next.juliaPower!==cfg.juliaPower));
-  const numeric=next.scalarSource!==cfg.scalarSource||next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode || next.bottcher!==cfg.bottcher || next.bottcherGMin!==cfg.bottcherGMin || next.bottcherGMax!==cfg.bottcherGMax || next.polar!==cfg.polar || next.logPolar!==cfg.logPolar;
+  const oldCoord=coordOf(cfg);const numeric=next.scalarSource!==cfg.scalarSource||next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode || next.bottcher!==cfg.bottcher || next.bottcherGMin!==cfg.bottcherGMin || next.bottcherGMax!==cfg.bottcherGMax || next.polar!==cfg.polar || next.logPolar!==cfg.logPolar;
   cfg=clone(next); if(scalarMode(cfg.mode)&&cfg.mode!=='distance'&&activeScalarSource()!=='sensitivity')vectorOverlay.enabled=false;eng=engineOf(cfg); started=true; syncContourSettings(cfg); syncCoordPickers();
   if(cfg.mode==='coherence'&&cfg.fractal!=='julia')cfg.mode='escape';
   if(['stablephase','normphase'].includes(cfg.mode)&&!eng.centre){ cfg.mode='phase'; setTimeout(()=>notify(PHASE_NEEDS+' Showing Rotation phase instead.'),0); }
@@ -248,7 +263,7 @@ function applyConfig(next,cam){
   if(world){ externalZoomLimit='';pin=null; sections=[]; secSel=-1; closeSec(); base=null; back=null; rotAnim=null; glide=null; lastMin=0; boost=1; stats=null; Object.assign(view,HOME); }
   if(cam){if(cam.w>view.w*(1+1e-8))externalZoomLimit=''; view.cx=cam.cx; view.cy=cam.cy; view.w=cam.w; view.a=wrap(cam.a||0); lastMin=0; boost=1; }
   if(oldDistance!==distanceActive()){base=null;under=null;}if(world||numeric||oldDistance!==distanceActive()){ renderHome(); if(pin) pin.r=classify(pin.re,pin.im,eng); }
-  clampView(); dirty=true; repaint(); updateChip(); syncQuick(); writeHash();
+  logPlaying=false;if(oldCoord!==coordOf(cfg)){base=null;under=null;cur=null;if(zeroLog()&&!cam)view.a=Math.PI;}clampView(); dirty=true; repaint(); updateChip(); syncQuick(); writeHash();
 }
 
 /* ---------- configuration screen: edits a draft, nothing changes until "Use this configuration" ---------- */
@@ -259,7 +274,7 @@ const JULIA_EXPONENTS=[2,3,4,5,6,7,8,9,10,-1,-2,-3,-4,-5,-6,-7,-8,0.5,0.75,0.9,1
 const juliaPowerLabel=p=>p===Math.PI?'π':p===Math.E?'e':String(p);
 group($('gJuliaPower'),JULIA_EXPONENTS.map(v=>({v,t:juliaPowerLabel(v)})),()=>draft.juliaPower,v=>{draft.juliaPower=v;syncCfg();thumbs();});
 group($('gPower'),[3,4,5,6,7,8].map(v=>({v,t:'n = '+v})),()=>draft.power,v=>{ draft.power=v; syncCfg(); thumbs(); });
-const CONTROL_LAYER_IDS=['construction','binary','escape','potential','sens','distance','scalar','sgrad','sdiv','shess','scurl','vdiv','vcurl','phase','coherence'];
+const CONTROL_LAYER_IDS=['construction','binary','escape','potential','sens','ridges','distance','scalar','sgrad','sdiv','shess','scurl','vdiv','vcurl','phase','coherence'];
 const CONTROL_LAYERS=CONTROL_LAYER_IDS.map(v=>MODES.find(m=>m.v===v)).filter(Boolean);
 group($('gMode'),CONTROL_LAYERS,()=>draft.mode,v=>{ draft.mode=v; syncCfg(); });
 group($('gPal'),Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t})),()=>draft.palette,v=>{ draft.palette=v; syncCfg(); thumbs(); });
@@ -535,6 +550,8 @@ function frame(now){
       rotateAt(Wd/2,Hd/2,target-rotAnim.done); rotAnim.done=target; if(t>=1){ view.a=0; rotAnim=null; }
     }
   }
+  if(logPlaying&&(!zeroLog()||window.birthExpeditionActive?.()||anySheet()))logPlaying=false;
+  if(logPlaying&&settled()&&now-logLastStep>=100){logLastStep=now;shiftLog(.12);}
   updateZoomLimit();
   const roughDone=cur && cur.passes[0].left<=0;
   if(dirty && (!cur || roughDone || (!back && now-lastStart>140))) startJob();
