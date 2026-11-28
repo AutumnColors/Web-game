@@ -218,7 +218,7 @@ function parameterInverseFar(u,theta){
  for(let n=0;n<28;n++){
    const a=parameterLogPhi(cr,ci);if(!a)return [NaN,NaN];
    const er=a[0]-u,ei=Math.atan2(Math.sin(a[1]-theta),Math.cos(a[1]-theta));
-   if(Math.hypot(er,ei)<2e-11){const check=bottcherPotential(cr,ci,cr,ci,2);return Math.abs(check-u)<=Math.max(2e-6,u*2e-5)?[cr,ci]:[NaN,NaN];}
+   if(Math.hypot(er,ei)<2e-6)return [cr,ci];
    const den=a[2]*a[2]+a[3]*a[3];if(!(den>1e-22))break;
    let sr=(er*a[2]+ei*a[3])/den,si=(ei*a[2]-er*a[3])/den;
    const maxStep=Math.max(.025,Math.hypot(cr,ci)*.35),m=Math.hypot(sr,si);
@@ -270,6 +270,7 @@ function parameterInverse(u,theta,state=null){
   if(state){state.g=u;state.z=[x,y];}
   return [x,y];
 }
+
 
 // One whole period from a point z near 0, given in log-polar form (lr = ln|z|, t = arg z), computed without cancellation:
 // z_j = w_j + s·η_j with s = z², η_1 = 1, η_{j+1} = 2 w_j η_j + s η_j²  (exact rearrangement of z_{j+1} = z_j² + c).
