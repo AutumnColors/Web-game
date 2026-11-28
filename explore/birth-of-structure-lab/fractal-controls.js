@@ -1,6 +1,6 @@
 'use strict';
 function mountFractalControls(root,close){
- const initial=clone(cfg),next=clone(cfg),family=cfg.fractal,geo=isGeometry(family),busy=()=>!!(window.birthExpeditionActive?.()||window.birthRecordingActive?.());
+ const next=clone(cfg),family=cfg.fractal,geo=isGeometry(family),busy=()=>!!(window.birthExpeditionActive?.()||window.birthRecordingActive?.());
  const title=document.createElement('b');title.textContent=eng.name;root.append(title);
  const note=document.createElement('p');note.className='note';note.textContent='Change the mathematical construction without moving the camera. Apply when ready.';root.append(note);
  const form=document.createElement('div');form.style.cssText='display:grid;gap:12px';root.append(form);
@@ -10,7 +10,7 @@ function mountFractalControls(root,close){
  let seedInput;
  if(geo){const g=GEOMETRIC[family];addRange('Construction depth','geometryDepth',1,g.max,1,geometryDepth(next));for(const d of GEOMETRY_CONTROLS[family])addRange(d.label,d.key,d.min,d.max,d.step,geometryParameters(next)[d.key]);}
  else {
-  if(family==='julia'){addSelect('Exponent','juliaPower',JULIA_EXPONENTS.map(v=>[v,juliaPowerLabel(v)]),next.juliaPower);const row=document.createElement('label');row.style.cssText='display:grid;gap:5px;font-size:13px';seedInput=document.createElement('input');seedInput.type='text';seedInput.setAttribute('aria-label','Julia parameter c');seedInput.value=cText(next.seed.re,next.seed.im,15).replace(/−/g,'-');seedInput.style.cssText='width:100%;background:#18232d;color:#fff;padding:8px;border:1px solid #66738c;border-radius:8px';row.append('Julia parameter c',seedInput);form.append(row);}
+  if(family==='julia'){addSelect('Exponent','juliaPower',[...new Set([...JULIA_EXPONENTS,next.juliaPower])].map(v=>[v,juliaPowerLabel(v)]),next.juliaPower);const row=document.createElement('label');row.style.cssText='display:grid;gap:5px;font-size:13px';seedInput=document.createElement('input');seedInput.type='text';seedInput.setAttribute('aria-label','Julia parameter c');seedInput.value=cText(next.seed.re,next.seed.im,15).replace(/−/g,'-');seedInput.style.cssText='width:100%;background:#18232d;color:#fff;padding:8px;border:1px solid #66738c;border-radius:8px';row.append('Julia parameter c',seedInput);form.append(row);}
   if(family==='multibrot')addSelect('Polynomial degree','power',[3,4,5,6,7,8].map(v=>[v,String(v)]),next.power);
   if(family==='mandelbrot')note.textContent='The quadratic Mandelbrot rule is fixed. These controls change the finite-orbit calculation, not the mathematical set.';
   const iterations=[0,100,250,500,1000,2000,4000,8000,16000,40000];if(!iterations.includes(next.iter))iterations.push(next.iter);iterations.sort((a,b)=>a-b);
