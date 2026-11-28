@@ -512,11 +512,11 @@ function mainStrip(m){
   const L=cur.passes[m.pass]; fill(L,m);
   if(L.left>0) return;
   if(m.pass===0) roughMs=0.6*roughMs+0.4*(performance.now()-lastStart);
-  if(!cfg.iter&&!window.birthPreviewQuality){
+  if(!cfg.iter&&!window.birthPreviewQuality&&!engMsg(eng).coherence&&m.pass===cur.passes.length-1){
     if(L.minN<1e9){ lastMin=L.minN; boost=1; }
     else if(!back){
       if(cur.maxIt<CAP){ boost*=3; dirty=true; }
-      else if(m.pass===0){ queue=queue.filter(q=>!(q.tag==='main' && q.job===cur.id)); cur.passes.forEach(p=>p.left=0); }
+      
     }
   }
   if(!base || base.job!==cur.id || base.pass<m.pass){
