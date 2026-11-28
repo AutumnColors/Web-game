@@ -15,6 +15,7 @@ function place(img,L,sw,sh,sx0,sy0,dw,dh){   // draw a layer (or the kept frame)
     const dx=((-wrap(view.a-L.a)/TAU*Wd)%Wd+Wd)%Wd;
     if(!!L.logPolar!==!!cfg.logPolar)return;
     const h=cfg.logPolar?Hd*L.logSpan/cfg.logSpan:Hd,y=cfg.logPolar?Hd*(cfg.logOuter-L.logOuter)/cfg.logSpan:0;
+    if(cfg.logPolar){const span=cfg.logAngleSpan||TAU,oldSpan=L.logAngleSpan||TAU,w=Wd*oldSpan/span,period=Wd*TAU/span,left=Wd/2+Wd*wrap(L.a-view.a)/span-w/2;for(const x of [left-period,left,left+period])if(x<Wd&&x+w>0)ctx.drawImage(img,sx0,sy0,sw,sh,x,y,w,h);return;}
     for(const x of [dx-Wd,dx]) ctx.drawImage(img,sx0,sy0,sw,sh,x,y,Wd,h);
     return;
   }
@@ -52,7 +53,7 @@ function draw(overlays=!cfg.clean){
   if(!spatial || frameFallback.width!==Wd || frameFallback.height!==Hd || !hasFallback){
   if(frameFallback.width!==Wd || frameFallback.height!==Hd){ frameFallback.width=Wd; frameFallback.height=Hd; }
   frameFallbackCtx.globalCompositeOperation='copy'; frameFallbackCtx.drawImage(cv,0,0); frameFallbackCtx.globalCompositeOperation='source-over';
-  hasFallback=true; fbView={cx:view.cx,cy:view.cy,w:view.w,a:view.a,logPolar:!!cfg.logPolar,logOuter:cfg.logOuter,logSpan:cfg.logSpan}; fbRing=ringView();
+  hasFallback=true; fbView={cx:view.cx,cy:view.cy,w:view.w,a:view.a,logPolar:!!cfg.logPolar,logAngleSpan:cfg.logAngleSpan||TAU,logOuter:cfg.logOuter,logSpan:cfg.logSpan}; fbRing=ringView();
   }
   if(four){ ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(Wd/2-DPR/2,0,DPR,Hd); ctx.fillRect(0,Hd/2-DPR/2,Wd,DPR); }
   if(typeof juliaFields!=='undefined') juliaFields.draw(); // hides its panel outside Julia; draws nothing in four-panel mode
@@ -97,7 +98,7 @@ function textShadow(t,x,y,font,align,col='#fff'){
   ctx.font=font; ctx.textAlign=align; ctx.textBaseline='alphabetic';
   ctx.lineJoin='round'; ctx.lineWidth=3.5; ctx.strokeStyle='rgba(0,0,0,.65)'; ctx.strokeText(t,x,y); ctx.fillStyle=col; ctx.fillText(t,x,y);
 }
-function drawLogAxes(){const w=Wd/DPR,h=Hd/DPR;ctx.save();ctx.lineWidth=.65;ctx.setLineDash([3,5]);for(let j=0;j<4;j++){const a=j*Math.PI/2,x=((wrap(a-view.a)/TAU+.5)%1+1)%1*w;ctx.strokeStyle='rgba(255,255,255,.22)';line(x,0,x,h);textShadow(j*90+'°',Math.min(w-21,Math.max(19,x)),Math.max(64,SA.t+60),'11px system-ui','center');}ctx.setLineDash([]);for(let j=0;j<3;j++){const y=h*(.15+j*.35);textShadow('r = '+Math.exp(cfg.logOuter-cfg.logSpan*y/h).toExponential(2),w-12,y,'11px system-ui','right');}ctx.restore();}
+function drawLogAxes(){const w=Wd/DPR,h=Hd/DPR;ctx.save();ctx.lineWidth=.65;ctx.setLineDash([3,5]);const span=cfg.logAngleSpan||TAU,step=[1,2,5,10,15,30,45,90].find(d=>d*Math.PI/180>=span/6)||90;for(let j=0;j<360;j+=step){const a=j*Math.PI/180,x=(wrap(a-view.a)/span+.5)*w;if(x<-.01||x>w+.01)continue;ctx.strokeStyle='rgba(255,255,255,.22)';line(x,0,x,h);textShadow(j+'°',Math.min(w-21,Math.max(19,x)),Math.max(64,SA.t+60),'11px system-ui','center');}ctx.setLineDash([]);for(let j=0;j<3;j++){const y=h*(.15+j*.35);textShadow('r = '+Math.exp(cfg.logOuter-cfg.logSpan*y/h).toExponential(2),w-12,y,'11px system-ui','right');}ctx.restore();}
 function depthText(){ const D=depthOf(view.w); return 'depth '+minus((Math.abs(D)<0.05?0:D).toFixed(1))+(cfg.depth?' / '+cfg.depth:''); }
 function drawScale(){
   const cssW=Wd/DPR, perPx=view.w/cssW*(cmp()?2:1), L=niceLen(perPx*(cmp()?90:130)), len=L/perPx;
