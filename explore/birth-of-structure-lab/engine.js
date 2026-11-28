@@ -142,7 +142,7 @@ function bottcherPotential(zr,zi,cr,ci,d){
 }
 // Lift a fixed-angle radial path from infinity. At every inverse level choose the root
 // continuous with its previous value, never the root closest to the asymptotic angle alone.
-function bottcherInverse(u,theta,cr,ci,d=2,critical=0){
+function bottcherInverse(u,theta,cr,ci,d=2,critical=0,state=null){
   const fail=[NaN,NaN],TAU=2*Math.PI;
   if(!(u>0)||!Number.isFinite(u)||!Number.isInteger(d)||d<2||u<=critical)return fail;
   if(cr===0&&ci===0)return [Math.exp(u)*Math.cos(theta),Math.exp(u)*Math.sin(theta)];
@@ -166,7 +166,7 @@ function bottcherInverse(u,theta,cr,ci,d=2,critical=0){
     }
     return out;
   }
-  prev=lift(g,[]);if(!prev)return fail;
+  if(state&&state.g>=u&&state.prev){g=state.g;prev=state.prev;angles=state.angles;}else{prev=lift(g,[]);if(!prev)return fail;}
   while(g>u*(1+1e-14)&&attempts++<512){
     const next=Math.max(u,g*Math.exp(-step)),q=lift(next,prev);
     if(!q){step/=2;if(step<1e-7)return fail;continue;}
@@ -175,6 +175,7 @@ function bottcherInverse(u,theta,cr,ci,d=2,critical=0){
   if(g>u*(1+1e-14))return fail;
   const z=prev[0],check=bottcherPotential(z[0],z[1],cr,ci,d);
   if(!Number.isFinite(check)||Math.abs(check-u)>Math.max(2e-12,u*2e-5))return fail;
+  if(state){state.g=g;state.prev=prev;state.angles=angles;}
   return z;
 }
 
@@ -217,7 +218,7 @@ function parameterInverseFar(u,theta){
  for(let n=0;n<28;n++){
    const a=parameterLogPhi(cr,ci);if(!a)return [NaN,NaN];
    const er=a[0]-u,ei=Math.atan2(Math.sin(a[1]-theta),Math.cos(a[1]-theta));
-   if(Math.hypot(er,ei)<2e-6){const check=bottcherPotential(cr,ci,cr,ci,2);return Math.abs(check-u)<=Math.max(2e-6,u*2e-5)?[cr,ci]:[NaN,NaN];}
+   if(Math.hypot(er,ei)<2e-11){const check=bottcherPotential(cr,ci,cr,ci,2);return Math.abs(check-u)<=Math.max(2e-6,u*2e-5)?[cr,ci]:[NaN,NaN];}
    const den=a[2]*a[2]+a[3]*a[3];if(!(den>1e-22))break;
    let sr=(er*a[2]+ei*a[3])/den,si=(ei*a[2]-er*a[3])/den;
    const maxStep=Math.max(.025,Math.hypot(cr,ci)*.35),m=Math.hypot(sr,si);
@@ -244,9 +245,9 @@ function parameterRaySlope(cr,ci){
   }
   return null;
 }
-function parameterInverse(u,theta){
+function parameterInverse(u,theta,state=null){
   const fail=[NaN,NaN];if(!(u>0)||!Number.isFinite(u))return fail;
-  const start=Math.max(3,u),z=parameterInverseFar(start,theta);
+  const reuse=state&&state.g>=u&&state.z,start=reuse?state.g:Math.max(3,u),z=reuse?state.z:parameterInverseFar(start,theta);
   if(!Number.isFinite(z[0]))return fail;
   let x=z[0],y=z[1],g=Math.log(start),end=Math.log(u),h=.18,tries=0;
   function rk(x,y,h){
@@ -265,7 +266,9 @@ function parameterInverse(u,theta){
     if(!q||Math.abs(q[2]-goal)>Math.max(2e-7,goal*2e-5)){h/=2;if(h<1e-7)return fail;continue;}
     x=nx;y=ny;g+=step;h=Math.min(.3,h*(err<tol/16?1.6:1.15));
   }
-  return g<=end+1e-13?[x,y]:fail;
+  if(g>end+1e-13)return fail;
+  if(state){state.g=u;state.z=[x,y];}
+  return [x,y];
 }
 
 // One whole period from a point z near 0, given in log-polar form (lr = ln|z|, t = arg z), computed without cancellation:
@@ -356,6 +359,7 @@ onmessage=e=>{
   let minN=1e9;
   const monomial=m.coherence&&julia&&!polar&&!bottcher&&kr===0&&ki===0&&Number.isInteger(pw)&&pw>=2;
   const pixelStep=Math.max(Math.hypot(exr,exi),Math.hypot(eyr,eyi));
+  const rayStates=bottcher?Array.from({length:W},()=>({})):null;
   for(let r=0;r<rows;r++){
     const Rw=y0row+r, rr=or+Rw*eyr, ri=oi+Rw*eyi;
     for(let x=0;x<W;x++){
@@ -364,7 +368,7 @@ onmessage=e=>{
         const t=(Rw+0.5)/polarH;
         const u=Math.exp(Math.log(bottcherGMax)*(1-t)+Math.log(bottcherGMin)*t);
         const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5);
-        [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki,pw,bottcherCritical||0):pw===2?parameterInverse(u,theta):[NaN,NaN];
+        [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki,pw,bottcherCritical||0,rayStates[x]):pw===2?parameterInverse(u,theta,rayStates[x]):[NaN,NaN];
       } else if(polar){ const theta=polarAngle+(logPolar?(logAngleSpan||2*Math.PI):2*Math.PI)*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
       if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;if(A)A[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
       if(m.geometry){const q=geometrySample(m.geometry,pr,pq,m.geometryDepth,m.geometryParams);T[i]=q[0]?q[1]:65535;F[i]=q[1];if(q[0])minN=Math.min(minN,q[1]);if(S)S[i]=NaN;if(A)A[i]=NaN;if(C)C[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
@@ -487,7 +491,7 @@ function bottcherPotential(zr,zi,cr,ci,d){
 }
 // Lift a fixed-angle radial path from infinity. At every inverse level choose the root
 // continuous with its previous value, never the root closest to the asymptotic angle alone.
-function bottcherInverse(u,theta,cr,ci,d=2,critical=0){
+function bottcherInverse(u,theta,cr,ci,d=2,critical=0,state=null){
   const fail=[NaN,NaN],TAU=2*Math.PI;
   if(!(u>0)||!Number.isFinite(u)||!Number.isInteger(d)||d<2||u<=critical)return fail;
   if(cr===0&&ci===0)return [Math.exp(u)*Math.cos(theta),Math.exp(u)*Math.sin(theta)];
@@ -511,7 +515,7 @@ function bottcherInverse(u,theta,cr,ci,d=2,critical=0){
     }
     return out;
   }
-  prev=lift(g,[]);if(!prev)return fail;
+  if(state&&state.g>=u&&state.prev){g=state.g;prev=state.prev;angles=state.angles;}else{prev=lift(g,[]);if(!prev)return fail;}
   while(g>u*(1+1e-14)&&attempts++<512){
     const next=Math.max(u,g*Math.exp(-step)),q=lift(next,prev);
     if(!q){step/=2;if(step<1e-7)return fail;continue;}
@@ -520,6 +524,7 @@ function bottcherInverse(u,theta,cr,ci,d=2,critical=0){
   if(g>u*(1+1e-14))return fail;
   const z=prev[0],check=bottcherPotential(z[0],z[1],cr,ci,d);
   if(!Number.isFinite(check)||Math.abs(check-u)>Math.max(2e-12,u*2e-5))return fail;
+  if(state){state.g=g;state.prev=prev;state.angles=angles;}
   return z;
 }
 
@@ -589,9 +594,9 @@ function parameterRaySlope(cr,ci){
   }
   return null;
 }
-function parameterInverse(u,theta){
+function parameterInverse(u,theta,state=null){
   const fail=[NaN,NaN];if(!(u>0)||!Number.isFinite(u))return fail;
-  const start=Math.max(3,u),z=parameterInverseFar(start,theta);
+  const reuse=state&&state.g>=u&&state.z,start=reuse?state.g:Math.max(3,u),z=reuse?state.z:parameterInverseFar(start,theta);
   if(!Number.isFinite(z[0]))return fail;
   let x=z[0],y=z[1],g=Math.log(start),end=Math.log(u),h=.18,tries=0;
   function rk(x,y,h){
@@ -610,7 +615,9 @@ function parameterInverse(u,theta){
     if(!q||Math.abs(q[2]-goal)>Math.max(2e-7,goal*2e-5)){h/=2;if(h<1e-7)return fail;continue;}
     x=nx;y=ny;g+=step;h=Math.min(.3,h*(err<tol/16?1.6:1.15));
   }
-  return g<=end+1e-13?[x,y]:fail;
+  if(g>end+1e-13)return fail;
+  if(state){state.g=u;state.z=[x,y];}
+  return [x,y];
 }
 
 const wrap=a=>{ a=(a+Math.PI)%TAU; if(a<0) a+=TAU; return a-Math.PI; };
@@ -669,7 +676,7 @@ function newLayer(v,W,H,maxIt,withS){
 }
 function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.A&&m.A)L.A.set(m.A,m.y0row*L.W);if(L.C&&m.C)L.C.set(m.C,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
-  const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,bottcherCritical:cfg.bottcher?bottcherCriticalPotential():0,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logAngleSpan:cfg.logAngleSpan||TAU,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;L.geometry=e.geometry;L.geometryDepth=e.geometryDepth;
+  const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,bottcherCritical:cfg.bottcher?bottcherCriticalPotential():0,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logAngleSpan:cfg.logAngleSpan||TAU,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=cfg.bottcher&&tag==='main'?Math.max(8,Math.ceil(L.H/(NW*2))):Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;L.geometry=e.geometry;L.geometryDepth=e.geometryDepth;
   for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,needDLD:!!L.DLD,dldIterations:cfg.dldIterations,...engMsg(e),...extra});
   if(front) queue.unshift(...items); else queue.push(...items);
 }
@@ -696,7 +703,7 @@ function startJob(){
   const passes=window.birthPreviewQuality?[window.birthPreviewQuality.divisor]:back?[6]:PASSES, ring=cfg.polar||cfg.bottcher;
   passes.forEach((ds,p)=>{
     const overscan=ring?1:(back||p<passes.length-1)?OVERSCAN:1;
-    const tw=Math.ceil(Wd*overscan/(ds*div)), th=Math.ceil(Hd*overscan/(ds*div));
+    const cap=cfg.bottcher?Math.max(1,Math.max(Wd,Hd)/(eng.kind===1?900:640)):1,eff=Math.max(ds,cap);const tw=Math.ceil(Wd*overscan/(eff*div)), th=Math.ceil(Hd*overscan/(eff*div));
     const tileView={...v,w:v.w*tw*ds*div/Wd};
     const L=newLayer(tileView,tw,th,maxIt,d); L.ds=ds; cur.passes.push(L);
     strips(L,tileView,'main',{job,pass:p},eng.geometry?{...eng,geometryDepth:budget}:eng,false);
@@ -715,7 +722,7 @@ function mainStrip(m){
   const L=cur.passes[m.pass]; fill(L,m);
   if(L.left>0) return;
   if(m.pass===0) roughMs=0.6*roughMs+0.4*(performance.now()-lastStart);
-  if(!eng.geometry&&!cfg.iter&&!window.birthPreviewQuality&&!cur.coherence&&!distanceActive()&&m.pass===cur.passes.length-1){
+  if(!cfg.bottcher&&!eng.geometry&&!cfg.iter&&!window.birthPreviewQuality&&!cur.coherence&&!distanceActive()&&m.pass===cur.passes.length-1){
     if(L.minN<1e9){ lastMin=L.minN; boost=1; }
     else if(!back){
       if(cur.maxIt<CAP){ boost*=3; dirty=true; }
@@ -818,6 +825,7 @@ function paint(L,mode){
     for(let i=0;i<N;i++){ const v=get(i); if(v!==v){ o[i]=(mode==='waves'||mode==='sens')?floor:T[i]===NO?BLACK:floor; continue; } const t=(v-rng[0])*k; o[i]=Q[t<0?0:t>1023?1023:t|0]; }
     L.rng[mode]=rng;
   }
+  if(L.bottcher)for(let i=0;i<N;i++)if(!Number.isFinite(F[i]))o[i]=BLACK;
   const c=document.createElement('canvas'); c.width=W; c.height=H; c.getContext('2d').putImageData(img,0,0); if(mode==='potential')drawGreenContours(c,L); return c;
 }
 
