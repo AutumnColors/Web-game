@@ -65,7 +65,7 @@ test('desktop camera orientation, live layer, capture and return',async()=>{
  await page.waitForFunction(()=>!document.querySelector('#cfg').classList.contains('on'));
  await page.evaluate(()=>{const F=window.FractalLab;F.apply({...F.clone(F.cfg),fractal:'julia',juliaPower:2,seed:{re:-1.4011551890920506,im:0},mode:'escape'},{cx:0,cy:0,w:3.6,a:0});window.birthSelectExpedition('accumulation');if(!window.birthSaveInitialCheckpoint({zoom:6.264548,interval:12}))throw Error('checkpoint save failed');});
  await page.getByRole('button',{name:'Layers',exact:true}).click();
- await page.getByRole('button',{name:'Sensitivity',exact:true}).click();
+ await page.getByRole('button',{name:'Orbit sensitivity',exact:true}).click();
  await page.getByRole('button',{name:'Expedition',exact:true}).click();
  await page.getByRole('button',{name:'Preview expedition',exact:true}).click();
  try { await page.waitForFunction(()=>{const s=window.birthExpeditionStatus();return s.stage==='running'&&s.step>2;},{},{timeout:60000}); } catch (error) { console.error('Expedition timeout diagnostics:', JSON.stringify(await page.evaluate(()=>({status:window.birthExpeditionStatus(),settled:window.FractalLab.settled(),config:window.FractalLab.cfg,camera:window.FractalLab.view,preview:window.birthPreviewQuality,checkpoint:window.birthGetInitialCheckpoint()}))), 'page errors:', errors); throw error; }
@@ -108,5 +108,24 @@ test('desktop camera orientation, live layer, capture and return',async()=>{
  const dimensions=await page.evaluate(async src=>{const im=new Image();im.src=src;await im.decode();return [im.naturalWidth,im.naturalHeight];},record.samples[0].image);
  assert.ok(dimensions[0]>dimensions[1]);
  assert.deepEqual(errors,[]);
+ }finally{await browser.close();}
+});
+
+test('coherence zoom settles and stays deterministic without escape events',async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+ const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765/explore/birth-of-structure-lab/',{waitUntil:'load'});
+ await page.evaluate(()=>{document.querySelector('#cfg').classList.remove('on');const F=window.FractalLab;F.apply({...F.clone(F.cfg),fractal:'julia',juliaPower:17,seed:{re:0,im:0},mode:'coherence',iter:0,stopMode:'outward'},{cx:0,cy:0,w:.6,a:0});});
+ await page.waitForFunction(()=>window.FractalLab.settled(),{},{timeout:60000});
+ await page.evaluate(()=>{const F=window.FractalLab;F.apply(F.clone(F.cfg),{...F.view,w:F.view.w*.9});});
+ await page.waitForFunction(()=>window.FractalLab.settled(),{},{timeout:60000});
+ const snapshot=()=>page.evaluate(()=>({job:cur.id,iterations:cur.maxIt,budget:itFor(view.w),boost,dirty,queued:queue.filter(q=>q.tag==='main').length,complete:cur.passes.every(p=>p.left<=0),pixels:base.imgs[0].toDataURL()}));
+ const first=await snapshot();assert.equal(first.iterations,first.budget);assert.ok(first.iterations<1000);assert.equal(first.dirty,false);assert.equal(first.queued,0);assert.equal(first.complete,true);assert.ok(first.pixels.length>1000);
+ await page.waitForTimeout(2500);assert.deepEqual(await snapshot(),first);
+ await page.evaluate(()=>{const F=window.FractalLab;F.apply(F.clone(F.cfg),{...F.view});});
+ await page.waitForFunction(()=>window.FractalLab.settled(),{},{timeout:60000});
+ const second=await snapshot();assert.equal(second.iterations,first.iterations);assert.equal(second.pixels,first.pixels);assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });

@@ -438,6 +438,7 @@ let lastMin=0, boost=1;
 const CAP=40000;
 function itFor(w){
   if(cfg.iter) return cfg.iter;
+  if(engMsg(eng).coherence)return Math.round(Math.min(CAP,Math.max(400,150+260*Math.max(0,Math.log10(HOME.w/w)))));
   const byDepth=150+260*Math.max(0,Math.log10(HOME.w/w));
   return Math.round(Math.min(CAP, Math.max(byDepth, lastMin*1.8+400)*boost));
 }
@@ -488,8 +489,8 @@ let job=0, cur=null, dirty=true, lastStart=0, roughMs=150, base=null, under=null
 const OVERSCAN=1.3;
 function startJob(){
   job++; queue=queue.filter(q=>q.tag!=='main'); dirty=false; lastStart=performance.now();
-  const v= back ? backView(performance.now()+Math.min(500,Math.max(50,roughMs*1.15))) : {...view}, maxIt=window.birthPreviewQuality?Math.min(itFor(v.w),window.birthPreviewQuality.iterations):itFor(v.w), div=cmp()?2:1, d=needD();
-  cur={id:job,v,maxIt,passes:[]};
+  const v= back ? backView(performance.now()+Math.min(500,Math.max(50,roughMs*1.15))) : {...view}, coherence=engMsg(eng).coherence, budget=itFor(v.w), maxIt=window.birthPreviewQuality?Math.min(budget,window.birthPreviewQuality.iterations):budget, div=cmp()?2:1, d=needD();
+  cur={id:job,v,maxIt,coherence,passes:[]};
   const passes=window.birthPreviewQuality?[window.birthPreviewQuality.divisor]:back?[6]:PASSES, ring=cfg.polar||cfg.bottcher;
   passes.forEach((ds,p)=>{
     const overscan=ring?1:(back||p<passes.length-1)?OVERSCAN:1;
@@ -512,11 +513,11 @@ function mainStrip(m){
   const L=cur.passes[m.pass]; fill(L,m);
   if(L.left>0) return;
   if(m.pass===0) roughMs=0.6*roughMs+0.4*(performance.now()-lastStart);
-  if(!cfg.iter&&!window.birthPreviewQuality){
+  if(!cfg.iter&&!window.birthPreviewQuality&&!cur.coherence&&m.pass===cur.passes.length-1){
     if(L.minN<1e9){ lastMin=L.minN; boost=1; }
     else if(!back){
       if(cur.maxIt<CAP){ boost*=3; dirty=true; }
-      else if(m.pass===0){ queue=queue.filter(q=>!(q.tag==='main' && q.job===cur.id)); cur.passes.forEach(p=>p.left=0); }
+      
     }
   }
   if(!base || base.job!==cur.id || base.pass<m.pass){
