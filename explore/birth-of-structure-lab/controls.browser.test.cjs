@@ -121,8 +121,8 @@ test('coherence zoom settles and stays deterministic without escape events',asyn
  await page.waitForFunction(()=>window.FractalLab.settled(),{},{timeout:60000});
  await page.evaluate(()=>{const F=window.FractalLab;F.apply(F.clone(F.cfg),{...F.view,w:F.view.w*.9});});
  await page.waitForFunction(()=>window.FractalLab.settled(),{},{timeout:60000});
- const snapshot=()=>page.evaluate(()=>({job:cur.id,iterations:cur.maxIt,budget:itFor(view.w),boost,dirty,queued:queue.filter(q=>q.tag==='main').length,complete:cur.passes.every(p=>p.left<=0),pixels:base.canvas?base.canvas.toDataURL():document.querySelector('#c').toDataURL()}));
- const first=await snapshot();assert.equal(first.iterations,first.budget);assert.ok(first.iterations<1000);assert.equal(first.dirty,false);assert.equal(first.queued,0);assert.equal(first.complete,true);
+ const snapshot=()=>page.evaluate(()=>({job:cur.id,iterations:cur.maxIt,budget:itFor(view.w),boost,dirty,queued:queue.filter(q=>q.tag==='main').length,complete:cur.passes.every(p=>p.left<=0),pixels:base.imgs[0].toDataURL()}));
+ const first=await snapshot();assert.equal(first.iterations,first.budget);assert.ok(first.iterations<1000);assert.equal(first.dirty,false);assert.equal(first.queued,0);assert.equal(first.complete,true);assert.ok(first.pixels.length>1000);
  await page.waitForTimeout(2500);assert.deepEqual(await snapshot(),first);
  await page.evaluate(()=>{const F=window.FractalLab;F.apply(F.clone(F.cfg),{...F.view});});
  await page.waitForFunction(()=>window.FractalLab.settled(),{},{timeout:60000});
