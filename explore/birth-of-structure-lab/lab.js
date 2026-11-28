@@ -29,6 +29,7 @@ function stepBack(now,dt){
 const limitMarker=$('zoomLimitMarker');
 let externalZoomLimit='';
 let logPlaying=false,logLastStep=0;
+function bottcherLayerAllowed(c=cfg,m=c.mode){return !diffMode(m)&&!['distance','vdiv','vcurl','jointmag','jointphase','gradt','gradmu','compare'].includes(m)&&!(m==='scalar'&&scalarSourceFor(c.fractal,c.scalarSource)==='distance');}
 function supportsBottcher(c=cfg){return c.fractal==='mandelbrot'||c.fractal==='julia'&&Number.isInteger(c.juliaPower)&&c.juliaPower>=2;}
 let bottcherCriticalKey='',bottcherCriticalValue=0;
 function bottcherCriticalPotential(){if(cfg.fractal!=='julia')return 0;const key=[cfg.juliaPower,cfg.seed.re,cfg.seed.im].join(',');if(key!==bottcherCriticalKey){bottcherCriticalKey=key;bottcherCriticalValue=bottcherPotential(0,0,cfg.seed.re,cfg.seed.im,cfg.juliaPower);}return Number.isFinite(bottcherCriticalValue)?bottcherCriticalValue:Infinity;}
@@ -188,6 +189,7 @@ function notify(t,ms=5000){
 function setMode(m){
   if(!layerAllowed(cfg.fractal,m)){notify('This measurement is not defined for the selected fractal.');return;}
   // Coordinate choice remains independent of measurement.
+  if(cfg.bottcher&&!bottcherLayerAllowed(cfg,m)){notify('This measurement requires Cartesian coordinates');return;}
   if((diffMode(m)||m==='distance'||m==='scalar'&&activeScalarSource()==='distance')&&(cfg.polar||cfg.bottcher)){notify('Differential tests require Cartesian coordinates');return;}
   const wasStable=cfg.mode; if(m==='coherence'&&cfg.fractal!=='julia'){notify('Rotation coherence is defined here for Julia orbits.');return;} if(['stablephase','normphase'].includes(m)&&!eng.centre){notify(PHASE_NEEDS);return;} if(['stablephase','normphase'].includes(m)&&(cfg.iter===0||cfg.iter>phaseCap()))cfg.iter=phaseCap();   // phase views report no escape step, so Auto iterations would keep restarting
   if(scalarMode(m)&&m!=='distance'&&activeScalarSource()!=='sensitivity')vectorOverlay.enabled=false;
@@ -198,8 +200,9 @@ function setMode(m){
 }
 const coordOf=c=>c.bottcher?'bottcher':c.polar?(c.logPolar?'logpolar':'polar'):'cartesian';
 function setCoord(c,type){
-  if(type!=='cartesian'&&(diffMode(c.mode)||c.mode==='distance'||c.mode==='scalar'&&scalarSourceFor(c.fractal,c.scalarSource)==='distance')){toast('Scalar distance and derivatives require Cartesian coordinates',2700);return false;}
+  if(type!=='cartesian'&&type!=='bottcher'&&(diffMode(c.mode)||c.mode==='distance'||c.mode==='scalar'&&scalarSourceFor(c.fractal,c.scalarSource)==='distance')){toast('Scalar distance and derivatives require Cartesian coordinates',2700);return false;}
   if(type==='bottcher'&&!supportsBottcher(c)){toast('Böttcher coordinates require an integer-degree Julia polynomial or the Mandelbrot set',2700);return false;}
+  if(type==='bottcher'&&!bottcherLayerAllowed(c)){c.mode='sens';toast('Showing orbit sensitivity: spatial derivatives require Cartesian coordinates',3200);}
   const entering=type==='logpolar'&&!zeroLog(c);
   c.bottcher=type==='bottcher';c.polar=type==='polar'||type==='logpolar';c.logPolar=type==='logpolar';
   if(entering&&zeroLog(c)){c.logAngleSpan=logDomainSpan(c);const floor=logInnerFloor(c);c.logOuter=Math.max(floor+.05,Math.log(Math.max(1e-12,view.w/2)));c.logSpan=Math.max(.05,Math.min(Math.log(100),(c.logOuter-floor)/2));}
@@ -212,7 +215,7 @@ function syncCoordPickers(){
     const el=$(id);if(!el)continue;
     const c=id==='coordPicker'?draft:cfg;
     el.value=coordOf(c);
-    el.querySelector('option[value="bottcher"]').disabled=!supportsBottcher(c)||diffMode(c.mode)||c.mode==='distance'||c.mode==='scalar'&&scalarSourceFor(c.fractal,c.scalarSource)==='distance';
+    el.querySelector('option[value="bottcher"]').disabled=!supportsBottcher(c);
   }
   $('coordHelp').textContent=draft.bottcher?'Exterior only: Julia dynamical plane or Mandelbrot parameter plane. The interior is not represented.':zeroLog(draft)?'Angle horizontally; logarithmic depth downward, centered at zero.':draft.polar?'Angle runs horizontally; radius vertically.':'Original complex-plane view.';
   $('coordHelpQuick').textContent=cfg.bottcher?'Exterior only. Drag vertically to approach the boundary, horizontally to change external angle; pinch to magnify potential.':zeroLog()?'Pinch / wheel to magnify. Drag to navigate; vertically to travel in depth. Complete / Fundamental domain in Navigation.':cfg.polar?'Drag to change angle and radial range.':'Original complex-plane view.';
@@ -223,7 +226,7 @@ $('coordPickerQuick').onchange=e=>{
   const previous=coordOf(cfg);
   if(!setCoord(cfg,e.target.value)){syncCoordPickers();return;}
   logPlaying=false;if(zeroLog()){if(previous!=='logpolar')resetLogAngular();syncLogCamera();}if(previous!==coordOf(cfg)){base=null;under=null;cur=null;lastMin=0;boost=1;}
-  if(cfg.bottcher){view.a=Math.PI;syncBottcherCamera();updateZoomLimit();}
+  if(cfg.bottcher){view.a=Math.PI;vectorOverlay.enabled=false;document.body.classList.toggle('cmp',cmp());syncBottcherCamera();updateZoomLimit();}
   syncCoordPickers();updateChip();dirty=true;needDraw=true;closePop();writeHash();
 };
 
@@ -259,13 +262,14 @@ $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(
 /* ---------- applying a configuration ---------- */
 function applyConfig(next,cam){
   if(!Object.hasOwn(SCALAR_SOURCES,next.scalarSource))next={...next,scalarSource:'auto'};
+  if(next.bottcher&&supportsBottcher(next)&&!bottcherLayerAllowed(next))next={...next,mode:'sens'};
   if(diffMode(next.mode)||next.mode==='distance'||next.mode==='scalar'&&scalarSourceFor(next.fractal,next.scalarSource)==='distance')next={...next,polar:false,bottcher:false,logPolar:false};
   if(isGeometry(next.fractal)){next={...next,mode:layerAllowed(next.fractal,next.mode)?next.mode:'construction',bottcher:false};vectorOverlay.enabled=false;}else if(next.mode==='construction')next={...next,mode:'escape'};
   if(next.bottcher&&!supportsBottcher(next))next={...next,bottcher:false};
   const oldDistance=distanceActive();
   const world=!started || next.fractal!==cfg.fractal || (isGeometry(next.fractal)&&(next.geometryDepth!==cfg.geometryDepth||JSON.stringify(geometryParameters(next))!==JSON.stringify(geometryParameters(cfg)))) || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im || next.juliaPower!==cfg.juliaPower));
   const oldCoord=coordOf(cfg),oldDomain=logDomainSpan();const numeric=next.scalarSource!==cfg.scalarSource||next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode || next.bottcher!==cfg.bottcher || next.bottcherGMin!==cfg.bottcherGMin || next.bottcherGMax!==cfg.bottcherGMax || next.polar!==cfg.polar || next.logPolar!==cfg.logPolar;
-  cfg=clone(next); if(scalarMode(cfg.mode)&&cfg.mode!=='distance'&&activeScalarSource()!=='sensitivity')vectorOverlay.enabled=false;eng=engineOf(cfg); started=true; syncContourSettings(cfg); syncCoordPickers();
+  cfg=clone(next); if(cfg.bottcher)vectorOverlay.enabled=false; if(scalarMode(cfg.mode)&&cfg.mode!=='distance'&&activeScalarSource()!=='sensitivity')vectorOverlay.enabled=false;eng=engineOf(cfg); started=true; syncContourSettings(cfg); syncCoordPickers();
   if(cfg.mode==='coherence'&&cfg.fractal!=='julia')cfg.mode='escape';
   if(['stablephase','normphase'].includes(cfg.mode)&&!eng.centre){ cfg.mode='phase'; setTimeout(()=>notify(PHASE_NEEDS+' Showing Rotation phase instead.'),0); }
   if(['stablephase','normphase'].includes(cfg.mode)&&(cfg.iter===0||cfg.iter>phaseCap())) cfg.iter=phaseCap();
