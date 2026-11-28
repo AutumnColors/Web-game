@@ -1,7 +1,22 @@
 'use strict';
 const GEOMETRIC={koch:{name:'Koch snowflake',rule:'Four segments at scale 1/3',depth:6,max:8,span:1.65},tree:{name:'Binary ghost tree',rule:'Two branches at ±32°, scale 0.65',depth:10,max:12,span:2.7},carpet:{name:'Sierpiński carpet',rule:'Remove the middle ninth',depth:7,max:20,span:1.3},gasket:{name:'Sierpiński triangle',rule:'Remove the central triangle',depth:8,max:24,span:1.3},dust:{name:'Cantor dust',rule:'Keep four corner thirds',depth:6,max:20,span:1.3}};
 const isGeometry=f=>Object.hasOwn(GEOMETRIC,f);
-const geometryDepth=c=>Math.max(1,Math.min(GEOMETRIC[c.fractal].max,Math.round(c.geometryDepth)||GEOMETRIC[c.fractal].depth));
+// Feature contraction of each construction; tree generation 1 is the trunk.
+function geometryScale(c){const p=geometryParameters(c);switch(c.fractal){case 'tree':return {r:p.treeRatio,unit:.76/p.treeRatio};case 'carpet':return {r:1/p.carpetGrid,unit:1};case 'gasket':return {r:p.gasketRatio,unit:1};case 'dust':return {r:p.dustRatio,unit:1};default:return {r:1/3,unit:1};}}
+function geometryDepth(c,w,pixels=256){
+ const g=GEOMETRIC[c.fractal],fixed=Math.round(c.geometryDepth)||0;
+ if(fixed>0)return Math.min(g.max,fixed);
+ if(!(w>0))return g.depth;
+ const {r,unit}=geometryScale(c);
+ // Increase construction depth until the smallest feature is at most a pixel, bounded by the family budget.
+ return Math.max(g.depth,Math.min(g.max,Math.ceil(Math.log(unit*Math.max(1,pixels)/w)/Math.log(1/r))));
+}
+function geometryMinWidth(c){
+ const g=GEOMETRIC[c.fractal],{r,unit}=geometryScale(c);
+ // At this width the last available recursive feature occupies 1/8 of the view.
+ // Fixed-depth shapes are intentional finite objects and can be inspected up to numerical precision.
+ return c.geometryDepth>0?0:Math.min(g.span*.9,8*unit*r**g.max);
+}
 const layerAllowed=(f,m)=>isGeometry(f)?['construction','binary','scalar','distance','sgrad','sdiv','scurl','shess'].includes(m):m!=='construction';
 const GEOMETRY_CONTROLS={
  koch:[{key:'kochHeight',label:'Bump height',min:.25,max:1,step:.05,value:1}],
@@ -55,4 +70,4 @@ function geometrySample(kind,x,y,depth,p={}){
   const j=branch(0,-.95,Math.PI/2,.76,1);return j>=0?[1,j]:[0,0];
  }return [0,0];
 }
-if(typeof module!=='undefined')module.exports={geometrySample,GEOMETRIC,geometryDepth,layerAllowed,GEOMETRY_CONTROLS,geometryParameters,geometryRule};
+if(typeof module!=='undefined')module.exports={geometrySample,GEOMETRIC,geometryDepth,layerAllowed,GEOMETRY_CONTROLS,geometryParameters,geometryRule,geometryScale,geometryMinWidth};

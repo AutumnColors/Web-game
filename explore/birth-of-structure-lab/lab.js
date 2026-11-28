@@ -2,10 +2,11 @@
 /* Fractal Universe Lab, part 3: moving the camera, the configuration screen, information, links, capture and the loop.
    Loaded after engine.js and overlays.js. */
 
-/* ---------- letting go: drift back to the whole set (at the precision limit, or the reset button) ---------- */
+/* ---------- explicit reset: drift back to the whole set ---------- */
 let back=null;
 function release(quick){
   if(back) return;
+  externalZoomLimit='';updateZoomLimit();
   endGesture(); vel.x=vel.y=0; rotAnim=null;
   const from={...view}, to={...HOME}, decades=Math.abs(Math.log10(to.w/from.w));
   back={from,to,t0:performance.now(),dur:Math.min(8000,Math.max(quick?700:3000,decades*520))};
@@ -19,24 +20,36 @@ function stepBack(now,dt){
   let b=backView(now);
   if(b.t<1 && base && b.w>base.w*1.08){ back.t0+=dt; b=backView(now); }
   view.w=b.w; view.cx=b.cx; view.cy=b.cy; view.a=b.a; dirty=true; needDraw=true;
-  if(b.t>=1){ Object.assign(view,back.to); back=null; lastMin=0; boost=1; }
+  if(b.t>=1){ Object.assign(view,back.to); back=null; lastMin=0; boost=1; } updateZoomLimit();
 }
 
 /* ---------- moving the camera ---------- */
-const minW=()=>cfg.depth?HOME.w/Math.pow(2,cfg.depth):0;
-let limitT=0;
+const limitMarker=$('zoomLimitMarker');
+let externalZoomLimit='';
+function cameraLimit(v=view){
+ const precision=precisionWidth(v),construction=eng.geometry?geometryMinWidth(cfg):0,user=cfg.depth?HOME.w/Math.pow(2,cfg.depth):0;
+ const width=Math.max(precision,construction,user);
+ return {width,reason:width===construction?'Construction limit · maximum recursive depth '+GEOMETRIC[cfg.fractal].max:width===user?'Configured zoom limit':'Numerical precision limit'};
+}
+const minW=()=>cameraLimit().width;
+function updateZoomLimit(){
+ const lim=cameraLimit(),reason=externalZoomLimit||(view.w<=lim.width*(1+1e-8)?lim.reason:'');
+ if(limitMarker.textContent!==reason)limitMarker.textContent=reason;limitMarker.hidden=!reason;
+}
+window.birthMarkZoomLimit=reason=>{externalZoomLimit=reason||'';updateZoomLimit();};
 function clampView(){
   view.w=Math.max(minW(),Math.min(view.w,HOME.w*2.2));
   const mx=eng.cxm===undefined?eng.hx:eng.cxm;
   view.cx=Math.max(mx-eng.bx,Math.min(mx+eng.bx,view.cx)); view.cy=Math.max(eng.hy-eng.by,Math.min(eng.hy+eng.by,view.cy));
-  if(atLimit(view)) release();
+  view.w=Math.max(view.w,cameraLimit().width); updateZoomLimit();
 }
 function zoomAt(px,py,f){
   if(cfg.bottcher){const mid=Math.sqrt(cfg.bottcherGMin*cfg.bottcherGMax),half=Math.log(cfg.bottcherGMax/cfg.bottcherGMin)/(2*f);cfg.bottcherGMin=Math.max(1e-5,mid*Math.exp(-half));cfg.bottcherGMax=Math.min(8,mid*Math.exp(half));dirty=true;needDraw=true;return;}
   if(cfg.polar){if(cfg.logPolar)cfg.logSpan=Math.max(.05,Math.min(36,cfg.logSpan/f));else view.w=Math.max(1e-12,Math.min(HOME.w*2.2,view.w/f));dirty=true;needDraw=true;return;}
-  const [wx,wy]=toWorld(px,py), m=minW(); let w=view.w/f;
-  if(w<m){ w=m; const now=performance.now(); if(f>1.0005 && now-limitT>2500){ limitT=now; toast('Zoom limit: depth '+cfg.depth); } }   // the limit stops zooming in only
-  view.w=w; pinTo(px,py,wx,wy); clampView(); dirty=true; needDraw=true;
+  if(f<1)externalZoomLimit='';
+  const [wx,wy]=toWorld(px,py),m=minW(),old=view.w;let w=Math.max(m,Math.min(HOME.w*2.2,view.w/f));
+  if(w===old){updateZoomLimit();return;}
+  view.w=w;pinTo(px,py,wx,wy);clampView();dirty=true;needDraw=true;
 }
 function rotateAt(px,py,dA){if(cfg.bottcher){view.a=wrap(view.a+dA);dirty=true;needDraw=true;return;}if(cfg.polar){view.a=wrap(view.a+dA);dirty=true;needDraw=true;return;} const [wx,wy]=toWorld(px,py); view.a=wrap(view.a+dA); pinTo(px,py,wx,wy); clampView(); dirty=true; needDraw=true; }
 function panBy(dx,dy){
@@ -232,8 +245,8 @@ function applyConfig(next,cam){
   if(['stablephase','normphase'].includes(cfg.mode)&&(cfg.iter===0||cfg.iter>phaseCap())) cfg.iter=phaseCap();
   document.body.classList.toggle('cmp',cmp()); document.body.classList.toggle('clean',cfg.clean);
   fitHome();
-  if(world){ pin=null; sections=[]; secSel=-1; closeSec(); base=null; back=null; rotAnim=null; glide=null; lastMin=0; boost=1; stats=null; Object.assign(view,HOME); }
-  if(cam){ view.cx=cam.cx; view.cy=cam.cy; view.w=cam.w; view.a=wrap(cam.a||0); lastMin=0; boost=1; }
+  if(world){ externalZoomLimit='';pin=null; sections=[]; secSel=-1; closeSec(); base=null; back=null; rotAnim=null; glide=null; lastMin=0; boost=1; stats=null; Object.assign(view,HOME); }
+  if(cam){if(cam.w>view.w*(1+1e-8))externalZoomLimit=''; view.cx=cam.cx; view.cy=cam.cy; view.w=cam.w; view.a=wrap(cam.a||0); lastMin=0; boost=1; }
   if(oldDistance!==distanceActive()){base=null;under=null;}if(world||numeric||oldDistance!==distanceActive()){ renderHome(); if(pin) pin.r=classify(pin.re,pin.im,eng); }
   clampView(); dirty=true; repaint(); updateChip(); syncQuick(); writeHash();
 }
@@ -304,14 +317,14 @@ function parseC(s){ // "−0.8 + 0.156i", "-0.8, 0.156", "i", "-0.5i", "0.25"
 }
 $('cin').addEventListener('input',()=>{ const c=parseC($('cin').value); $('cin').classList.toggle('bad',!c); if(c){ draft.seed=c; syncSeedPicker(); thumbs(); } });
 function syncCfg(){ syncSeedPicker(); syncCoordPickers();
-  const geo=isGeometry(draft.fractal);if(!layerAllowed(draft.fractal,draft.mode))draft.mode=geo?'construction':'escape';$('pGeometry').classList.toggle('on',geo);if(geo){const g=GEOMETRIC[draft.fractal];$('geometryDepth').max=g.max;$('geometryDepth').value=geometryDepth(draft);$('geometryDepthOut').textContent=geometryDepth(draft);}for(const b of $('gMode').children)b.hidden=!layerAllowed(draft.fractal,b._v)||(!geo&&b._v==='binary');
+  const geo=isGeometry(draft.fractal);if(!layerAllowed(draft.fractal,draft.mode))draft.mode=geo?'construction':'escape';$('pGeometry').classList.toggle('on',geo);if(geo){const g=GEOMETRIC[draft.fractal];$('geometryDepth').max=g.max;$('geometryDepth').value=draft.geometryDepth||0;$('geometryDepthOut').textContent=draft.geometryDepth||'Auto';}for(const b of $('gMode').children)b.hidden=!layerAllowed(draft.fractal,b._v)||(!geo&&b._v==='binary');
   syncGroups($('cfg')); $('gClean').classList.toggle('on',draft.clean);
   $('pJulia').classList.toggle('on',draft.fractal==='julia'); $('juliaPowerNote').textContent=Number.isInteger(draft.juliaPower)&&draft.juliaPower>=2?'Polynomial Julia set (degree '+draft.juliaPower+').':Number.isInteger(draft.juliaPower)&&draft.juliaPower<0?'Rational map with a pole at zero. First-threshold stopping is an experiment, not a reliable Julia membership test.':'Principal-branch complex power; cut on the negative real axis. First-threshold stopping is a finite-orbit diagnostic, not a classical polynomial Julia set.'; $('pMulti').classList.toggle('on',draft.fractal==='multibrot');
   const g=$('palPrev').getContext('2d'), lut=PALETTES[draft.palette].cyc, img=g.createImageData(600,1), o=new Uint32Array(img.data.buffer);
   for(let x=0;x<600;x++) o[x]=lut[(x*1024/300|0)&1023];
   for(let y=0;y<18;y++) g.putImageData(img,0,y);
 }
-$('geometryDepth').oninput=e=>{draft.geometryDepth=+e.target.value;$('geometryDepthOut').textContent=e.target.value;};
+$('geometryDepth').oninput=e=>{draft.geometryDepth=+e.target.value;$('geometryDepthOut').textContent=+e.target.value||'Auto';};
 const thumbIds=[];
 function thumbs(){ // each library card shows its own universe, computed by the same worker
   thumbIds.forEach(cancel); thumbIds.length=0;
@@ -330,7 +343,7 @@ let infoOpen=false;
 function snapshot(){ // everything needed to reproduce this frame
   const a=view.a*180/Math.PI;
   return {viewer:'Fractal Universe Lab', version:1,
-    config:{fractal:cfg.fractal, geometryDepth:eng.geometry?eng.geometryDepth:null, geometryParameters:eng.geometry?geometryParameters(cfg):null, rule:asciiRule(), power:eng.geometry?null:eng.pw, seed:cfg.fractal==='julia'?{...cfg.seed}:null, measurement:cfg.mode, scalarSource:cfg.scalarSource, panels:cmp()?[...cfg.panels]:null,
+    config:{fractal:cfg.fractal, geometryDepth:eng.geometry?(cfg.geometryDepth||0):null, resolvedGeometryDepth:eng.geometry?itFor(view.w):null, geometryParameters:eng.geometry?geometryParameters(cfg):null, rule:asciiRule(), power:eng.geometry?null:eng.pw, seed:cfg.fractal==='julia'?{...cfg.seed}:null, measurement:cfg.mode, scalarSource:cfg.scalarSource, panels:cmp()?[...cfg.panels]:null,
       palette:cfg.palette, layerSettings:globalThis.birthLayerSettings?.(), contours:{show:cfg.contours,levels:cfg.contourLevels,opacity:cfg.contourOpacity,color:cfg.contourColor}, iterations:{mode:cfg.iter?'fixed':'auto', limit:itFor(view.w)}, escapeRadius:eng.geometry?null:Math.sqrt(eng.R2), stopMode:cfg.stopMode, maxDepth:cfg.depth||null, cleanView:cfg.clean},
     camera:{centre:{re:view.cx, im:view.cy}, width:view.w, cameraAngleDeg:a, planeTurnDeg:-a, depth:depthOf(view.w), homeWidth:HOME.w},
     render: stats ? {width:stats.W, height:stats.H, pixelSize:stats.pix, escaped:eng.geometry?null:stats.esc, covered:eng.geometry?stats.esc:null, pixels:stats.N, Tmin:stats.esc?stats.tmin:null, Tmax:stats.esc?stats.tmax:null,
@@ -381,7 +394,7 @@ function writeHash(){
   if(!started) return; clearTimeout(hashT);
   hashT=setTimeout(()=>{
     const q={f:cfg.fractal, m:cfg.mode, sf:cfg.scalarSource, pal:cfg.palette, it:cfg.iter, R:cfg.radius, sm:cfg.stopMode, d:cfg.depth, x:view.cx, y:view.cy, w:view.w, r:+(view.a*180/Math.PI).toFixed(4), polar:+cfg.polar, bt:+cfg.bottcher, bg0:cfg.bottcherGMin, bg1:cfg.bottcherGMax, lp:+cfg.logPolar, lo:+cfg.logOuter.toFixed(9), ls:+cfg.logSpan.toFixed(9), co:+cfg.contours, cn:cfg.contourLevels, ca:cfg.contourOpacity, cc:cfg.contourColor};
-    if(eng.geometry){q.gd=eng.geometryDepth;Object.assign(q,geometryParameters(cfg));} if(cfg.fractal==='multibrot') q.n=cfg.power; if(cfg.fractal==='julia'){q.c=cfg.seed.re+','+cfg.seed.im;q.jp=cfg.juliaPower;}
+    if(eng.geometry){q.gd=cfg.geometryDepth||0;Object.assign(q,geometryParameters(cfg));} if(cfg.fractal==='multibrot') q.n=cfg.power; if(cfg.fractal==='julia'){q.c=cfg.seed.re+','+cfg.seed.im;q.jp=cfg.juliaPower;}
     if(cmp()) q.ps=cfg.panels.join('.'); if(cfg.clean) q.clean=1;
     try{ history.replaceState(null,'','#'+Object.entries(q).map(([k,v])=>k+'='+v).join('&')); }catch(_){}
   },250);
@@ -522,6 +535,7 @@ function frame(now){
       rotateAt(Wd/2,Hd/2,target-rotAnim.done); rotAnim.done=target; if(t>=1){ view.a=0; rotAnim=null; }
     }
   }
+  updateZoomLimit();
   const roughDone=cur && cur.passes[0].left<=0;
   if(dirty && (!cur || roughDone || (!back && now-lastStart>140))) startJob();
   if(!window.birthPreviewQuality?.spatial)spatialKeyframeWidth=null;
