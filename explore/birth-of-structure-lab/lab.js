@@ -194,7 +194,7 @@ function setMode(m){
   const wasStable=cfg.mode; if(m==='coherence'&&cfg.fractal!=='julia'){notify('Rotation coherence is defined here for Julia orbits.');return;} if(['stablephase','normphase'].includes(m)&&!eng.centre){notify(PHASE_NEEDS);return;} if(['stablephase','normphase'].includes(m)&&(cfg.iter===0||cfg.iter>phaseCap()))cfg.iter=phaseCap();   // phase views report no escape step, so Auto iterations would keep restarting
   if(scalarMode(m)&&m!=='distance'&&activeScalarSource()!=='sensitivity')vectorOverlay.enabled=false;
   const oldDomain=logDomainSpan();const was=cmp(), wasWaves=cfg.mode==='waves',wasDistance=distanceActive(); cfg.mode=m;if(zeroLog()&&oldDomain!==logDomainSpan()){resetLogAngular();syncLogCamera();base=null;under=null;cur=null;dirty=true;needDraw=true;} document.body.classList.toggle('cmp',cmp());
-  if(wasDistance!==distanceActive()){base=null;under=null;renderHome();dirty=true;}
+  if(wasDistance!==distanceActive()||((wasStable==='potential')!==(m==='potential'))){base=null;under=null;cur=null;renderHome();dirty=true;}
   if((wasStable!==m&&(wasStable==='coherence'||m==='coherence'))||(wasStable!==m&&(['stablephase','normphase'].includes(wasStable)||['stablephase','normphase'].includes(m)))||wasWaves!==(m==='waves') || cmp()!==was || (needD() && base && !base.S) || (m==='dld' && base && !base.DLD)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
   repaint(); updateChip(); syncQuick(); writeHash();
 }
