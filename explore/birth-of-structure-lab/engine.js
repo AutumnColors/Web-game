@@ -111,7 +111,6 @@ const cmp=()=>cfg.mode==='compare';
    kind 1: the pixel is z₀ and c is fixed (dynamical plane). Returns numbers, not colours:
    T = first n with |zₙ| > R (65535: no escape detected), F = μ − T, S = ln(1 + |Dₙ|) with D = dz/dc (kind 0) or dz/dz₀ (kind 1). ---------- */
 const WORKER_SRC=`
-${geometrySample.toString()}
 
 // Principal branch: z^p = exp(p (ln|z| + i Arg(z))), Arg in (-pi,pi].
 // For noninteger p this map is discontinuous across the negative real axis.
@@ -358,7 +357,7 @@ function principalPower(zr,zi,p){
   return [r*Math.cos(a),r*Math.sin(a)];
 }
 const NW=Math.max(2,Math.min(8,(navigator.hardwareConcurrency||4)));
-const workerURL=URL.createObjectURL(new Blob([WORKER_SRC],{type:'text/javascript'}));
+const workerURL=URL.createObjectURL(new Blob([geometrySample.toString(),'\n',WORKER_SRC],{type:'text/javascript'}));
 const idle=[]; let queue=[];
 for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.onmessage=onStrip; idle.push(w); }
 function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
