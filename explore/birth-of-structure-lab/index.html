@@ -26,6 +26,7 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 @keyframes pulse{50%{opacity:.45}}
 
 /* chip, top left */
+#zoomLimitMarker{position:fixed;z-index:12;pointer-events:none;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);padding:6px 11px;border:1px solid #d6b36a99;border-radius:20px;background:#18232de8;color:#f2d495;font-size:12px;max-width:70vw;text-align:center}#zoomLimitMarker[hidden],body:has(#cfg.on) #zoomLimitMarker{display:none}
 #chip{position:fixed;left:calc(12px + env(safe-area-inset-left));top:calc(12px + env(safe-area-inset-top));padding:7px 12px;border-radius:13px;text-align:left;max-width:calc(100vw - 100px);z-index:2}
 #chip b{display:block;font-size:13px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #chip small{display:block;font-size:11px;color:rgba(255,255,255,.72);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -149,7 +150,7 @@ body.clean #birth-record-toolbar{display:none!important}
 <canvas id="c"></canvas><div id="experiment" style="position:fixed;bottom:70px;left:54px;right:10px;z-index:5;background:#111e;padding:8px;border-radius:10px;color:white"><div style="font-size:12px">Orbit stability experiment · Cartesian</div><div id="experimentButtons" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px"></div><small id="experimentNote"></small><div style="display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12px">Iterations <select id="maskIterations" style="background:#263044;color:white;padding:5px;border-radius:5px"><option>1</option><option>2</option><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option><option>16</option><option>20</option><option>30</option><option>40</option><option>50</option><option>100</option><option selected>400</option><option>1000</option></select><span id="maskStats"></span></div></div>
 <div id="sa"></div>
 
-<button id="chip" class="glass" type="button" aria-label="Information"><b id="chipT"></b><small id="chipS"></small></button>
+<div id="zoomLimitMarker" role="status" aria-live="polite" hidden></div><button id="chip" class="glass" type="button" aria-label="Information"><b id="chipT"></b><small id="chipS"></small></button>
 
 <div id="tools">
   <button id="bSetup" class="glass" type="button" aria-label="New simulation" title="New simulation">
@@ -195,7 +196,7 @@ body.clean #birth-record-toolbar{display:none!important}
     <div class="top"><h1>Prepare expedition</h1></div><h2>Expedition type</h2><div id="entryChoices" style="display:grid;gap:8px;margin:10px 0"><button class="opt on" type="button" data-expedition="complete" aria-pressed="true"><b>Complete Journey</b><small>Birth to accumulation, then spatial zoom</small></button><button class="opt" type="button" data-expedition="lifetime" aria-pressed="false"><b>Birth to Accumulation</b><small>Follow the cycle's structural evolution</small></button><button class="opt" type="button" data-expedition="accumulation" aria-pressed="false"><b>Accumulation Zoom</b><small>Explore spatial scaling at fixed parameter</small></button><button class="opt" type="button" data-expedition="coherence" aria-pressed="false"><b>Coherence Expedition</b><small>Fixed accumulation parameter · zoom into zero</small></button><button class="opt" type="button" data-expedition="birth" aria-pressed="false"><b>Explore</b><small>Free map / Studio · prepare a future expedition</small></button></div><div class="note" id="entryNote">Requires a verified starting cycle. Reuse or generate one during preparation.</div><p class="sub">Choose the universe, how it is measured, and how far the camera may go. Every fractal then uses the same camera, capture and information tools.</p>
 
     <h2>Fractal library</h2>
-    <div class="grid3 grp" id="gFractal"></div><div class="params" id="pGeometry"><label>Construction depth <output id="geometryDepthOut"></output><input type="range" id="geometryDepth" min="1" max="20" step="1" value="6"></label><p class="note">Finite recursive geometry. Construction depth and binary membership are available; orbit measurements do not apply.</p></div>
+    <div class="grid3 grp" id="gFractal"></div><div class="params" id="pGeometry"><label>Construction depth <output id="geometryDepthOut"></output><input type="range" id="geometryDepth" min="0" max="20" step="1" value="6"></label><p class="note">Auto increases recursive detail as you zoom. Distance, scalar gradient, Laplacian and Hessian are available for every geometric family. Orbit measurements do not apply.</p></div>
     <div class="params" id="pJulia">
       <div class="lbl">Julia exponent p (default 2)</div><div class="seg grp" id="gJuliaPower"></div><div class="note" id="juliaPowerNote">Polynomial Julia set (degree 2).</div>
       <div class="lbl" style="margin-top:12px">Choose the Julia parameter c</div>

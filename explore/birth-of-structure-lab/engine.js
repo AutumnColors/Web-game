@@ -469,20 +469,21 @@ function resize(){
   Wd=Math.max(2,Math.round(cv.clientWidth*DPR)); Hd=Math.max(2,Math.round(cv.clientHeight*DPR));
   cv.width=Wd; cv.height=Hd; readSafe();
   const first=!resize.done; resize.done=true;
-  fitHome(); if(first){ Object.assign(view,HOME); renderHome(); }
+  fitHome(); if(first){ Object.assign(view,HOME); renderHome(); } else if(typeof clampView==='function')clampView();
   dirty=true; needDraw=true; if(secOpen) drawPlot();
 }
 let lastMin=0, boost=1;
 const CAP=40000;
 function itFor(w){
-  if(eng.geometry)return eng.geometryDepth;
+  if(eng.geometry)return geometryDepth(cfg,w,Wd);
   if(cfg.iter) return cfg.iter;
   if(engMsg(eng).coherence)return Math.round(Math.min(CAP,Math.max(400,150+260*Math.max(0,Math.log10(HOME.w/w)))));
   const byDepth=150+260*Math.max(0,Math.log10(HOME.w/w));
   return Math.round(Math.min(CAP, Math.max(byDepth, lastMin*1.8+400)*boost));
 }
 const depthOf=w=>Math.log2(HOME.w/w);
-function atLimit(v){ return v.w/Wd < 2.5e-15*Math.max(1,Math.abs(v.cx),Math.abs(v.cy)); }
+function precisionWidth(v){return Math.max(2,Wd)*2.5e-15*Math.max(1,Math.abs(v.cx),Math.abs(v.cy));}
+function atLimit(v){return v.w<=precisionWidth(v)*(1+1e-9);}
 function toWorld(px,py,v=view){
   if(cfg.bottcher && (eng.kind===1 || eng.pw===2)){const u=Math.exp(Math.log(cfg.bottcherGMax)*(1-py/Hd)+Math.log(cfg.bottcherGMin)*py/Hd);return eng.kind===1?bottcherInverse(u,v.a+TAU*(px/Wd-.5),eng.kr,eng.ki):parameterInverse(u,v.a+TAU*(px/Wd-.5));}
   const s=v.w/Wd, ux=(px-Wd/2)*s, uy=-(py-Hd/2)*s, c=Math.cos(v.a), n=Math.sin(v.a);
@@ -529,6 +530,7 @@ const OVERSCAN=1.3;
 function startJob(){
   job++; queue=queue.filter(q=>q.tag!=='main'); dirty=false; lastStart=performance.now();
   const v= back ? backView(performance.now()+Math.min(500,Math.max(50,roughMs*1.15))) : {...view}, coherence=engMsg(eng).coherence, budget=itFor(v.w), maxIt=window.birthPreviewQuality?Math.min(budget,window.birthPreviewQuality.iterations):budget, div=cmp()?2:1, d=needD();
+  if(eng.geometry)eng.geometryDepth=budget;
   cur={id:job,v,maxIt,coherence,passes:[]};
   const passes=window.birthPreviewQuality?[window.birthPreviewQuality.divisor]:back?[6]:PASSES, ring=cfg.polar||cfg.bottcher;
   passes.forEach((ds,p)=>{
@@ -536,7 +538,7 @@ function startJob(){
     const tw=Math.ceil(Wd*overscan/(ds*div)), th=Math.ceil(Hd*overscan/(ds*div));
     const tileView={...v,w:v.w*tw*ds*div/Wd};
     const L=newLayer(tileView,tw,th,maxIt,d); L.ds=ds; cur.passes.push(L);
-    strips(L,tileView,'main',{job,pass:p},eng,false);
+    strips(L,tileView,'main',{job,pass:p},eng.geometry?{...eng,geometryDepth:budget}:eng,false);
   });
   pump();
 }
@@ -568,7 +570,7 @@ function mainStrip(m){
 function renderHome(){ if(window.birthPreviewQuality)return; // the whole universe as a backdrop, wide enough to fill the corners of a turned, zoomed-out view
   cancel(homeId); home=null;
   const w=3*HOME.w*Math.max(1,Hd/Wd), v={cx:eng.cxm===undefined?HOME.cx:eng.cxm,cy:HOME.cy,w,a:0};
-  homeId=render('home',v,440,440,cfg.iter||300,eng,true,L=>{ L.ring=false; home=L; paintLayer(L); needDraw=true; });   // always a flat (Cartesian) picture
+  homeId=render('home',v,440,440,cfg.iter||300,eng.geometry?{...eng,geometryDepth:geometryDepth(cfg,w,440)}:eng,true,L=>{ L.ring=false; home=L; paintLayer(L); needDraw=true; });   // always a flat (Cartesian) picture
 }
 
 /* ---------- from numbers to colour ---------- */
