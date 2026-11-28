@@ -207,3 +207,29 @@ test('renormalization error mobile mini view, limits and recording',async()=>{
   assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });
+
+
+test('Böttcher selection and exterior rendering on mobile',async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+ const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765/explore/birth-of-structure-lab/',{waitUntil:'load'});
+ await page.evaluate(()=>{document.querySelector('#cfg').classList.remove('on');const F=window.FractalLab;F.apply({...F.clone(F.cfg),fractal:'julia',juliaPower:6,seed:{re:-.3,im:.2},mode:'sgrad',iter:128,polar:false,logPolar:false,bottcher:false},{cx:0,cy:0,w:3,a:0});});
+ await page.getByRole('button',{name:'Current layer',exact:true}).click();
+ await page.locator('#coordPickerQuick').selectOption('bottcher');
+ await page.waitForFunction(()=>window.FractalLab.settled()&&base?.bottcher,{},{timeout:60000});
+ assert.equal(await page.evaluate(()=>window.FractalLab.cfg.mode),'sens');
+ const initial=await page.evaluate(()=>({min:cfg.bottcherGMin,max:cfg.bottcherGMax,valid:Array.from(base.F).filter(Number.isFinite).length,total:base.F.length}));
+ assert.ok(initial.valid>initial.total*.99);
+ await page.evaluate(()=>{zoomAt(Wd/2,Hd/2,2);});
+ await page.waitForFunction(()=>window.FractalLab.settled()&&base?.bottcher,{},{timeout:60000});
+ const zoomed=await page.evaluate(()=>({min:cfg.bottcherGMin,max:cfg.bottcherGMax}));
+ assert.ok(Math.log(zoomed.max/zoomed.min)<Math.log(initial.max/initial.min));
+ await page.evaluate(()=>{const F=window.FractalLab;F.apply({...F.clone(F.cfg),seed:{re:2,im:0}},{...F.view});shiftBottcher(-100);});
+ await page.waitForFunction(()=>window.FractalLab.settled()&&base?.bottcher,{},{timeout:60000});
+ assert.ok(await page.evaluate(()=>cfg.bottcherGMin>bottcherCriticalPotential()));
+ assert.match(await page.locator('#zoomLimitMarker').textContent(),/Critical equipotential/);
+ assert.deepEqual(errors,[]);
+ }finally{await browser.close();}
+});
