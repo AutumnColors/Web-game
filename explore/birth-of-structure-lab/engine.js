@@ -30,9 +30,11 @@ const PALETTES={
 const FRACTALS=[
   {v:'mandelbrot', t:'Mandelbrot', s:'z → z² + c'},
   {v:'julia',      t:'Julia',      s:'z → z² + c, c fixed'},
-  {v:'multibrot',  t:'Multibrot',  s:'z → zⁿ + c'}
+  {v:'multibrot',  t:'Multibrot',  s:'z → zⁿ + c'},
+  ...Object.entries(GEOMETRIC).map(([v,g])=>({v,t:g.name,s:g.rule}))
 ];
 const MODES=[
+  {v:'construction',t:'Construction depth',s:'Colour by finite construction or removal generation',tag:'Construction depth'},
  {v:'coherence',t:'Rotation coherence',s:'Mean resultant length of local derivative rotations; fixed range 0–1. For Cartesian integer degree and c=0, average the complex resultant over a Gaussian pixel-angle aperture.',tag:'Rotation coherence'},
 {v:'normphase',t:'Normalized phase',s:'Böttcher angle of the superattracting cycle (any centre c)',tag:'Normalized phase'},
 {v:'stablephase',t:'Stable phase',s:'arg of the derivative without convergence stopping (any centre c)',tag:'Stable phase'},
@@ -57,7 +59,7 @@ const MODES=[
 const modeOf=v=>MODES.find(m=>m.v===v)||MODES[0];
 const SEEDS=[['Rabbit',-0.122561166876654,0.744861766619744],['Basilica',-1,0],['Dendrite',0,1],['Siegel disk',-0.390540870218399,-0.586787907346969],
   ['Cauliflower',0.25,0],['Airplane',-1.754877666246693,0],['Spiral',-0.8,0.156],['Galaxy',0.285,0.01],['Seahorse',-0.745,0.113],['Dust',0.3,0.5]];
-const DEFAULTS={fractal:'mandelbrot', power:3, juliaPower:2, seed:{re:SEEDS[0][1],im:SEEDS[0][2]}, mode:'escape', panels:['escape','sens','gradt','flat'],
+const DEFAULTS={geometryDepth:0,fractal:'mandelbrot', power:3, juliaPower:2, seed:{re:SEEDS[0][1],im:SEEDS[0][2]}, mode:'escape', panels:['escape','sens','gradt','flat'],
   depth:0, polar:false, bottcher:false, bottcherGMin:0.02, bottcherGMax:0.6, logPolar:false, logOuter:Math.log(2), logSpan:Math.log(10000), palette:'classic', dldIterations:1000, dldContrast:2.5, iter:0, radius:2, stopMode:'outward', clean:false, contours:true, contourLevels:8, contourOpacity:70, contourColor:'white'};
 const clone=c=>({...c, seed:{...c.seed}, panels:[...c.panels]});
 let cfg=clone(DEFAULTS), started=false;
@@ -89,6 +91,7 @@ function centreOf(cr,ci){
 // the mathematical universe: what the worker needs, the home frame and how far the camera may wander
 function engineOf(c){
   const R=c.radius;
+  if(isGeometry(c.fractal)){const g=GEOMETRIC[c.fractal];return {kind:2,geometry:c.fractal,geometryDepth:geometryDepth(c),pw:2,kr:0,ki:0,R2:R*R,name:g.name,rule:g.rule,hx:0,hy:0,span:g.span,bx:2,by:2};}
   if(c.fractal==='julia'){
     const m=Math.hypot(c.seed.re,c.seed.im), rad=(1+Math.sqrt(1+4*m))/2;   // the filled Julia set lies within this radius
     return {kind:1,pw:c.juliaPower,kr:c.seed.re,ki:c.seed.im,centre:c.juliaPower===2?centreOf(c.seed.re,c.seed.im):null,R2:R*R,name:'Julia set',rule:'z → z^'+Number(c.juliaPower.toPrecision(7))+' + c',hx:0,hy:0,span:2*rad*1.04,bx:rad+0.8,by:rad+0.8};
@@ -98,7 +101,7 @@ function engineOf(c){
   return {kind:0,pw:2,kr:0,ki:0,R2:R*R,name:'Mandelbrot set',rule:'z → z² + c',hx:-0.75,hy:0,span:0,cxm:-0.6,bx:2,by:1.6};
 }
 let eng=engineOf(cfg);
-const asciiRule=()=>'z -> z^'+eng.pw+' + c';
+const asciiRule=()=>eng.geometry?eng.rule:'z -> z^'+eng.pw+' + c';
 const diffMode=m=>['sgrad','sdiv','scurl','shess'].includes(m);
 const complexMode=m=>['normphase','stablephase','phase','vdiv','vcurl','jointmag','jointphase'].includes(m);
 const needD=()=>cfg.mode==='coherence'||complexMode(cfg.mode)||cfg.mode==='maskdiff'||diffMode(cfg.mode)||cfg.mode==='waves'||cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
@@ -108,6 +111,8 @@ const cmp=()=>cfg.mode==='compare';
    kind 1: the pixel is z₀ and c is fixed (dynamical plane). Returns numbers, not colours:
    T = first n with |zₙ| > R (65535: no escape detected), F = μ − T, S = ln(1 + |Dₙ|) with D = dz/dc (kind 0) or dz/dz₀ (kind 1). ---------- */
 const WORKER_SRC=`
+${geometrySample.toString()}
+
 // Principal branch: z^p = exp(p (ln|z| + i Arg(z))), Arg in (-pi,pi].
 // For noninteger p this map is discontinuous across the negative real axis.
 function principalPower(zr,zi,p){
@@ -280,6 +285,7 @@ onmessage=e=>{
         [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki):pw===2?parameterInverse(u,theta):[NaN,NaN];
       } else if(polar){ const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
       if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;if(A)A[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
+      if(m.geometry){const q=geometrySample(m.geometry,pr,pq,m.geometryDepth);T[i]=q[0]?q[1]:65535;F[i]=q[1];if(q[0])minN=Math.min(minN,q[1]);if(S)S[i]=NaN;if(A)A[i]=NaN;if(C)C[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
       if(m.normalizedPhase){const q=normalizedCentre(pr,pq,Math.min(maxIt,m.centre.cap),Math.max(4,R2),m.centre);A[i]=q[0];S[i]=q[1];T[i]=q[2];continue;}
       if(m.stablePhase){const q=stableCentre(pr,pq,Math.min(maxIt,m.centre.cap),Math.max(4,R2),m.centre);A[i]=q[0];S[i]=Math.max(0,q[1]);T[i]=q[2];continue;}
       let zr,zi,cr,ci,dr,di;
@@ -357,7 +363,7 @@ const idle=[]; let queue=[];
 for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.onmessage=onStrip; idle.push(w); }
 function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
 // Green potential always uses its own outward escape calculation, independent of the experimental stop mode.
-const engMsg=e=>({coherence:cfg.mode==='coherence'||(cfg.mode==='compare'&&cfg.panels.includes('coherence')),normalizedPhase:cfg.mode==='normphase'&&!!e.centre,stablePhase:cfg.mode==='stablephase'&&!!e.centre,centre:(cfg.mode==='normphase'||cfg.mode==='stablephase')&&e.centre?e.centre:null,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
+const engMsg=e=>({coherence:cfg.mode==='coherence'||(cfg.mode==='compare'&&cfg.panels.includes('coherence')),normalizedPhase:cfg.mode==='normphase'&&!!e.centre,stablePhase:cfg.mode==='stablephase'&&!!e.centre,centre:(cfg.mode==='normphase'||cfg.mode==='stablephase')&&e.centre?e.centre:null,geometry:e.geometry,geometryDepth:e.geometryDepth,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
 
 // the same orbit on the main thread, for single points (pin, cross-sections)
 function orbit(pr,pq,maxIt,e){
@@ -467,6 +473,7 @@ function resize(){
 let lastMin=0, boost=1;
 const CAP=40000;
 function itFor(w){
+  if(eng.geometry)return eng.geometryDepth;
   if(cfg.iter) return cfg.iter;
   if(engMsg(eng).coherence)return Math.round(Math.min(CAP,Math.max(400,150+260*Math.max(0,Math.log10(HOME.w/w)))));
   const byDepth=150+260*Math.max(0,Math.log10(HOME.w/w));
@@ -498,7 +505,7 @@ function newLayer(v,W,H,maxIt,withS){
 }
 function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.A&&m.A)L.A.set(m.A,m.y0row*L.W);if(L.C&&m.C)L.C.set(m.C,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
-  const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;
+  const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;L.geometry=e.geometry;L.geometryDepth=e.geometryDepth;
   for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,needDLD:!!L.DLD,dldIterations:cfg.dldIterations,...engMsg(e),...extra});
   if(front) queue.unshift(...items); else queue.push(...items);
 }
@@ -543,7 +550,7 @@ function mainStrip(m){
   const L=cur.passes[m.pass]; fill(L,m);
   if(L.left>0) return;
   if(m.pass===0) roughMs=0.6*roughMs+0.4*(performance.now()-lastStart);
-  if(!cfg.iter&&!window.birthPreviewQuality&&!cur.coherence&&m.pass===cur.passes.length-1){
+  if(!eng.geometry&&!cfg.iter&&!window.birthPreviewQuality&&!cur.coherence&&m.pass===cur.passes.length-1){
     if(L.minN<1e9){ lastMin=L.minN; boost=1; }
     else if(!back){
       if(cur.maxIt<CAP){ boost*=3; dirty=true; }
@@ -601,6 +608,7 @@ function complexDifferential(L,mode){const {W,H,S,A,sx}=L,V=new Float64Array(W*H
 function complexFieldStats(L,mode){const V=complexDifferential(L,mode);let n=0,sum=0,max=0;for(let i=0;i<V.length;i++){const v=V[i];if(!Number.isFinite(v))continue;const x=i%L.W,y=Math.floor(i/L.W);if(x===0||y===0||x===L.W-1||y===L.H-1)continue;if(L.T[i]!==L.T[i-1]||L.T[i]!==L.T[i+1]||L.T[i]!==L.T[i-L.W]||L.T[i]!==L.T[i+L.W])continue;n++;sum+=v*v;max=Math.max(max,Math.abs(v));}return {n,rms:n?Math.sqrt(sum/n):NaN,max:n?max:NaN};}
 function paint(L,mode){
   const {W,H,T,F,S,DLD}=L, N=W*H;
+  if(L.geometry){const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d'),img=ctx.createImageData(W,H),o=new Uint32Array(img.data.buffer),lut=PALETTES[cfg.palette].seq;for(let i=0;i<N;i++){const inside=T[i]!==NO;if(mode==='binary'){o[i]=inside?WHITE:BLACK;continue;}if(inside)o[i]=lut[Math.round(550+473*Math.min(1,(T[i]+1)/(L.geometryDepth+1)))];else if(F[i]>0)o[i]=lut[Math.round(80+280*F[i]/L.geometryDepth)];else o[i]=BLACK;}ctx.putImageData(img,0,0);return c;}
   if((diffMode(mode)||mode==='maskdiff')&&!S)return null;
   if((mode==='waves'||mode==='sens'||mode==='flat') && !S) return null;
   if(mode==='dld'&&!DLD)return null;

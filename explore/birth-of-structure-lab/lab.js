@@ -149,6 +149,7 @@ function notify(t,ms=5000){
   el.textContent=t; el.hidden=false; $('pop').scrollTop=0; clearTimeout(notify.t); notify.t=setTimeout(()=>{ el.hidden=true; },ms);
 }
 function setMode(m){
+  if(!layerAllowed(cfg.fractal,m)){notify('This measurement is not defined for the selected fractal.');return;}
   // Coordinate choice remains independent of measurement.
   if(diffMode(m)&&(cfg.polar||cfg.bottcher)){notify('Differential tests require Cartesian coordinates');return;}
   const wasStable=cfg.mode; if(m==='coherence'&&cfg.fractal!=='julia'){notify('Rotation coherence is defined here for Julia orbits.');return;} if(['stablephase','normphase'].includes(m)&&!eng.centre){notify(PHASE_NEEDS);return;} if(['stablephase','normphase'].includes(m)&&(cfg.iter===0||cfg.iter>phaseCap()))cfg.iter=phaseCap();   // phase views report no escape step, so Auto iterations would keep restarting
@@ -196,7 +197,7 @@ function group(el,items,get,set){
 function syncGroups(root){ root.querySelectorAll('.grp').forEach(g=>[...g.children].forEach(b=>b.classList.toggle('on',b._v===g._get()))); }
 group($('qMode'),MODES,()=>cfg.mode,v=>setMode(v));
 group($('qPal'),Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t})),()=>cfg.palette,v=>setPalette(v));
-function syncQuick(){ $('dldOptions').style.display=cfg.mode==='dld'?'block':'none'; $('dldContrast').value=cfg.dldContrast; $('dldContrastOut').textContent=cfg.dldContrast.toFixed(1)+'×'; $('dldIterations').value=String(cfg.dldIterations); $('qVector').querySelector('b').textContent='Vector arrows: '+(vectorOverlay.enabled?'on':'off'); $('qVector').classList.toggle('on',vectorOverlay.enabled); $('vectorOptions').style.display=vectorOverlay.enabled?'block':'none'; syncPolarButton(); syncGroups($('pop')); $('qClean').classList.toggle('on',cfg.clean); $('qContours').classList.toggle('on',cfg.contours); }
+function syncQuick(){for(const b of $('qMode').children)b.hidden=!layerAllowed(cfg.fractal,b._v);$('qVector').hidden=!!eng.geometry;$('qContours').hidden=!!eng.geometry; $('dldOptions').style.display=cfg.mode==='dld'?'block':'none'; $('dldContrast').value=cfg.dldContrast; $('dldContrastOut').textContent=cfg.dldContrast.toFixed(1)+'×'; $('dldIterations').value=String(cfg.dldIterations); $('qVector').querySelector('b').textContent='Vector arrows: '+(vectorOverlay.enabled?'on':'off'); $('qVector').classList.toggle('on',vectorOverlay.enabled); $('vectorOptions').style.display=vectorOverlay.enabled?'block':'none'; syncPolarButton(); syncGroups($('pop')); $('qClean').classList.toggle('on',cfg.clean); $('qContours').classList.toggle('on',cfg.contours); }
 const closePop=()=>{ $('pop').classList.remove('on'); $('bView').classList.remove('on'); };
 $('dldContrast').oninput=ev=>{cfg.dldContrast=+ev.target.value; $('dldContrastOut').textContent=cfg.dldContrast.toFixed(1)+'×';repaint();};
 $('dldContrast').onchange=()=>writeHash();
@@ -213,10 +214,11 @@ $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(
 
 /* ---------- applying a configuration ---------- */
 function applyConfig(next,cam){
+  if(isGeometry(next.fractal)){next={...next,mode:layerAllowed(next.fractal,next.mode)?next.mode:'construction',bottcher:false};vectorOverlay.enabled=false;}else if(next.mode==='construction')next={...next,mode:'escape'};
   if(next.bottcher && next.fractal!=='julia' && next.fractal!=='mandelbrot')next.bottcher=false;
   if(next.bottcher && next.fractal==='julia' && next.juliaPower!==2)next.bottcher=false;
   if(next.bottcher&&next.fractal!=='julia'&&next.fractal!=='mandelbrot')next.bottcher=false;
-  const world=!started || next.fractal!==cfg.fractal || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im || next.juliaPower!==cfg.juliaPower));
+  const world=!started || next.fractal!==cfg.fractal || (isGeometry(next.fractal)&&next.geometryDepth!==cfg.geometryDepth) || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im || next.juliaPower!==cfg.juliaPower));
   const numeric=next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode || next.bottcher!==cfg.bottcher || next.bottcherGMin!==cfg.bottcherGMin || next.bottcherGMax!==cfg.bottcherGMax || next.polar!==cfg.polar || next.logPolar!==cfg.logPolar;
   cfg=clone(next); eng=engineOf(cfg); started=true; syncContourSettings(cfg); syncCoordPickers();
   if(cfg.mode==='coherence'&&cfg.fractal!=='julia')cfg.mode='escape';
@@ -233,12 +235,12 @@ function applyConfig(next,cam){
 /* ---------- configuration screen: edits a draft, nothing changes until "Use this configuration" ---------- */
 let draft=clone(cfg);
 const FR=FRACTALS.map(f=>({...f,thumb:true}));
-group($('gFractal'),FR,()=>draft.fractal,v=>{ draft.fractal=v; syncCfg(); });
+group($('gFractal'),FR,()=>draft.fractal,v=>{ if(v!==draft.fractal){draft.fractal=v;draft.geometryDepth=0;}if(isGeometry(v)){draft.mode='construction';draft.bottcher=false;window.chooseGeometryExplore?.();}else if(draft.mode==='construction')draft.mode='escape';syncCfg(); });
 const JULIA_EXPONENTS=[2,3,4,5,6,7,8,9,10,-1,-2,-3,-4,-5,-6,-7,-8,0.5,0.75,0.9,1,1.001,1.01,1.1,1.25,1.5,Math.E,Math.PI];
 const juliaPowerLabel=p=>p===Math.PI?'π':p===Math.E?'e':String(p);
 group($('gJuliaPower'),JULIA_EXPONENTS.map(v=>({v,t:juliaPowerLabel(v)})),()=>draft.juliaPower,v=>{draft.juliaPower=v;syncCfg();thumbs();});
 group($('gPower'),[3,4,5,6,7,8].map(v=>({v,t:'n = '+v})),()=>draft.power,v=>{ draft.power=v; syncCfg(); thumbs(); });
-const CONTROL_LAYER_IDS=['escape','potential','sens','sgrad','vdiv','vcurl','phase','coherence'];
+const CONTROL_LAYER_IDS=['construction','binary','escape','potential','sens','sgrad','vdiv','vcurl','phase','coherence'];
 const CONTROL_LAYERS=CONTROL_LAYER_IDS.map(v=>MODES.find(m=>m.v===v)).filter(Boolean);
 group($('gMode'),CONTROL_LAYERS,()=>draft.mode,v=>{ draft.mode=v; syncCfg(); });
 group($('gPal'),Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t})),()=>draft.palette,v=>{ draft.palette=v; syncCfg(); thumbs(); });
@@ -296,17 +298,19 @@ function parseC(s){ // "−0.8 + 0.156i", "-0.8, 0.156", "i", "-0.5i", "0.25"
 }
 $('cin').addEventListener('input',()=>{ const c=parseC($('cin').value); $('cin').classList.toggle('bad',!c); if(c){ draft.seed=c; syncSeedPicker(); thumbs(); } });
 function syncCfg(){ syncSeedPicker(); syncCoordPickers();
+  const geo=isGeometry(draft.fractal);if(!layerAllowed(draft.fractal,draft.mode))draft.mode=geo?'construction':'escape';$('pGeometry').classList.toggle('on',geo);if(geo){const g=GEOMETRIC[draft.fractal];$('geometryDepth').max=g.max;$('geometryDepth').value=geometryDepth(draft);$('geometryDepthOut').textContent=geometryDepth(draft);}for(const b of $('gMode').children)b.hidden=!layerAllowed(draft.fractal,b._v);
   syncGroups($('cfg')); $('gClean').classList.toggle('on',draft.clean);
   $('pJulia').classList.toggle('on',draft.fractal==='julia'); $('juliaPowerNote').textContent=Number.isInteger(draft.juliaPower)&&draft.juliaPower>=2?'Polynomial Julia set (degree '+draft.juliaPower+').':Number.isInteger(draft.juliaPower)&&draft.juliaPower<0?'Rational map with a pole at zero. First-threshold stopping is an experiment, not a reliable Julia membership test.':'Principal-branch complex power; cut on the negative real axis. First-threshold stopping is a finite-orbit diagnostic, not a classical polynomial Julia set.'; $('pMulti').classList.toggle('on',draft.fractal==='multibrot');
   const g=$('palPrev').getContext('2d'), lut=PALETTES[draft.palette].cyc, img=g.createImageData(600,1), o=new Uint32Array(img.data.buffer);
   for(let x=0;x<600;x++) o[x]=lut[(x*1024/300|0)&1023];
   for(let y=0;y<18;y++) g.putImageData(img,0,y);
 }
+$('geometryDepth').oninput=e=>{draft.geometryDepth=+e.target.value;$('geometryDepthOut').textContent=e.target.value;};
 const thumbIds=[];
 function thumbs(){ // each library card shows its own universe, computed by the same worker
   thumbIds.forEach(cancel); thumbIds.length=0;
   FR.forEach(f=>{ const c={...draft,fractal:f.v,radius:2}, e=engineOf(c), w=e.span?e.span*4/3:3.5, v={cx:e.span?0:-0.65,cy:0,w,a:0};
-    thumbIds.push(render('thumb',v,160,120,220,e,false,L=>{ const keep=cfg.palette; cfg.palette=draft.palette; const img=paint(L,'escape'); cfg.palette=keep; f.cv.getContext('2d').drawImage(img,0,0); })); });
+    thumbIds.push(render('thumb',v,160,120,220,e,false,L=>{ const keep=cfg.palette; cfg.palette=draft.palette; const img=paint(L,e.geometry?'construction':'escape'); cfg.palette=keep; f.cv.getContext('2d').drawImage(img,0,0); })); });
 }
 function openCfg(){ draft=clone(cfg); draft.depth=0; if(!CONTROL_LAYER_IDS.includes(draft.mode))draft.mode='escape'; $('cin').value=cText(draft.seed.re,draft.seed.im,15).replace(/−/g,'-'); $('cin').classList.remove('bad'); closePop(); closeSec(); setSecTool(false);
   $('cfg').classList.add('on'); $('cfg').firstElementChild.scrollTop=0; syncCfg(); thumbs(); }
@@ -320,7 +324,7 @@ let infoOpen=false;
 function snapshot(){ // everything needed to reproduce this frame
   const a=view.a*180/Math.PI;
   return {viewer:'Fractal Universe Lab', version:1,
-    config:{fractal:cfg.fractal, rule:asciiRule(), power:eng.pw, seed:cfg.fractal==='julia'?{...cfg.seed}:null, measurement:cfg.mode, panels:cmp()?[...cfg.panels]:null,
+    config:{fractal:cfg.fractal, geometryDepth:eng.geometry?eng.geometryDepth:null, rule:asciiRule(), power:eng.pw, seed:cfg.fractal==='julia'?{...cfg.seed}:null, measurement:cfg.mode, panels:cmp()?[...cfg.panels]:null,
       palette:cfg.palette, layerSettings:globalThis.birthLayerSettings?.(), contours:{show:cfg.contours,levels:cfg.contourLevels,opacity:cfg.contourOpacity,color:cfg.contourColor}, iterations:{mode:cfg.iter?'fixed':'auto', limit:itFor(view.w)}, escapeRadius:Math.sqrt(eng.R2), stopMode:cfg.stopMode, maxDepth:cfg.depth||null, cleanView:cfg.clean},
     camera:{centre:{re:view.cx, im:view.cy}, width:view.w, cameraAngleDeg:a, planeTurnDeg:-a, depth:depthOf(view.w), homeWidth:HOME.w},
     render: stats ? {width:stats.W, height:stats.H, pixelSize:stats.pix, escaped:stats.esc, pixels:stats.N, Tmin:stats.esc?stats.tmin:null, Tmax:stats.esc?stats.tmax:null,
@@ -331,7 +335,7 @@ function snapshot(){ // everything needed to reproduce this frame
 }
 function fillInfo(){
   const d=digitsFor(view.w/Wd*DPR), D=depthOf(view.w), deg=view.a*180/Math.PI, s=stats, sg=x=>(x>0?'+':x<0?'−':'')+Math.abs(x).toFixed(1).replace(/\.0$/,'')+'°';
-  const what= eng.kind ? 'pixel = z₀, c fixed' : 'pixel = c, z₀ = 0';
+  const what= eng.geometry?'finite recursive construction':eng.kind ? 'pixel = z₀, c fixed' : 'pixel = c, z₀ = 0';
   const rows=[
     ['Fractal', eng.name],
     ['Rule', eng.rule+' <i>· '+what+'</i>'],
@@ -342,19 +346,19 @@ function fillInfo(){
     ['Width', sci(view.w,4)],
     ['Rotation', 'camera '+sg(deg)+' <i>· the plane appears turned '+sg(-deg)+'</i>'],
     ['Zoom depth', 'D = '+minus(D.toFixed(2))+' <i>· ×'+sci(Math.pow(2,D),3)+' · limit '+(cfg.depth||'none')+'</i>'],
-    ['Iteration limit', num(itFor(view.w))+' <i>· '+(cfg.iter?'fixed':'auto, rises with depth')+'</i>'],
-    ['Escape radius', String(+Math.sqrt(eng.R2).toFixed(4))],
+    [eng.geometry?'Construction depth':'Iteration limit', num(itFor(view.w))+' <i>· '+(cfg.iter?'fixed':'auto, rises with depth')+'</i>'],
+    eng.geometry?null:['Escape radius', String(+Math.sqrt(eng.R2).toFixed(4))],
     s ? ['Image', num(s.W)+' × '+num(s.H)+' px'+(cmp()?' <i>per panel</i>':'')+' <i>· pixel</i> '+sci(s.pix,3)] : null,
-    s ? ['Escaped', (100*s.esc/s.N).toFixed(s.esc===s.N?0:2)+' % <i>of '+num(s.N)+' pixels. Black means no escape detected in '+num(s.maxIt)+' steps, not proven membership.</i>'] : null,
-    s&&s.esc ? ['Escape step T', num(s.tmin)+' … '+num(s.tmax)] : null,
-    s&&s.esc ? ['Resolution check', (100*s.multi).toFixed(1)+' % <i>of neighbouring pixels differ by more than one step: fine structure there is below the pixel grid</i>'] : null,
+    eng.geometry&&s?['Covered pixels',(100*s.esc/s.N).toFixed(2)+'% · finite construction']:s ? ['Escaped', (100*s.esc/s.N).toFixed(s.esc===s.N?0:2)+' % <i>of '+num(s.N)+' pixels. Black means no escape detected in '+num(s.maxIt)+' steps, not proven membership.</i>'] : null,
+    !eng.geometry&&s&&s.esc ? ['Escape step T', num(s.tmin)+' … '+num(s.tmax)] : null,
+    !eng.geometry&&s&&s.esc ? ['Resolution check', (100*s.multi).toFixed(1)+' % <i>of neighbouring pixels differ by more than one step: fine structure there is below the pixel grid</i>'] : null,
     s&&isFinite(s.rTS) ? ['r(T, S)', r3(s.rTS)+' <i>escape step vs sensitivity, this frame</i>'] : null,
     s&&isFinite(s.rTR) ? ['r(T, S/T)', r3(s.rTR)+' <i>escape step vs stretch per step</i>'] : null,
     pin ? ['Pin', cFixed(pin.re,pin.im,pin.d)+'<br><i>'+orbitText(pin.r)+'</i>'] : null
   ].filter(Boolean);
   $('infoT').innerHTML=rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>').join('');
   $('pinJulia').style.display = cfg.fractal==='mandelbrot' && pin ? '' : 'none';
-  $('infoNote').textContent = (s&&isFinite(s.rTS) ? '' : 'Correlations appear in the two sensitivity views and in Comparison, where the derivative is computed. ')
+  $('infoNote').textContent = eng.geometry?'Finite recursive geometry; white in binary mode marks the construction. No complex orbit is evaluated.':(s&&isFinite(s.rTS) ? '' : 'Correlations appear in the two sensitivity views and in Comparison, where the derivative is computed. ')
     +'Correlations are descriptive: they belong to this grid, this frame and this iteration limit, and say nothing about cause. '
     +'S rises by ln(2R) at every escape band, so bands in the sensitivity view follow the escape radius; the bands-removed view divides that step out.';
 }
@@ -371,7 +375,7 @@ function writeHash(){
   if(!started) return; clearTimeout(hashT);
   hashT=setTimeout(()=>{
     const q={f:cfg.fractal, m:cfg.mode, pal:cfg.palette, it:cfg.iter, R:cfg.radius, sm:cfg.stopMode, d:cfg.depth, x:view.cx, y:view.cy, w:view.w, r:+(view.a*180/Math.PI).toFixed(4), polar:+cfg.polar, bt:+cfg.bottcher, bg0:cfg.bottcherGMin, bg1:cfg.bottcherGMax, lp:+cfg.logPolar, lo:+cfg.logOuter.toFixed(9), ls:+cfg.logSpan.toFixed(9), co:+cfg.contours, cn:cfg.contourLevels, ca:cfg.contourOpacity, cc:cfg.contourColor};
-    if(cfg.fractal==='multibrot') q.n=cfg.power; if(cfg.fractal==='julia'){q.c=cfg.seed.re+','+cfg.seed.im;q.jp=cfg.juliaPower;}
+    if(eng.geometry)q.gd=eng.geometryDepth; if(cfg.fractal==='multibrot') q.n=cfg.power; if(cfg.fractal==='julia'){q.c=cfg.seed.re+','+cfg.seed.im;q.jp=cfg.juliaPower;}
     if(cmp()) q.ps=cfg.panels.join('.'); if(cfg.clean) q.clean=1;
     try{ history.replaceState(null,'','#'+Object.entries(q).map(([k,v])=>k+'='+v).join('&')); }catch(_){}
   },250);
@@ -379,7 +383,7 @@ function writeHash(){
 function readHash(){
   const q={}; location.hash.replace(/^#/,'').split('&').forEach(p=>{ const i=p.indexOf('='); if(i>0) q[p.slice(0,i)]=decodeURIComponent(p.slice(i+1)); });
   if(!q.f || !FRACTALS.some(f=>f.v===q.f)) return null;
-  const c=clone(DEFAULTS); c.fractal=q.f; c.polar=q.polar==='1'; c.bottcher=q.bt==='1'&&(c.fractal==='julia'||c.fractal==='mandelbrot'); if(+q.bg0>=1e-5&&+q.bg0<8)c.bottcherGMin=+q.bg0; if(+q.bg1>c.bottcherGMin&&+q.bg1<=8)c.bottcherGMax=+q.bg1; c.logPolar=c.polar&&q.lp==='1'; if(q.lo!==undefined&&Number.isFinite(+q.lo)&&+q.lo>=-32&&+q.lo<=32)c.logOuter=+q.lo; if(q.ls!==undefined&&Number.isFinite(+q.ls)&&+q.ls>=.05&&+q.ls<=36)c.logSpan=+q.ls;
+  const c=clone(DEFAULTS); c.fractal=q.f; if(isGeometry(c.fractal))c.geometryDepth=+q.gd||0; c.polar=q.polar==='1'; c.bottcher=q.bt==='1'&&(c.fractal==='julia'||c.fractal==='mandelbrot'); if(+q.bg0>=1e-5&&+q.bg0<8)c.bottcherGMin=+q.bg0; if(+q.bg1>c.bottcherGMin&&+q.bg1<=8)c.bottcherGMax=+q.bg1; c.logPolar=c.polar&&q.lp==='1'; if(q.lo!==undefined&&Number.isFinite(+q.lo)&&+q.lo>=-32&&+q.lo<=32)c.logOuter=+q.lo; if(q.ls!==undefined&&Number.isFinite(+q.ls)&&+q.ls>=.05&&+q.ls<=36)c.logSpan=+q.ls;
   if(MODES.some(m=>m.v===q.m)) c.mode=q.m; if(PALETTES[q.pal]) c.palette=q.pal;
   if(Number.isInteger(+q.it)&&+q.it>=0&&+q.it<=40000) c.iter=+q.it; if(Number.isFinite(+q.R)&&+q.R>=0.01&&+q.R<=1000000)c.radius=+q.R; if(['outward','inward','fixed'].includes(q.sm))c.stopMode=q.sm; if([0,3,10,25].includes(+q.d)) c.depth=+q.d;
   if(+q.n>=3 && +q.n<=8) c.power=Math.round(+q.n);
@@ -464,7 +468,7 @@ function fromMeta(m){
   if(!m || !m.centre && !m.camera) return null;
   const c=clone(DEFAULTS);
   if(m.viewer==='Fractal Universe Lab'){
-    const k=m.config||{}; if(FRACTALS.some(f=>f.v===k.fractal)) c.fractal=k.fractal;
+    const k=m.config||{}; if(FRACTALS.some(f=>f.v===k.fractal)) c.fractal=k.fractal; if(isGeometry(c.fractal))c.geometryDepth=+k.geometryDepth||0;
     if(k.fractal==='multibrot' && k.power>=3 && k.power<=8) c.power=k.power; if(k.fractal==='julia' && JULIA_EXPONENTS.includes(+k.power))c.juliaPower=+k.power; if(k.seed) c.seed={re:+k.seed.re,im:+k.seed.im};
     if(MODES.some(x=>x.v===k.measurement)) c.mode=k.measurement; if(Array.isArray(k.panels)&&k.panels.length===4) c.panels=k.panels;
     if(k.contours){c.contours=!!k.contours.show;c.contourLevels=Math.max(1,Math.min(20,+k.contours.levels||8));c.contourOpacity=Math.max(0,Math.min(100,+k.contours.opacity));if(['white','black','colored'].includes(k.contours.color))c.contourColor=k.contours.color;}
