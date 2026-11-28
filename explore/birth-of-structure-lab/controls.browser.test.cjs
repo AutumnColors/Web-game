@@ -9,9 +9,9 @@ test('mobile toolbar shell and panel lifecycle',async()=>{
  await page.goto('http://127.0.0.1:8765/explore/birth-of-structure-lab/',{waitUntil:'load'});
  await page.waitForSelector('#tools.unified-tools',{state:'attached'});
  const buttons=page.locator('#tools.unified-tools > button');
- assert.equal(await buttons.count(),6);
+ assert.equal(await buttons.count(),7);
  assert.equal(await page.evaluate(()=>window.birthCameraOrientation()),'portrait');
- assert.deepEqual(await buttons.evaluateAll(bs=>bs.map(b=>b.getAttribute('aria-label'))),['Picture','Expedition','Layers','Current layer','Navigation','Tools']);
+ assert.deepEqual(await buttons.evaluateAll(bs=>bs.map(b=>b.getAttribute('aria-label'))),['Picture','Expedition','Layers','Fractal controls','Current layer','Navigation','Tools']);
  assert.equal(await page.locator('[data-expedition]').count(),5);
  await page.locator('[data-expedition=birth]').click();
  assert.equal(await page.getByRole('button',{name:'Choose / generate starting cycle'}).isVisible(),false);
@@ -20,10 +20,10 @@ test('mobile toolbar shell and panel lifecycle',async()=>{
  await page.evaluate(()=>{document.querySelector('#cfg')?.classList.remove('on');document.body.classList.remove('clean');});
  await buttons.nth(2).click();
  assert.equal(await page.locator('#unified-panel').isVisible(),true);
- await buttons.nth(5).click();
+ await buttons.nth(6).click();
  assert.equal(await page.locator('#unified-panel').isVisible(),true);
  assert.equal(await page.locator('#unified-panel strong').textContent(),'Tools');
- await buttons.nth(5).click();
+ await buttons.nth(6).click();
  assert.equal(await page.locator('#unified-panel').isVisible(),false);
  const bounds=await buttons.evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};}));
  for(const b of bounds)assert.ok(b.top>=0&&b.bottom<=844&&b.left>=0&&b.right<=390);
@@ -127,5 +127,38 @@ test('coherence zoom settles and stays deterministic without escape events',asyn
  await page.evaluate(()=>{const F=window.FractalLab;F.apply(F.clone(F.cfg),{...F.view});});
  await page.waitForFunction(()=>window.FractalLab.settled(),{},{timeout:60000});
  const second=await snapshot();assert.equal(second.iterations,first.iterations);assert.equal(second.pixels,first.pixels);assert.deepEqual(errors,[]);
+ }finally{await browser.close();}
+});
+
+test('fractal controls change geometry and preserve the camera across reload',async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+ const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765/explore/birth-of-structure-lab/',{waitUntil:'load'});
+ const open=()=>page.getByRole('button',{name:'Fractal controls',exact:true}).click();
+ await page.evaluate(()=>{document.querySelector('#cfg').classList.remove('on');const F=window.FractalLab;F.apply({...F.clone(F.cfg),fractal:'tree',mode:'construction',geometryDepth:5},{cx:0,cy:0,w:2.1,a:.1});});
+ const camera=()=>page.evaluate(()=>({...window.FractalLab.view}));
+ const before=await camera();
+ await open();
+ await page.getByRole('slider',{name:'Branch angle (°)',exact:true}).evaluate(el=>{el.value='50';el.dispatchEvent(new Event('input',{bubbles:true}));});
+ await page.getByRole('button',{name:'Apply changes',exact:true}).click();
+ assert.equal(await page.evaluate(()=>window.FractalLab.cfg.treeAngle),50);
+ assert.deepEqual(await camera(),before);
+ await page.waitForFunction(()=>location.hash.includes('treeAngle=50'));
+ await page.reload({waitUntil:'load'});
+ assert.equal(await page.evaluate(()=>window.FractalLab.cfg.treeAngle),50);
+ await open();
+ await page.getByRole('button',{name:'Reset fractal controls',exact:true}).click();
+ assert.equal(await page.evaluate(()=>window.FractalLab.cfg.treeAngle),32);
+ for(const [family,label] of [['koch','Bump height'],['carpet','Subdivision grid (n × n)'],['gasket','Triangle scale'],['dust','Corner scale']]){
+  await page.evaluate(family=>{const F=window.FractalLab;F.apply({...F.clone(F.cfg),fractal:family,geometryDepth:3,mode:'construction'},{cx:0,cy:0,w:1.4,a:0});},family);
+  await open();assert.ok(await page.getByRole('slider',{name:label,exact:true}).isVisible());
+  await page.getByRole('button',{name:'Close panel',exact:true}).click();
+ }
+ await page.evaluate(()=>{const F=window.FractalLab;F.apply({...F.clone(F.cfg),fractal:'julia',juliaPower:17,seed:{re:0,im:0},mode:'escape',iter:100},{cx:0,cy:0,w:2,a:0});});
+ await open();assert.equal(await page.getByRole('combobox',{name:'Exponent',exact:true}).inputValue(),'17');
+ assert.ok(await page.getByRole('textbox',{name:'Julia parameter c',exact:true}).isVisible());
+ assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });
