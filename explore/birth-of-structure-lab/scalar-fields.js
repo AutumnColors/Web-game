@@ -22,12 +22,19 @@ const SCALAR_PROVIDERS={
  distance:L=>L.ring?null:distanceTransform(L.T,L.W,L.H,L.sx,!!L.geometry),
  sensitivity:L=>L.S||null,
  escape:L=>Float64Array.from(L.T,(t,i)=>t===65535?NaN:t+L.F[i]),
- construction:L=>L.geometry?Float64Array.from(L.F):null
+ construction:L=>L.geometry?Float64Array.from(L.F):null,
+ 'renormalization-error':L=>L.errorValues||null
 };
 function scalarField(L,source){
  if(!L.g)L.g={};const key='scalar:'+source;
  if(Object.hasOwn(L.g,key))return L.g[key];
  return L.g[key]=SCALAR_PROVIDERS[source]?.(L)||null;
+}
+// Render a scalar source with an explicit, frame-independent color policy.
+function paintScalarGrid(ctx,L,source,color){
+ const V=scalarField(L,source),img=ctx.createImageData(L.W,L.H);
+ for(let i=0;i<L.W*L.H;i++){const rgb=color(V?.[i]??NaN,L.flags?.[i]||0);img.data.set(rgb,i*4);img.data[i*4+3]=255;}
+ ctx.putImageData(img,0,0);
 }
 function scalarDifferential(L,mode,S){
  const {W,H,sx}=L,out=new Float64Array(W*H);out.fill(NaN);
@@ -41,4 +48,4 @@ function scalarDifferential(L,mode,S){
  }
  return out;
 }
-if(typeof module!=='undefined')module.exports={distanceTransform,scalarField,scalarDifferential};
+if(typeof module!=='undefined')module.exports={distanceTransform,scalarField,scalarDifferential,paintScalarGrid};

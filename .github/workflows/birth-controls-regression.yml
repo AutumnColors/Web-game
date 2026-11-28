@@ -30,6 +30,8 @@ jobs:
           PY
       - name: Cycle evolution regression
         run: node --test explore/birth-of-structure-lab/cycle-evolution.test.cjs
+      - name: Renormalization error numerical regression
+        run: node --test explore/birth-of-structure-lab/renormalization-error.test.cjs
       - name: Coherence angular calibration
         run: node --test explore/birth-of-structure-lab/coherence-calibration.test.cjs
       - name: Install browser test dependency
