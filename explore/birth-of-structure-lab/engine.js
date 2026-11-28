@@ -125,20 +125,57 @@ function principalPower(zr,zi,p){
   return [r*Math.cos(a),r*Math.sin(a)];
 }
 
-function bottcherInverse(u,theta,cr,ci){
-  // Pull back the asymptotic inverse from a large equipotential.
-  // Only valid in the basin of infinity; never map the filled Julia interior.
-  if(!(u>0)||!Number.isFinite(u))return [NaN,NaN];
-  let v=u,k=0;while(v<9&&k<24){v*=2;k++;}
-  let a=theta*Math.pow(2,k),zr=Math.exp(v)*Math.cos(a),zi=Math.exp(v)*Math.sin(a);
-  for(let j=k-1;j>=0;j--){
-    const xr=zr-cr,xi=zi-ci,m=Math.hypot(xr,xi);
-    const rr=Math.sqrt(Math.max(0,(m+xr)/2)),ii=Math.sign(xi||1)*Math.sqrt(Math.max(0,(m-xr)/2));
-    const phase=theta*Math.pow(2,j);
-    const sign=rr*Math.cos(phase)+ii*Math.sin(phase)>=0?1:-1;
-    zr=sign*rr;zi=sign*ii;
+// Escape potential normalized for the dynamical plane, or for c in the parameter plane.
+// Stop once the remaining logarithmic correction is negligible. Zero means no escape detected.
+function bottcherPotential(zr,zi,cr,ci,d){
+  const cutoff=Math.log1p(Math.hypot(cr,ci))+40;
+  let weight=1;
+  for(let n=0;n<2048;n++){
+    const r=Math.hypot(zr,zi);
+    if(r>1&&d*Math.log(r)>=cutoff)return weight*Math.log(r);
+    const a=d*Math.atan2(zi,zr),m=Math.pow(r,d);
+    zr=m*Math.cos(a)+cr;zi=m*Math.sin(a)+ci;weight/=d;
+    if(!Number.isFinite(zr)||!Number.isFinite(zi))return NaN;
+    if(weight===0)return 0;
   }
-  return [zr,zi];
+  return 0;
+}
+// Lift a fixed-angle radial path from infinity. At every inverse level choose the root
+// continuous with its previous value, never the root closest to the asymptotic angle alone.
+function bottcherInverse(u,theta,cr,ci,d=2,critical=0){
+  const fail=[NaN,NaN],TAU=2*Math.PI;
+  if(!(u>0)||!Number.isFinite(u)||!Number.isInteger(d)||d<2||u<=critical)return fail;
+  if(cr===0&&ci===0)return [Math.exp(u)*Math.cos(theta),Math.exp(u)*Math.sin(theta)];
+  const cutoff=Math.log1p(Math.hypot(cr,ci))+40;
+  let g=Math.max(u,cutoff/d),angles=[theta],prev=[],step=.45,attempts=0;
+  function lift(v,old){
+    let k=0,h=v;
+    while(d*h<cutoff&&k<64){h*=d;k++;if(angles[k]===undefined)angles[k]=Math.atan2(Math.sin(d*angles[k-1]),Math.cos(d*angles[k-1]));}
+    if(h>700||k===64)return null;
+    const a=angles[k],m=Math.exp(h),out=[];
+    let x=m*Math.cos(a),y=m*Math.sin(a);
+    out[k]=[x,y];
+    for(let j=k-1;j>=0;j--){
+      const xr=x-cr,yi=y-ci,r=Math.hypot(xr,yi);
+      if(!(r>0)||!Number.isFinite(r))return null;
+      const arg=Math.atan2(yi,xr),ref=old[j]?Math.atan2(old[j][1],old[j][0]):angles[j];
+      const t=(arg+TAU*Math.round((d*ref-arg)/TAU))/d;
+      const change=Math.abs(Math.atan2(Math.sin(t-ref),Math.cos(t-ref)));
+      if(change>Math.PI/(3*d))return null;
+      const mag=Math.pow(r,1/d);x=mag*Math.cos(t);y=mag*Math.sin(t);out[j]=[x,y];
+    }
+    return out;
+  }
+  prev=lift(g,[]);if(!prev)return fail;
+  while(g>u*(1+1e-14)&&attempts++<512){
+    const next=Math.max(u,g*Math.exp(-step)),q=lift(next,prev);
+    if(!q){step/=2;if(step<1e-7)return fail;continue;}
+    prev=q;g=next;step=Math.min(.45,step*1.35);
+  }
+  if(g>u*(1+1e-14))return fail;
+  const z=prev[0],check=bottcherPotential(z[0],z[1],cr,ci,d);
+  if(!Number.isFinite(check)||Math.abs(check-u)>Math.max(2e-12,u*2e-5))return fail;
+  return z;
 }
 
 // Numerical parameter-plane uniformization for z -> z²+c.
@@ -179,7 +216,7 @@ function parameterInverse(u,theta){
  for(let n=0;n<28;n++){
    const a=parameterLogPhi(cr,ci);if(!a)return [NaN,NaN];
    const er=a[0]-u,ei=Math.atan2(Math.sin(a[1]-theta),Math.cos(a[1]-theta));
-   if(Math.hypot(er,ei)<2e-6)return [cr,ci];
+   if(Math.hypot(er,ei)<2e-6){const check=bottcherPotential(cr,ci,cr,ci,2);return Math.abs(check-u)<=Math.max(2e-6,u*2e-5)?[cr,ci]:[NaN,NaN];}
    const den=a[2]*a[2]+a[3]*a[3];if(!(den>1e-22))break;
    let sr=(er*a[2]+ei*a[3])/den,si=(ei*a[2]-er*a[3])/den;
    const maxStep=Math.max(.025,Math.hypot(cr,ci)*.35),m=Math.hypot(sr,si);
@@ -271,7 +308,7 @@ function monomialCoherence(x,y,d,N,R2,stopMode,sigma){
   return Math.min(1,Math.hypot(re,im)/count);
 }
 onmessage=e=>{
-  const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,needDLD,dldIterations,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logAngleSpan,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
+  const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,needDLD,dldIterations,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logAngleSpan,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax,bottcherCritical}=m;
   const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float64Array(N):null, DLD=needDLD?new Float32Array(N):null, A=needD?new Float64Array(N):null, C=m.coherence?new Float64Array(N):null;
   const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=pw>1?1/Math.log(pw):0;
   let minN=1e9;
@@ -285,7 +322,7 @@ onmessage=e=>{
         const t=(Rw+0.5)/polarH;
         const u=Math.exp(Math.log(bottcherGMax)*(1-t)+Math.log(bottcherGMin)*t);
         const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5);
-        [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki):pw===2?parameterInverse(u,theta):[NaN,NaN];
+        [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki,pw,bottcherCritical||0):pw===2?parameterInverse(u,theta):[NaN,NaN];
       } else if(polar){ const theta=polarAngle+(logPolar?(logAngleSpan||2*Math.PI):2*Math.PI)*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
       if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;if(A)A[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
       if(m.geometry){const q=geometrySample(m.geometry,pr,pq,m.geometryDepth,m.geometryParams);T[i]=q[0]?q[1]:65535;F[i]=q[1];if(q[0])minN=Math.min(minN,q[1]);if(S)S[i]=NaN;if(A)A[i]=NaN;if(C)C[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
@@ -391,20 +428,57 @@ function orbit(pr,pq,maxIt,e){
 }
 
 /* ---------- camera: centre, width (complex units across the screen), angle ---------- */
-function bottcherInverse(u,theta,cr,ci){
-  // Pull back the asymptotic inverse from a large equipotential.
-  // Only valid in the basin of infinity; never map the filled Julia interior.
-  if(!(u>0)||!Number.isFinite(u))return [NaN,NaN];
-  let v=u,k=0;while(v<9&&k<24){v*=2;k++;}
-  let a=theta*Math.pow(2,k),zr=Math.exp(v)*Math.cos(a),zi=Math.exp(v)*Math.sin(a);
-  for(let j=k-1;j>=0;j--){
-    const xr=zr-cr,xi=zi-ci,m=Math.hypot(xr,xi);
-    const rr=Math.sqrt(Math.max(0,(m+xr)/2)),ii=Math.sign(xi||1)*Math.sqrt(Math.max(0,(m-xr)/2));
-    const phase=theta*Math.pow(2,j);
-    const sign=rr*Math.cos(phase)+ii*Math.sin(phase)>=0?1:-1;
-    zr=sign*rr;zi=sign*ii;
+// Escape potential normalized for the dynamical plane, or for c in the parameter plane.
+// Stop once the remaining logarithmic correction is negligible. Zero means no escape detected.
+function bottcherPotential(zr,zi,cr,ci,d){
+  const cutoff=Math.log1p(Math.hypot(cr,ci))+40;
+  let weight=1;
+  for(let n=0;n<2048;n++){
+    const r=Math.hypot(zr,zi);
+    if(r>1&&d*Math.log(r)>=cutoff)return weight*Math.log(r);
+    const a=d*Math.atan2(zi,zr),m=Math.pow(r,d);
+    zr=m*Math.cos(a)+cr;zi=m*Math.sin(a)+ci;weight/=d;
+    if(!Number.isFinite(zr)||!Number.isFinite(zi))return NaN;
+    if(weight===0)return 0;
   }
-  return [zr,zi];
+  return 0;
+}
+// Lift a fixed-angle radial path from infinity. At every inverse level choose the root
+// continuous with its previous value, never the root closest to the asymptotic angle alone.
+function bottcherInverse(u,theta,cr,ci,d=2,critical=0){
+  const fail=[NaN,NaN],TAU=2*Math.PI;
+  if(!(u>0)||!Number.isFinite(u)||!Number.isInteger(d)||d<2||u<=critical)return fail;
+  if(cr===0&&ci===0)return [Math.exp(u)*Math.cos(theta),Math.exp(u)*Math.sin(theta)];
+  const cutoff=Math.log1p(Math.hypot(cr,ci))+40;
+  let g=Math.max(u,cutoff/d),angles=[theta],prev=[],step=.45,attempts=0;
+  function lift(v,old){
+    let k=0,h=v;
+    while(d*h<cutoff&&k<64){h*=d;k++;if(angles[k]===undefined)angles[k]=Math.atan2(Math.sin(d*angles[k-1]),Math.cos(d*angles[k-1]));}
+    if(h>700||k===64)return null;
+    const a=angles[k],m=Math.exp(h),out=[];
+    let x=m*Math.cos(a),y=m*Math.sin(a);
+    out[k]=[x,y];
+    for(let j=k-1;j>=0;j--){
+      const xr=x-cr,yi=y-ci,r=Math.hypot(xr,yi);
+      if(!(r>0)||!Number.isFinite(r))return null;
+      const arg=Math.atan2(yi,xr),ref=old[j]?Math.atan2(old[j][1],old[j][0]):angles[j];
+      const t=(arg+TAU*Math.round((d*ref-arg)/TAU))/d;
+      const change=Math.abs(Math.atan2(Math.sin(t-ref),Math.cos(t-ref)));
+      if(change>Math.PI/(3*d))return null;
+      const mag=Math.pow(r,1/d);x=mag*Math.cos(t);y=mag*Math.sin(t);out[j]=[x,y];
+    }
+    return out;
+  }
+  prev=lift(g,[]);if(!prev)return fail;
+  while(g>u*(1+1e-14)&&attempts++<512){
+    const next=Math.max(u,g*Math.exp(-step)),q=lift(next,prev);
+    if(!q){step/=2;if(step<1e-7)return fail;continue;}
+    prev=q;g=next;step=Math.min(.45,step*1.35);
+  }
+  if(g>u*(1+1e-14))return fail;
+  const z=prev[0],check=bottcherPotential(z[0],z[1],cr,ci,d);
+  if(!Number.isFinite(check)||Math.abs(check-u)>Math.max(2e-12,u*2e-5))return fail;
+  return z;
 }
 
 // Numerical parameter-plane uniformization for z -> z²+c.
@@ -486,7 +560,7 @@ const depthOf=w=>Math.log2(HOME.w/w);
 function precisionWidth(v){return Math.max(2,Wd)*2.5e-15*Math.max(1,Math.abs(v.cx),Math.abs(v.cy));}
 function atLimit(v){return v.w<=precisionWidth(v)*(1+1e-9);}
 function toWorld(px,py,v=view){
-  if(cfg.bottcher && (eng.kind===1 || eng.pw===2)){const u=Math.exp(Math.log(cfg.bottcherGMax)*(1-py/Hd)+Math.log(cfg.bottcherGMin)*py/Hd);return eng.kind===1?bottcherInverse(u,v.a+TAU*(px/Wd-.5),eng.kr,eng.ki):parameterInverse(u,v.a+TAU*(px/Wd-.5));}
+  if(cfg.bottcher && (eng.kind===1 || eng.pw===2)){const u=Math.exp(Math.log(cfg.bottcherGMax)*(1-py/Hd)+Math.log(cfg.bottcherGMin)*py/Hd);return eng.kind===1?bottcherInverse(u,v.a+TAU*(px/Wd-.5),eng.kr,eng.ki,eng.pw,bottcherCriticalPotential()):parameterInverse(u,v.a+TAU*(px/Wd-.5));}
   if(cfg.polar){const theta=v.a+(cfg.logPolar?(cfg.logAngleSpan||TAU):TAU)*(px/Wd-.5),r=cfg.logPolar?Math.exp(cfg.logOuter-cfg.logSpan*py/Hd):v.w/2*py/Hd;return [v.cx+r*Math.cos(theta),v.cy+r*Math.sin(theta)];}
   const s=v.w/Wd, ux=(px-Wd/2)*s, uy=-(py-Hd/2)*s, c=Math.cos(v.a), n=Math.sin(v.a);
   return [v.cx+ux*c-uy*n, v.cy+ux*n+uy*c];
@@ -507,11 +581,11 @@ function gridFor(v,W,H,sx){
 
 /* ---------- layers of numbers ---------- */
 function newLayer(v,W,H,maxIt,withS){
-  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),logPolar:!!cfg.logPolar,logAngleSpan:cfg.logAngleSpan||TAU,logOuter:cfg.logOuter,logSpan:cfg.logSpan,left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float64Array(W*H):null,A:withS?new Float64Array(W*H):null,C:(cfg.mode==='coherence'||(cfg.mode==='compare'&&cfg.panels.includes('coherence')))?new Float64Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
+  return {W,H,sx:v.w/W,cx:v.cx,cy:v.cy,a:v.a||0,w:v.w,maxIt,ring:!!(cfg.polar||cfg.bottcher),bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,logPolar:!!cfg.logPolar,logAngleSpan:cfg.logAngleSpan||TAU,logOuter:cfg.logOuter,logSpan:cfg.logSpan,left:H,minN:1e9,T:new Uint16Array(W*H),F:new Float32Array(W*H),S:withS?new Float64Array(W*H):null,A:withS?new Float64Array(W*H):null,C:(cfg.mode==='coherence'||(cfg.mode==='compare'&&cfg.panels.includes('coherence')))?new Float64Array(W*H):null,DLD:cfg.mode==='dld'?new Float32Array(W*H):null,imgs:[],rng:{},g:{}};
 }
 function fill(L,m){ L.T.set(m.T,m.y0row*L.W); L.F.set(m.F,m.y0row*L.W); if(L.S&&m.S) L.S.set(m.S,m.y0row*L.W);if(L.A&&m.A)L.A.set(m.A,m.y0row*L.W);if(L.C&&m.C)L.C.set(m.C,m.y0row*L.W);if(L.DLD&&m.DLD)L.DLD.set(m.DLD,m.y0row*L.W); L.left-=m.rows; if(m.minN<L.minN) L.minN=m.minN; }
 function strips(L,v,tag,extra,e,front){
-  const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logAngleSpan:cfg.logAngleSpan||TAU,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;L.geometry=e.geometry;L.geometryDepth=e.geometryDepth;
+  const g=gridFor(v,L.W,L.H,L.sx), polarExtra=(tag==='main'&&(cfg.polar||cfg.bottcher))?{bottcher:!!cfg.bottcher,bottcherGMin:cfg.bottcherGMin,bottcherGMax:cfg.bottcherGMax,bottcherCritical:cfg.bottcher?bottcherCriticalPotential():0,polar:true,polarCx:v.cx,polarCy:v.cy,polarRadius:v.w/2,polarH:L.H,polarAngle:v.a||0,logPolar:!!cfg.logPolar,logAngleSpan:cfg.logAngleSpan||TAU,logOuter:cfg.logOuter,logSpan:cfg.logSpan}:{}, rows=Math.max(1,Math.floor(12000/L.W)), items=[]; L.pw=e.pw;L.geometry=e.geometry;L.geometryDepth=e.geometryDepth;
   for(let y=0;y<L.H;y+=rows) items.push({tag,W:L.W,y0row:y,rows:Math.min(rows,L.H-y),...g,...polarExtra,maxIt:L.maxIt,needD:!!L.S,needDLD:!!L.DLD,dldIterations:cfg.dldIterations,...engMsg(e),...extra});
   if(front) queue.unshift(...items); else queue.push(...items);
 }
