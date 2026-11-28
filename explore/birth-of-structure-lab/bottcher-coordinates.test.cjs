@@ -39,3 +39,23 @@ test('actual worker exterior pixel sampling',()=>{
  assert.equal(out.T.length,W*rows);assert.ok([...out.T].every(n=>n!==65535));assert.ok([...out.S].every(Number.isFinite));
  }
 });
+
+
+test('measured Green potential is horizontal and independent of orbit stopping',()=>{
+ let out;const run=new Function('postMessage','let onmessage;'+worker+';return onmessage')(m=>out=m);
+ for(const [kind,pw,kr,ki] of [[1,2,-1.401155189,0],[1,6,-.3,.2],[0,2,0,0]]){
+ let previous;
+ for(const [R2,stopMode] of [[4,'outward'],[256,'outward'],[4,'fixed']]){
+ const W=64,rows=24;
+ run({data:{W,rows,y0row:0,or:0,oi:0,exr:0,exi:0,eyr:0,eyi:0,maxIt:128,kind,pw,kr,ki,R2,stopMode,needD:true,needDLD:false,polar:true,polarH:rows,polarAngle:Math.PI,bottcher:true,bottcherGMin:.01,bottcherGMax:.3,bottcherCritical:0}});
+ for(let y=0;y<rows;y++){
+ const expected=Math.log(.3)*(1-(y+.5)/rows)+Math.log(.01)*(y+.5)/rows;
+ const values=Array.from(out.G.slice(y*W,(y+1)*W));
+ assert.ok(values.every(v=>Number.isFinite(v)&&Math.abs(v-expected)<3e-5));
+ assert.ok(Math.max(...values)-Math.min(...values)<3e-5);
+ }
+ if(previous)assert.deepEqual(out.G,previous);
+ previous=out.G;
+ }
+ }
+});
