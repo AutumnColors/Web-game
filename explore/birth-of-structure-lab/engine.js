@@ -33,7 +33,7 @@ const FRACTALS=[
   {v:'multibrot',  t:'Multibrot',  s:'z → zⁿ + c'}
 ];
 const MODES=[
- {v:'coherence',t:'Rotation coherence',s:'Mean resultant length of local derivative rotations; fixed range 0–1',tag:'Rotation coherence'},
+ {v:'coherence',t:'Rotation coherence',s:'Mean resultant length of local derivative rotations; fixed range 0–1. For integer degree and c=0, average the complex resultant over a Gaussian pixel-angle aperture.',tag:'Rotation coherence'},
 {v:'normphase',t:'Normalized phase',s:'Böttcher angle of the superattracting cycle (any centre c)',tag:'Normalized phase'},
 {v:'stablephase',t:'Stable phase',s:'arg of the derivative without convergence stopping (any centre c)',tag:'Stable phase'},
 {v:'jointmag',t:'Combined magnitude',s:'Hypot of divergence and curl',tag:'Joint magnitude'},
@@ -236,11 +236,39 @@ function stableCentre(x,y,N,R2,C){
  }
  return [phase,logD,n];
 }
+// Monomial calibration: exact angular dynamics, independent of radial underflow.
+// The Gaussian angular aperture is a local model of a finite pixel, not a change
+// to the orbit. Average the complex resultant before taking its magnitude.
+function monomialCoherence(x,y,d,N,R2,stopMode,sigma){
+  const radius=Math.hypot(x,y);
+  if(!(radius>0)||!Number.isFinite(radius))return NaN;
+  let count=N, logRadius=Math.log(radius), logR=.5*Math.log(R2);
+  if(stopMode!=='fixed'){
+    count=0;
+    while(count<N&&(stopMode==='inward'?logRadius>=logR:logRadius<=logR)){
+      count++;logRadius*=d;
+    }
+  }
+  if(count<2)return NaN;
+  const theta=Math.atan2(y,x);
+  let phase=(d-1)*theta,frequency=d-1,re=0,im=0;
+  for(let n=0;n<count;n++){
+    const q=frequency*sigma;
+    // Remaining Gaussian weights are negligible at this bound.
+    if(q>=9)break;
+    const weight=Math.exp(-.5*q*q);
+    re+=weight*Math.cos(phase);im+=weight*Math.sin(phase);
+    phase=(phase*d)%(2*Math.PI);frequency*=d;
+  }
+  return Math.min(1,Math.hypot(re,im)/count);
+}
 onmessage=e=>{
   const m=e.data, {W,y0row,rows,or,oi,exr,exi,eyr,eyi,maxIt,kind,pw,kr,ki,R2,stopMode,needD,needDLD,dldIterations,polar,polarCx,polarCy,polarRadius,polarH,polarAngle,logPolar,logOuter,logSpan,bottcher,bottcherGMin,bottcherGMax}=m;
   const N=W*rows, T=new Uint16Array(N), F=new Float32Array(N), S=needD?new Float64Array(N):null, DLD=needDLD?new Float32Array(N):null, A=needD?new Float64Array(N):null, C=m.coherence?new Float64Array(N):null;
   const julia=kind===1, eps=julia?1e-13:0, quick=!julia&&pw===2, add=julia?0:1, ilp=pw>1?1/Math.log(pw):0;
   let minN=1e9;
+  const monomial=m.coherence&&julia&&kr===0&&ki===0&&Number.isInteger(pw)&&pw>=2;
+  const pixelStep=Math.max(Math.hypot(exr,exi),Math.hypot(eyr,eyi));
   for(let r=0;r<rows;r++){
     const Rw=y0row+r, rr=or+Rw*eyr, ri=oi+Rw*eyi;
     for(let x=0;x<W;x++){
@@ -261,6 +289,8 @@ onmessage=e=>{
         if(quick && !needD && !needDLD && stopMode==='outward' && R2>=4){ const xr=cr-0.25, q=xr*xr+ci*ci; if(q*(q+xr)<=0.25*ci*ci || (cr+1)*(cr+1)+ci*ci<=0.0625){ T[i]=65535; continue; } }
       }
       let sumCos=0,sumSin=0,phaseCount=0;
+      const angularSigma=monomial?Math.max(16*Number.EPSILON,(polar||bottcher?2*Math.PI/W:pixelStep/Math.hypot(pr,pq))/Math.sqrt(12)):0;
+      const calibrated=monomial?monomialCoherence(pr,pq,pw,maxIt,R2,stopMode,angularSigma):NaN;
        let zr2=zr*zr, zi2=zi*zi, n=0, qr=zr, qi=zi, lim=8, cnt=0, inside=false;
       if(needDLD){
         let x=zr,y=zi,total=0;
@@ -286,7 +316,7 @@ onmessage=e=>{
       }
       while(stopMode==='fixed' ? n<maxIt : stopMode==='inward' ? zr2+zi2>=R2 : zr2+zi2<=R2){
         if(n>=maxIt){ if(stopMode!=='fixed')inside=true; break; }
-        if(m.coherence&&julia&&pw>0&&(zr!==0||zi!==0)){const a=(pw-1)*Math.atan2(zi,zr);sumCos+=Math.cos(a);sumSin+=Math.sin(a);phaseCount++;}
+        if(m.coherence&&!monomial&&julia&&pw>0&&(zr!==0||zi!==0)){const a=(pw-1)*Math.atan2(zi,zr);sumCos+=Math.cos(a);sumSin+=Math.sin(a);phaseCount++;}
          if(pw===2){
           if(needD){ const t=2*(zr*dr-zi*di)+add; di=2*(zr*di+zi*dr); dr=t; }
           zi=2*zr*zi+ci; zr=zr2-zi2+cr;
@@ -304,11 +334,11 @@ onmessage=e=>{
         if(!m.coherence && stopMode==='outward' && Math.abs(zr-qr)+Math.abs(zi-qi)<=eps){ inside=true; break; }
         if(++cnt===lim){ cnt=0; lim<<=1; qr=zr; qi=zi; }
       }
-      if(needD){S[i]=Math.log1p(Math.hypot(dr,di));A[i]=(dr===0&&di===0)?NaN:Math.atan2(di,dr);if(C)C[i]=phaseCount>=2?Math.min(1,Math.hypot(sumCos,sumSin)/phaseCount):NaN;}
+      if(needD){S[i]=Math.log1p(Math.hypot(dr,di));A[i]=(dr===0&&di===0)?NaN:Math.atan2(di,dr);if(C)C[i]=monomial?calibrated:phaseCount>=2?Math.min(1,Math.hypot(sumCos,sumSin)/phaseCount):NaN;}
       if(inside){ T[i]=65535; continue; }
       if(n<minN) minN=n;
       T[i]=n; F[i]=stopMode==='outward' && pw>1 ? 1-Math.log(Math.max(1e-300,Math.log2(Math.max(1.000001,zr2+zi2))*0.5))*ilp : 0;
-      if(needD){S[i]=Math.log1p(Math.hypot(dr,di));A[i]=(dr===0&&di===0)?NaN:Math.atan2(di,dr);if(C)C[i]=phaseCount>=2?Math.min(1,Math.hypot(sumCos,sumSin)/phaseCount):NaN;}
+      if(needD){S[i]=Math.log1p(Math.hypot(dr,di));A[i]=(dr===0&&di===0)?NaN:Math.atan2(di,dr);if(C)C[i]=monomial?calibrated:phaseCount>=2?Math.min(1,Math.hypot(sumCos,sumSin)/phaseCount):NaN;}
     }
   }
   postMessage({tag:m.tag,id:m.id,job:m.job,pass:m.pass,y0row,rows,T,F,S,A,C,DLD,minN},[T.buffer,F.buffer,...(S?[S.buffer,A.buffer]:[]),...(C?[C.buffer]:[]),...(DLD?[DLD.buffer]:[])]);
