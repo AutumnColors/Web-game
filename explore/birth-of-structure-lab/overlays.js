@@ -142,7 +142,7 @@ let pin=null, labelBox=null;
 const PIN_LIMIT=200000, PIN_PMAX=1024;
 // escape, inside (an attracting cycle of period p, multiplier |λ| < 1) or undecided. Independent of the zoom and of the frame's limit.
 function classify(pr,pq,e){
-  if(e.geometry){const q=geometrySample(e.geometry,pr,pq,e.geometryDepth);return {kind:q[0]?'geometry-member':'geometry-outside',n:q[1]};}
+  if(e.geometry){const q=geometrySample(e.geometry,pr,pq,e.geometryDepth,e.geometryParams);return {kind:q[0]?'geometry-member':'geometry-outside',n:q[1]};}
   if(cfg.stopMode==='fixed') return {kind:'fixed',n:itFor(view.w)};
   if(cfg.stopMode==='inward'){
     let zr=e.kind?pr:0, zi=e.kind?pq:0, cr=e.kind?e.kr:pr, ci=e.kind?e.ki:pq;

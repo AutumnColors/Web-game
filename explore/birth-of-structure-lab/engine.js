@@ -91,7 +91,7 @@ function centreOf(cr,ci){
 // the mathematical universe: what the worker needs, the home frame and how far the camera may wander
 function engineOf(c){
   const R=c.radius;
-  if(isGeometry(c.fractal)){const g=GEOMETRIC[c.fractal];return {kind:2,geometry:c.fractal,geometryDepth:geometryDepth(c),pw:2,kr:0,ki:0,R2:R*R,name:g.name,rule:g.rule,hx:0,hy:0,span:g.span,bx:2,by:2};}
+  if(isGeometry(c.fractal)){const g=GEOMETRIC[c.fractal];return {kind:2,geometry:c.fractal,geometryDepth:geometryDepth(c),geometryParams:geometryParameters(c),pw:2,kr:0,ki:0,R2:R*R,name:g.name,rule:geometryRule(c),hx:0,hy:0,span:c.fractal==='tree'&&geometryParameters(c).treeRatio>.65?3.4:g.span,bx:2,by:2};}
   if(c.fractal==='julia'){
     const m=Math.hypot(c.seed.re,c.seed.im), rad=(1+Math.sqrt(1+4*m))/2;   // the filled Julia set lies within this radius
     return {kind:1,pw:c.juliaPower,kr:c.seed.re,ki:c.seed.im,centre:c.juliaPower===2?centreOf(c.seed.re,c.seed.im):null,R2:R*R,name:'Julia set',rule:'z → z^'+Number(c.juliaPower.toPrecision(7))+' + c',hx:0,hy:0,span:2*rad*1.04,bx:rad+0.8,by:rad+0.8};
@@ -284,7 +284,7 @@ onmessage=e=>{
         [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki):pw===2?parameterInverse(u,theta):[NaN,NaN];
       } else if(polar){ const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
       if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;if(A)A[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
-      if(m.geometry){const q=geometrySample(m.geometry,pr,pq,m.geometryDepth);T[i]=q[0]?q[1]:65535;F[i]=q[1];if(q[0])minN=Math.min(minN,q[1]);if(S)S[i]=NaN;if(A)A[i]=NaN;if(C)C[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
+      if(m.geometry){const q=geometrySample(m.geometry,pr,pq,m.geometryDepth,m.geometryParams);T[i]=q[0]?q[1]:65535;F[i]=q[1];if(q[0])minN=Math.min(minN,q[1]);if(S)S[i]=NaN;if(A)A[i]=NaN;if(C)C[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
       if(m.normalizedPhase){const q=normalizedCentre(pr,pq,Math.min(maxIt,m.centre.cap),Math.max(4,R2),m.centre);A[i]=q[0];S[i]=q[1];T[i]=q[2];continue;}
       if(m.stablePhase){const q=stableCentre(pr,pq,Math.min(maxIt,m.centre.cap),Math.max(4,R2),m.centre);A[i]=q[0];S[i]=Math.max(0,q[1]);T[i]=q[2];continue;}
       let zr,zi,cr,ci,dr,di;
@@ -362,7 +362,7 @@ const idle=[]; let queue=[];
 for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.onmessage=onStrip; idle.push(w); }
 function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
 // Green potential always uses its own outward escape calculation, independent of the experimental stop mode.
-const engMsg=e=>({coherence:cfg.mode==='coherence'||(cfg.mode==='compare'&&cfg.panels.includes('coherence')),normalizedPhase:cfg.mode==='normphase'&&!!e.centre,stablePhase:cfg.mode==='stablephase'&&!!e.centre,centre:(cfg.mode==='normphase'||cfg.mode==='stablephase')&&e.centre?e.centre:null,geometry:e.geometry,geometryDepth:e.geometryDepth,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
+const engMsg=e=>({coherence:cfg.mode==='coherence'||(cfg.mode==='compare'&&cfg.panels.includes('coherence')),normalizedPhase:cfg.mode==='normphase'&&!!e.centre,stablePhase:cfg.mode==='stablephase'&&!!e.centre,centre:(cfg.mode==='normphase'||cfg.mode==='stablephase')&&e.centre?e.centre:null,geometry:e.geometry,geometryDepth:e.geometryDepth,geometryParams:e.geometryParams,kind:e.kind,pw:e.pw,kr:e.kr,ki:e.ki,R2:cfg.mode==='potential'?256:e.R2,stopMode:cfg.mode==='potential'?'outward':cfg.stopMode});
 
 // the same orbit on the main thread, for single points (pin, cross-sections)
 function orbit(pr,pq,maxIt,e){
