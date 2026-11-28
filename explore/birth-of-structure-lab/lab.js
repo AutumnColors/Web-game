@@ -312,7 +312,7 @@ function thumbs(){ // each library card shows its own universe, computed by the 
   FR.forEach(f=>{ const c={...draft,fractal:f.v,radius:2}, e=engineOf(c), w=e.span?e.span*4/3:3.5, v={cx:e.span?0:-0.65,cy:0,w,a:0};
     thumbIds.push(render('thumb',v,160,120,220,e,false,L=>{ const keep=cfg.palette; cfg.palette=draft.palette; const img=paint(L,e.geometry?'construction':'escape'); cfg.palette=keep; f.cv.getContext('2d').drawImage(img,0,0); })); });
 }
-function openCfg(){ draft=clone(cfg); draft.depth=0; if(!CONTROL_LAYER_IDS.includes(draft.mode))draft.mode='escape'; $('cin').value=cText(draft.seed.re,draft.seed.im,15).replace(/−/g,'-'); $('cin').classList.remove('bad'); closePop(); closeSec(); setSecTool(false);
+function openCfg(){ draft=clone(cfg);if(isGeometry(draft.fractal))window.chooseGeometryExplore?.(); draft.depth=0; if(!CONTROL_LAYER_IDS.includes(draft.mode))draft.mode='escape'; $('cin').value=cText(draft.seed.re,draft.seed.im,15).replace(/−/g,'-'); $('cin').classList.remove('bad'); closePop(); closeSec(); setSecTool(false);
   $('cfg').classList.add('on'); $('cfg').firstElementChild.scrollTop=0; syncCfg(); thumbs(); }
 $('bSetup').onclick=openCfg;
 $('useCfg').onclick=()=>{ $('cfg').classList.remove('on'); draft.depth=0; applyConfig(draft); if(cfg.clean) toast('Clean view. Press and hold the map to bring the tools back.',3200); };
@@ -324,10 +324,10 @@ let infoOpen=false;
 function snapshot(){ // everything needed to reproduce this frame
   const a=view.a*180/Math.PI;
   return {viewer:'Fractal Universe Lab', version:1,
-    config:{fractal:cfg.fractal, geometryDepth:eng.geometry?eng.geometryDepth:null, rule:asciiRule(), power:eng.pw, seed:cfg.fractal==='julia'?{...cfg.seed}:null, measurement:cfg.mode, panels:cmp()?[...cfg.panels]:null,
-      palette:cfg.palette, layerSettings:globalThis.birthLayerSettings?.(), contours:{show:cfg.contours,levels:cfg.contourLevels,opacity:cfg.contourOpacity,color:cfg.contourColor}, iterations:{mode:cfg.iter?'fixed':'auto', limit:itFor(view.w)}, escapeRadius:Math.sqrt(eng.R2), stopMode:cfg.stopMode, maxDepth:cfg.depth||null, cleanView:cfg.clean},
+    config:{fractal:cfg.fractal, geometryDepth:eng.geometry?eng.geometryDepth:null, rule:asciiRule(), power:eng.geometry?null:eng.pw, seed:cfg.fractal==='julia'?{...cfg.seed}:null, measurement:cfg.mode, panels:cmp()?[...cfg.panels]:null,
+      palette:cfg.palette, layerSettings:globalThis.birthLayerSettings?.(), contours:{show:cfg.contours,levels:cfg.contourLevels,opacity:cfg.contourOpacity,color:cfg.contourColor}, iterations:{mode:cfg.iter?'fixed':'auto', limit:itFor(view.w)}, escapeRadius:eng.geometry?null:Math.sqrt(eng.R2), stopMode:cfg.stopMode, maxDepth:cfg.depth||null, cleanView:cfg.clean},
     camera:{centre:{re:view.cx, im:view.cy}, width:view.w, cameraAngleDeg:a, planeTurnDeg:-a, depth:depthOf(view.w), homeWidth:HOME.w},
-    render: stats ? {width:stats.W, height:stats.H, pixelSize:stats.pix, escaped:stats.esc, pixels:stats.N, Tmin:stats.esc?stats.tmin:null, Tmax:stats.esc?stats.tmax:null,
+    render: stats ? {width:stats.W, height:stats.H, pixelSize:stats.pix, escaped:eng.geometry?null:stats.esc, covered:eng.geometry?stats.esc:null, pixels:stats.N, Tmin:stats.esc?stats.tmin:null, Tmax:stats.esc?stats.tmax:null,
       r_T_S:isFinite(stats.rTS)?stats.rTS:null, r_T_stretchRate:isFinite(stats.rTR)?stats.rTR:null, neighboursSkippingABand:stats.multi} : null,
     pin: pin ? {re:pin.re, im:pin.im, orbit:pin.r.kind, steps:pin.r.n, period:pin.r.period||null, multiplier:pin.r.lam==null?null:pin.r.lam} : null,
     sections: sections.map(s=>({a:{re:s.a[0],im:s.a[1]}, b:{re:s.b[0],im:s.b[1]}, samples:s.n})),
@@ -346,7 +346,7 @@ function fillInfo(){
     ['Width', sci(view.w,4)],
     ['Rotation', 'camera '+sg(deg)+' <i>· the plane appears turned '+sg(-deg)+'</i>'],
     ['Zoom depth', 'D = '+minus(D.toFixed(2))+' <i>· ×'+sci(Math.pow(2,D),3)+' · limit '+(cfg.depth||'none')+'</i>'],
-    [eng.geometry?'Construction depth':'Iteration limit', num(itFor(view.w))+' <i>· '+(cfg.iter?'fixed':'auto, rises with depth')+'</i>'],
+    [eng.geometry?'Construction depth':'Iteration limit', num(itFor(view.w))+' <i>· '+(eng.geometry?'finite recursion':cfg.iter?'fixed':'auto, rises with depth')+'</i>'],
     eng.geometry?null:['Escape radius', String(+Math.sqrt(eng.R2).toFixed(4))],
     s ? ['Image', num(s.W)+' × '+num(s.H)+' px'+(cmp()?' <i>per panel</i>':'')+' <i>· pixel</i> '+sci(s.pix,3)] : null,
     eng.geometry&&s?['Covered pixels',(100*s.esc/s.N).toFixed(2)+'% · finite construction']:s ? ['Escaped', (100*s.esc/s.N).toFixed(s.esc===s.N?0:2)+' % <i>of '+num(s.N)+' pixels. Black means no escape detected in '+num(s.maxIt)+' steps, not proven membership.</i>'] : null,

@@ -34,7 +34,6 @@ const FRACTALS=[
   ...Object.entries(GEOMETRIC).map(([v,g])=>({v,t:g.name,s:g.rule}))
 ];
 const MODES=[
-  {v:'construction',t:'Construction depth',s:'Colour by finite construction or removal generation',tag:'Construction depth'},
  {v:'coherence',t:'Rotation coherence',s:'Mean resultant length of local derivative rotations; fixed range 0–1. For Cartesian integer degree and c=0, average the complex resultant over a Gaussian pixel-angle aperture.',tag:'Rotation coherence'},
 {v:'normphase',t:'Normalized phase',s:'Böttcher angle of the superattracting cycle (any centre c)',tag:'Normalized phase'},
 {v:'stablephase',t:'Stable phase',s:'arg of the derivative without convergence stopping (any centre c)',tag:'Stable phase'},
@@ -56,6 +55,7 @@ const MODES=[
   {v:'potential', t:"Green's potential", s:'Exterior potential G ≈ log|zₙ| / pⁿ; colors show log G (finite-escape estimate)', tag:'Green potential (estimated)'},
   {v:'flat',   t:'Sensitivity, bands removed', s:'ln(|D| / (|z| ln|z|)): exact |∇μ| by the chain rule', tag:'S, bands removed'},
 ];
+MODES.push({v:'construction',t:'Construction depth',s:'Colour by finite construction or removal generation',tag:'Construction depth'});
 const modeOf=v=>MODES.find(m=>m.v===v)||MODES[0];
 const SEEDS=[['Rabbit',-0.122561166876654,0.744861766619744],['Basilica',-1,0],['Dendrite',0,1],['Siegel disk',-0.390540870218399,-0.586787907346969],
   ['Cauliflower',0.25,0],['Airplane',-1.754877666246693,0],['Spiral',-0.8,0.156],['Galaxy',0.285,0.01],['Seahorse',-0.745,0.113],['Dust',0.3,0.5]];
