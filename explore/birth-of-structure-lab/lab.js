@@ -6,6 +6,7 @@
 let back=null;
 function release(quick){
   if(back) return;
+  if(cfg.bottcher){cfg.bottcherGMin=.02;cfg.bottcherGMax=.6;view.a=Math.PI;syncBottcherCamera();dirty=true;needDraw=true;updateZoomLimit();return;}
   if(zeroLog()){logPlaying=false;cfg.logOuter=Math.log(HOME.w/2);resetLogAngular();cfg.logSpan=Math.min(Math.log(100),(cfg.logOuter-logInnerFloor())/2);syncLogCamera();dirty=true;needDraw=true;updateZoomLimit();return;}
   externalZoomLimit='';updateZoomLimit();
   endGesture(); vel.x=vel.y=0; rotAnim=null;
@@ -28,6 +29,13 @@ function stepBack(now,dt){
 const limitMarker=$('zoomLimitMarker');
 let externalZoomLimit='';
 let logPlaying=false,logLastStep=0;
+function bottcherLayerAllowed(c=cfg,m=c.mode){return !diffMode(m)&&!['distance','vdiv','vcurl','jointmag','jointphase','gradt','gradmu','compare'].includes(m)&&!(m==='scalar'&&scalarSourceFor(c.fractal,c.scalarSource)==='distance');}
+function supportsBottcher(c=cfg){return c.fractal==='mandelbrot'||c.fractal==='julia'&&Number.isInteger(c.juliaPower)&&c.juliaPower>=2;}
+let bottcherCriticalKey='',bottcherCriticalValue=0;
+function bottcherCriticalPotential(){if(cfg.fractal!=='julia')return 0;const key=[cfg.juliaPower,cfg.seed.re,cfg.seed.im].join(',');if(key!==bottcherCriticalKey){bottcherCriticalKey=key;bottcherCriticalValue=bottcherPotential(0,0,cfg.seed.re,cfg.seed.im,cfg.juliaPower);}return Number.isFinite(bottcherCriticalValue)?bottcherCriticalValue:Infinity;}
+function bottcherBounds(){const critical=bottcherCriticalPotential(),lo=Math.max(1e-5,critical*(1+1e-5)+1e-10);return {critical,lo,hi:Math.max(8,lo*2)};}
+function syncBottcherCamera(){const {lo,hi}=bottcherBounds();if(!Number.isFinite(lo))return;const lower=Math.log(lo),upper=Math.log(hi),span=Math.max(.001,Math.min(upper-lower,Math.log(cfg.bottcherGMax/cfg.bottcherGMin)||1));let top=Math.max(lower+span,Math.min(upper,Math.log(cfg.bottcherGMax)||upper));cfg.bottcherGMax=Math.exp(top);cfg.bottcherGMin=Math.exp(top-span);}
+function shiftBottcher(delta){const f=Math.exp(delta);cfg.bottcherGMin*=f;cfg.bottcherGMax*=f;syncBottcherCamera();dirty=true;needDraw=true;updateZoomLimit();}
 function zeroLog(c=cfg){return c.fractal==='julia'&&c.polar&&c.logPolar&&!c.bottcher;}
 function logFundamentalSpan(c=cfg){const d=c.juliaPower;if(c.fractal!=='julia'||!Number.isInteger(d)||d<2||!['escape','binary','potential','sens','ridges','waves','flat'].includes(c.mode))return TAU;return (c.seed.im===0?Math.PI:TAU)/d;}
 function logDomainSpan(c=cfg){return c.logDomain==='fundamental'?logFundamentalSpan(c):TAU;}
@@ -46,11 +54,12 @@ function cameraLimit(v=view){
 }
 const minW=()=>cameraLimit().width;
 function updateZoomLimit(){
- const lim=cameraLimit(),reason=externalZoomLimit||(zeroLog()?(cfg.logOuter-cfg.logSpan<=logInnerFloor()+1e-9?'Numerical orbit resolution limit':''):(view.w<=lim.width*(1+1e-8)?lim.reason:''));
+ const lim=cameraLimit(),bounds=cfg.bottcher?bottcherBounds():null,reason=externalZoomLimit||(bounds?(cfg.bottcherGMin<=bounds.lo*(1+1e-7)?(bounds.critical>1e-5?'Critical equipotential · inverse ceases to be unique':'Exterior numerical potential limit'):''):zeroLog()?(cfg.logOuter-cfg.logSpan<=logInnerFloor()+1e-9?'Numerical orbit resolution limit':''):(view.w<=lim.width*(1+1e-8)?lim.reason:''));
  if(limitMarker.textContent!==reason)limitMarker.textContent=reason;limitMarker.hidden=!reason;
 }
 window.birthMarkZoomLimit=reason=>{externalZoomLimit=reason||'';updateZoomLimit();};
 function clampView(){
+  if(cfg.bottcher){syncBottcherCamera();updateZoomLimit();return;}
   if(zeroLog()){syncLogCamera();updateZoomLimit();return;}
   view.w=Math.max(minW(),Math.min(view.w,HOME.w*2.2));
   const mx=eng.cxm===undefined?eng.hx:eng.cxm;
@@ -59,7 +68,7 @@ function clampView(){
 }
 function zoomAt(px,py,f){
   if(zeroLog()){logPlaying=false;magnifyLog(px,py,f);return;}
-  if(cfg.bottcher){const mid=Math.sqrt(cfg.bottcherGMin*cfg.bottcherGMax),half=Math.log(cfg.bottcherGMax/cfg.bottcherGMin)/(2*f);cfg.bottcherGMin=Math.max(1e-5,mid*Math.exp(-half));cfg.bottcherGMax=Math.min(8,mid*Math.exp(half));dirty=true;needDraw=true;return;}
+  if(cfg.bottcher){if(!(f>0&&Number.isFinite(f)))return;const {lo,hi}=bottcherBounds(),t=py/Hd,top=Math.log(cfg.bottcherGMax),span=Math.log(cfg.bottcherGMax/cfg.bottcherGMin),next=Math.max(.001,Math.min(Math.log(hi/lo),span/f)),newTop=top+t*(next-span);cfg.bottcherGMax=Math.exp(newTop);cfg.bottcherGMin=Math.exp(newTop-next);syncBottcherCamera();dirty=true;needDraw=true;updateZoomLimit();return;}
   if(cfg.polar){if(cfg.logPolar)cfg.logSpan=Math.max(.05,Math.min(36,cfg.logSpan/f));else view.w=Math.max(1e-12,Math.min(HOME.w*2.2,view.w/f));dirty=true;needDraw=true;return;}
   if(f<1)externalZoomLimit='';
   const [wx,wy]=toWorld(px,py),m=minW(),old=view.w;let w=Math.max(m,Math.min(HOME.w*2.2,view.w/f));
@@ -69,7 +78,7 @@ function zoomAt(px,py,f){
 function rotateAt(px,py,dA){if(cfg.bottcher){view.a=wrap(view.a+dA);dirty=true;needDraw=true;return;}if(cfg.polar){view.a=wrap(view.a+dA);if(zeroLog())syncLogCamera();dirty=true;needDraw=true;return;} const [wx,wy]=toWorld(px,py); view.a=wrap(view.a+dA); pinTo(px,py,wx,wy); clampView(); dirty=true; needDraw=true; }
 function panBy(dx,dy){
   if(zeroLog()){logPlaying=false;view.a=wrap(view.a-(cfg.logAngleSpan||TAU)*dx/Wd);shiftLog(-dy/Hd*cfg.logSpan);dirty=true;needDraw=true;return;}
-  if(cfg.bottcher){view.a=wrap(view.a-TAU*dx/Wd);const factor=Math.exp(dy/Hd*Math.log(cfg.bottcherGMax/cfg.bottcherGMin));cfg.bottcherGMin=Math.max(1e-5,Math.min(8,cfg.bottcherGMin*factor));cfg.bottcherGMax=Math.max(cfg.bottcherGMin*1.01,Math.min(8,cfg.bottcherGMax*factor));dirty=true;needDraw=true;return;}
+  if(cfg.bottcher){view.a=wrap(view.a-TAU*dx/Wd);shiftBottcher(dy/Hd*Math.log(cfg.bottcherGMax/cfg.bottcherGMin));return;}
   if(cfg.polar){view.a=wrap(view.a-TAU*dx/Wd);if(cfg.logPolar)cfg.logOuter=Math.max(-32,Math.min(32,cfg.logOuter+dy/Hd*cfg.logSpan));else view.w=Math.max(1e-12,Math.min(HOME.w*2.2,view.w*(1+dy/Hd*2)));dirty=true;needDraw=true;return;}
   const s=view.w/Wd, c=Math.cos(view.a), n=Math.sin(view.a);
   view.cx-=s*(dx*c+dy*n); view.cy-=s*(dx*n-dy*c); clampView(); dirty=true; needDraw=true;
@@ -180,6 +189,7 @@ function notify(t,ms=5000){
 function setMode(m){
   if(!layerAllowed(cfg.fractal,m)){notify('This measurement is not defined for the selected fractal.');return;}
   // Coordinate choice remains independent of measurement.
+  if(cfg.bottcher&&!bottcherLayerAllowed(cfg,m)){notify('This measurement requires Cartesian coordinates');return;}
   if((diffMode(m)||m==='distance'||m==='scalar'&&activeScalarSource()==='distance')&&(cfg.polar||cfg.bottcher)){notify('Differential tests require Cartesian coordinates');return;}
   const wasStable=cfg.mode; if(m==='coherence'&&cfg.fractal!=='julia'){notify('Rotation coherence is defined here for Julia orbits.');return;} if(['stablephase','normphase'].includes(m)&&!eng.centre){notify(PHASE_NEEDS);return;} if(['stablephase','normphase'].includes(m)&&(cfg.iter===0||cfg.iter>phaseCap()))cfg.iter=phaseCap();   // phase views report no escape step, so Auto iterations would keep restarting
   if(scalarMode(m)&&m!=='distance'&&activeScalarSource()!=='sensitivity')vectorOverlay.enabled=false;
@@ -190,8 +200,9 @@ function setMode(m){
 }
 const coordOf=c=>c.bottcher?'bottcher':c.polar?(c.logPolar?'logpolar':'polar'):'cartesian';
 function setCoord(c,type){
-  if(type!=='cartesian'&&(diffMode(c.mode)||c.mode==='distance'||c.mode==='scalar'&&scalarSourceFor(c.fractal,c.scalarSource)==='distance')){toast('Scalar distance and derivatives require Cartesian coordinates',2700);return false;}
-  if(type==='bottcher'&&((c.fractal!=='julia'&&c.fractal!=='mandelbrot')||(c.fractal==='julia'&&c.juliaPower!==2))){toast('Böttcher coordinates require a quadratic Julia or Mandelbrot set',2700);return false;}
+  if(type!=='cartesian'&&type!=='bottcher'&&(diffMode(c.mode)||c.mode==='distance'||c.mode==='scalar'&&scalarSourceFor(c.fractal,c.scalarSource)==='distance')){toast('Scalar distance and derivatives require Cartesian coordinates',2700);return false;}
+  if(type==='bottcher'&&!supportsBottcher(c)){toast('Böttcher coordinates require an integer-degree Julia polynomial or the Mandelbrot set',2700);return false;}
+  if(type==='bottcher'&&!bottcherLayerAllowed(c)){c.mode='sens';toast('Showing orbit sensitivity: spatial derivatives require Cartesian coordinates',3200);}
   const entering=type==='logpolar'&&!zeroLog(c);
   c.bottcher=type==='bottcher';c.polar=type==='polar'||type==='logpolar';c.logPolar=type==='logpolar';
   if(entering&&zeroLog(c)){c.logAngleSpan=logDomainSpan(c);const floor=logInnerFloor(c);c.logOuter=Math.max(floor+.05,Math.log(Math.max(1e-12,view.w/2)));c.logSpan=Math.max(.05,Math.min(Math.log(100),(c.logOuter-floor)/2));}
@@ -204,10 +215,10 @@ function syncCoordPickers(){
     const el=$(id);if(!el)continue;
     const c=id==='coordPicker'?draft:cfg;
     el.value=coordOf(c);
-    el.querySelector('option[value="bottcher"]').disabled=c.fractal!=='julia'&&c.fractal!=='mandelbrot';
+    el.querySelector('option[value="bottcher"]').disabled=!supportsBottcher(c);
   }
   $('coordHelp').textContent=draft.bottcher?'Exterior only: Julia dynamical plane or Mandelbrot parameter plane. The interior is not represented.':zeroLog(draft)?'Angle horizontally; logarithmic depth downward, centered at zero.':draft.polar?'Angle runs horizontally; radius vertically.':'Original complex-plane view.';
-  $('coordHelpQuick').textContent=cfg.bottcher?'Exterior only; drag to shift angle/potential.':zeroLog()?'Pinch / wheel to magnify. Drag to navigate; vertically to travel in depth. Complete / Fundamental domain in Navigation.':cfg.polar?'Drag to change angle and radial range.':'Original complex-plane view.';
+  $('coordHelpQuick').textContent=cfg.bottcher?'Exterior only. Drag vertically to approach the boundary, horizontally to change external angle; pinch to magnify potential.':zeroLog()?'Pinch / wheel to magnify. Drag to navigate; vertically to travel in depth. Complete / Fundamental domain in Navigation.':cfg.polar?'Drag to change angle and radial range.':'Original complex-plane view.';
 }
 function syncPolarButton(){syncCoordPickers();}
 $('coordPicker').onchange=e=>{if(setCoord(draft,e.target.value))syncCfg();else syncCoordPickers();};
@@ -215,7 +226,7 @@ $('coordPickerQuick').onchange=e=>{
   const previous=coordOf(cfg);
   if(!setCoord(cfg,e.target.value)){syncCoordPickers();return;}
   logPlaying=false;if(zeroLog()){if(previous!=='logpolar')resetLogAngular();syncLogCamera();}if(previous!==coordOf(cfg)){base=null;under=null;cur=null;lastMin=0;boost=1;}
-  if(cfg.bottcher)view.a=0;
+  if(cfg.bottcher){view.a=Math.PI;vectorOverlay.enabled=false;document.body.classList.toggle('cmp',cmp());syncBottcherCamera();updateZoomLimit();}
   syncCoordPickers();updateChip();dirty=true;needDraw=true;closePop();writeHash();
 };
 
@@ -251,15 +262,14 @@ $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(
 /* ---------- applying a configuration ---------- */
 function applyConfig(next,cam){
   if(!Object.hasOwn(SCALAR_SOURCES,next.scalarSource))next={...next,scalarSource:'auto'};
+  if(next.bottcher&&supportsBottcher(next)&&!bottcherLayerAllowed(next))next={...next,mode:'sens'};
   if(diffMode(next.mode)||next.mode==='distance'||next.mode==='scalar'&&scalarSourceFor(next.fractal,next.scalarSource)==='distance')next={...next,polar:false,bottcher:false,logPolar:false};
   if(isGeometry(next.fractal)){next={...next,mode:layerAllowed(next.fractal,next.mode)?next.mode:'construction',bottcher:false};vectorOverlay.enabled=false;}else if(next.mode==='construction')next={...next,mode:'escape'};
-  if(next.bottcher && next.fractal!=='julia' && next.fractal!=='mandelbrot')next.bottcher=false;
-  if(next.bottcher && next.fractal==='julia' && next.juliaPower!==2)next.bottcher=false;
-  if(next.bottcher&&next.fractal!=='julia'&&next.fractal!=='mandelbrot')next.bottcher=false;
+  if(next.bottcher&&!supportsBottcher(next))next={...next,bottcher:false};
   const oldDistance=distanceActive();
   const world=!started || next.fractal!==cfg.fractal || (isGeometry(next.fractal)&&(next.geometryDepth!==cfg.geometryDepth||JSON.stringify(geometryParameters(next))!==JSON.stringify(geometryParameters(cfg)))) || (next.fractal==='multibrot' && next.power!==cfg.power) || (next.fractal==='julia' && (next.seed.re!==cfg.seed.re || next.seed.im!==cfg.seed.im || next.juliaPower!==cfg.juliaPower));
   const oldCoord=coordOf(cfg),oldDomain=logDomainSpan();const numeric=next.scalarSource!==cfg.scalarSource||next.radius!==cfg.radius || next.iter!==cfg.iter || next.stopMode!==cfg.stopMode || next.bottcher!==cfg.bottcher || next.bottcherGMin!==cfg.bottcherGMin || next.bottcherGMax!==cfg.bottcherGMax || next.polar!==cfg.polar || next.logPolar!==cfg.logPolar;
-  cfg=clone(next); if(scalarMode(cfg.mode)&&cfg.mode!=='distance'&&activeScalarSource()!=='sensitivity')vectorOverlay.enabled=false;eng=engineOf(cfg); started=true; syncContourSettings(cfg); syncCoordPickers();
+  cfg=clone(next); if(cfg.bottcher)vectorOverlay.enabled=false; if(scalarMode(cfg.mode)&&cfg.mode!=='distance'&&activeScalarSource()!=='sensitivity')vectorOverlay.enabled=false;eng=engineOf(cfg); started=true; syncContourSettings(cfg); syncCoordPickers();
   if(cfg.mode==='coherence'&&cfg.fractal!=='julia')cfg.mode='escape';
   if(['stablephase','normphase'].includes(cfg.mode)&&!eng.centre){ cfg.mode='phase'; setTimeout(()=>notify(PHASE_NEEDS+' Showing Rotation phase instead.'),0); }
   if(['stablephase','normphase'].includes(cfg.mode)&&(cfg.iter===0||cfg.iter>phaseCap())) cfg.iter=phaseCap();
@@ -268,7 +278,7 @@ function applyConfig(next,cam){
   if(world){ externalZoomLimit='';pin=null; sections=[]; secSel=-1; closeSec(); base=null; back=null; rotAnim=null; glide=null; lastMin=0; boost=1; stats=null; Object.assign(view,HOME); }
   if(cam){if(cam.w>view.w*(1+1e-8))externalZoomLimit=''; view.cx=cam.cx; view.cy=cam.cy; view.w=cam.w; view.a=wrap(cam.a||0); lastMin=0; boost=1; }
   if(oldDistance!==distanceActive()){base=null;under=null;}if(world||numeric||oldDistance!==distanceActive()){ renderHome(); if(pin) pin.r=classify(pin.re,pin.im,eng); }
-  logPlaying=false;if(oldCoord!==coordOf(cfg)){base=null;under=null;cur=null;if(zeroLog()&&!cam)resetLogAngular();}if(zeroLog()&&oldCoord==='logpolar'&&oldDomain!==logDomainSpan()){resetLogAngular();base=null;under=null;cur=null;}clampView(); dirty=true; repaint(); updateChip(); syncQuick(); writeHash();
+  logPlaying=false;if(oldCoord!==coordOf(cfg)){base=null;under=null;cur=null;if(zeroLog()&&!cam)resetLogAngular();if(cfg.bottcher&&!cam)view.a=Math.PI;}if(zeroLog()&&oldCoord==='logpolar'&&oldDomain!==logDomainSpan()){resetLogAngular();base=null;under=null;cur=null;}clampView(); dirty=true; repaint(); updateChip(); syncQuick(); writeHash();
 }
 
 /* ---------- configuration screen: edits a draft, nothing changes until "Use this configuration" ---------- */
@@ -422,13 +432,13 @@ function writeHash(){
 function readHash(){
   const q={}; location.hash.replace(/^#/,'').split('&').forEach(p=>{ const i=p.indexOf('='); if(i>0) q[p.slice(0,i)]=decodeURIComponent(p.slice(i+1)); });
   if(!q.f || !FRACTALS.some(f=>f.v===q.f)) return null;
-  const c=clone(DEFAULTS); c.fractal=q.f; if(Object.hasOwn(SCALAR_SOURCES,q.sf))c.scalarSource=q.sf; if(isGeometry(c.fractal)){c.geometryDepth=+q.gd||0;Object.assign(c,geometryParameters({...q,fractal:c.fractal}));} c.polar=q.polar==='1'; c.bottcher=q.bt==='1'&&(c.fractal==='julia'||c.fractal==='mandelbrot'); if(+q.bg0>=1e-5&&+q.bg0<8)c.bottcherGMin=+q.bg0; if(+q.bg1>c.bottcherGMin&&+q.bg1<=8)c.bottcherGMax=+q.bg1; c.logPolar=c.polar&&q.lp==='1';c.logDomain=q.ld==='fundamental'?'fundamental':'full'; if(q.lo!==undefined&&Number.isFinite(+q.lo)&&+q.lo>=-32&&+q.lo<=32)c.logOuter=+q.lo; if(q.ls!==undefined&&Number.isFinite(+q.ls)&&+q.ls>=.001&&+q.ls<=36)c.logSpan=+q.ls; if(q.la!==undefined&&Number.isFinite(+q.la)&&+q.la>=.001&&+q.la<=TAU+1e-8)c.logAngleSpan=Math.min(TAU,+q.la);
+  const c=clone(DEFAULTS); c.fractal=q.f; if(Object.hasOwn(SCALAR_SOURCES,q.sf))c.scalarSource=q.sf; if(isGeometry(c.fractal)){c.geometryDepth=+q.gd||0;Object.assign(c,geometryParameters({...q,fractal:c.fractal}));} c.polar=q.polar==='1'; c.bottcher=q.bt==='1'&&(c.fractal==='julia'||c.fractal==='mandelbrot'); if(Number.isFinite(+q.bg0)&&+q.bg0>=1e-5)c.bottcherGMin=+q.bg0; if(Number.isFinite(+q.bg1)&&+q.bg1>c.bottcherGMin)c.bottcherGMax=+q.bg1; c.logPolar=c.polar&&q.lp==='1';c.logDomain=q.ld==='fundamental'?'fundamental':'full'; if(q.lo!==undefined&&Number.isFinite(+q.lo)&&+q.lo>=-32&&+q.lo<=32)c.logOuter=+q.lo; if(q.ls!==undefined&&Number.isFinite(+q.ls)&&+q.ls>=.001&&+q.ls<=36)c.logSpan=+q.ls; if(q.la!==undefined&&Number.isFinite(+q.la)&&+q.la>=.001&&+q.la<=TAU+1e-8)c.logAngleSpan=Math.min(TAU,+q.la);
   if(MODES.some(m=>m.v===q.m)) c.mode=q.m; if(PALETTES[q.pal]) c.palette=q.pal;
   if(Number.isInteger(+q.it)&&+q.it>=0&&+q.it<=40000) c.iter=+q.it; if(Number.isFinite(+q.R)&&+q.R>=0.01&&+q.R<=1000000)c.radius=+q.R; if(['outward','inward','fixed'].includes(q.sm))c.stopMode=q.sm; if([0,3,10,25].includes(+q.d)) c.depth=+q.d;
   if(+q.n>=3 && +q.n<=8) c.power=Math.round(+q.n);
   if(q.c){ const s=parseC(q.c); if(s) c.seed=s; }
   if(q.jp!==undefined && JULIA_EXPONENTS.includes(+q.jp))c.juliaPower=+q.jp;
-  if(c.fractal==='julia'&&c.juliaPower!==2)c.bottcher=false;
+  if(!supportsBottcher(c))c.bottcher=false;
   if(q.ps){ const ps=q.ps.split('.'); if(ps.length===4 && ps.every(p=>MODES.some(m=>m.v===p&&p!=='compare'))) c.panels=ps; }
   if(q.co!==undefined)c.contours=q.co==='1';
   if(+q.cn>=1&&+q.cn<=20)c.contourLevels=+q.cn;
