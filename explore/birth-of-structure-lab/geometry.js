@@ -2,7 +2,7 @@
 const GEOMETRIC={koch:{name:'Koch snowflake',rule:'Four segments at scale 1/3',depth:6,max:8,span:1.65},tree:{name:'Binary ghost tree',rule:'Two branches at ±32°, scale 0.65',depth:10,max:12,span:2.7},carpet:{name:'Sierpiński carpet',rule:'Remove the middle ninth',depth:7,max:20,span:1.3},gasket:{name:'Sierpiński triangle',rule:'Remove the central triangle',depth:8,max:24,span:1.3},dust:{name:'Cantor dust',rule:'Keep four corner thirds',depth:6,max:20,span:1.3}};
 const isGeometry=f=>Object.hasOwn(GEOMETRIC,f);
 const geometryDepth=c=>Math.max(1,Math.min(GEOMETRIC[c.fractal].max,Math.round(c.geometryDepth)||GEOMETRIC[c.fractal].depth));
-const layerAllowed=(f,m)=>isGeometry(f)?['construction','binary'].includes(m):m!=='construction';
+const layerAllowed=(f,m)=>isGeometry(f)?['construction','binary','scalar','sgrad','sdiv','scurl','shess'].includes(m):m!=='construction';
 const GEOMETRY_CONTROLS={
  koch:[{key:'kochHeight',label:'Bump height',min:.25,max:1,step:.05,value:1}],
  tree:[{key:'treeAngle',label:'Branch angle (°)',min:10,max:70,step:1,value:32},{key:'treeRatio',label:'Length ratio',min:.4,max:.72,step:.01,value:.65},{key:'treeThickness',label:'Relative branch thickness',min:.015,max:.09,step:.005,value:.045}],

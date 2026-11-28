@@ -155,6 +155,7 @@ function setMode(m){
   const wasStable=cfg.mode; if(m==='coherence'&&cfg.fractal!=='julia'){notify('Rotation coherence is defined here for Julia orbits.');return;} if(['stablephase','normphase'].includes(m)&&!eng.centre){notify(PHASE_NEEDS);return;} if(['stablephase','normphase'].includes(m)&&(cfg.iter===0||cfg.iter>phaseCap()))cfg.iter=phaseCap();   // phase views report no escape step, so Auto iterations would keep restarting
   const was=cmp(), wasWaves=cfg.mode==='waves'; cfg.mode=m; document.body.classList.toggle('cmp',cmp());
   if((wasStable!==m&&(wasStable==='coherence'||m==='coherence'))||(wasStable!==m&&(['stablephase','normphase'].includes(wasStable)||['stablephase','normphase'].includes(m)))||wasWaves!==(m==='waves') || cmp()!==was || (needD() && base && !base.S) || (m==='dld' && base && !base.DLD)) dirty=true;   // the comparison renders at panel resolution; sensitivity needs the derivative
+  if(eng.geometry&&needD()&&home&&!home.S)renderHome();
   repaint(); updateChip(); syncQuick(); writeHash();
 }
 const coordOf=c=>c.bottcher?'bottcher':c.polar?(c.logPolar?'logpolar':'polar'):'cartesian';
@@ -185,7 +186,7 @@ $('coordPickerQuick').onchange=e=>{
 
 function setPalette(p){ cfg.palette=p; repaint(); syncQuick(); writeHash(); }
 function setClean(on){ cfg.clean=on; document.body.classList.toggle('clean',on); closePop(); if(on){ closeSec(); setSecTool(false); toast('Clean view. Press and hold the map to bring the tools back.',3200); } needDraw=true; syncQuick(); writeHash(); }
-function updateChip(){ $('chipT').textContent=eng.name+' · '+eng.rule; $('chipS').textContent=(cfg.bottcher?'BÖTTCHER · ':cfg.polar?(cfg.logPolar?'LOG-POLAR · ':'POLAR · '):'')+modeOf(cfg.mode).t+(cfg.fractal==='julia'?' · c = '+cText(cfg.seed.re,cfg.seed.im,6):''); }
+function updateChip(){ $('chipT').textContent=eng.name+' · '+eng.rule; $('chipS').textContent=(cfg.bottcher?'BÖTTCHER · ':cfg.polar?(cfg.logPolar?'LOG-POLAR · ':'POLAR · '):'')+(cfg.mode==='scalar'?(eng.geometry?'Distance to set':'Orbit scalar field'):modeOf(cfg.mode).t)+(cfg.fractal==='julia'?' · c = '+cText(cfg.seed.re,cfg.seed.im,6):''); }
 function group(el,items,get,set){
   el.replaceChildren(); el._get=get;
   items.forEach(it=>{ const b=document.createElement('button'); b.type='button'; b.className='opt'; b._v=it.v;
@@ -214,7 +215,7 @@ $('chip').onclick=()=>openInfo(); $('bInfo').onclick=()=>{ closePop(); openInfo(
 
 /* ---------- applying a configuration ---------- */
 function applyConfig(next,cam){
-  if(isGeometry(next.fractal)){next={...next,mode:layerAllowed(next.fractal,next.mode)?next.mode:'construction',bottcher:false};vectorOverlay.enabled=false;}else if(next.mode==='construction')next={...next,mode:'escape'};
+  if(isGeometry(next.fractal)){next={...next,mode:layerAllowed(next.fractal,next.mode)?next.mode:'construction',bottcher:false};if(diffMode(next.mode)){next.polar=false;next.logPolar=false;}vectorOverlay.enabled=false;}else if(next.mode==='construction')next={...next,mode:'escape'};
   if(next.bottcher && next.fractal!=='julia' && next.fractal!=='mandelbrot')next.bottcher=false;
   if(next.bottcher && next.fractal==='julia' && next.juliaPower!==2)next.bottcher=false;
   if(next.bottcher&&next.fractal!=='julia'&&next.fractal!=='mandelbrot')next.bottcher=false;
@@ -240,7 +241,7 @@ const JULIA_EXPONENTS=[2,3,4,5,6,7,8,9,10,-1,-2,-3,-4,-5,-6,-7,-8,0.5,0.75,0.9,1
 const juliaPowerLabel=p=>p===Math.PI?'π':p===Math.E?'e':String(p);
 group($('gJuliaPower'),JULIA_EXPONENTS.map(v=>({v,t:juliaPowerLabel(v)})),()=>draft.juliaPower,v=>{draft.juliaPower=v;syncCfg();thumbs();});
 group($('gPower'),[3,4,5,6,7,8].map(v=>({v,t:'n = '+v})),()=>draft.power,v=>{ draft.power=v; syncCfg(); thumbs(); });
-const CONTROL_LAYER_IDS=['construction','binary','escape','potential','sens','sgrad','vdiv','vcurl','phase','coherence'];
+const CONTROL_LAYER_IDS=['construction','binary','escape','potential','sens','scalar','sgrad','sdiv','scurl','shess','vdiv','vcurl','phase','coherence'];
 const CONTROL_LAYERS=CONTROL_LAYER_IDS.map(v=>MODES.find(m=>m.v===v)).filter(Boolean);
 group($('gMode'),CONTROL_LAYERS,()=>draft.mode,v=>{ draft.mode=v; syncCfg(); });
 group($('gPal'),Object.keys(PALETTES).map(v=>({v,t:PALETTES[v].t})),()=>draft.palette,v=>{ draft.palette=v; syncCfg(); thumbs(); });
@@ -324,7 +325,7 @@ let infoOpen=false;
 function snapshot(){ // everything needed to reproduce this frame
   const a=view.a*180/Math.PI;
   return {viewer:'Fractal Universe Lab', version:1,
-    config:{fractal:cfg.fractal, geometryDepth:eng.geometry?eng.geometryDepth:null, geometryParameters:eng.geometry?geometryParameters(cfg):null, rule:asciiRule(), power:eng.geometry?null:eng.pw, seed:cfg.fractal==='julia'?{...cfg.seed}:null, measurement:cfg.mode, panels:cmp()?[...cfg.panels]:null,
+    config:{fractal:cfg.fractal, geometryDepth:eng.geometry?eng.geometryDepth:null, geometryParameters:eng.geometry?geometryParameters(cfg):null, rule:asciiRule(), power:eng.geometry?null:eng.pw, seed:cfg.fractal==='julia'?{...cfg.seed}:null, measurement:cfg.mode, scalarSource:eng.geometry?'distance':'orbit-sensitivity', panels:cmp()?[...cfg.panels]:null,
       palette:cfg.palette, layerSettings:globalThis.birthLayerSettings?.(), contours:{show:cfg.contours,levels:cfg.contourLevels,opacity:cfg.contourOpacity,color:cfg.contourColor}, iterations:{mode:cfg.iter?'fixed':'auto', limit:itFor(view.w)}, escapeRadius:eng.geometry?null:Math.sqrt(eng.R2), stopMode:cfg.stopMode, maxDepth:cfg.depth||null, cleanView:cfg.clean},
     camera:{centre:{re:view.cx, im:view.cy}, width:view.w, cameraAngleDeg:a, planeTurnDeg:-a, depth:depthOf(view.w), homeWidth:HOME.w},
     render: stats ? {width:stats.W, height:stats.H, pixelSize:stats.pix, escaped:eng.geometry?null:stats.esc, covered:eng.geometry?stats.esc:null, pixels:stats.N, Tmin:stats.esc?stats.tmin:null, Tmax:stats.esc?stats.tmax:null,

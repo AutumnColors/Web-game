@@ -43,10 +43,10 @@ const MODES=[
 {v:'vdiv',t:'Complex field divergence',s:'Divergence of log-compressed complex derivative',tag:'Vector divergence'},
 {v:'vcurl',t:'Complex field curl',s:'Curl of log-compressed complex derivative',tag:'Vector curl'},
 {v:'maskdiff',t:'Mask difference',s:'Absolute raw sensitivity removed by masking',tag:'Mask difference'},
-{"v":"sgrad","t":"2 · Gradient","s":"Magnitude of ∇S; arrows optional","tag":"2 · Gradient"},
-{"v":"sdiv","t":"3 · Divergence","s":"Laplacian of S; signed expansion/compression","tag":"3 · Divergence"},
-{"v":"scurl","t":"4 · Curl control","s":"Mixed partial difference; expected zero","tag":"4 · Curl control"},
-{"v":"shess","t":"5 · Hessian","s":"Frobenius norm of second derivative matrix","tag":"5 · Hessian"},
+{"v":"sgrad","t":"Scalar gradient","s":"Magnitude of ∇S; arrows optional","tag":"2 · Gradient"},
+{"v":"sdiv","t":"Scalar Laplacian","s":"Laplacian of S; signed expansion/compression","tag":"3 · Divergence"},
+{"v":"scurl","t":"Scalar curl (control)","s":"Mixed partial difference; expected zero","tag":"4 · Curl control"},
+{"v":"shess","t":"Scalar Hessian","s":"Frobenius norm of second derivative matrix","tag":"5 · Hessian"},
   {v:'waves',t:'Hide Set · stability field',s:'Log derivative magnitude at orbit stopping point; no membership mask',tag:'Unmasked sensitivity'},
   {v:'escape', t:'Escape time',       s:'smooth μ = n + 1 − log₂ log₂|zₙ|',          tag:'Escape time μ'},
   {v:'binary', t:'Black / white',     s:'white: escaped · black: no escape detected', tag:'Escape / no escape'},
@@ -55,6 +55,7 @@ const MODES=[
   {v:'potential', t:"Green's potential", s:'Exterior potential G ≈ log|zₙ| / pⁿ; colors show log G (finite-escape estimate)', tag:'Green potential (estimated)'},
   {v:'flat',   t:'Sensitivity, bands removed', s:'ln(|D| / (|z| ln|z|)): exact |∇μ| by the chain rule', tag:'S, bands removed'},
 ];
+MODES.push({v:'scalar',t:'Scalar field',s:'Native scalar field: distance for geometry, unmasked orbit sensitivity for dynamics',tag:'Scalar field'});
 MODES.push({v:'construction',t:'Construction depth',s:'Colour by finite construction or removal generation',tag:'Construction depth'});
 const modeOf=v=>MODES.find(m=>m.v===v)||MODES[0];
 const SEEDS=[['Rabbit',-0.122561166876654,0.744861766619744],['Basilica',-1,0],['Dendrite',0,1],['Siegel disk',-0.390540870218399,-0.586787907346969],
@@ -104,7 +105,7 @@ let eng=engineOf(cfg);
 const asciiRule=()=>eng.geometry?eng.rule:'z -> z^'+eng.pw+' + c';
 const diffMode=m=>['sgrad','sdiv','scurl','shess'].includes(m);
 const complexMode=m=>['normphase','stablephase','phase','vdiv','vcurl','jointmag','jointphase'].includes(m);
-const needD=()=>cfg.mode==='coherence'||complexMode(cfg.mode)||cfg.mode==='maskdiff'||diffMode(cfg.mode)||cfg.mode==='waves'||cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
+const needD=()=>cfg.mode==='scalar'||cfg.mode==='coherence'||complexMode(cfg.mode)||cfg.mode==='maskdiff'||diffMode(cfg.mode)||cfg.mode==='waves'||cfg.mode==='sens'||cfg.mode==='flat'||cfg.mode==='compare'||(typeof vectorOverlay!=='undefined'&&vectorOverlay.enabled&&vectorOverlay.source==='sens');
 const cmp=()=>cfg.mode==='compare';
 
 /* ---------- worker: one strip of rows on a rotated grid. kind 0: the pixel is c and z₀ = 0 (parameter plane);
@@ -283,7 +284,7 @@ onmessage=e=>{
         const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5);
         [pr,pq]=kind===1?bottcherInverse(u,theta,kr,ki):pw===2?parameterInverse(u,theta):[NaN,NaN];
       } else if(polar){ const theta=polarAngle+2*Math.PI*((x+0.5)/W-0.5), radius=logPolar?Math.exp(logOuter-logSpan*(Rw+0.5)/polarH):polarRadius*(Rw+0.5)/polarH; pr=polarCx+radius*Math.cos(theta); pq=polarCy+radius*Math.sin(theta); }
-      if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=NaN;if(A)A[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
+      if(!Number.isFinite(pr)||!Number.isFinite(pq)){T[i]=65535;F[i]=NaN;if(S)S[i]=geometryDistance(m.geometry,pr,pq,m.geometryDepth,m.geometryParams);if(A)A[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
       if(m.geometry){const q=geometrySample(m.geometry,pr,pq,m.geometryDepth,m.geometryParams);T[i]=q[0]?q[1]:65535;F[i]=q[1];if(q[0])minN=Math.min(minN,q[1]);if(S)S[i]=NaN;if(A)A[i]=NaN;if(C)C[i]=NaN;if(DLD)DLD[i]=NaN;continue;}
       if(m.normalizedPhase){const q=normalizedCentre(pr,pq,Math.min(maxIt,m.centre.cap),Math.max(4,R2),m.centre);A[i]=q[0];S[i]=q[1];T[i]=q[2];continue;}
       if(m.stablePhase){const q=stableCentre(pr,pq,Math.min(maxIt,m.centre.cap),Math.max(4,R2),m.centre);A[i]=q[0];S[i]=Math.max(0,q[1]);T[i]=q[2];continue;}
@@ -357,7 +358,7 @@ function principalPower(zr,zi,p){
   return [r*Math.cos(a),r*Math.sin(a)];
 }
 const NW=Math.max(2,Math.min(8,(navigator.hardwareConcurrency||4)));
-const workerURL=URL.createObjectURL(new Blob([geometrySample.toString(),'\n',WORKER_SRC],{type:'text/javascript'}));
+const workerURL=URL.createObjectURL(new Blob([geometrySample.toString(),'\n',geometryDistance.toString(),'\n',WORKER_SRC],{type:'text/javascript'}));
 const idle=[]; let queue=[];
 for(let i=0;i<NW;i++){ const w=new Worker(workerURL); w.onmessage=onStrip; idle.push(w); }
 function pump(){ while(idle.length && queue.length){ idle.pop().postMessage(queue.shift()); } }
@@ -565,7 +566,7 @@ function mainStrip(m){
 function renderHome(){ if(window.birthPreviewQuality)return; // the whole universe as a backdrop, wide enough to fill the corners of a turned, zoomed-out view
   cancel(homeId); home=null;
   const w=3*HOME.w*Math.max(1,Hd/Wd), v={cx:eng.cxm===undefined?HOME.cx:eng.cxm,cy:HOME.cy,w,a:0};
-  homeId=render('home',v,440,440,cfg.iter||300,eng,true,L=>{ L.ring=false; home=L; paintLayer(L); needDraw=true; });   // always a flat (Cartesian) picture
+  homeId=render('home',v,440,440,cfg.iter||300,eng,!eng.geometry||needD(),L=>{ L.ring=false; home=L; paintLayer(L); needDraw=true; });   // always a flat (Cartesian) picture
 }
 
 /* ---------- from numbers to colour ---------- */
@@ -591,8 +592,8 @@ function rangeOf(N,get,lo,hi){ // percentiles of a sample, so a few extreme pixe
   if(!(r[1]>r[0])) r[1]=r[0]+1e-9; return r;
 }
 function stabilityDifferentials(L,mode){
- const {W,H,S,sx}=L, out=new Float64Array(W*H);out.fill(NaN);
- if(!S||L.ring||!(sx>0))return out;
+ const {W,H}=L, {values:S,spacing:sx}=scalarField(L), out=new Float64Array(W*H);out.fill(NaN);
+ const field=scalarField(L);if(!field.values||!field.cartesian||!(sx>0))return out;
  const d=sx, d2=d*d;
  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){
   const i=y*W+x,c=S[i],a=S[i-1],b=S[i+1],u=S[i-W],v=S[i+W],ul=S[i-W-1],ur=S[i-W+1],dl=S[i+W-1],dr=S[i+W+1];
@@ -607,8 +608,8 @@ function complexDifferential(L,mode){const {W,H,S,A,sx}=L,V=new Float64Array(W*H
 function complexFieldStats(L,mode){const V=complexDifferential(L,mode);let n=0,sum=0,max=0;for(let i=0;i<V.length;i++){const v=V[i];if(!Number.isFinite(v))continue;const x=i%L.W,y=Math.floor(i/L.W);if(x===0||y===0||x===L.W-1||y===L.H-1)continue;if(L.T[i]!==L.T[i-1]||L.T[i]!==L.T[i+1]||L.T[i]!==L.T[i-L.W]||L.T[i]!==L.T[i+L.W])continue;n++;sum+=v*v;max=Math.max(max,Math.abs(v));}return {n,rms:n?Math.sqrt(sum/n):NaN,max:n?max:NaN};}
 function paint(L,mode){
   const {W,H,T,F,S,DLD}=L, N=W*H;
-  if(L.geometry){const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d'),img=ctx.createImageData(W,H),o=new Uint32Array(img.data.buffer),lut=(globalThis.birthLayerPalette?.(mode)||PALETTES[cfg.palette]).seq;for(let i=0;i<N;i++){const inside=T[i]!==NO;if(mode==='binary'){o[i]=inside?WHITE:BLACK;continue;}if(inside)o[i]=lut[Math.round(550+473*Math.min(1,(T[i]+1)/(L.geometryDepth+1)))];else if(F[i]>0)o[i]=lut[Math.round(80+280*F[i]/L.geometryDepth)];else o[i]=BLACK;}ctx.putImageData(img,0,0);return c;}
-  if((diffMode(mode)||mode==='maskdiff')&&!S)return null;
+  if(L.geometry&&(mode==='construction'||mode==='binary')){const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d'),img=ctx.createImageData(W,H),o=new Uint32Array(img.data.buffer),lut=(globalThis.birthLayerPalette?.(mode)||PALETTES[cfg.palette]).seq;for(let i=0;i<N;i++){const inside=T[i]!==NO;if(mode==='binary'){o[i]=inside?WHITE:BLACK;continue;}if(inside)o[i]=lut[Math.round(550+473*Math.min(1,(T[i]+1)/(L.geometryDepth+1)))];else if(F[i]>0)o[i]=lut[Math.round(80+280*F[i]/L.geometryDepth)];else o[i]=BLACK;}ctx.putImageData(img,0,0);return c;}
+  if((diffMode(mode)||mode==='scalar'||mode==='maskdiff')&&!S)return null;
   if((mode==='waves'||mode==='sens'||mode==='flat') && !S) return null;
   if(mode==='dld'&&!DLD)return null;
   const img=new ImageData(W,H), o=new Uint32Array(img.data.buffer), override=globalThis.birthLayerPalette?.(mode), P=override||PALETTES[cfg.palette], C=P.cyc, Q=P.seq;
@@ -629,6 +630,7 @@ function paint(L,mode){
       const lp=Math.log(L.pw);
       get=i=>T[i]===NO?NaN:Math.log(Math.LN2)+(1-F[i]-T[i])*lp;
     }
+    else if(mode==='scalar'){const field=scalarField(L);get=i=>field.values[i];lo=0;hi=.99;}
     else if(mode==='waves') get=i=>Number.isFinite(S[i])?S[i]:NaN;
     else if(mode==='sens') get=i=>T[i]===NO?NaN:S[i];
     else if(mode==='dld')get=i=>DLD[i];
@@ -710,7 +712,7 @@ function drawGreenContours(canvas,L){
 }
 
 const shown=()=>cmp()?cfg.panels:[cfg.mode];
-function paintLayer(L){ L.imgs=shown().map((m,k)=>paint(L,m) || L.imgs[k] || paint(L,'escape')); }
+function paintLayer(L){ L.imgs=shown().map((m,k)=>paint(L,m) || L.imgs[k] || paint(L,L.geometry?'construction':'escape')); }
 function repaint(){ if(home) paintLayer(home); if(under) paintLayer(under); if(base) paintLayer(base); needDraw=true; }
 
 // descriptive numbers of the finished frame (recomputed for every frame: they depend on the grid)
