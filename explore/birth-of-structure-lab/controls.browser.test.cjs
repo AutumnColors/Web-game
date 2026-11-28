@@ -65,7 +65,7 @@ test('desktop camera orientation, live layer, capture and return',async()=>{
  await page.waitForFunction(()=>!document.querySelector('#cfg').classList.contains('on'));
  await page.evaluate(()=>{const F=window.FractalLab;F.apply({...F.clone(F.cfg),fractal:'julia',juliaPower:2,seed:{re:-1.4011551890920506,im:0},mode:'escape'},{cx:0,cy:0,w:3.6,a:0});window.birthSelectExpedition('accumulation');if(!window.birthSaveInitialCheckpoint({zoom:6.264548,interval:12}))throw Error('checkpoint save failed');});
  await page.getByRole('button',{name:'Layers',exact:true}).click();
- await page.getByRole('button',{name:'Sensitivity',exact:true}).click();
+ await page.getByRole('button',{name:'Orbit sensitivity',exact:true}).click();
  await page.getByRole('button',{name:'Expedition',exact:true}).click();
  await page.getByRole('button',{name:'Preview expedition',exact:true}).click();
  try { await page.waitForFunction(()=>{const s=window.birthExpeditionStatus();return s.stage==='running'&&s.step>2;},{},{timeout:60000}); } catch (error) { console.error('Expedition timeout diagnostics:', JSON.stringify(await page.evaluate(()=>({status:window.birthExpeditionStatus(),settled:window.FractalLab.settled(),config:window.FractalLab.cfg,camera:window.FractalLab.view,preview:window.birthPreviewQuality,checkpoint:window.birthGetInitialCheckpoint()}))), 'page errors:', errors); throw error; }
