@@ -7,19 +7,20 @@ const RenormalizationError=(()=>{
  const abs=a=>Math.hypot(...a);
  function power(a,d){
   if(d===2)return mul(a,a);
-  if(Number.isSafeInteger(d)&&d>=2&&d<=64){let r=[1,0],b=a,n=d;while(n){if(n%2)r=mul(r,b);n=Math.floor(n/2);if(n)b=mul(b,b);}return r;}
+  if(Number.isSafeInteger(d)&&d>=2){let r=[1,0],b=a,n=d;while(n){if(n%2)r=mul(r,b);n=Math.floor(n/2);if(n)b=mul(b,b);}return r;}
   const m=abs(a)**d,t=d*Math.atan2(a[1],a[0]);return [m*Math.cos(t),m*Math.sin(t)];
  }
  function orbit(cfg,a,n,uncertainty=0){
-  const d=cfg.juliaPower,c=[cfg.seed.re,cfg.seed.im],bound=Math.max(2,abs(c)+1);let z=a,e=uncertainty;
+  const d=cfg.juliaPower,c=[cfg.seed.re,cfg.seed.im];let bound=Math.max(2,abs(c)+1);while(Number.isFinite(bound)&&bound**d-bound<=abs(c))bound*=2;let z=a,e=uncertainty,escaped=false;
   for(let i=0;i<n;i++){
    const r=abs(z);
-   if(!Number.isFinite(r)||!Number.isFinite(e))return {status:'overflow'};
-   if(r-e>bound)return {status:'escaped'};
+   if(!Number.isFinite(r)||!Number.isFinite(e))return {status:escaped?'escaped':'overflow'};
+   if(r-e>bound)escaped=true;
+   if(!Number.isInteger(d)&&z[0]<0&&Math.abs(z[1])<=e&&e>0)return {status:'unresolved'};
    const w=power(z,d);z=[w[0]+c[0],w[1]+c[1]];
-   if(!z.every(Number.isFinite))return {status:'overflow'};
+   if(!z.every(Number.isFinite))return {status:escaped?'escaped':'overflow'};
    e=d*Math.pow(r+e,d-1)*e+16*EPS*Math.max(abs(w),abs(c),abs(z),Number.MIN_VALUE);
-   if(!Number.isFinite(e))return {status:'unresolved'};
+   if(!Number.isFinite(e))return {status:escaped?'escaped':'unresolved'};
   }
   return {status:'finite',z,e};
  }
@@ -49,14 +50,14 @@ const RenormalizationError=(()=>{
   return {status:'finite',value:z[0]===0&&z[1]===0?0:value};
  }
  function frame(cfg,n,aspect=1){
+  if(!Number.isSafeInteger(n)||n<1||2*n>MAX_RETURN||!Number.isFinite(aspect)||aspect<=0)return {n,scale:null,nextScale:null,ratio:NaN,rms:null,coverage:0,status:'return-time-limit',W:1,H:1,errorValues:new Float64Array([NaN]),flags:new Uint8Array([2])};
   const s=scale(cfg,n),t=scale(cfg,2*n),m=s.z?abs(s.z):NaN,ratio=t.z?abs(t.z)/m:NaN;
   const out={n,scale:s.z||null,nextScale:t.z||null,ratio,rms:null,coverage:0,status:'finite',W:1,H:1,errorValues:new Float64Array([NaN]),flags:new Uint8Array([2])};
-  if(s.status!=='finite'||t.status!=='finite'){out.status=s.status!=='finite'?s.status:t.status;return out;}
-  if(n*2>MAX_RETURN){out.status='return-time-limit';return out;}
-  const side=Math.min(129,Math.floor(Math.sqrt(MAX_WORK/(3*n*(Math.max(aspect,1/aspect)+1)))));
+  if(s.status!=='finite'||t.status!=='finite'){out.status=s.status!=='finite'?s.status:t.status;out.flags[0]=out.status==='escaped'?1:out.status==='overflow'?3:2;return out;}
+  const rawSide=Math.min(129,Math.floor(Math.sqrt(MAX_WORK/(3*n*(Math.max(aspect,1/aspect)+1))))),side=rawSide%2?rawSide:rawSide-1;
   if(side<17){out.status='work-limit';return out;}
   // The fixed square RMS domain is independent of the screen aspect and sampling resolution.
-  const W=side,H=Math.max(1,Math.round(side*aspect)),V=new Float64Array(W*H),flags=new Uint8Array(W*H);V.fill(NaN);
+  const W=side,H=Math.max(1,Math.round(side*aspect/2)*2+1),V=new Float64Array(W*H),flags=new Uint8Array(W*H);V.fill(NaN);
   const sample=(x,y)=>compare(cfg,n,s,t,[x,y]);
   for(let j=0;j<H;j++)for(let i=0;i<W;i++){
    const q=sample(DOMAIN*(i+.5-W/2)/W,DOMAIN*(H/2-j-.5)/W),k=j*W+i;
