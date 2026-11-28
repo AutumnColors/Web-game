@@ -188,6 +188,7 @@ function parameterLogPhi(cr,ci){
  const cmag=Math.sqrt(cm);lr=Math.log(cmag);li=Math.atan2(ci,cr);
  ar=cr/cm;ai=-ci/cm;
  for(let k=1;k<=34;k++){
+   if(2*Math.log(Math.hypot(zr,zi))>=Math.log1p(Math.hypot(cr,ci))+40)break;
    const qr=zr*zr-zi*zi,qi=2*zr*zi,den=qr*qr+qi*qi;
    if(!(den>1e-290))return null;
    const vr=(cr*qr+ci*qi)/den,vi=(ci*qr-cr*qi)/den;
@@ -491,6 +492,7 @@ function parameterLogPhi(cr,ci){
  const cmag=Math.sqrt(cm);lr=Math.log(cmag);li=Math.atan2(ci,cr);
  ar=cr/cm;ai=-ci/cm;
  for(let k=1;k<=34;k++){
+   if(2*Math.log(Math.hypot(zr,zi))>=Math.log1p(Math.hypot(cr,ci))+40)break;
    const qr=zr*zr-zi*zi,qi=2*zr*zi,den=qr*qr+qi*qi;
    if(!(den>1e-290))return null;
    const vr=(cr*qr+ci*qi)/den,vi=(ci*qr-cr*qi)/den;
