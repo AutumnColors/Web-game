@@ -60,7 +60,7 @@ const RenormalizationError=(()=>{
   const W=side,H=Math.max(1,Math.round(side*aspect/2)*2+1),V=new Float64Array(W*H),flags=new Uint8Array(W*H);V.fill(NaN);
   const sample=(x,y)=>compare(cfg,n,s,t,[x,y]);
   for(let j=0;j<H;j++)for(let i=0;i<W;i++){
-   const q=sample(DOMAIN*(i+.5-W/2)/W,DOMAIN*(H/2-j-.5)/W),k=j*W+i;
+   const q=sample(DOMAIN*(i+.5-W/2)/W,DOMAIN*aspect*(.5-(j+.5)/H)),k=j*W+i;
    if(q.status==='finite')V[k]=q.value;else flags[k]=q.status==='escaped'?1:q.status==='overflow'?3:2;
   }
   let rms=0,valid=0;const size=17;
