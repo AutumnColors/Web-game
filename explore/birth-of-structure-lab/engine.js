@@ -592,8 +592,8 @@ function rangeOf(N,get,lo,hi){ // percentiles of a sample, so a few extreme pixe
   if(!(r[1]>r[0])) r[1]=r[0]+1e-9; return r;
 }
 function stabilityDifferentials(L,mode){
- const {W,H}=L, {values:S,spacing:sx}=scalarField(L), out=new Float64Array(W*H);out.fill(NaN);
- const field=scalarField(L);if(!field.values||!field.cartesian||!(sx>0))return out;
+ const {W,H}=L, {values:S,spacing:sx,cartesian}=scalarField(L), out=new Float64Array(W*H);out.fill(NaN);
+ if(!S||!cartesian||!(sx>0))return out;
  const d=sx, d2=d*d;
  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){
   const i=y*W+x,c=S[i],a=S[i-1],b=S[i+1],u=S[i-W],v=S[i+W],ul=S[i-W-1],ur=S[i-W+1],dl=S[i+W-1],dr=S[i+W+1];
@@ -661,7 +661,7 @@ function paint(L,mode){
       const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
       canvas.getContext('2d').putImageData(img,0,0);return canvas;
     }
-    const rng=(mode==='waves'||mode==='sens')?rangeOf(N,i=>T[i]!==NO?S[i]:NaN,lo,hi):rangeOf(N,get,lo,hi); if(mode==='waves'||mode==='sens')rng[0]=0; if(mode==='gradt') rng[0]=0;
+    const rng=(mode==='waves'||mode==='sens')?rangeOf(N,i=>T[i]!==NO?S[i]:NaN,lo,hi):rangeOf(N,get,lo,hi); if(mode==='waves'||mode==='sens'||mode==='scalar')rng[0]=0; if(mode==='gradt') rng[0]=0;
     const k=1023/(rng[1]-rng[0]), floor=Q[0];
     for(let i=0;i<N;i++){ const v=get(i); if(v!==v){ o[i]=(mode==='waves'||mode==='sens')?floor:T[i]===NO?BLACK:floor; continue; } const t=(v-rng[0])*k; o[i]=Q[t<0?0:t>1023?1023:t|0]; }
     L.rng[mode]=rng;

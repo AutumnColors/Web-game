@@ -1,6 +1,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {chromium}=require('playwright');
+require('./scalar-fields.test.cjs');
 test('mobile toolbar shell and panel lifecycle',async()=>{
  const browser=await chromium.launch({headless:true});
  try{
